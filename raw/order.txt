@@ -1,0 +1,192 @@
+oop.txt
+
+1. Four pillars of OOP — abstraction vs encapsulation — 🟢 Easy
+2. Constructors, overloading, constructor chaining — 🟢 Easy
+3. Access modifiers — 🟢 Easy
+4. `this` keyword — 🟢 Easy
+5. Coupling and cohesion — 🟢 Easy
+6. Upcasting, downcasting, `instanceof` — 🟢 Easy
+7. Abstract class vs interface — 🟡 Medium
+8. Interface vs abstract class: constructors, multiple inheritance, default methods (Java 8+) — 🟡 Medium
+9. Can an abstract class have a constructor? What is a private constructor? — 🟡 Medium
+10. `static` keyword, static vs instance method, can you override static — 🟡 Medium
+11. Method overloading vs overriding, dynamic method dispatch — 🟡 Medium
+12. Method hiding vs method overriding — 🟡 Medium
+13. `final` keyword — all three uses — 🟡 Medium
+14. Covariant return type — 🟡 Medium
+15. Marker interface — 🟡 Medium
+16. Generics and type erasure — 🟡 Medium
+17. Static nested class vs (non-static) inner class — 🟡 Medium
+18. Composition vs inheritance — 🟡 Medium
+19. Aggregation vs composition — 🟡 Medium
+20. SOLID principles — 🟡 Medium
+21. `==` vs `.equals()`, equals()/hashCode() contract — 🟡 Medium
+22. Hash collision — 🟢 Easy
+23. Immutable class, why `String` is immutable — 🟡 Medium
+24. Shallow copy vs deep copy — 🟢 Easy
+25. `Object` class and its core methods — 🟡 Medium
+26. How many ways can you create an object in Java? — 🟡 Medium
+27. Reflection — concept, use case, risk — 🔴 Hard
+28. Pass by value vs pass by reference — 🔴 Hard
+29. Static binding vs dynamic binding — 🔴 Hard
+30. Garbage collection, stack vs heap — 🔴 Hard
+31. Diamond problem, why no multiple inheritance for classes — 🔴 Hard
+32. Exceptions — checked vs unchecked — 🟡 Medium
+33. `throw` vs `throws`, does `finally` run if `try` has a `return` — 🔴 Hard
+34. Sorting objects by a field — `Comparable` vs `Comparator` — 🟡 Medium
+35. Why not build strings in a loop — `StringBuilder` vs `StringBuffer` — 🟢 Easy
+36. Enums as classes, enum constructors/fields/methods, enum Singleton idiom — 🟡 Medium
+37. Code trace: static block vs instance block vs constructor execution order — 🟡 Medium
+38. Code trace: `this()` and `super()` chaining together — 🟡 Medium
+39. Code trace: overridden method called from a parent constructor (dynamic dispatch trap) — 🔴 Hard
+40. Code trace: diamond-shaped multiple inheritance, MRO and `super()` resolution — 🔴 Hard
+41. Code trace: class attribute vs instance attribute shadowing — 🟡 Medium
+42. Code trace: unimplemented abstract method, why enforcing it early matters — 🟡 Medium
+43. Code trace: autoboxing and overload resolution priority — 🔴 Hard
+44. Code trace: Rectangle/Square LSP violation — 🔴 Hard
+45. Singleton pattern — what, why, risks, implementation — 🟡 Medium
+46. Factory pattern — what, why, implementation — 🟡 Medium
+47. Builder pattern — telescoping constructor problem, implementation — 🟡 Medium
+48. Decorator pattern — OCP, coffee order implementation — 🟡 Medium
+49. Observer pattern — what, why, implementation — 🔴 Hard
+50. Dependency Injection — DI vs DIP, constructor/setter/field injection — 🔴 Hard
+
+dbms.txt
+
+Theory Questions:
+
+1. What is a transaction, and why do we need it? [Easy]
+2. What is the difference between a Primary Key, Unique Key, and Foreign Key? [Easy]
+3. What are the ACID properties? Explain each with a real-world example. [Easy]
+4. What is the difference between WHERE and HAVING? [Easy]
+5. What are the different types of SQL joins — INNER, LEFT, RIGHT, FULL OUTER, CROSS? [Easy]
+6. What is the exact SQL query execution order, and why does it matter? [Medium]
+7. What is normalization, and why do we do it? [Easy]
+8. Given StudentID | StudentName | CourseID | CourseName | InstructorName, normalize it to 3NF. [Medium]
+9. What is BCNF, and how is it different from 3NF? [Medium]
+10. What is denormalization, when would you deliberately do it, and what are the risks? [Medium]
+11. What is the difference between OLAP and OLTP? [Medium]
+12. What is an ER diagram, and what are entities, attributes, and relationships? [Easy]
+13. What are the different isolation levels, and what problems does each solve or allow? [Medium]
+14. What is the difference between dirty read, non-repeatable read, and phantom read? [Medium]
+15. What is a deadlock, and how does a database detect, handle, and prevent it? [Medium]
+16. What is the difference between optimistic and pessimistic locking? [Medium]
+17. What is an index, and what data structure does it typically use internally? [Easy]
+18. Why do databases prefer B+ Trees over B-Trees? [Medium]
+19. What is the difference between a clustered and a non-clustered index? [Medium]
+20. When would you NOT create an index on a column, even if it's frequently queried? [Medium]
+21. Does column order matter in a composite index on (DeptID, Salary)? [Medium]
+22. Write a query to find the second highest salary without LIMIT/OFFSET. [Medium]
+23. What is the difference between RANK(), DENSE_RANK(), and ROW_NUMBER()? [Medium]
+24. Write a query to find employees who earn more than their manager. [Medium]
+25. What is a CTE, and how is it different from a subquery? [Medium]
+26. What is a recursive CTE, and when would you use it? [Hard]
+27. What is the difference between a view and a materialized view? [Medium]
+28. You're given a slow query on a table with millions of rows. How would you debug and optimize it? [Hard]
+29. When would you choose a NoSQL database over a relational database? [Medium]
+30. What is the CAP theorem, and how does it relate to SQL vs NoSQL? [Medium]
+31. What is eventual consistency? Give a concrete example. [Medium]
+32. What is database replication, and what is sharding? How are they different? [Medium]
+33. What is a shard key, and what makes a bad shard key? [Hard]
+
+Database Schema Questions:
+
+1. Design a basic database schema for a wallet/payment system where users send money to each other. [Medium]
+2. How would you ensure no money is lost or duplicated if the system crashes mid-transaction? [Medium]
+3. Which isolation level would you use for a high-traffic payment system — Read Committed vs Serializable tradeoffs? [Hard]
+4. Design the database schema for an expense splitting app like Splitwise. [Hard]
+5. Design the database schema for a food delivery app like Swiggy or Zomato. [Hard]
+6. Design the database schema for a cab booking app like Uber or Ola. [Hard]
+7. Design the database schema for a stock trading platform like Zerodha or Groww. [Hard]
+8. Design the database schema for an e-commerce platform like Amazon or Flipkart. [Hard]
+
+os.txt
+
+Here's the OS question bank, ordered by learning sequence with difficulty tags:
+
+What is the difference between a process and a thread? Why would you use one over the other? — Easy
+What are the different states a process can be in, and what causes transitions between them? — Easy
+What is the difference between preemptive and non-preemptive scheduling? Name two algorithms of each type. — Easy
+What is a Hardware Timer Interrupt? — Easy
+What is the convoy effect? Which scheduling algorithm causes it, and why? How does Round Robin solve it? — Medium
+What is a race condition? Give a concrete example and explain what the critical section problem is. — Medium
+What is a mutex? What is a semaphore? What is the difference between the two, and when would you use one over the other? — Medium
+Is a binary semaphore a mutex? — Medium
+What are the pitfalls of a mutex? (Priority inversion) — Hard
+Explain the Producer-Consumer problem. What synchronization primitives do you need to solve it, and what role does each one play? — Hard
+What is a deadlock? State the four necessary conditions for a deadlock to occur. — Easy
+What is the difference between deadlock prevention, deadlock avoidance, and deadlock detection and recovery? — Medium
+What is the Banker's Algorithm and which strategy does it belong to? — Medium
+Solve numerical problems using the Banker's Algorithm (safety sequence, resource request check). — Hard
+What is virtual memory? What problem does it solve? — Easy
+What is a page fault? — Easy
+What are the different Page Replacement Algorithms (FIFO, Optimal, LRU)? — Medium
+What is Belady's Anomaly? — Medium
+What is the TLB? Why does it exist? — Medium
+What happens on a TLB miss? — Medium
+What happens to the TLB during a context switch? (TLB flush, ASIDs) — Hard
+What is thrashing? What causes it and how does the OS prevent it? — Medium
+What is IPC? What are the main mechanisms for it? — Easy
+What is the fundamental tradeoff between pipes and shared memory? — Medium
+What are signals? — Easy
+What is a system call? — Easy
+What is the difference between user mode and kernel mode, and why does that distinction exist? — Medium
+What happens when a user-level program calls read()? — Hard
+What exactly gets saved during a context switch? — Medium
+Why is context switching considered "pure overhead" — what is the system not doing while it happens? — Medium
+
+cn.txt
+
+Here's the full bank, reordered by ideal learning sequence (bottom-up through the stack: data link → network → transport → application → practical/advanced → integrative) rather than the order we covered them in:
+
+1. **[Easy]** What is the OSI model, and why do we use a layered architecture instead of a single monolithic system for networking? Name the 7 layers in order, and explain how the OSI model maps onto the 4-layer TCP/IP model actually used in practice.
+
+2. **[Easy]** A sender wants to transmit the data byte `1001101` using a single even parity bit. (a) Determine the parity bit and the final transmitted sequence. (b) The receiver receives `10011010` — using even parity, determine if an error occurred. (c) Explain why a 2-bit error would go completely undetected by this scheme.
+
+3. **[Medium]** A sender needs to transmit two 8-bit segments, `10101001` and `00111001`, using the Internet checksum method. (a) Compute the checksum sent with the data. (b) Explain how the receiver uses it to detect an error. (c) What's a key limitation of checksum compared to CRC?
+
+4. **[Hard]** A sender wants to transmit `1101011011` using CRC with generator polynomial `x⁴ + x + 1` (bit pattern `10011`). (a) Determine the number of CRC bits needed and why. (b) Perform the binary (XOR) division to compute the CRC remainder. (c) Explain how the receiver's division confirms whether an error occurred.
+
+5. **[Hard]** A sender wants to transmit the 4-bit data `1011` using Hamming code for single-bit error detection and correction. (a) Determine how many parity bits are needed and why. (b) Determine their positions and compute their values. (c) If a single bit is flipped in transit, explain how the receiver identifies exactly which bit is in error.
+
+6. **[Medium]** A network transmits frames with a 1500-byte payload, a 40-byte header, and a 4-byte trailer. (a) Calculate the framing efficiency as a percentage. (b) Recalculate for a 100-byte payload and explain why smaller payloads hurt efficiency disproportionately. (c) Explain why protocols don't just maximize frame size to chase efficiency.
+
+7. **[Easy]** What's the difference between a public and a private IP address? Why do private IPs need NAT to access the internet, and what IPv4 problem did NAT solve at scale?
+
+8. **[Medium]** Given IP `192.168.10.75` with subnet mask `255.255.255.192`, determine: (a) the network address, (b) the broadcast address, (c) the valid host range, (d) the number of usable hosts. Show the binary breakdown of the last octet.
+
+9. **[Medium]** A company is given `172.16.0.0/16` and needs to divide it into 6 departments, the largest needing up to 1000 hosts. (a) What subnet mask satisfies this? (b) How many subnets does this create, and how many usable hosts per subnet? (c) Is there wasted address space, and how much?
+
+10. **[Easy]** What's the fundamental difference between TCP and UDP? Give a real-world example where UDP is deliberately chosen over TCP, and explain why reliability is sacrificed there.
+
+11. **[Medium]** Walk through the TCP 3-way handshake — what's exchanged at each step, and why 3 steps instead of 2? Then explain why termination takes 4 steps instead of 3, and what a "half-closed" connection means.
+
+12. **[Medium]** Define flow control and congestion control — what does each protect against, and what problem is unique to each? Name at least one congestion control algorithm (e.g. Slow Start, AIMD).
+
+13. **[Medium]** A sender transmits a 2 MB file over a 10 Mbps link. Distance is 2000 km, signal speed 2×10⁸ m/s. (a) Calculate transmission delay. (b) Calculate propagation delay. (c) Calculate total time, and explain why these two delays are genuinely separate quantities.
+
+14. **[Medium]** A link has bandwidth 5 Mbps and propagation delay 20 ms. (a) Calculate the bandwidth-delay product and state what it represents. (b) For Stop-and-Wait ARQ sending 1000-bit frames, calculate link utilization. (c) Explain why Stop-and-Wait becomes inefficient on long fat networks, and name the fix.
+
+15. **[Hard]** Using the same link (5 Mbps, 20 ms delay), a sender now uses Sliding Window ARQ with 1000-bit frames. (a) Calculate transmission time per frame and the ratio `a` (propagation delay / transmission time). (b) Determine the minimum window size for full link utilization using `N = 1 + 2a`. (c) If the actual window size is half of that, what's the resulting efficiency?
+
+16. **[Medium]** Walk through how a browser resolves a domain name to an IP — the order of caches checked, and what happens during the recursive lookup (root → TLD → authoritative). What's the difference between a recursive and an iterative DNS query?
+
+17. **[Easy]** What are the main components of an HTTP request? What does HTTPS add on top of HTTP, and name 3 common HTTP status codes with what each signifies.
+
+18. **[Medium]** Compare cookie-based session authentication with token-based (JWT) authentication. Where is state stored in each, and what's the key tradeoff between scalability and revocation/control?
+
+19. **[Medium]** Explain the difference between a forward proxy, a reverse proxy, and a load balancer. How does a CDN fit in, and what's a scenario where you'd deploy all three together to scale a web application?
+
+20. **[Medium]** Compare HTTP polling, long polling, and WebSockets for a real-time feature. What overhead does each carry, and what architectural tradeoff do you accept by adopting WebSockets at scale?
+
+21. **[Medium]** What is CORS, and why does it exist? What's a "preflight request," when is it triggered, and how would a backend fix a CORS error for a legitimate cross-origin frontend?
+
+22. **[Hard]** Walk through the TLS handshake — what happens between TCP connection and encrypted HTTPS readiness? Why does TLS use both asymmetric and symmetric encryption, and what role does the server's certificate play in preventing a MITM attack?
+
+23. **[Easy]** Give a one-line comparison of HTTP/1.1, HTTP/2, and HTTP/3. What problem does HTTP/2 multiplexing solve, and why does HTTP/3 move to QUIC over UDP?
+
+24. **[Medium]** What is idempotency in API design, and why does it matter for payment/financial endpoints? How does an idempotency key prevent a duplicate operation (e.g. a double charge) on a retried request?
+
+25. **[Easy]** What is HTTP caching, and how do `Cache-Control` and `ETag` work together to reduce redundant data transfer? What does a `304 Not Modified` response mean and when is it used?
+
+26. **[Hard]** Walk through everything that happens from typing a URL and hitting Enter to the page fully rendering — DNS resolution, TCP handshake, TLS handshake (if HTTPS), the HTTP request/response cycle, and caching along the way.

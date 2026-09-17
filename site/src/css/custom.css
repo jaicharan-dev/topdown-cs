@@ -1,0 +1,675 @@
+/**
+ * CS Fundamentals — Premium Dark Mode Theme
+ * Built on top of Docusaurus Infima defaults.
+ */
+
+/* ===================================================================
+   1. GLOBAL TYPOGRAPHY — Inter
+   =================================================================== */
+:root {
+  --ifm-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  --ifm-heading-font-family: 'Inter', -apple-system, BlinkMacSystemFont,
+    'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  --ifm-font-weight-normal: 400;
+  --ifm-font-weight-semibold: 600;
+  --ifm-font-weight-bold: 700;
+  --ifm-line-height-base: 1.7;
+}
+
+/* ===================================================================
+   2. LIGHT MODE PALETTE (unchanged defaults + Inter)
+   =================================================================== */
+:root {
+  --ifm-color-primary: #2e8555;
+  --ifm-color-primary-dark: #29784c;
+  --ifm-color-primary-darker: #277148;
+  --ifm-color-primary-darkest: #205d3b;
+  --ifm-color-primary-light: #33925d;
+  --ifm-color-primary-lighter: #359962;
+  --ifm-color-primary-lightest: #3cad6e;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
+}
+
+/* ===================================================================
+   3. DARK MODE PALETTE — Soft Slate
+   =================================================================== */
+[data-theme='dark'] {
+  --ifm-background-color: #18181b;
+  --ifm-background-surface-color: #1e1e22;
+  --ifm-navbar-background-color: #18181b;
+  --ifm-footer-background-color: #111113;
+  --ifm-color-primary: #60a5fa;
+  --ifm-color-primary-dark: #4b94f0;
+  --ifm-color-primary-darker: #3b86e8;
+  --ifm-color-primary-darkest: #2563eb;
+  --ifm-color-primary-light: #7ab8ff;
+  --ifm-color-primary-lighter: #93c5fd;
+  --ifm-color-primary-lightest: #bfdbfe;
+  --ifm-font-color-base: #e4e4e7;
+  --ifm-font-color-secondary: #a1a1aa;
+  --ifm-heading-color: #fafafa;
+  --ifm-hr-border-color: #27272a;
+  --ifm-toc-border-color: #27272a;
+  --ifm-code-background: #27272a;
+  --ifm-table-stripe-background: rgba(255, 255, 255, 0.02);
+  --ifm-table-border-color: #27272a;
+  --docusaurus-highlighted-code-line-bg: rgba(255, 255, 255, 0.06);
+
+  /* Custom tokens used below */
+  --csf-surface: #1e1e22;
+  --csf-surface-raised: #27272a;
+  --csf-border: #3f3f46;
+  --csf-border-subtle: #27272a;
+}
+
+/* ===================================================================
+   4. NAVBAR — Frosted glass effect
+   =================================================================== */
+[data-theme='dark'] .navbar {
+  backdrop-filter: blur(12px);
+  background: rgba(24, 24, 27, 0.85);
+  border-bottom: 1px solid var(--csf-border-subtle);
+}
+
+/* ===================================================================
+   5. SIDEBAR — Breathable, refined
+   =================================================================== */
+
+/* Sidebar background */
+[data-theme='dark'] .theme-doc-sidebar-container {
+  background: var(--csf-surface);
+  border-right: 1px solid var(--csf-border-subtle) !important;
+}
+
+/* Sidebar link items — more padding, breathing room */
+.theme-doc-sidebar-menu .menu__link {
+  font-size: 0.84rem;
+  font-weight: 450;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  line-height: 1.5;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: color 0.15s ease-out, background-color 0.15s ease-out;
+}
+
+[data-theme='dark'] .theme-doc-sidebar-menu .menu__link:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme='dark'] .theme-doc-sidebar-menu .menu__link--active {
+  background: rgba(96, 165, 250, 0.08);
+  color: var(--ifm-color-primary-lighter);
+}
+
+/* Sidebar category headings */
+[data-theme='dark'] .menu__list-item-collapsible .menu__link {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--ifm-font-color-secondary);
+}
+
+/* Sidebar counter badges — subtle tint instead of harsh solid colors */
+.theme-doc-sidebar-menu {
+  counter-reset: sidebar-item;
+}
+
+.sidebar-easy > .menu__link::before,
+.sidebar-medium > .menu__link::before,
+.sidebar-hard > .menu__link::before {
+  counter-increment: sidebar-item;
+  content: counter(sidebar-item);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  line-height: 1;
+  text-align: center;
+  border-radius: 6px;
+  margin-right: 10px;
+  font-weight: 600;
+  font-size: 0.7rem;
+  float: left;
+  flex-shrink: 0;
+  border: 1px solid;
+}
+
+/* Easy — green tint */
+.sidebar-easy > .menu__link::before {
+  background: rgba(34, 197, 94, 0.1);
+  color: #4ade80;
+  border-color: rgba(34, 197, 94, 0.25);
+}
+/* Medium — amber tint */
+.sidebar-medium > .menu__link::before {
+  background: rgba(234, 179, 8, 0.1);
+  color: #facc15;
+  border-color: rgba(234, 179, 8, 0.25);
+}
+/* Hard — red tint */
+.sidebar-hard > .menu__link::before {
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+/* ===================================================================
+   6. CONTENT — H1 sizing
+   =================================================================== */
+.markdown > header h1, .markdown > h1 {
+  font-size: 2rem !important;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* ===================================================================
+   7. BLOCKQUOTES — Modern interview-question cards
+   =================================================================== */
+[data-theme='dark'] .markdown blockquote {
+  background: var(--csf-surface-raised);
+  border-left: 3px solid var(--ifm-color-primary);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 1.5rem 0;
+  color: var(--ifm-font-color-base);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='dark'] .markdown blockquote p {
+  margin-bottom: 0;
+}
+
+/* ===================================================================
+   8. DIFFICULTY BADGES — Tinted, modern pill style
+   =================================================================== */
+.badge {
+  font-weight: 600;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid;
+  display: inline-block;
+}
+
+[data-theme='dark'] .badge--success {
+  background: rgba(34, 197, 94, 0.12) !important;
+  color: #4ade80 !important;
+  border-color: rgba(34, 197, 94, 0.3) !important;
+}
+
+[data-theme='dark'] .badge--warning {
+  background: rgba(234, 179, 8, 0.12) !important;
+  color: #facc15 !important;
+  border-color: rgba(234, 179, 8, 0.3) !important;
+}
+
+[data-theme='dark'] .badge--danger {
+  background: rgba(239, 68, 68, 0.12) !important;
+  color: #f87171 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+/* ===================================================================
+   9. TABLES — Subtle borders
+   =================================================================== */
+[data-theme='dark'] table {
+  border-collapse: collapse;
+}
+
+[data-theme='dark'] table th {
+  background: var(--csf-surface-raised);
+  font-weight: 600;
+}
+
+[data-theme='dark'] table td,
+[data-theme='dark'] table th {
+  border-color: var(--csf-border-subtle);
+}
+
+/* ===================================================================
+   10. ADMONITIONS (:::tip, :::caution, etc.) — Softer backgrounds
+   =================================================================== */
+[data-theme='dark'] .alert {
+  border-radius: 8px;
+  border-width: 1px;
+  background: var(--csf-surface) !important;
+}
+
+/* ===================================================================
+   11. FOOTER — Subtle
+   =================================================================== */
+[data-theme='dark'] .footer {
+  border-top: 1px solid var(--csf-border-subtle);
+}
+
+/* ===================================================================
+   12. SCROLLBAR — Thin, modern
+   =================================================================== */
+[data-theme='dark'] ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 3px;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
+/* ===================================================================
+   13. SIDEBAR COLLAPSE ANIMATION (preserved from original)
+   =================================================================== */
+
+/* Resizable sidebar container */
+html body .theme-doc-sidebar-container {
+  transition: width 0.05s ease, min-width 0.05s ease !important;
+  resize: horizontal;
+  max-width: 50vw;
+  min-width: 250px;
+}
+
+/* Instant collapse via React class */
+.my-custom-mini-sidebar {
+  width: 60px !important;
+  min-width: 60px !important;
+  overflow-x: hidden !important;
+  transition: none !important;
+}
+
+.my-custom-mini-sidebar [class*="menu__link"] { color: transparent !important; }
+.my-custom-mini-sidebar [class*="menu__link"]::before { color: white !important; }
+.my-custom-mini-sidebar [class*="theme-doc-sidebar-item-category"] > ul { display: none !important; }
+.my-custom-mini-sidebar [class*="menu__caret"] { display: none !important; }
+
+/* Lock inner content — no text reflow */
+html body article,
+html body .theme-doc-markdown {
+  max-width: 85ch !important;
+  margin: 0 auto !important;
+  transform: translateX(0);
+  transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.2s !important;
+}
+
+html[data-sidebar="mini"] body article,
+html[data-sidebar="mini"] body .theme-doc-markdown {
+  transform: translateX(-20px) !important;
+}
+
+/* Layout shift sequencing */
+html[data-sidebar="full"] body .docMainContainer {
+  width: calc(100vw - var(--doc-sidebar-width, 300px)) !important;
+  max-width: calc(100vw - var(--doc-sidebar-width, 300px)) !important;
+  flex: none !important;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.2s, max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.2s !important;
+}
+
+html[data-sidebar="mini"] body .docMainContainer {
+  width: calc(100vw - 60px) !important;
+  max-width: calc(100vw - 60px) !important;
+  flex: none !important;
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.2s, max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.2s !important;
+}
+
+/* Hide native expand button */
+html body [title="Expand sidebar"],
+html body [aria-label="Expand sidebar"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+/* Hide border in mini mode */
+html[data-sidebar="mini"] body .theme-doc-sidebar-container,
+.my-custom-mini-sidebar {
+  border-right: none !important;
+  border-color: transparent !important;
+}
+
+/* Hide Docusaurus heading anchors */
+html body .hash-link {
+  display: none !important;
+}
+
+/* ===================================================================
+   14. GEMINI UI CODE HIGHLIGHTING (DARK MODE)
+   =================================================================== */
+
+/* Override Dracula background on pre tag */
+html[data-theme='dark'] .theme-code-block pre.prism-code {
+  background-color: #131314 !important;
+  border: 1px solid var(--csf-border-subtle);
+  border-radius: 8px;
+}
+
+/* Strip inline italics from Dracula */
+html[data-theme='dark'] .prism-code .token {
+  font-style: normal !important;
+}
+
+/* Base text color */
+html[data-theme='dark'] .prism-code {
+  color: #e3e3e3 !important;
+}
+
+/* Keywords -> Periwinkle Blue */
+html[data-theme='dark'] .prism-code .token.keyword,
+html[data-theme='dark'] .prism-code .token.control-flow {
+  color: #8ab4f8 !important;
+}
+
+/* Functions, Classes, & Types -> Gold/Yellow */
+html[data-theme='dark'] .prism-code .token.function,
+html[data-theme='dark'] .prism-code .token.class-name,
+html[data-theme='dark'] .prism-code .token.method {
+  color: #fbbc04 !important;
+}
+
+/* Built-ins & Strings -> Salmon/Red */
+html[data-theme='dark'] .prism-code .token.builtin,
+html[data-theme='dark'] .prism-code .token.string,
+html[data-theme='dark'] .prism-code .token.char {
+  color: #f28b82 !important;
+}
+
+/* Booleans & Numbers -> Pink/Magenta */
+html[data-theme='dark'] .prism-code .token.boolean,
+html[data-theme='dark'] .prism-code .token.number {
+  color: #ff8bcb !important;
+}
+
+/* Comments -> Grey (italic) */
+html[data-theme='dark'] .prism-code .token.comment {
+  color: #9aa0a6 !important;
+  font-style: italic !important;
+}
+
+/* Operators & Punctuation -> Light Grey */
+html[data-theme='dark'] .prism-code .token.operator,
+html[data-theme='dark'] .prism-code .token.punctuation {
+  color: #e3e3e3 !important;
+}
+
+/* ===================================================================
+   15. HOMEPAGE — Hero & Subject Cards
+   =================================================================== */
+
+/* ----- Hero Section ----- */
+.csf-hero {
+  text-align: center;
+  padding: 6rem 2rem 2.5rem;
+  max-width: 700px;
+  margin: 0 auto;
+  position: relative;
+  overflow: visible;
+}
+
+/* Ambient glow behind the hero text */
+.csf-hero__glow {
+  position: absolute;
+  top: 20%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 500px;
+  height: 300px;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(96, 165, 250, 0.08) 0%,
+    rgba(167, 139, 250, 0.05) 40%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.csf-hero__title {
+  font-size: 2.8rem;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+  margin-bottom: 1rem;
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme='dark'] .csf-hero__title {
+  color: #fafafa;
+}
+
+.csf-hero__accent {
+  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.csf-hero__subtitle {
+  font-size: 1.15rem;
+  max-width: 520px;
+  margin: 0 auto;
+  line-height: 1.6;
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme='dark'] .csf-hero__subtitle {
+  color: #a1a1aa;
+}
+
+/* ----- Grid Layout ----- */
+.csf-grid-wrapper {
+  max-width: 860px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 5rem;
+}
+
+.csf-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+}
+
+@media screen and (max-width: 640px) {
+  .csf-grid {
+    grid-template-columns: 1fr;
+  }
+  .csf-hero__title {
+    font-size: 2rem;
+  }
+  .csf-hero {
+    padding: 3.5rem 1.5rem 1.5rem;
+  }
+  .csf-hero__glow {
+    width: 300px;
+    height: 200px;
+  }
+}
+
+/* ----- Subject Cards (Dark Mode) ----- */
+.csf-card {
+  --card-accent: #60a5fa;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 24px;
+  border-radius: 12px;
+  text-decoration: none !important;
+  color: inherit !important;
+  transition: transform 0.2s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ---- DARK MODE card surface ---- */
+[data-theme='dark'] .csf-card {
+  background-color: #1f1f23 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='dark'] .csf-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--card-accent);
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    0 0 0 1px var(--card-accent),
+    0 0 40px -10px var(--card-accent);
+}
+
+/* ---- LIGHT MODE card surface ---- */
+html:not([data-theme='dark']) .csf-card {
+  background-color: #ffffff !important;
+  border: 1px solid #e4e4e7;
+}
+
+html:not([data-theme='dark']) .csf-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--card-accent);
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.08),
+    0 0 0 1px var(--card-accent);
+}
+
+/* ----- Card Inner Layout ----- */
+.csf-card__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+/* Emoji icon box */
+.csf-card__icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  margin-bottom: 16px;
+}
+
+[data-theme='dark'] .csf-card__icon {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+html:not([data-theme='dark']) .csf-card__icon {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Card body */
+.csf-card__body {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Subject tag (e.g., "OOP") */
+.csf-card__tag {
+  display: inline-block;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--card-accent) !important;
+  margin-bottom: 6px;
+}
+
+/* Card title */
+.csf-card__title {
+  font-size: 1.05rem;
+  font-weight: 650;
+  margin: 0 0 8px;
+  line-height: 1.3;
+}
+
+[data-theme='dark'] .csf-card__title {
+  color: #f4f4f5 !important;
+}
+
+html:not([data-theme='dark']) .csf-card__title {
+  color: #18181b !important;
+}
+
+/* Card description */
+.csf-card__desc {
+  font-size: 0.82rem;
+  margin: 0;
+  line-height: 1.55;
+}
+
+[data-theme='dark'] .csf-card__desc {
+  color: #a1a1aa !important;
+}
+
+html:not([data-theme='dark']) .csf-card__desc {
+  color: #52525b !important;
+}
+
+/* ----- CTA Row ("Start Learning →") ----- */
+.csf-card__cta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  transition: color 0.2s ease;
+}
+
+html:not([data-theme='dark']) .csf-card__cta {
+  border-top-color: rgba(0, 0, 0, 0.06);
+}
+
+.csf-card__cta-text {
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+[data-theme='dark'] .csf-card__cta-text {
+  color: #71717a;
+}
+
+html:not([data-theme='dark']) .csf-card__cta-text {
+  color: #a1a1aa;
+}
+
+.csf-card__cta-arrow {
+  font-size: 1rem;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+
+[data-theme='dark'] .csf-card__cta-arrow {
+  color: #71717a;
+}
+
+html:not([data-theme='dark']) .csf-card__cta-arrow {
+  color: #a1a1aa;
+}
+
+/* Hover: CTA lights up in the card's accent color */
+.csf-card:hover .csf-card__cta-text,
+.csf-card:hover .csf-card__cta-arrow {
+  color: var(--card-accent) !important;
+}
+
+.csf-card:hover .csf-card__cta-arrow {
+  transform: translateX(4px);
+}
