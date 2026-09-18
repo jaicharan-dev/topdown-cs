@@ -4,9 +4,9 @@ import rehypeKatex from 'rehype-katex';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'CS Fundamentals',
-  tagline: 'The ultimate interview prep resource for software engineers.',
-  favicon: 'img/favicon.ico',
+  title: 'TopDown CS',
+  tagline: 'Only what you need for the interview. Nothing else.',
+  favicon: 'img/favicon-rounded.png',
 
   url: 'https://your-domain.com',
   baseUrl: '/',
@@ -71,16 +71,17 @@ const config = {
       },
       image: 'img/docusaurus-social-card.jpg',
       navbar: {
-        title: 'CS Fundamentals',
+        title: 'TopDown CS',
         logo: {
-          alt: 'Site Logo',
-          src: 'img/logo.svg',
+          alt: 'TopDown CS Logo',
+          src: 'img/logo-light-mode.png',
+          srcDark: 'img/logo-dark-mode.png',
         },
         items: [],
       },
       footer: {
         style: 'dark',
-        copyright: `Copyright © ${new Date().getFullYear()} CS Fundamentals Interview Prep. Built with Docusaurus.`,
+        copyright: `© ${new Date().getFullYear()} TopDown CS`,
       },
       prism: {
         theme: prismThemes.github,
