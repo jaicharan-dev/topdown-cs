@@ -18,18 +18,35 @@
 }
 
 /* ===================================================================
-   2. LIGHT MODE PALETTE (unchanged defaults + Inter)
+   2. LIGHT MODE PALETTE (Premium Upgrade)
    =================================================================== */
 :root {
-  --ifm-color-primary: #2e8555;
-  --ifm-color-primary-dark: #29784c;
-  --ifm-color-primary-darker: #277148;
-  --ifm-color-primary-darkest: #205d3b;
-  --ifm-color-primary-light: #33925d;
-  --ifm-color-primary-lighter: #359962;
-  --ifm-color-primary-lightest: #3cad6e;
+  --ifm-color-primary: #2563eb;
+  --ifm-color-primary-dark: #1d4ed8;
+  --ifm-color-primary-darker: #1e40af;
+  --ifm-color-primary-darkest: #1e3a8a;
+  --ifm-color-primary-light: #3b82f6;
+  --ifm-color-primary-lighter: #60a5fa;
+  --ifm-color-primary-lightest: #93c5fd;
+  
+  /* Kindle-inspired comfortable reading colors (Toned down) */
+  --ifm-background-color: #f4f0e6;
+  --ifm-background-surface-color: #eae5d8;
+  --ifm-font-color-base: #403c34;
+  --ifm-font-color-secondary: #6e685a;
+  --ifm-heading-color: #2c2820;
+  --ifm-hr-border-color: #dcd5c4;
+  --ifm-toc-border-color: #dcd5c4;
+  --ifm-code-background: #eae5d8;
+  --ifm-table-stripe-background: rgba(0, 0, 0, 0.04);
+  --ifm-table-border-color: #dcd5c4;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.06);
+
+  --csf-surface: #f4f0e6;
+  --csf-surface-raised: #eae5d8;
+  --csf-border: #d1c8b4;
+  --csf-border-subtle: #dcd5c4;
   --ifm-code-font-size: 95%;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.1);
 }
 
 /* ===================================================================
@@ -67,10 +84,12 @@
 /* ===================================================================
    4. NAVBAR — Frosted glass effect
    =================================================================== */
-[data-theme='dark'] .navbar {
-  backdrop-filter: blur(12px);
-  background: rgba(24, 24, 27, 0.85);
-  border-bottom: 1px solid var(--csf-border-subtle);
+@media (min-width: 997px) {
+  [data-theme='dark'] .navbar {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgba(24, 24, 27, 0.85);
+  }
 }
 
 /* ===================================================================
@@ -591,8 +610,8 @@ html:not([data-theme='dark']) .csf-section-divider {
 }
 
 html:not([data-theme='dark']) .csf-compact-card {
-  background-color: #ffffff !important;
-  border: 1px solid #e4e4e7;
+  background-color: #f4f0e6 !important;
+  border: 1px solid var(--csf-border-subtle);
 }
 
 html:not([data-theme='dark']) .csf-compact-card:not(.csf-compact-card--soon):hover {
@@ -682,3 +701,266 @@ html:not([data-theme='dark']) .csf-compact-card__title { color: #3f3f46 !importa
   margin-right: 0.5rem;
 }
 
+
+/* ===================================================================
+   16. LIGHT THEME PREMIUM COMPONENTS
+   =================================================================== */
+
+@media (min-width: 997px) {
+  html:not([data-theme='dark']) .navbar {
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgba(244, 240, 230, 0.85);
+  }
+}
+
+html:not([data-theme='dark']) .theme-doc-sidebar-container {
+  background: var(--csf-surface);
+  border-right: 1px solid var(--csf-border-subtle) !important;
+}
+
+html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link--active {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--ifm-color-primary);
+}
+
+html:not([data-theme='dark']) .menu__list-item-collapsible .menu__link {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  color: var(--ifm-font-color-secondary);
+}
+
+html:not([data-theme='dark']) .markdown blockquote {
+  background: var(--csf-surface-raised);
+  border-left: 3px solid var(--ifm-color-primary);
+  border-radius: 8px;
+  padding: 16px 20px;
+  margin: 1.5rem 0;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+
+html:not([data-theme='dark']) .markdown blockquote p {
+  margin-bottom: 0;
+}
+
+html:not([data-theme='dark']) .badge--success {
+  background: rgba(34, 197, 94, 0.1) !important;
+  color: #16a34a !important;
+  border-color: rgba(34, 197, 94, 0.2) !important;
+}
+
+html:not([data-theme='dark']) .badge--warning {
+  background: rgba(234, 179, 8, 0.1) !important;
+  color: #ca8a04 !important;
+  border-color: rgba(234, 179, 8, 0.2) !important;
+}
+
+html:not([data-theme='dark']) .badge--danger {
+  background: rgba(239, 68, 68, 0.1) !important;
+  color: #dc2626 !important;
+  border-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+html:not([data-theme='dark']) table {
+  border-collapse: collapse;
+}
+
+html:not([data-theme='dark']) table th {
+  background: var(--csf-surface-raised);
+  font-weight: 600;
+}
+
+html:not([data-theme='dark']) table td,
+html:not([data-theme='dark']) table th {
+  border-color: var(--csf-border-subtle);
+}
+
+html:not([data-theme='dark']) .alert {
+  border-radius: 8px;
+  border-width: 1px;
+  background: var(--csf-surface) !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+}
+
+html:not([data-theme='dark']) .footer {
+  border-top: 1px solid var(--csf-border-subtle);
+  background: #eae5d8;
+}
+
+html:not([data-theme='dark']) ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+html:not([data-theme='dark']) ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+html:not([data-theme='dark']) ::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 3px;
+}
+
+html:not([data-theme='dark']) ::-webkit-scrollbar-thumb:hover {
+  background: #a1a1aa;
+}
+
+html:not([data-theme='dark']) .theme-code-block pre.prism-code {
+  background-color: #eae5d8 !important;
+  border: 1px solid var(--csf-border-subtle);
+  border-radius: 8px;
+}
+
+/* ===================================================================
+   17. MOBILE UI POLISH
+   =================================================================== */
+
+/* Fix sticky hover states on touch devices and add tactile tap effect */
+@media (hover: none) {
+  html:not([data-theme='dark']) .csf-compact-card:hover,
+  [data-theme='dark'] .csf-compact-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+  .csf-compact-card:hover .csf-compact-card__glow {
+    opacity: 0;
+  }
+  .csf-compact-card:active {
+    transform: scale(0.97) !important;
+    background-color: var(--docusaurus-highlighted-code-line-bg) !important;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  /* Give the content more horizontal breathing room by reducing margins */
+  .container {
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+
+  /* Hero Section Mobile Optimization */
+  .csf-hero {
+    padding: 1.5rem 1rem 1.5rem;
+  }
+  
+  .csf-hero__title {
+    font-size: 2.1rem;
+    line-height: 1.1;
+  }
+  
+  .csf-hero__subtitle {
+    font-size: 0.95rem;
+    padding: 0 10px;
+  }
+  
+  .csf-hero__glow {
+    width: 200px;
+    height: 150px;
+  }
+
+  /* Interview Question Blockquotes - reclaim horizontal screen real estate */
+  html:not([data-theme='dark']) .markdown blockquote,
+  [data-theme='dark'] .markdown blockquote {
+    padding: 12px 14px;
+    margin: 1rem 0;
+    font-size: 0.95rem;
+  }
+
+  /* Optimize code blocks for small screens */
+  :root {
+    --ifm-code-font-size: 85%;
+  }
+
+  /* Make sure tables can scroll natively without breaking layout */
+  .markdown table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Adjust grid gap for touch targets */
+  .csf-compact-grid {
+    gap: 10px;
+  }
+  
+  .csf-compact-card {
+    padding: 16px 12px;
+  }
+}
+
+/* Fix mobile navbar logo clipping if any */
+@media screen and (max-width: 480px) {
+  .navbar__logo {
+    height: 2.2rem;
+  }
+}
+
+/* ===================================================================
+   18. MOBILE SIDEBAR Z-INDEX FIX
+   =================================================================== */
+
+/* Ensure the mobile sidebar overlay renders above the main content */
+@media screen and (max-width: 996px) {
+  .navbar-sidebar {
+    z-index: 200 !important;
+  }
+
+  .navbar-sidebar--show .navbar-sidebar {
+    z-index: 200 !important;
+  }
+
+  /* The dark backdrop behind the sidebar */
+  .navbar-sidebar__backdrop {
+    z-index: 199 !important;
+  }
+
+  /* Make sure the main doc wrapper doesn't create a stacking context that blocks the sidebar */
+  [class*="docMainContainer"],
+  [class*="docRoot"],
+  main {
+    z-index: auto !important;
+    position: static !important;
+  }
+
+  /* Ensure the sidebar container on mobile doesn't compete */
+  .theme-doc-sidebar-container {
+    z-index: auto !important;
+  }
+}
+
+/* ===================================================================
+   19. PROPER NAVBAR FIX
+   =================================================================== */
+
+/* Base mobile styles for navbar */
+html:not([data-theme='dark']) .navbar {
+  background-color: var(--ifm-background-color);
+  border-bottom: 1px solid var(--csf-border-subtle);
+}
+
+[data-theme='dark'] .navbar {
+  background-color: var(--ifm-background-color);
+  border-bottom: 1px solid var(--csf-border-subtle);
+}
+
+/* Apply the frosted glass ONLY to desktop so it doesn't break mobile sidebar fixed positioning */
+@media screen and (min-width: 997px) {
+  html:not([data-theme='dark']) .navbar {
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    background-color: rgba(244, 240, 230, 0.85) !important;
+  }
+
+  [data-theme='dark'] .navbar {
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    background-color: rgba(24, 24, 27, 0.85) !important;
+  }
+}
