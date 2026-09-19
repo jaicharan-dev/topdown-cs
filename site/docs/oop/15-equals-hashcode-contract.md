@@ -1,6 +1,8 @@
 ---
 id: 15-equals-hashcode-contract
 title: "The equals() and hashCode() Contract"
+description: "Understand the crucial contract between equals() and hashCode() to prevent silent bugs in collections."
+
 sidebar_position: 15
 sidebar_class_name: sidebar-medium
 ---

@@ -1,6 +1,8 @@
 ---
 id: 39-dependency-injection
 title: "Dependency Injection vs. Dependency Inversion"
+description: "Learn how Dependency Injection practically implements the Dependency Inversion principle for looser coupling."
+
 sidebar_position: 39
 sidebar_class_name: sidebar-hard
 ---

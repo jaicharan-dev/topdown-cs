@@ -1,6 +1,8 @@
 ---
 id: 2-method-overloading-vs-overriding
 title: "Method Overloading vs. Overriding"
+description: "Master the differences between compile-time overloading and runtime overriding in object-oriented programming."
+
 sidebar_position: 2
 sidebar_class_name: sidebar-medium
 ---

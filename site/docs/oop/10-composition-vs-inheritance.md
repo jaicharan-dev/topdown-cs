@@ -1,6 +1,8 @@
 ---
 id: 10-composition-vs-inheritance
 title: "Composition vs. Inheritance"
+description: "Discover why composition is often favored over inheritance to build flexible, loosely-coupled systems."
+
 sidebar_position: 10
 sidebar_class_name: sidebar-medium
 ---

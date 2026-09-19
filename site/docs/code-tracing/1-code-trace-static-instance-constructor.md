@@ -1,6 +1,8 @@
 ---
 id: 1-code-trace-static-instance-constructor
 title: "Code trace: static block vs instance block vs constructor execution order"
+description: "Learn the exact execution order of static blocks, instance blocks, and constructors in Java with a step-by-step code tracing walkthrough."
+
 sidebar_position: 1
 sidebar_class_name: sidebar-medium
 ---

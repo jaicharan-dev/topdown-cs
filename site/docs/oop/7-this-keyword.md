@@ -1,6 +1,8 @@
 ---
 id: 7-this-keyword
 title: "The this Keyword"
+description: "Understand the purpose of the this keyword for resolving shadowing and referencing the current object instance."
+
 sidebar_position: 7
 sidebar_class_name: sidebar-easy
 ---

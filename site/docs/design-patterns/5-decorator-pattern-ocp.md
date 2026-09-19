@@ -1,6 +1,8 @@
 ---
 id: 5-decorator-pattern-ocp
 title: "Decorator pattern - OCP, coffee order implementation"
+description: "See the Decorator pattern in action to extend object functionality dynamically while adhering to the Open-Closed Principle."
+
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---

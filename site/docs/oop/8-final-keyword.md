@@ -1,6 +1,8 @@
 ---
 id: 8-final-keyword
 title: "The Final Keyword"
+description: "Learn how the final keyword restricts variable mutation, method overriding, and class inheritance."
+
 sidebar_position: 8
 sidebar_class_name: sidebar-medium
 ---

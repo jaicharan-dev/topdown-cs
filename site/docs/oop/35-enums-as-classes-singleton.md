@@ -1,6 +1,8 @@
 ---
 id: 35-enums-as-classes-singleton
 title: "Enums as Classes and the Enum Singleton Idiom"
+description: "Explore the power of Java Enums, their class-like features, and why they make the perfect Singleton."
+
 sidebar_position: 35
 sidebar_class_name: sidebar-medium
 ---

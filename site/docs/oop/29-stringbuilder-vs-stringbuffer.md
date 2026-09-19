@@ -1,6 +1,8 @@
 ---
 id: 29-stringbuilder-vs-stringbuffer
 title: "StringBuilder vs. StringBuffer"
+description: "Understand the thread-safety trade-offs between StringBuilder and StringBuffer for text manipulation."
+
 sidebar_position: 29
 sidebar_class_name: sidebar-easy
 ---

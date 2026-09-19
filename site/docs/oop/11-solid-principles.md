@@ -1,6 +1,8 @@
 ---
 id: 11-solid-principles
 title: "SOLID Principles: The Five Rules of Clean Architecture"
+description: "A practical, easy-to-grasp walkthrough of all five SOLID principles essential for clean architecture."
+
 sidebar_position: 11
 sidebar_class_name: sidebar-medium
 ---

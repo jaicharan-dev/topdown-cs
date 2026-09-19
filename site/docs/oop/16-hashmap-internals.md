@@ -1,6 +1,8 @@
 ---
 id: 16-hashmap-internals
 title: "HashMap Internals: Buckets, Collisions, and Red-Black Trees"
+description: "A deep dive into HashMap internals, covering bucket arrays, hash collisions, and the transition to red-black trees."
+
 sidebar_position: 16
 sidebar_class_name: sidebar-medium
 ---

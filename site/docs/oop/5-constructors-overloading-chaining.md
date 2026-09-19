@@ -1,6 +1,8 @@
 ---
 id: 5-constructors-overloading-chaining
 title: "Constructors, Overloading, and Chaining"
+description: "Dive into object initialization rules, constructor overloading, and the mechanics of constructor chaining."
+
 sidebar_position: 5
 sidebar_class_name: sidebar-easy
 ---

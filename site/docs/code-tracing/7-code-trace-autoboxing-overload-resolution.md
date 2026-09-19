@@ -1,6 +1,8 @@
 ---
 id: 7-code-trace-autoboxing-overload-resolution
 title: "Code trace: autoboxing and overload resolution priority"
+description: "Discover the priority rules Java uses to resolve method overloads when autoboxing and varargs are involved."
+
 sidebar_position: 7
 sidebar_class_name: sidebar-hard
 ---

@@ -1,6 +1,8 @@
 ---
 id: 22-covariant-return-type
 title: "Covariant Return Types"
+description: "Understand how covariant return types allow an overridden method to return a more specific subclass."
+
 sidebar_position: 22
 sidebar_class_name: sidebar-medium
 ---

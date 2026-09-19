@@ -1,6 +1,8 @@
 ---
 id: 4-builder-pattern-implementation
 title: "Builder pattern - telescoping constructor problem, implementation"
+description: "Solve the telescoping constructor problem using the Builder pattern for cleaner, more readable object instantiation."
+
 sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---

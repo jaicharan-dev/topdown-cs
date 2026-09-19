@@ -1,6 +1,8 @@
 ---
 id: 18-garbage-collection-stack-heap
 title: "Garbage Collection: Stack vs. Heap Memory"
+description: "Differentiate between Stack memory and Heap memory, and understand how the Garbage Collector reclaims space."
+
 sidebar_position: 18
 sidebar_class_name: sidebar-hard
 ---

@@ -1,6 +1,8 @@
 ---
 id: 25-object-class-methods
 title: "The Object Class and Its Core Methods"
+description: "A comprehensive review of the fundamental methods provided by the root Object class in Java."
+
 sidebar_position: 25
 sidebar_class_name: sidebar-medium
 ---

@@ -1,6 +1,8 @@
 ---
 id: 6-code-trace-unimplemented-abstract-method
 title: "Code Trace: Unimplemented Abstract Method"
+description: "Learn the compilation rules and runtime behaviors when an abstract method is left unimplemented in a subclass."
+
 sidebar_position: 6
 sidebar_class_name: sidebar-medium
 ---

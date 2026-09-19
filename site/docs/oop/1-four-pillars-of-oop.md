@@ -1,6 +1,8 @@
 ---
 id: 1-four-pillars-of-oop
 title: "The Four Pillars of OOP: Abstraction vs. Encapsulation"
+description: "Clearly differentiate between Abstraction and Encapsulation with real-world analogies that make the four pillars easy to explain."
+
 sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---

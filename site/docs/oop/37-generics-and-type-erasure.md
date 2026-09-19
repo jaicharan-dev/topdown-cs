@@ -1,6 +1,8 @@
 ---
 id: 37-generics-and-type-erasure
 title: "Generics and Type Erasure"
+description: "Understand the basics of Generics and how Java enforces type safety through compile-time type erasure."
+
 sidebar_position: 37
 sidebar_class_name: sidebar-medium
 ---

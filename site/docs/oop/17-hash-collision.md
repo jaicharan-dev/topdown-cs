@@ -1,6 +1,8 @@
 ---
 id: 17-hash-collision
 title: "Hash Collisions: The Pigeonhole Principle in Practice"
+description: "Learn how hash collisions occur via the pigeonhole principle and the strategies used to resolve them."
+
 sidebar_position: 17
 sidebar_class_name: sidebar-easy
 ---

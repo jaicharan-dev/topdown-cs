@@ -1,6 +1,8 @@
 ﻿---
 id: 34-throw-vs-throws-finally-return
 title: "throw vs throws, does finally run if try has a return"
+description: "Navigate complex exception handling flows, including the behavior of finally blocks during early returns."
+
 sidebar_position: 34
 sidebar_class_name: sidebar-hard
 ---

@@ -1,6 +1,8 @@
 ---
 id: 8-code-trace-rectangle-square-lsp
 title: "Code trace: Rectangle/Square LSP violation"
+description: "An interview-focused code trace demonstrating the classic Liskov Substitution Principle violation using the Rectangle and Square example."
+
 sidebar_position: 8
 sidebar_class_name: sidebar-hard
 ---

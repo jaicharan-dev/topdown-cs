@@ -1,6 +1,8 @@
 ---
 id: 36-static-nested-class-vs-inner-class
 title: "Static Nested Classes vs. Inner Classes"
+description: "Learn the differences in memory scope and instantiation between static nested classes and inner classes."
+
 sidebar_position: 36
 sidebar_class_name: sidebar-medium
 ---

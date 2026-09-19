@@ -1,6 +1,8 @@
 ---
 id: 32-diamond-problem
 title: "The Diamond Problem: Multiple Inheritance in Java"
+description: "Learn how Java avoids the multiple inheritance diamond problem through its class and interface design."
+
 sidebar_position: 32
 sidebar_class_name: sidebar-hard
 ---

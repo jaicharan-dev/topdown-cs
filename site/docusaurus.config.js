@@ -39,6 +39,9 @@ const config = {
           remarkPlugins: [remarkMath],
           rehypePlugins: [rehypeKatex],
         },
+        sitemap: {
+          ignorePatterns: ['/docs/cn/**', '/docs/dbms/**', '/docs/os/**'],
+        },
         theme: {
           customCss: './src/css/custom.css',
         },

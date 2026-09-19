@@ -1,6 +1,8 @@
 ---
 id: 3-interface-vs-abstract-class
 title: "Interfaces vs. Abstract Classes"
+description: "Learn the core conceptual differences between interfaces and abstract classes, and when to use each in system design."
+
 sidebar_position: 3
 sidebar_class_name: sidebar-medium
 ---

@@ -1,6 +1,8 @@
 ---
 id: 33-exceptions-checked-unchecked
 title: "Exceptions: Checked vs. Unchecked"
+description: "Understand the architectural differences and proper use cases for checked versus unchecked exceptions."
+
 sidebar_position: 33
 sidebar_class_name: sidebar-medium
 ---

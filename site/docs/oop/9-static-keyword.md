@@ -1,6 +1,8 @@
 ---
 id: 9-static-keyword
 title: "The Static Keyword"
+description: "Explain class-level memory allocation and the specific use cases for the static keyword in methods and blocks."
+
 sidebar_position: 9
 sidebar_class_name: sidebar-medium
 ---

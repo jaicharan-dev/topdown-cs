@@ -1,6 +1,8 @@
 ---
 id: 28-comparable-vs-comparator
 title: "Comparable vs. Comparator"
+description: "Learn when to implement Comparable for natural ordering versus Comparator for custom sorting logic."
+
 sidebar_position: 28
 sidebar_class_name: sidebar-medium
 ---

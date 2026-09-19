@@ -1,6 +1,8 @@
 ---
 id: 21-upcasting-downcasting-instanceof
 title: "Upcasting, Downcasting, and instanceof"
+description: "Navigate the rules of object typecasting, safe downcasting, and the proper usage of the instanceof operator."
+
 sidebar_position: 21
 sidebar_class_name: sidebar-easy
 ---

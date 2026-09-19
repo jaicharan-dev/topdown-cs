@@ -1,6 +1,8 @@
 ---
 id: 13-immutable-class-string
 title: "Immutability in Java: Designing Safe Classes and the String Pool"
+description: "Explore the mechanics of immutability in Java, including how the String pool works under the hood."
+
 sidebar_position: 13
 sidebar_class_name: sidebar-medium
 ---

@@ -1,6 +1,8 @@
 ---
 id: 1-singleton-pattern
 title: "Singleton Pattern"
+description: "A complete guide to the Singleton pattern, including thread safety, lazy initialization, and reflection vulnerabilities."
+
 sidebar_position: 1
 sidebar_class_name: sidebar-medium
 ---

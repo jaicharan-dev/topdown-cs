@@ -1,6 +1,8 @@
 ---
 id: 27-aggregation-vs-composition
 title: "Aggregation vs. Composition"
+description: "Clarify the nuanced differences between aggregation and composition in object relationships."
+
 sidebar_position: 27
 sidebar_class_name: sidebar-medium
 ---

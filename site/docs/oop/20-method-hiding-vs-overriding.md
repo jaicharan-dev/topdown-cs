@@ -1,6 +1,8 @@
 ---
 id: 20-method-hiding-vs-overriding
 title: "Method Hiding vs. Method Overriding: Static vs. Instance Resolution"
+description: "Learn why static methods are hidden rather than overridden, and how resolution differs from instance methods."
+
 sidebar_position: 20
 sidebar_class_name: sidebar-medium
 ---

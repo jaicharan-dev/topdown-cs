@@ -1,6 +1,8 @@
 ---
 id: 4-interface-vs-abstract-class-java8
 title: "Interfaces vs. Abstract Classes: Modern Java Differences"
+description: "An updated look at interfaces vs abstract classes reflecting modern Java 8+ features like default and static methods."
+
 sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---

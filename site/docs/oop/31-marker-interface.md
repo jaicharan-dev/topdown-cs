@@ -1,6 +1,8 @@
 ---
 id: 31-marker-interface
 title: "Marker Interfaces: System-Level Metadata"
+description: "Discover the purpose of marker interfaces like Serializable and how they provide system-level metadata."
+
 sidebar_position: 31
 sidebar_class_name: sidebar-medium
 ---

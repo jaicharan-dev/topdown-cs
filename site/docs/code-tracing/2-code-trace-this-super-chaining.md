@@ -1,6 +1,8 @@
 ---
 id: 2-code-trace-this-super-chaining
 title: "Code trace: `this()` and `super()` chaining together"
+description: "Understand how Java handles constructor chaining using this() and super() to avoid common pitfalls during code tracing interviews."
+
 sidebar_position: 2
 sidebar_class_name: sidebar-medium
 ---

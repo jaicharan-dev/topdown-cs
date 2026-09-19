@@ -1,6 +1,8 @@
 ---
 id: 3-code-trace-overridden-method-parent-constructor
 title: "Code Trace: Overridden Method Called from a Parent Constructor"
+description: "A detailed breakdown of why calling an overridden method from a parent class constructor is dangerous in Java."
+
 sidebar_position: 3
 sidebar_class_name: sidebar-hard
 ---

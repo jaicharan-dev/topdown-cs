@@ -1,6 +1,8 @@
 ---
 id: 30-packages-in-java
 title: "Packages and Access Modifiers"
+description: "A quick guide on how packages organize code and interact with access modifiers for encapsulation."
+
 sidebar_position: 30
 sidebar_class_name: sidebar-easy
 ---

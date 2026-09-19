@@ -1,6 +1,8 @@
 ---
 id: 19-static-binding-vs-dynamic-binding
 title: "Static vs. Dynamic Binding: Early vs. Late Resolution"
+description: "Grasp the distinction between early static binding at compile time and late dynamic binding at runtime."
+
 sidebar_position: 19
 sidebar_class_name: sidebar-hard
 ---

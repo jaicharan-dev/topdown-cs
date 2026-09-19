@@ -1,6 +1,8 @@
 ---
 id: 14-pass-by-value-vs-reference
 title: "Pass by Value vs. Pass by Reference: The Java Object Trap"
+description: "Settle the debate: learn exactly why Java is strictly pass-by-value, even when handling object references."
+
 sidebar_position: 14
 sidebar_class_name: sidebar-hard
 ---

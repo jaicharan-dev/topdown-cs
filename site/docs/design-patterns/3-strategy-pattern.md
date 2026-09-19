@@ -1,6 +1,8 @@
 ---
 id: 3-strategy-pattern
 title: "Strategy Pattern"
+description: "Learn how the Strategy pattern enables dynamic algorithm swapping at runtime without altering the context class."
+
 sidebar_position: 3
 sidebar_class_name: sidebar-medium
 ---

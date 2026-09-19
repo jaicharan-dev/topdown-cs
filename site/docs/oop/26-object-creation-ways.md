@@ -1,6 +1,8 @@
 ---
 id: 26-object-creation-ways
 title: "4 Ways to Create an Object in Java"
+description: "Explore the various mechanisms for instantiating objects beyond the standard new keyword."
+
 sidebar_position: 26
 sidebar_class_name: sidebar-medium
 ---

@@ -1,6 +1,8 @@
 ---
 id: 5-code-trace-class-vs-instance-attribute-shadowing
 title: "Code Trace: Class Attribute vs Instance Attribute Shadowing"
+description: "Clear up the confusion around attribute shadowing when class variables and instance variables share the same name."
+
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---

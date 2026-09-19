@@ -1,6 +1,8 @@
 ---
 id: 6-observer-pattern
 title: "Observer Pattern"
+description: "A practical explanation of the Observer pattern for creating publish-subscribe mechanisms and event-driven systems."
+
 sidebar_position: 6
 sidebar_class_name: sidebar-hard
 ---

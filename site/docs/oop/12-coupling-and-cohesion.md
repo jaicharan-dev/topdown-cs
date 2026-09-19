@@ -1,6 +1,8 @@
 ---
 id: 12-coupling-and-cohesion
 title: "Coupling and Cohesion: Designing for Maintainability"
+description: "Learn the difference between coupling and cohesion, and why aiming for low coupling and high cohesion is critical."
+
 sidebar_position: 12
 sidebar_class_name: sidebar-easy
 ---

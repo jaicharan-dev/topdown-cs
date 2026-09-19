@@ -1,6 +1,8 @@
 ---
 id: 6-access-modifiers
 title: "Understanding Access Modifiers"
+description: "A straightforward breakdown of public, private, protected, and default access modifiers and their visibility scopes."
+
 sidebar_position: 6
 sidebar_class_name: sidebar-easy
 ---

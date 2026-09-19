@@ -1,6 +1,8 @@
 ---
 id: 2-factory-pattern
 title: "Factory Pattern"
+description: "Understand when and how to implement the Factory pattern to decouple object creation from your core business logic."
+
 sidebar_position: 2
 sidebar_class_name: sidebar-medium
 ---

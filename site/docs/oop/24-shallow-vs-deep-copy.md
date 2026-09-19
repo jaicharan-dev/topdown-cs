@@ -1,6 +1,8 @@
 ---
 id: 24-shallow-vs-deep-copy
 title: "Shallow Copy vs. Deep Copy"
+description: "Learn the critical differences between shallow copies and deep copies when cloning objects."
+
 sidebar_position: 24
 sidebar_class_name: sidebar-easy
 ---

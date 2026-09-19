@@ -1,6 +1,8 @@
 ---
 id: 23-abstract-class-constructors-private
 title: "Abstract Class Constructors and Private Constructors"
+description: "Find out why abstract classes have constructors even though they cannot be instantiated directly."
+
 sidebar_position: 23
 sidebar_class_name: sidebar-medium
 ---

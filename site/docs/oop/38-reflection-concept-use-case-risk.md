@@ -1,6 +1,8 @@
 ---
 id: 38-reflection-concept-use-case-risk
 title: "Reflection: Concepts, Use Cases, and Risks"
+description: "A conceptual overview of Reflection, exploring its powerful dynamic use cases and its inherent security risks."
+
 sidebar_position: 38
 sidebar_class_name: sidebar-hard
 ---
