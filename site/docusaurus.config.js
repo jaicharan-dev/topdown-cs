@@ -74,8 +74,8 @@ const config = {
         title: 'TopDown CS',
         logo: {
           alt: 'TopDown CS Logo',
-          src: 'img/logo-light-mode.png',
-          srcDark: 'img/logo-dark-mode.png',
+          src: 'img/logo.png',
+          srcDark: 'img/logo.png',
         },
         items: [],
       },
