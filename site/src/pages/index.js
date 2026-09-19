@@ -131,7 +131,7 @@ export default function Home() {
   const {siteConfig} = useDocusaurusContext();
   return (
     <Layout
-      title="Home"
+      title="Interview-Ready CS Fundamentals"
       description="Interview-ready CS fundamentals. Not a textbook. Just the answers any interviewer would want to hear."
       wrapperClassName="homepage">
 

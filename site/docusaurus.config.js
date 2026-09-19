@@ -60,6 +60,14 @@ const config = {
     },
   ],
 
+  scripts: [
+    {
+      src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXX',
+      async: true,
+      crossorigin: 'anonymous',
+    }
+  ],
+
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
@@ -69,7 +77,10 @@ const config = {
           autoCollapseCategories: true,
         },
       },
-      image: 'img/docusaurus-social-card.jpg',
+      image: 'img/topdown-social-card.png',
+      metadata: [
+        {name: 'keywords', content: 'computer science, software engineering, coding interviews, object oriented programming, system design, dbms'}
+      ],
       navbar: {
         title: 'TopDown CS',
         logo: {
@@ -81,6 +92,15 @@ const config = {
       },
       footer: {
         style: 'dark',
+        links: [
+          {
+            title: 'Legal',
+            items: [
+              { label: 'Privacy Policy', to: '/privacy-policy' },
+              { label: 'Contact Us', to: '/contact' },
+            ],
+          },
+        ],
         copyright: `© ${new Date().getFullYear()} TopDown CS`,
       },
       prism: {
