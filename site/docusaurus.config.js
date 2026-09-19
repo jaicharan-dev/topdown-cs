@@ -8,10 +8,10 @@ const config = {
   tagline: 'Only what you need for the interview. Nothing else.',
   favicon: 'img/favicon-rounded.png',
 
-  url: 'https://your-domain.com',
+  url: 'https://topdowncs.com',
   baseUrl: '/',
-  organizationName: 'your-org',
-  projectName: 'csf-interview-prep',
+  organizationName: 'jaicharan-dev',
+  projectName: 'topdown-cs',
 
   onBrokenLinks: 'warn',
 
