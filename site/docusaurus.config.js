@@ -65,7 +65,7 @@ const config = {
 
   scripts: [
     {
-      src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXX',
+      src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4876306470624465',
       async: true,
       crossorigin: 'anonymous',
     }
