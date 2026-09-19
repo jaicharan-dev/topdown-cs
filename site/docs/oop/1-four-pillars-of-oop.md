@@ -24,11 +24,11 @@ To confidently answer this, provide the technical definition an interviewer expe
 *   **The Understanding:** Think of a digital bank account. You cannot reach in and change your `balance` variable directly (private data). You have to interact with the `deposit()` or `withdraw()` methods (public interface), which enforce the bank's strict rules before updating your balance.
 
 ### 3. Inheritance (Reusing Code)
-*   **The Definition:** A mechanism where a new child class derives properties and behaviors from an existing parent class, establishing a strict "IS-A" relationship and promoting code reusability.
+*   **The Definition:** A mechanism where a new child class derives properties and behaviors from an existing parent class, establishing an IS-A relationship. Although inheritance can provide code reuse, an important reason for using it is to model subtype relationships and enable polymorphism, where a child object can be treated as its parent type.
 *   **The Understanding:** Think of a general `Vehicle` blueprint that has an engine and wheels. If you want to build a `Car` or a `Motorcycle`, you don't start from scratch; you inherit the engine and wheels from `Vehicle` and just add specific features like air conditioning or a sidecar.
 
 ### 4. Polymorphism (Many Forms)
-*   **The Definition:** The ability of a single interface, function, or object to take on multiple forms and behaviors depending on the context or the specific object invoking it.
+*   **The Definition:** The ability of the same interface or operation to exhibit different behavior depending on the object or context. In languages such as Java, common forms include compile-time polymorphism through method overloading and runtime polymorphism through method overriding and dynamic dispatch.
 *   **The Understanding:** If you press "Play" on the Spotify app, it plays music. If you press "Play" on the Netflix app, it plays a video. The command (`play()`) is the exact same, but the resulting behavior changes based on what specific app received the command.
 
 ---

@@ -30,7 +30,7 @@ Interviewers are looking for a specific checklist of rules. If you miss the last
 2. **Make all fields private:** This ensures direct access is blocked.
 3. **Make all fields final:** This ensures the variables can only be assigned once.
 4. **No Setter Methods:** Do not provide any methods that modify the fields.
-5. **Defensive Copying (The Trap):** If your class holds a reference to a mutable object (like an `ArrayList` or `Date`), you cannot just return the reference in your getter, or assign it directly in your constructor. You must create "clones" or deep copies.
+5. **Defensive Copying (The Trap):** If your class holds a reference to a mutable object (like an `ArrayList` or `Date`), you cannot just return the reference in your getter, or assign it directly in your constructor. You must create defensive copies (which must be deep copies if the internal elements are also mutable).
 
 ### Code Example:
 ```java

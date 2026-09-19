@@ -53,6 +53,9 @@ if (myAnimal instanceof Dog) {
 }
 ```
 
+*Note: As of Java 16, you can use **Pattern Matching for `instanceof`** to combine the check and the cast into a single, elegant line:*
+`if (myAnimal instanceof Dog myDog) { myDog.bark(); }`
+
 ---
 
 ## Follow-up: The Risk of Downcasting

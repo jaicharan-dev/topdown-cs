@@ -59,7 +59,7 @@ static final int MIN_TREEIFY_CAPACITY = 64; // Min table size for treeification
 
 ### Why Keys Must Override Both `hashCode()` and `equals()`
 
-This ties directly to Question 22. If you override `equals()` but not `hashCode()`, two logically equal keys will land in **different buckets**. The map will contain duplicate entries it cannot find, silently corrupting your data.
+This ties directly to the `equals()` and `hashCode()` contract. If you override `equals()` but not `hashCode()`, two logically equal keys will land in **different buckets**. The map will contain duplicate entries it cannot find, silently corrupting your data.
 
 ### Why HashMap Is Not Thread-Safe
 

@@ -32,7 +32,7 @@ When documentation says "Package-Private" or "Default" access means it is restri
 
 ### The Code Equivalent (Python vs. Java)
 
-If you are used to building out backend structures in Python (like Node.js or Django/Flask), you already use packages every day.
+If you are used to building out backend structures in Python (like Django/Flask) or JavaScript (like Node.js), you already use packages every day.
 
 **In Python:** A package is just a folder that contains an `__init__.py` file. If you have a folder named `api` with a file named `routes.py` inside it, you import it like this:
 ```python

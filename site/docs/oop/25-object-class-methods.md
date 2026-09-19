@@ -84,13 +84,14 @@ public class User {
         
         // Step 3: Safe to downcast, then compare the actual state
         User otherUser = (User) obj;
-        return this.email.equals(otherUser.email);
+        // Using Objects.equals is best practice to avoid NullPointerException
+        return java.util.Objects.equals(this.email, otherUser.email);
     }
 
     // 3. Overriding hashCode() to match equals()
     @Override
     public int hashCode() {
-        return email.hashCode();
+        return java.util.Objects.hash(email);
     }
 }
 ```

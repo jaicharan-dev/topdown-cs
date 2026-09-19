@@ -22,14 +22,14 @@ Comparator is when a third party (the event coordinator) steps in with a clipboa
 This is a classic Java/OOP question that tests your understanding of interface design and separation of concerns.
 
 ### Comparable (The Natural Order)
-*   **Where it lives:** You implement java.lang.Comparable directly on the class you want to sort (e.g., class Employee implements Comparable&lt;Employee&gt;).
-*   **The Method:** It forces you to override compareTo(Object obj).
+*   **Where it lives:** You implement `java.lang.Comparable` directly on the class you want to sort (e.g., `class Employee implements Comparable<Employee>`).
+*   **The Method:** It forces you to override `compareTo(T obj)` (e.g., `compareTo(Employee obj)`).
 *   **How it works:** It compares "this" object (the current instance) against the object passed in as an argument.
 *   **The Limitation:** Because you are modifying the actual class, you can only define one sorting sequence. If you make Employee sort by employeeId, you cannot easily use Comparable to sort by lastName later.
 
 ### Comparator (The Custom Order)
-*   **Where it lives:** You create a completely separate, standalone class or lambda expression that implements java.util.Comparator. The original object class (Employee) remains untouched.
-*   **The Method:** It forces you to override compare(Object obj1, Object obj2).
+*   **Where it lives:** You create a completely separate, standalone class or lambda expression that implements `java.util.Comparator<T>`. The original object class (Employee) remains untouched.
+*   **The Method:** It forces you to override `compare(T obj1, T obj2)`.
 *   **How it works:** It takes two distinct objects, evaluates them, and decides which one comes first.
 *   **The Advantage:** You can create infinite sorting strategies. You can have an AgeComparator, a SalaryComparator, or chain them together (e.g., sort by department, then by salary).
 
@@ -39,7 +39,7 @@ Use this widget to toggle between the internal code of Comparable and the extern
 ### Interview Summary
 If you want to nail this question quickly, contrast them across three dimensions: modifications, methods, and cardinality.
 1.  **Modification:** Comparable requires modifying the source code of the class you are sorting. Comparator does not; it is an external sorting strategy.
-2.  **Method Signature:** Comparable uses compareTo(Object obj) (1 argument). Comparator uses compare(Object obj1, Object obj2) (2 arguments).
+2.  **Method Signature:** Comparable uses `compareTo(T obj)` (1 argument). Comparator uses `compare(T obj1, T obj2)` (2 arguments).
 3.  **Flexibility:** Comparable defines a single "natural" order (like ID). Comparator allows for multiple, interchangeable sorting sequences (like sorting by Name, then Date, then Salary).
 
 ---

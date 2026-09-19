@@ -1,7 +1,7 @@
 ---
 id: 4-code-trace-diamond-shaped-multiple-inheritance
 title: "Code Trace: Diamond-Shaped Multiple Inheritance"
-description: "Explore how Java resolves the diamond problem of multiple inheritance using interface default methods."
+description: "Explore how Python resolves the diamond problem of multiple inheritance using Method Resolution Order (MRO) and C3 Linearization."
 
 sidebar_position: 4
 sidebar_class_name: sidebar-hard
