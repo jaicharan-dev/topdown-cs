@@ -964,3 +964,301 @@ html:not([data-theme='dark']) .navbar {
     background-color: rgba(24, 24, 27, 0.85) !important;
   }
 }
+/* ===================================================================
+   20. DEEPSEEK-STYLE COLLAPSIBLE TOC (V7 - FLOATING PANEL & INWARD HYPHENS)
+   =================================================================== */
+
+@media (min-width: 997px) {
+  .table-of-contents__left-border {
+    border-left: none !important;
+  }
+
+  /* 1. Default difficulty variables - Zero glow fallback */
+  .theme-doc-toc-desktop {
+    --toc-neon: transparent;
+    --toc-neon-glow: transparent;
+    --toc-neon-shadow: transparent;
+    --toc-neon-subtle: transparent;
+  }
+
+  /* 2. Difficulty Colors (Applied ONLY when data-difficulty is set) */
+  .theme-doc-toc-desktop[data-difficulty="easy"] { 
+    --toc-neon: #22c55e;
+    --toc-neon-glow: rgba(34, 197, 94, 0.22);
+    --toc-neon-shadow: rgba(34, 197, 94, 0.38);
+    --toc-neon-subtle: rgba(34, 197, 94, 0.55);
+  }
+  .theme-doc-toc-desktop[data-difficulty="medium"] { 
+    --toc-neon: #f59e0b;
+    --toc-neon-glow: rgba(245, 158, 11, 0.22);
+    --toc-neon-shadow: rgba(245, 158, 11, 0.38);
+    --toc-neon-subtle: rgba(245, 158, 11, 0.55);
+  }
+  .theme-doc-toc-desktop[data-difficulty="hard"] { 
+    --toc-neon: #ef4444;
+    --toc-neon-glow: rgba(239, 68, 68, 0.22);
+    --toc-neon-shadow: rgba(239, 68, 68, 0.38);
+    --toc-neon-subtle: rgba(239, 68, 68, 0.55);
+  }
+
+  /* 3. The main TOC container - Floating 20px from viewport right edge */
+  .theme-doc-toc-desktop {
+    position: fixed !important;
+    right: 20px !important; /* Space from viewport edge */
+    top: 30vh !important;
+    max-height: 40vh !important;
+    width: 36px !important; /* Slim rail for hyphens */
+    
+    /* COMPLETELY INVISIBLE IN COLLAPSED STATE */
+    background: transparent !important;
+    background-color: transparent !important;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    
+    transition: width 0.28s cubic-bezier(0.2, 0, 0, 1), background 0.28s, box-shadow 0.28s, border 0.28s, border-radius 0.28s !important;
+    z-index: 100;
+    
+    display: flex !important;
+    flex-direction: column;
+    align-items: flex-end;
+    overflow: hidden !important;
+  }
+
+  /* 4. Disable any pseudo-element vertical line */
+  .theme-doc-toc-desktop::before {
+    display: none !important;
+    content: none !important;
+  }
+
+  /* 5. Before difficulty is known, NEVER show panel or glow on hover (NO WHITE FLASH) */
+  .theme-doc-toc-desktop:not([data-difficulty]):hover {
+    width: 36px !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  /* 6. Hover expanded state - Full rounded rectangle with all 4 corners and ambient neon glow */
+  .theme-doc-toc-desktop[data-difficulty]:hover {
+    width: 260px !important;
+    border-radius: 10px !important; /* All 4 corners rounded */
+    background: rgba(20, 20, 24, 0.94) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important; /* All 4 sides bordered */
+    
+    /* Soft ambient haze surrounding entire floating card */
+    box-shadow: 
+      0 0 32px var(--toc-neon-glow),
+      0 0 16px var(--toc-neon-shadow),
+      0 0 4px var(--toc-neon-subtle),
+      0 8px 24px rgba(0, 0, 0, 0.45) !important;
+  }
+
+  html:not([data-theme='dark']) .theme-doc-toc-desktop[data-difficulty]:hover {
+    background: rgba(255, 255, 255, 0.96) !important;
+    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    box-shadow: 
+      0 0 32px var(--toc-neon-glow),
+      0 0 16px var(--toc-neon-shadow),
+      0 0 4px var(--toc-neon-subtle),
+      0 4px 18px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  /* 7. Inner list */
+  .theme-doc-toc-desktop .table-of-contents {
+    width: 260px !important;
+    flex-shrink: 0 !important; 
+    height: auto !important;
+    max-height: 100% !important;
+    padding: 8px 0 !important;
+    margin: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    background: transparent !important;
+  }
+
+  /* Scrollbar */
+  .theme-doc-toc-desktop .table-of-contents::-webkit-scrollbar {
+    width: 2px;
+  }
+  .theme-doc-toc-desktop:not(:hover) .table-of-contents::-webkit-scrollbar {
+    width: 0px; 
+  }
+  .theme-doc-toc-desktop .table-of-contents::-webkit-scrollbar-thumb {
+    background: var(--ifm-color-emphasis-300);
+    border-radius: 2px;
+  }
+
+  /* =========================================================
+     8. LIST ITEMS & INWARD FLOATING HYPHENS
+     ========================================================= */
+
+  .theme-doc-toc-desktop .table-of-contents li {
+    position: relative !important;
+    list-style: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    display: block !important;
+    background: transparent !important;
+  }
+
+  .theme-doc-toc-desktop .table-of-contents ul {
+    padding-left: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    background: transparent !important;
+  }
+
+  /* Hyphens positioned 16px inward from the panel's right edge */
+  .theme-doc-toc-desktop .table-of-contents li::after {
+    content: "" !important;
+    position: absolute !important;
+    right: 16px !important; /* 16px inward from right edge */
+    top: 13px !important;
+    transform: translateY(-50%) !important;
+    height: 2px !important;
+    border-radius: 1px !important;
+    pointer-events: none !important;
+    background-color: var(--ifm-font-color-secondary) !important;
+    transition: width 0.2s, background-color 0.2s, opacity 0.2s, box-shadow 0.2s !important;
+    z-index: 102 !important;
+  }
+
+  /* Top-level: 12px x 2px */
+  .theme-doc-toc-desktop .table-of-contents > li::after {
+    width: 12px !important;
+    opacity: 0.38 !important;
+  }
+
+  /* Nested: 8px x 2px, slightly dimmer */
+  .theme-doc-toc-desktop .table-of-contents > li > ul > li::after,
+  .theme-doc-toc-desktop .table-of-contents ul ul li::after {
+    width: 8px !important;
+    opacity: 0.18 !important;
+  }
+
+  /* Active indicators */
+  .theme-doc-toc-desktop .table-of-contents > li:has(> .table-of-contents__link--active)::after {
+    width: 16px !important;
+    background-color: var(--toc-neon, var(--ifm-font-color-base)) !important;
+    opacity: 1 !important;
+    box-shadow: 0 0 6px var(--toc-neon-shadow, transparent) !important;
+  }
+
+  .theme-doc-toc-desktop .table-of-contents li li:has(> .table-of-contents__link--active)::after {
+    width: 10px !important;
+    background-color: var(--toc-neon, var(--ifm-font-color-base)) !important;
+    opacity: 0.9 !important;
+    box-shadow: 0 0 5px var(--toc-neon-shadow, transparent) !important;
+  }
+
+  /* Hover state on item */
+  .theme-doc-toc-desktop .table-of-contents li:hover > ::after,
+  .theme-doc-toc-desktop .table-of-contents li:has(> .table-of-contents__link:hover)::after {
+    background-color: var(--toc-neon, var(--ifm-font-color-base)) !important;
+    opacity: 1 !important;
+  }
+
+  .theme-doc-toc-desktop .table-of-contents__link::after {
+    display: none !important;
+  }
+
+  /* =========================================================
+     9. TEXT / LINK STYLES
+     ========================================================= */
+
+  .theme-doc-toc-desktop .table-of-contents__link {
+    display: block !important;
+    width: 100% !important;
+    box-sizing: border-box !important;
+    text-align: right !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    color: var(--ifm-font-color-secondary) !important;
+    line-height: 1.45 !important;
+    transition: color 0.15s, opacity 0.2s !important;
+    background: transparent !important;
+  }
+
+  /* When collapsed: keep text hidden */
+  .theme-doc-toc-desktop:not(:hover) .table-of-contents__link {
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+
+  /* Top-level: 13px, padding-right 38px (stops 10px before the 16px-offset hyphen) */
+  .theme-doc-toc-desktop .table-of-contents > li > .table-of-contents__link {
+    font-size: 13px !important;
+    padding: 4px 38px 4px 14px !important;
+    font-weight: 500 !important;
+  }
+
+  /* Nested: 12px, padding-right 48px (10px deeper indent) */
+  .theme-doc-toc-desktop .table-of-contents > li > ul .table-of-contents__link,
+  .theme-doc-toc-desktop .table-of-contents ul ul .table-of-contents__link {
+    font-size: 12px !important;
+    padding: 3px 48px 3px 14px !important;
+    opacity: 0.72 !important;
+  }
+
+  .theme-doc-toc-desktop .table-of-contents__link:hover {
+    color: var(--toc-neon, var(--ifm-font-color-base)) !important;
+    text-decoration: none !important;
+    opacity: 1 !important;
+  }
+
+  .theme-doc-toc-desktop .table-of-contents__link.table-of-contents__link--active {
+    color: var(--toc-neon, var(--ifm-font-color-base)) !important;
+    font-weight: 600 !important;
+    opacity: 1 !important;
+  }
+
+  /* =========================================================
+     10. TOOLTIP STYLES
+     ========================================================= */
+
+  .csf-toc-tooltip {
+    position: fixed;
+    background: #18181b;
+    color: #f4f4f5;
+    padding: 5px 9px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translate(0, -50%) scale(0.96);
+    transition: opacity 0.15s ease-out, transform 0.15s ease-out, visibility 0.15s;
+    z-index: 99999;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    border: 1px solid #2e2e33;
+  }
+
+  [data-theme='dark'] .csf-toc-tooltip {
+    background: #27272a;
+    color: #fafafa;
+    border: 1px solid #3f3f46;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+  }
+
+  .csf-toc-tooltip.visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translate(0, -50%) scale(1);
+  }
+}
+
+@media (max-width: 996px) {
+  .theme-doc-toc-desktop {
+    display: none !important;
+  }
+}

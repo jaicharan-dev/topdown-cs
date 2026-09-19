@@ -64,6 +64,7 @@ const config = {
   ],
 
   scripts: [
+    '/js/toc-tooltip.js',
     {
       src: 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-4876306470624465',
       async: true,
