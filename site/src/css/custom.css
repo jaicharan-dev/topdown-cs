@@ -18,34 +18,34 @@
 }
 
 /* ===================================================================
-   2. LIGHT MODE PALETTE (Premium Upgrade)
+   2. LIGHT MODE PALETTE (Kindle-Inspired Reading Theme)
    =================================================================== */
 :root {
-  --ifm-color-primary: #2563eb;
-  --ifm-color-primary-dark: #1d4ed8;
-  --ifm-color-primary-darker: #1e40af;
-  --ifm-color-primary-darkest: #1e3a8a;
-  --ifm-color-primary-light: #3b82f6;
-  --ifm-color-primary-lighter: #60a5fa;
-  --ifm-color-primary-lightest: #93c5fd;
+  --ifm-color-primary: #254d77;
+  --ifm-color-primary-dark: #1f4165;
+  --ifm-color-primary-darker: #1a3654;
+  --ifm-color-primary-darkest: #12253a;
+  --ifm-color-primary-light: #315d8f;
+  --ifm-color-primary-lighter: #4272a8;
+  --ifm-color-primary-lightest: #6593ca;
   
-  /* Kindle-inspired comfortable reading colors (Toned down) */
-  --ifm-background-color: #f4f0e6;
-  --ifm-background-surface-color: #eae5d8;
-  --ifm-font-color-base: #403c34;
-  --ifm-font-color-secondary: #6e685a;
-  --ifm-heading-color: #2c2820;
-  --ifm-hr-border-color: #dcd5c4;
-  --ifm-toc-border-color: #dcd5c4;
-  --ifm-code-background: #eae5d8;
-  --ifm-table-stripe-background: rgba(0, 0, 0, 0.04);
-  --ifm-table-border-color: #dcd5c4;
-  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.06);
+  /* Kindle warm paper comfortable reading colors */
+  --ifm-background-color: #f8f5ee;
+  --ifm-background-surface-color: #f0ebe0;
+  --ifm-font-color-base: #38342d;
+  --ifm-font-color-secondary: #6e675b;
+  --ifm-heading-color: #24211b;
+  --ifm-hr-border-color: #ded7c6;
+  --ifm-toc-border-color: #ded7c6;
+  --ifm-code-background: #eae4d6;
+  --ifm-table-stripe-background: rgba(0, 0, 0, 0.025);
+  --ifm-table-border-color: #ded7c6;
+  --docusaurus-highlighted-code-line-bg: rgba(0, 0, 0, 0.04);
 
-  --csf-surface: #f4f0e6;
-  --csf-surface-raised: #eae5d8;
-  --csf-border: #d1c8b4;
-  --csf-border-subtle: #dcd5c4;
+  --csf-surface: #f8f5ee;
+  --csf-surface-raised: #eae4d6;
+  --csf-border: #d5cdbc;
+  --csf-border-subtle: #e3dcce;
   --ifm-code-font-size: 95%;
 }
 
@@ -160,23 +160,40 @@
   border: 1px solid;
 }
 
-/* Easy — green tint */
-.sidebar-easy > .menu__link::before {
-  background: rgba(34, 197, 94, 0.1);
-  color: #4ade80;
-  border-color: rgba(34, 197, 94, 0.25);
+/* Easy — rich subdued dark green */
+[data-theme='dark'] .sidebar-easy > .menu__link::before {
+  background: #14532d;
+  color: #86efac;
+  border-color: #166534;
 }
-/* Medium — amber tint */
-.sidebar-medium > .menu__link::before {
-  background: rgba(234, 179, 8, 0.1);
-  color: #facc15;
-  border-color: rgba(234, 179, 8, 0.25);
+html:not([data-theme='dark']) .sidebar-easy > .menu__link::before {
+  background: #dcfce7;
+  color: #14532d;
+  border-color: #86efac;
 }
-/* Hard — red tint */
-.sidebar-hard > .menu__link::before {
-  background: rgba(239, 68, 68, 0.1);
-  color: #f87171;
-  border-color: rgba(239, 68, 68, 0.25);
+
+/* Medium — rich subdued dark amber */
+[data-theme='dark'] .sidebar-medium > .menu__link::before {
+  background: #78350f;
+  color: #fde047;
+  border-color: #92400e;
+}
+html:not([data-theme='dark']) .sidebar-medium > .menu__link::before {
+  background: #fef3c7;
+  color: #78350f;
+  border-color: #fcd34d;
+}
+
+/* Hard — rich subdued dark red */
+[data-theme='dark'] .sidebar-hard > .menu__link::before {
+  background: #7f1d1d;
+  color: #fca5a5;
+  border-color: #991b1b;
+}
+html:not([data-theme='dark']) .sidebar-hard > .menu__link::before {
+  background: #fee2e2;
+  color: #7f1d1d;
+  border-color: #fca5a5;
 }
 
 /* ===================================================================
@@ -219,21 +236,21 @@
 }
 
 [data-theme='dark'] .badge--success {
-  background: rgba(34, 197, 94, 0.12) !important;
-  color: #4ade80 !important;
-  border-color: rgba(34, 197, 94, 0.3) !important;
+  background: #14532d !important;
+  color: #86efac !important;
+  border-color: #166534 !important;
 }
 
 [data-theme='dark'] .badge--warning {
-  background: rgba(234, 179, 8, 0.12) !important;
-  color: #facc15 !important;
-  border-color: rgba(234, 179, 8, 0.3) !important;
+  background: #78350f !important;
+  color: #fde047 !important;
+  border-color: #92400e !important;
 }
 
 [data-theme='dark'] .badge--danger {
-  background: rgba(239, 68, 68, 0.12) !important;
-  color: #f87171 !important;
-  border-color: rgba(239, 68, 68, 0.3) !important;
+  background: #7f1d1d !important;
+  color: #fca5a5 !important;
+  border-color: #991b1b !important;
 }
 
 /* ===================================================================
@@ -304,16 +321,124 @@ html body .theme-doc-sidebar-container {
 
 /* Instant collapse via React class */
 .my-custom-mini-sidebar {
-  width: 60px !important;
-  min-width: 60px !important;
+  width: 68px !important;
+  min-width: 68px !important;
+  padding-left: 12px !important;
+  padding-right: 4px !important;
   overflow-x: hidden !important;
   transition: none !important;
 }
 
-.my-custom-mini-sidebar [class*="menu__link"] { color: transparent !important; }
-.my-custom-mini-sidebar [class*="menu__link"]::before { color: white !important; }
 .my-custom-mini-sidebar [class*="theme-doc-sidebar-item-category"] > ul { display: none !important; }
 .my-custom-mini-sidebar [class*="menu__caret"] { display: none !important; }
+
+/* Hide text label so only the badge renders */
+.my-custom-mini-sidebar [class*="menu__link"] [class*="linkLabel"] {
+  display: none !important;
+}
+
+/* Collapsed Left Question Sidebar Items */
+.my-custom-mini-sidebar .menu {
+  padding: 8px 0 !important;
+}
+
+.my-custom-mini-sidebar .menu__list {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.my-custom-mini-sidebar .menu__list-item {
+  display: flex !important;
+  justify-content: center !important;
+  width: 100% !important;
+  margin-bottom: 5px !important;
+}
+
+.my-custom-mini-sidebar .menu__link {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 4px 0 !important;
+  width: 100% !important;
+  color: transparent !important;
+  background: transparent !important;
+  border-radius: 8px !important;
+}
+
+.my-custom-mini-sidebar .menu__link:hover {
+  background: transparent !important;
+}
+
+.my-custom-mini-sidebar .menu__link::before {
+  margin-right: 0 !important;
+  float: none !important;
+  width: 24px !important;
+  height: 24px !important;
+  font-size: 0.72rem !important;
+  font-weight: 700 !important;
+  border-radius: 6px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: transform 0.15s ease, box-shadow 0.15s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.my-custom-mini-sidebar .menu__link:hover::before {
+  transform: scale(1.08) !important;
+}
+
+/* Collapsed Badges — Dark Mode */
+[data-theme='dark'] .my-custom-mini-sidebar .sidebar-easy > .menu__link::before {
+  background: #14532d !important;
+  color: #86efac !important;
+  border: 1px solid #166534 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='dark'] .my-custom-mini-sidebar .sidebar-medium > .menu__link::before {
+  background: #78350f !important;
+  color: #fde047 !important;
+  border: 1px solid #92400e !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='dark'] .my-custom-mini-sidebar .sidebar-hard > .menu__link::before {
+  background: #7f1d1d !important;
+  color: #fca5a5 !important;
+  border: 1px solid #991b1b !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme='dark'] .my-custom-mini-sidebar .menu__link--active::before {
+  box-shadow: 0 0 0 2px #60a5fa, 0 2px 6px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Collapsed Badges — Light Mode (Kindle) */
+html:not([data-theme='dark']) .my-custom-mini-sidebar .sidebar-easy > .menu__link::before {
+  background: #d1fae5 !important;
+  color: #14532d !important;
+  border: 1px solid #86efac !important;
+  box-shadow: 0 1px 2px rgba(60, 50, 40, 0.08);
+}
+
+html:not([data-theme='dark']) .my-custom-mini-sidebar .sidebar-medium > .menu__link::before {
+  background: #fef08a !important;
+  color: #78350f !important;
+  border: 1px solid #fcd34d !important;
+  box-shadow: 0 1px 2px rgba(60, 50, 40, 0.08);
+}
+
+html:not([data-theme='dark']) .my-custom-mini-sidebar .sidebar-hard > .menu__link::before {
+  background: #fee2e2 !important;
+  color: #7f1d1d !important;
+  border: 1px solid #fca5a5 !important;
+  box-shadow: 0 1px 2px rgba(60, 50, 40, 0.08);
+}
+
+html:not([data-theme='dark']) .my-custom-mini-sidebar .menu__link--active::before {
+  box-shadow: 0 0 0 2px #254d77, 0 2px 6px rgba(60, 50, 40, 0.15) !important;
+}
 
 /* Lock inner content — no text reflow */
 html body article,
@@ -338,8 +463,8 @@ html[data-sidebar="full"] body .docMainContainer {
 }
 
 html[data-sidebar="mini"] body .docMainContainer {
-  width: calc(100vw - 60px) !important;
-  max-width: calc(100vw - 60px) !important;
+  width: calc(100vw - 68px) !important;
+  max-width: calc(100vw - 68px) !important;
   flex: none !important;
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.2s, max-width 0.4s cubic-bezier(0.4, 0, 0.2, 1) 0.2s !important;
 }
@@ -610,16 +735,14 @@ html:not([data-theme='dark']) .csf-section-divider {
 }
 
 html:not([data-theme='dark']) .csf-compact-card {
-  background-color: #f4f0e6 !important;
+  background-color: var(--csf-surface) !important;
   border: 1px solid var(--csf-border-subtle);
 }
 
 html:not([data-theme='dark']) .csf-compact-card:not(.csf-compact-card--soon):hover {
   transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--card-accent) 50%, transparent);
-  box-shadow:
-    0 8px 30px rgba(0, 0, 0, 0.06),
-    0 0 0 1px color-mix(in srgb, var(--card-accent) 40%, transparent);
+  border-color: var(--csf-border);
+  box-shadow: 0 6px 20px rgba(50, 40, 30, 0.08);
 }
 
 .csf-compact-card--soon {
@@ -724,7 +847,7 @@ html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link:hover {
 }
 
 html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link--active {
-  background: rgba(37, 99, 235, 0.08);
+  background: rgba(37, 77, 119, 0.08);
   color: var(--ifm-color-primary);
 }
 
@@ -750,21 +873,21 @@ html:not([data-theme='dark']) .markdown blockquote p {
 }
 
 html:not([data-theme='dark']) .badge--success {
-  background: rgba(34, 197, 94, 0.1) !important;
-  color: #16a34a !important;
-  border-color: rgba(34, 197, 94, 0.2) !important;
+  background: #dcfce7 !important;
+  color: #14532d !important;
+  border-color: #86efac !important;
 }
 
 html:not([data-theme='dark']) .badge--warning {
-  background: rgba(234, 179, 8, 0.1) !important;
-  color: #ca8a04 !important;
-  border-color: rgba(234, 179, 8, 0.2) !important;
+  background: #fef3c7 !important;
+  color: #78350f !important;
+  border-color: #fcd34d !important;
 }
 
 html:not([data-theme='dark']) .badge--danger {
-  background: rgba(239, 68, 68, 0.1) !important;
-  color: #dc2626 !important;
-  border-color: rgba(239, 68, 68, 0.2) !important;
+  background: #fee2e2 !important;
+  color: #7f1d1d !important;
+  border-color: #fca5a5 !important;
 }
 
 html:not([data-theme='dark']) table {
@@ -775,8 +898,7 @@ html:not([data-theme='dark']) table th {
   background: var(--csf-surface-raised);
   font-weight: 600;
 }
-
-html:not([data-theme='dark']) table td,
+html:not([data-theme='dark']) table td,
 html:not([data-theme='dark']) table th {
   border-color: var(--csf-border-subtle);
 }
@@ -785,12 +907,13 @@ html:not([data-theme='dark']) .alert {
   border-radius: 8px;
   border-width: 1px;
   background: var(--csf-surface) !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
 html:not([data-theme='dark']) .footer {
   border-top: 1px solid var(--csf-border-subtle);
-  background: #eae5d8;
+  background: #f0ebe0;
+  color: var(--ifm-font-color-secondary);
 }
 
 html:not([data-theme='dark']) ::-webkit-scrollbar {
@@ -812,16 +935,17 @@ html:not([data-theme='dark']) ::-webkit-scrollbar-thumb:hover {
 }
 
 html:not([data-theme='dark']) .theme-code-block pre.prism-code {
-  background-color: #eae5d8 !important;
+  background-color: #eae4d6 !important;
   border: 1px solid var(--csf-border-subtle);
   border-radius: 8px;
+  color: #2b2823 !important;
 }
 
 /* ===================================================================
-   17. MOBILE UI POLISH
+   17. MOBILE UI POLISH & RESPONSIVENESS
    =================================================================== */
 
-/* Fix sticky hover states on touch devices and add tactile tap effect */
+/* Tactile tap feedback on touch devices without sticky hover */
 @media (hover: none) {
   html:not([data-theme='dark']) .csf-compact-card:hover,
   [data-theme='dark'] .csf-compact-card:hover {
@@ -837,47 +961,63 @@ html:not([data-theme='dark']) .theme-code-block pre.prism-code {
   }
 }
 
-@media screen and (max-width: 768px) {
-  /* Give the content more horizontal breathing room by reducing margins */
+/* Base Mobile Polish (<= 996px) */
+@media screen and (max-width: 996px) {
+  /* Prevent horizontal overflow and ensure clean container alignment */
+  html, body {
+    overflow-x: hidden;
+  }
+
   .container {
-    padding-left: 12px !important;
-    padding-right: 12px !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    max-width: 100% !important;
   }
 
-  /* Hero Section Mobile Optimization */
-  .csf-hero {
-    padding: 1.5rem 1rem 1.5rem;
+  .row {
+    margin-left: -16px !important;
+    margin-right: -16px !important;
   }
-  
-  .csf-hero__title {
-    font-size: 2.1rem;
-    line-height: 1.1;
+
+  /* Question titles and headers */
+  .markdown > header h1, .markdown > h1 {
+    font-size: 1.65rem !important;
+    line-height: 1.25 !important;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.6rem !important;
   }
-  
-  .csf-hero__subtitle {
+
+  .markdown h2 {
+    font-size: 1.3rem !important;
+    margin-top: 1.75rem !important;
+    line-height: 1.3;
+  }
+
+  .markdown h3 {
+    font-size: 1.1rem !important;
+    margin-top: 1.5rem !important;
+    line-height: 1.35;
+  }
+
+  .markdown p, .markdown li {
     font-size: 0.95rem;
-    padding: 0 10px;
-  }
-  
-  .csf-hero__glow {
-    width: 200px;
-    height: 150px;
+    line-height: 1.68;
   }
 
-  /* Interview Question Blockquotes - reclaim horizontal screen real estate */
+  /* Interview Question Blockquotes */
   html:not([data-theme='dark']) .markdown blockquote,
   [data-theme='dark'] .markdown blockquote {
-    padding: 12px 14px;
-    margin: 1rem 0;
+    padding: 14px 16px;
+    margin: 1.25rem 0;
     font-size: 0.95rem;
   }
 
-  /* Optimize code blocks for small screens */
+  /* Code blocks */
   :root {
-    --ifm-code-font-size: 85%;
+    --ifm-code-font-size: 88%;
   }
 
-  /* Make sure tables can scroll natively without breaking layout */
+  /* Responsive tables */
   .markdown table {
     display: block;
     width: 100%;
@@ -885,7 +1025,7 @@ html:not([data-theme='dark']) .theme-code-block pre.prism-code {
     -webkit-overflow-scrolling: touch;
   }
 
-  /* Adjust grid gap for touch targets */
+  /* Grid spacing */
   .csf-compact-grid {
     gap: 10px;
   }
@@ -895,33 +1035,44 @@ html:not([data-theme='dark']) .theme-code-block pre.prism-code {
   }
 }
 
-/* Fix mobile navbar logo clipping if any */
-@media screen and (max-width: 480px) {
-  .navbar__logo {
-    height: 2.2rem;
+/* Small screen hero optimizations (<= 640px) */
+@media screen and (max-width: 640px) {
+  .csf-hero {
+    padding: 2.5rem 1rem 1.5rem;
+  }
+  .csf-hero__title {
+    font-size: 2.2rem;
+    line-height: 1.12;
+  }
+  .csf-hero__subtitle {
+    font-size: 0.95rem;
+    padding: 0 8px;
+  }
+  .csf-hero__glow {
+    width: 220px;
+    height: 150px;
   }
 }
 
 /* ===================================================================
-   18. MOBILE SIDEBAR Z-INDEX FIX
+   18. MOBILE SIDEBAR DRAWER POLISH & Z-INDEX
    =================================================================== */
 
-/* Ensure the mobile sidebar overlay renders above the main content */
 @media screen and (max-width: 996px) {
   .navbar-sidebar {
     z-index: 200 !important;
+    background-color: var(--csf-surface) !important;
+    box-shadow: 0 0 32px rgba(0, 0, 0, 0.45);
   }
 
   .navbar-sidebar--show .navbar-sidebar {
     z-index: 200 !important;
   }
 
-  /* The dark backdrop behind the sidebar */
   .navbar-sidebar__backdrop {
     z-index: 199 !important;
   }
 
-  /* Make sure the main doc wrapper doesn't create a stacking context that blocks the sidebar */
   [class*="docMainContainer"],
   [class*="docRoot"],
   main {
@@ -929,17 +1080,42 @@ html:not([data-theme='dark']) .theme-code-block pre.prism-code {
     position: static !important;
   }
 
-  /* Ensure the sidebar container on mobile doesn't compete */
   .theme-doc-sidebar-container {
     z-index: auto !important;
+  }
+
+  .navbar-sidebar__brand {
+    border-bottom: 1px solid var(--csf-border-subtle);
+    padding: 10px 16px !important;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .navbar-sidebar__items {
+    padding: 10px 8px !important;
+  }
+
+  .navbar-sidebar .menu__link {
+    padding: 10px 12px !important;
+    font-size: 0.88rem !important;
+    min-height: 42px;
+    display: flex !important;
+    align-items: center;
+    border-radius: 8px;
+    line-height: 1.4;
+  }
+
+  .navbar-sidebar .menu__list-item {
+    margin-bottom: 3px;
   }
 }
 
 /* ===================================================================
-   19. PROPER NAVBAR FIX
+   19. NAVBAR & THEME TOGGLE (DESKTOP & MOBILE)
    =================================================================== */
 
-/* Base mobile styles for navbar */
+/* Base navbar styles */
 html:not([data-theme='dark']) .navbar {
   background-color: var(--ifm-background-color);
   border-bottom: 1px solid var(--csf-border-subtle);
@@ -950,12 +1126,109 @@ html:not([data-theme='dark']) .navbar {
   border-bottom: 1px solid var(--csf-border-subtle);
 }
 
-/* Apply the frosted glass ONLY to desktop so it doesn't break mobile sidebar fixed positioning */
+/* Always show Theme Toggle in top navbar at the far right */
+.navbar__items--right {
+  display: flex !important;
+  align-items: center !important;
+  margin-left: auto !important;
+}
+
+.navbar [class*="colorModeToggle"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.navbar [class*="colorModeToggle"] button,
+.navbar [class*="toggleButton"] {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  background: transparent;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+[data-theme='dark'] .navbar [class*="colorModeToggle"] button:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Prevent duplicate toggle inside mobile sidebar drawer */
+.navbar-sidebar [class*="colorModeToggle"],
+.navbar-sidebar__brand [class*="colorModeToggle"],
+.navbar-sidebar__brand .toggle_vylO {
+  display: none !important;
+}
+
+/* Mobile navbar items layout (<= 996px) */
+@media screen and (max-width: 996px) {
+  .navbar__inner {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    width: 100% !important;
+    padding: 0 12px !important;
+  }
+
+  .navbar__brand {
+    margin-right: 0.5rem;
+    min-width: 0;
+    flex-shrink: 1;
+    display: flex;
+    align-items: center;
+  }
+
+  .navbar__title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .navbar__items {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+}
+
+/* Ultra-compact screens (320px - 360px) */
+@media screen and (max-width: 360px) {
+  .navbar__inner {
+    padding: 0 6px !important;
+  }
+
+  .navbar__logo {
+    height: 1.85rem !important;
+    margin-right: 0.35rem !important;
+  }
+
+  .navbar__title {
+    font-size: 0.92rem !important;
+    max-width: 135px;
+  }
+
+  .navbar__toggle {
+    margin-right: 4px !important;
+    padding: 4px !important;
+  }
+}
+
+/* Desktop frosted glass navbar */
 @media screen and (min-width: 997px) {
   html:not([data-theme='dark']) .navbar {
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
-    background-color: rgba(244, 240, 230, 0.85) !important;
+    background-color: rgba(248, 245, 238, 0.88) !important;
   }
 
   [data-theme='dark'] .navbar {
@@ -964,6 +1237,7 @@ html:not([data-theme='dark']) .navbar {
     background-color: rgba(24, 24, 27, 0.85) !important;
   }
 }
+
 /* ===================================================================
    20. DEEPSEEK-STYLE COLLAPSIBLE TOC (V7 - FLOATING PANEL & INWARD HYPHENS)
    =================================================================== */
@@ -1060,13 +1334,12 @@ html:not([data-theme='dark']) .navbar {
   }
 
   html:not([data-theme='dark']) .theme-doc-toc-desktop[data-difficulty]:hover {
-    background: rgba(255, 255, 255, 0.96) !important;
-    border: 1px solid rgba(0, 0, 0, 0.08) !important;
+    background: rgba(248, 245, 238, 0.96) !important;
+    border: 1px solid var(--csf-border) !important;
     box-shadow: 
-      0 0 32px var(--toc-neon-glow),
-      0 0 16px var(--toc-neon-shadow),
-      0 0 4px var(--toc-neon-subtle),
-      0 4px 18px rgba(0, 0, 0, 0.08) !important;
+      0 6px 24px rgba(60, 50, 40, 0.08),
+      0 0 12px var(--toc-neon-glow),
+      0 1px 3px rgba(60, 50, 40, 0.05) !important;
   }
 
   /* 7. Inner list */
