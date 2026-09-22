@@ -102,8 +102,8 @@ const theorySubjects = [
 ];
 
 const practicalSubjects = [
-  { title: 'Code Tracing', href: '/docs/code-tracing/1-code-trace-static-instance-constructor', Icon: IconCodeTracing, accentColor: '#fb7185', comingSoon: false },
-  { title: 'Design Patterns', href: '/docs/design-patterns/1-singleton-pattern', Icon: IconDesignPatterns, accentColor: '#38bdf8', comingSoon: false },
+  { title: 'Code Tracing', href: '#', Icon: IconCodeTracing, accentColor: '#fb7185', comingSoon: true },
+  { title: 'Design Patterns', href: '#', Icon: IconDesignPatterns, accentColor: '#38bdf8', comingSoon: true },
   { title: 'DB Design', href: '#', Icon: IconDBDesign, accentColor: '#c084fc', comingSoon: true },
   { title: 'System Design', href: '#', Icon: IconSystemDesign, accentColor: '#4ade80', comingSoon: true },
 ];

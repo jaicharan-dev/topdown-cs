@@ -36,11 +36,26 @@ const config = {
       ({
         docs: {
           sidebarPath: './sidebars.js',
+          exclude: [
+            '**/dbms/**',
+            '**/database-design/**',
+            '**/code-tracing/**',
+            '**/design-patterns/**',
+            '**/cn/**',
+            '**/os/**',
+          ],
           remarkPlugins: [remarkMath],
           rehypePlugins: [rehypeKatex],
         },
         sitemap: {
-          ignorePatterns: ['/docs/cn/**', '/docs/dbms/**', '/docs/os/**'],
+          ignorePatterns: [
+            '/docs/cn/**',
+            '/docs/os/**',
+            '/docs/dbms/**',
+            '/docs/database-design/**',
+            '/docs/code-tracing/**',
+            '/docs/design-patterns/**',
+          ],
         },
         theme: {
           customCss: './src/css/custom.css',
