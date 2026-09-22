@@ -36,14 +36,6 @@ const config = {
       ({
         docs: {
           sidebarPath: './sidebars.js',
-          exclude: [
-            '**/dbms/**',
-            '**/database-design/**',
-            '**/code-tracing/**',
-            '**/design-patterns/**',
-            '**/cn/**',
-            '**/os/**',
-          ],
           remarkPlugins: [remarkMath],
           rehypePlugins: [rehypeKatex],
         },
