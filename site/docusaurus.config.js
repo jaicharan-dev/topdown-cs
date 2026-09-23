@@ -6,7 +6,45 @@ import rehypeKatex from 'rehype-katex';
 const config = {
   title: 'TopDown CS',
   tagline: 'Only what you need for the interview. Nothing else.',
-  favicon: 'img/favicon-rounded.png',
+  favicon: 'favicon.ico',
+
+  headTags: [
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '48x48',
+        href: '/img/favicon-48x48.png',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '96x96',
+        href: '/img/favicon-96x96.png',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'icon',
+        type: 'image/png',
+        sizes: '192x192',
+        href: '/img/favicon-192x192.png',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'apple-touch-icon',
+        sizes: '180x180',
+        href: '/img/apple-touch-icon.png',
+      },
+    },
+  ],
 
   url: 'https://topdowncs.com',
   baseUrl: '/',
