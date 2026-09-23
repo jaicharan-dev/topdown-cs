@@ -17,7 +17,7 @@ To confidently answer this, provide the technical definition an interviewer expe
 
 ### 1. Abstraction (Simplifying Complexity)
 *   **The Definition:** Hiding complex underlying implementation details behind a simplified interface, exposing only what is strictly necessary for the external user or system to interact with.
-*   **The Understanding:** Think of a coffee machine. You just press the "Espresso" button (the interface). You don't need to understand the exact water temperature, grinding pressure, or internal valve mechanisms (the implementation) to get your coffee.
+*   **The Understanding:** Think of a coffee machine. You just press a button (the interface), and you get your coffee. You don't need to know how the machine heats the water or grinds the beans inside (the implementation).
 
 ### 2. Encapsulation (Protecting State)
 *   **The Definition:** Bundling data (state) and the methods that operate on that data into a single, restrictive unit (a class), protecting the internal state from unauthorized direct modification.
@@ -41,8 +41,8 @@ When pushed in an interview, do not just repeat the definitions. The confusion a
 *   **Abstraction hides the implementation details to reduce complexity.** It is about design, usability, and simplicity.
 
 ### The ELI5 Analogy: Driving a Car
-*   **Encapsulation (The Hood):** The hood of the car encapsulates the engine. It physically prevents you from reaching in and manually twisting the valves or pouring fuel directly into the cylinders while driving. If you want to accelerate, you must use the gas pedal (the authorized interface). It protects the engine from you, and you from the engine.
-*   **Abstraction (The Steering Wheel & Pedals):** You only need to know that pressing the gas pedal makes the car go faster. You do not need to understand the thermodynamics of internal combustion or how the transmission gears shift. The complex mechanical process is abstracted away into a simple interface: a pedal.
+*   **Encapsulation (The Hood):** The closed hood encapsulates the engine. It keeps internal parts safely locked away so you can't accidentally touch running components while driving. To accelerate, you interact safely through the gas pedal (the authorized interface).
+*   **Abstraction (The Gas Pedal & Steering Wheel):** You only need to know that pressing the pedal makes the car move. You don't need to know how the engine burns fuel or shifts gears behind the scenes. The complex mechanics are hidden behind a simple pedal.
 
 ### The Ultimate Summary:
 *   **Abstraction** hides the details you *don't need to know* to use a system.
