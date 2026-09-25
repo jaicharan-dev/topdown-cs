@@ -2,6 +2,7 @@ import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import React from 'react';
+import DsaRoadmap from '../components/DsaRoadmap';
 
 // --- Custom 2D Line-Art SVGs ---
 
@@ -94,16 +95,28 @@ const IconSystemDesign = () => (
 );
 
 
-const theorySubjects = [
-  { title: 'OOP', href: '/docs/oop/1-four-pillars-of-oop', Icon: IconOOP, accentColor: '#60a5fa', comingSoon: false },
-  { title: 'DBMS', href: '#', Icon: IconDBMS, accentColor: '#a78bfa', comingSoon: true },
-  { title: 'OS', href: '#', Icon: IconOS, accentColor: '#f59e0b', comingSoon: true },
-  { title: 'CN', href: '#', Icon: IconCN, accentColor: '#34d399', comingSoon: true },
+const essentialsSubjects = [
+  { title: 'OOP Essential', href: '/docs/oop-essential/1-four-pillars-of-oop', Icon: IconOOP, accentColor: '#60a5fa', comingSoon: false },
+  { title: 'DBMS Essential', href: '/docs/dbms-essential/1-what-is-a-transaction', Icon: IconDBMS, accentColor: '#a78bfa', comingSoon: false },
+  { title: 'OS Essentials', href: '/docs/os-essential/1-process-vs-thread', Icon: IconOS, accentColor: '#f59e0b', comingSoon: false },
+  { title: 'CN Essential', href: '/docs/cn-essential/1-osi-model-tcp-ip', Icon: IconCN, accentColor: '#34d399', comingSoon: false },
 ];
 
-const practicalSubjects = [
-  { title: 'Code Tracing', href: '#', Icon: IconCodeTracing, accentColor: '#fb7185', comingSoon: true },
-  { title: 'Design Patterns', href: '#', Icon: IconDesignPatterns, accentColor: '#38bdf8', comingSoon: true },
+const additionalsSubjects = [
+  { title: 'OOP Additional', href: '/docs/oop-additional/19-static-binding-vs-dynamic-binding', Icon: IconOOP, accentColor: '#93c5fd', comingSoon: false },
+  { title: 'DBMS Additional', href: '/docs/dbms-additional/9-bcnf-vs-3nf', Icon: IconDBMS, accentColor: '#c4b5fd', comingSoon: false },
+  { title: 'OS Additional', href: '/docs/os-additional/1-priority-inversion-mars-rover', Icon: IconOS, accentColor: '#fbbf24', comingSoon: false },
+  { title: 'CN Additional', href: '/docs/cn-additional/1-sessions-vs-jwt', Icon: IconCN, accentColor: '#6ee7b7', comingSoon: false },
+];
+
+const practiceSubjects = [
+  { title: 'OS Problems', href: '/docs/os-problems/1-cpu-scheduling-fcfs-sjf-srtf-round-robin', Icon: IconOS, accentColor: '#fb923c', comingSoon: false },
+  { title: 'Design Patterns', href: '/docs/design-patterns/1-singleton-pattern', Icon: IconDesignPatterns, accentColor: '#38bdf8', comingSoon: false },
+  { title: 'CN Problems', href: '/docs/cn-problems/1-subnetting', Icon: IconCN, accentColor: '#2dd4bf', comingSoon: false },
+  { title: 'Code Tracing', href: '/docs/code-tracing/1-code-trace-static-instance-constructor', Icon: IconCodeTracing, accentColor: '#fb7185', comingSoon: false },
+];
+
+const lockedSubjects = [
   { title: 'DB Design', href: '#', Icon: IconDBDesign, accentColor: '#c084fc', comingSoon: true },
   { title: 'System Design', href: '#', Icon: IconSystemDesign, accentColor: '#4ade80', comingSoon: true },
 ];
@@ -142,29 +155,77 @@ export default function Home() {
           Top<span className="csf-hero__accent">Down</span> CS
         </h1>
         <p className="csf-hero__subtitle">
-          Not a textbook. Not a course.<br />
-          Just the answers any interviewer would want to hear.
+          Not a textbook. Not a course. Just the answers any interviewer would want to hear.
         </p>
       </section>
 
-      {/* Subject Grid */}
-      <main className="csf-grid-wrapper">
-        <p className="csf-section-label">Theory</p>
-        <div className="csf-compact-grid">
-          {theorySubjects.map((subject) => (
-            <CompactCard key={subject.title} {...subject} />
-          ))}
+      {/* Split-Screen Main Layout */}
+      <main className="csf-main-container">
+        {/* Left Column: CS Fundamentals */}
+        <div className="csf-column-left">
+          <div className="csf-section-group">
+            <p className="csf-section-label">Essentials</p>
+            <div className="csf-compact-grid">
+              {essentialsSubjects.map((subject) => (
+                <CompactCard key={subject.title} {...subject} />
+              ))}
+            </div>
+          </div>
+
+          <div className="csf-section-divider" />
+
+          <div className="csf-section-group">
+            <p className="csf-section-label">Additionals</p>
+            <div className="csf-compact-grid">
+              {additionalsSubjects.map((subject) => (
+                <CompactCard key={subject.title} {...subject} />
+              ))}
+            </div>
+          </div>
+
+          <div className="csf-section-divider" />
+
+          <div className="csf-section-group">
+            <p className="csf-section-label">Practice & Problems</p>
+            <div className="csf-compact-grid">
+              {practiceSubjects.map((subject) => (
+                <CompactCard key={subject.title} {...subject} />
+              ))}
+            </div>
+          </div>
+
+          <div className="csf-section-divider" />
+
+          <div className="csf-section-group">
+            <p className="csf-section-label">Coming Soon</p>
+            <div className="csf-compact-grid">
+              {lockedSubjects.map((subject) => (
+                <CompactCard key={subject.title} {...subject} />
+              ))}
+            </div>
+          </div>
         </div>
 
-        <div className="csf-section-divider" />
-
-        <p className="csf-section-label">Practical</p>
-        <div className="csf-compact-grid">
-          {practicalSubjects.map((subject) => (
-            <CompactCard key={subject.title} {...subject} />
-          ))}
+        {/* Right Column: DSA Roadmap */}
+        <div className="csf-column-right">
+          <p className="csf-section-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            DSA Roadmap
+            <span style={{
+              fontSize: '0.5rem',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+              padding: '2px 7px',
+              borderRadius: '999px',
+              background: 'rgba(251, 146, 60, 0.12)',
+              color: '#fb923c',
+              border: '1px solid rgba(251, 146, 60, 0.25)',
+            }}>In Progress</span>
+          </p>
+          <DsaRoadmap />
         </div>
       </main>
     </Layout>
   );
 }
+

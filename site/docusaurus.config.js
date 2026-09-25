@@ -79,12 +79,7 @@ const config = {
         },
         sitemap: {
           ignorePatterns: [
-            '/docs/cn/**',
-            '/docs/os/**',
-            '/docs/dbms/**',
             '/docs/database-design/**',
-            '/docs/code-tracing/**',
-            '/docs/design-patterns/**',
           ],
         },
         theme: {

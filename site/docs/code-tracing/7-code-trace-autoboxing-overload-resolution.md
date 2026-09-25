@@ -1,66 +1,237 @@
 ---
 id: 7-code-trace-autoboxing-overload-resolution
-title: "Code trace: autoboxing and overload resolution priority"
-description: "Discover the priority rules Java uses to resolve method overloads when autoboxing and varargs are involved."
-
+title: "Code Trace: Autoboxing & Overload Resolution Priority"
+description: "Master Java's 3-phase method overload resolution algorithm (JLS §15.12.2), widening vs boxing hierarchies, and ambiguous method traps."
 sidebar_position: 7
 sidebar_class_name: sidebar-hard
 ---
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
-> **Interview Question:** Which overload gets called, and why? What does this tell you about the compiler's priority order when resolving overloaded methods?
->
+> **Interview Question:** "Given the following Java class with overloaded methods:
 > ```java
-> class Calc  {
->     void process(int x)  {
+> class Calc {
+>     void process(int x) {
 >         System.out.println("int version: " + x);
 >     }
->     void process(Integer x)  {
+>     void process(Integer x) {
 >         System.out.println("Integer version: " + x);
 >     }
->     void process(long x)  {
+>     void process(long x) {
 >         System.out.println("long version: " + x);
 >     }
->     public static void main(String[] args)  {
+>     public static void main(String[] args) {
 >         Calc c = new Calc();
 >         c.process(5);
 >     }
 > }
 > ```
+> Which overload gets called, and why? What happens if `process(int x)` is deleted? Explain the formal 3-phase overload resolution algorithm defined in JLS §15.12.2, why widening beats autoboxing, and the 'ambiguous method call' traps."
 
-### The Interview Quick-Hit
+---
 
-"The code will print `int version: 5`. The compiler always prioritizes an 'exact primitive match' first. This question tests your knowledge of Java's strict method resolution hierarchy, which dictates that the compiler prefers widening a primitive over autoboxing it into a wrapper class."
+Method overloading in Java is resolved entirely at **compile time** using static type information. 
 
-### Execution Trace & Output
+While candidates often assume that the compiler searches for the "closest semantic type," the Java Language Specification (JLS §15.12.2) mandates a strict **three-phase algorithm** that prioritizes primitive widening over autoboxing to maintain backward compatibility with Java 1.0.
+
+---
+
+### 1. Exact Output
 
 ```text
 int version: 5
 ```
 
-### Step-by-step breakdown:
-1.  **Exact Match (The first choice):** Because the literal `5` is a primitive `int` by default in Java, the compiler sees `process(int x)` and immediately recognizes it as a 100% perfect match.
-
-### The Interview Trap: The Priority Order
-Interviewers rarely stop at the exact match. As soon as you answer correctly, they will verbally erase the `process(int)` method from the whiteboard and ask: "Okay, what if I delete the `int` method? Now it only has `process(Integer)` and `process(long)`. Which one does it call?"
-
-Most students guess `process(Integer)` because they think, "5 is an integer, so it should become an `Integer` object."
-
-They are wrong. The code will print `long version: 5`.
-
-Here is the exact priority order the Java compiler uses to resolve overloaded methods. You should memorize this hierarchy:
-
-1.  **Exact Match (The first choice):** The compiler looks for the exact primitive type. (e.g., `int` to `int`).
-2.  **Widening (The fallback):** If the exact primitive isn't found, the compiler looks for a larger primitive that can safely hold the value without losing data. It implicitly widens the `int` (32 bits) into a `long` (64 bits). Why? Because widening is a highly efficient, CPU-level native operation that has existed since Java 1.0.
-3.  **Autoboxing (The expensive operation):** If no suitable primitive methods exist at all, the compiler falls back to Autoboxing. It takes the primitive `int`, pauses to allocate memory on the Heap, and creates a brand new `Integer` object. Why is this lower priority? Because allocating memory for an object is significantly slower and more resource-intensive than just padding a primitive with extra zeros (widening).
-4.  **Varargs (The last resort):** If none of the above exist, it will look for a variable argument method like `process(int... x)`. This is the absolute lowest priority because it requires the JVM to instantiate a brand new array under the hood just to hold your single value.
-
-### The Backend / Production Reality
-Understanding this hierarchy is critical for writing high-performance backend code. If you accidentally write your methods in a way that forces Java to Autobox thousands of integers into `Integer` objects inside a `while` loop, you will flood the Heap memory and trigger a massive Garbage Collection pause, degrading your server's performance.
+If `process(int x)` is commented out or removed, the code prints:
+```text
+long version: 5
+```
 
 ---
 
-### Crucial Nuance: The Ambiguous Null Trap
+### 2. Step-by-Step Resolution Trace
 
-When dealing with overloaded methods that accept wrapper classes or reference types (like `process(Integer)` and `process(String)`), passing `null` will cause a compile-time ambiguity error if there isn't a more specific class. Since `null` can be cast to any reference type, the compiler cannot definitively choose between the overloads. You must explicitly cast `null` (e.g., `process((Integer) null)`) to resolve this.
+1. **Initial Call (`c.process(5)`):**
+   - The literal `5` is a primitive `int` (32-bit signed two's complement integer).
+   - The compiler searches candidate methods and finds an exact primitive signature match: `process(int x)`.
+   - It binds directly to `process(int)` $\implies$ Output: **`int version: 5`**.
+
+2. **The Follow-Up Trap (Deleting `process(int)`):**
+   - Remaining candidates: `process(Integer x)` and `process(long x)`.
+   - **The Common Misconception:** "5 is an integer, so Java will box it into an `Integer` object."
+   - **The Reality:** Java selects `process(long x)` $\implies$ Output: **`long version: 5`**.
+
+---
+
+### 3. The Formal 3-Phase Resolution Algorithm (JLS §15.12.2)
+
+To preserve backward compatibility when Autoboxing and Varargs were introduced in Java 5, the Java Language Specification formalized overload resolution into three sequential phases:
+
+```text
+CALL: c.process(5)  [Argument type: primitive int]
+                       |
+                       v
++-------------------------------------------------------------+
+| PHASE 1: Subtyping WITHOUT Boxing or Varargs                |
+|   1. Exact match? (int -> int)             [FOUND if present|
+|   2. Primitive widening? (int -> long)     [FOUND if no int]|
+|      byte -> short -> int -> long -> float -> double        |
+|   3. Reference widening? (Sub -> Super)                     |
++-------------------------------------------------------------+
+                       |
+     Found in Phase 1? +---> YES ---> TERMINATE & BIND METHOD!
+                       |              (Phase 2 is NEVER reached!)
+                       v NO
++-------------------------------------------------------------+
+| PHASE 2: Subtyping WITH Boxing/Unboxing, NO Varargs         |
+|   1. Autoboxing: (int -> Integer)                           |
+|   2. Boxing + Reference Widening: (int -> Integer -> Number)|
++-------------------------------------------------------------+
+                       |
+     Found in Phase 2? +---> YES ---> TERMINATE & BIND METHOD!
+                       v NO
++-------------------------------------------------------------+
+| PHASE 3: Variable Arity (Varargs)                           |
+|   1. Varargs matching: (int... x or Object... x)            |
++-------------------------------------------------------------+
+```
+
+#### Why Widening Beats Autoboxing:
+Because `process(long x)` is identified during **Phase 1** (primitive widening), the compiler immediately selects it and **terminates the search**. The compiler does not even evaluate Phase 2 (Autoboxing), which is why `long` always defeats `Integer`.
+
+---
+
+### 4. Critical Compiler Rules & Constraints
+
+#### Rule 1: You Cannot Widen and Then Autobox
+Can a `short` primitive be passed to a method expecting an `Integer`?
+```java
+void test(Integer x) { ... }
+
+short s = 5;
+test(s); // COMPILE ERROR!
+```
+**Why?** In method invocation context, Java allows:
+- Primitive widening (`short -> int`).
+- Autoboxing (`short -> Short`).
+- Autoboxing followed by reference widening (`short -> Short -> Number`).
+
+However, Java strictly **forbids primitive widening followed by autoboxing** (`short -> int -> Integer`). The wrapper type must match the primitive type exactly before boxing.
+
+#### Rule 2: You Can Autobox and Then Widen Reference Types
+An `int` primitive can be passed to a method expecting `Number` or `Object`:
+```java
+void test(Number n) { ... }
+
+test(5); // VALID! Boxes int -> Integer, then widens Integer -> Number
+```
+
+---
+
+### 5. Classic Ambiguity Compilation Traps
+
+#### Trap A: Cross-Boxing Ambiguity
+What happens if two overloaded methods mix primitive and wrapper types?
+```java
+class AmbiguityDemo {
+    static void compute(int a, Integer b) { System.out.println("1"); }
+    static void compute(Integer a, int b) { System.out.println("2"); }
+
+    public static void main(String[] args) {
+        compute(5, 5); // COMPILE ERROR!
+    }
+}
+```
+**The Error:** `reference to compute is ambiguous`.
+In Phase 2, both methods require boxing one argument and passing the other as a primitive. Neither method is more specific than the other, causing a compile-time failure.
+
+#### Trap B: The Ambiguous `null` Trap
+When passing literal `null`, which overload runs?
+```java
+class NullOverload {
+    static void show(Object o) { System.out.println("Object"); }
+    static void show(String s) { System.out.println("String"); }
+
+    public static void main(String[] args) {
+        show(null); // Prints "String"!
+    }
+}
+```
+- Both `Object` and `String` can accept `null`.
+- The compiler applies the **"Most Specific Method"** rule (JLS §15.12.2.5). Because `String` is a subtype of `Object`, `String` is strictly more specific. It outputs **`String`**.
+
+#### Trap C: The Conflicting `null` Failure
+```java
+class ConflictingNull {
+    static void show(Integer i) { System.out.println("Integer"); }
+    static void show(String s)  { System.out.println("String"); }
+
+    public static void main(String[] args) {
+        show(null); // COMPILE ERROR: reference to show is ambiguous!
+    }
+}
+```
+Because neither `Integer` nor `String` is a subtype of the other, the compiler cannot determine a most-specific method and rejects the invocation.
+
+---
+
+### 6. Runnable Java Verification Code
+
+```java
+/**
+ * Standalone Java verification for 3-Phase Method Overload Resolution.
+ * Run with: javac OverloadPriorityDemo.java && java OverloadPriorityDemo
+ */
+public class OverloadPriorityDemo {
+
+    static class Engine {
+        // Phase 1: Exact match
+        void process(int x) {
+            System.out.println("Phase 1 (Exact): int " + x);
+        }
+
+        // Phase 1: Widening
+        void process(long x) {
+            System.out.println("Phase 1 (Widening): long " + x);
+        }
+
+        // Phase 2: Autoboxing
+        void process(Integer x) {
+            System.out.println("Phase 2 (Autoboxing): Integer " + x);
+        }
+
+        // Phase 3: Varargs
+        void process(int... x) {
+            System.out.println("Phase 3 (Varargs): int... (length " + x.length + ")");
+        }
+    }
+
+    public static void main(String[] args) {
+        Engine e = new Engine();
+
+        System.out.println("Test with exact match present:");
+        e.process(5); // Calls process(int)
+
+        System.out.println("\nTesting 'most specific' null resolution:");
+        testNull((String) null); // Calls String overload
+    }
+
+    static void testNull(Object o) { System.out.println("Object version"); }
+    static void testNull(String s) { System.out.println("String version"); }
+}
+```
+
+---
+
+### 7. Concise Staff-Level Interview Answer
+
+> "With all three methods present, `c.process(5)` invokes `process(int x)` because `5` is a primitive `int`, resulting in an exact match.
+>
+> If `process(int x)` is removed, the compiler selects `process(long x)`, NOT `process(Integer x)`.
+>
+> This behavior is mandated by the formal 3-phase overload resolution algorithm in JLS §15.12.2:
+> 1. **Phase 1** checks subtyping without boxing or varargs (exact matches, primitive widening, and reference widening).
+> 2. **Phase 2** permits autoboxing and unboxing.
+> 3. **Phase 3** permits varargs.
+>
+> Because primitive widening from `int` (32-bit) to `long` (64-bit) succeeds in Phase 1, the compiler immediately terminates and selects `process(long)`. It never enters Phase 2, meaning primitive widening always takes precedence over autoboxing. This design guarantees backward compatibility with pre-Java 5 code and minimizes heap allocation overhead."

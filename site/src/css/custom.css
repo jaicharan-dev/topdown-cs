@@ -3,6 +3,13 @@
  * Built on top of Docusaurus Infima defaults.
  */
 
+@import 'katex/dist/katex.min.css';
+
+/* KaTeX fix: Hide MathML representation so browsers do not render both MathML and HTML text */
+.katex .katex-mathml {
+  display: none !important;
+}
+
 /* ===================================================================
    1. GLOBAL TYPOGRAPHY — Inter
    =================================================================== */
@@ -15,6 +22,48 @@
   --ifm-font-weight-semibold: 600;
   --ifm-font-weight-bold: 700;
   --ifm-line-height-base: 1.7;
+}
+
+/* Proportional Heading Scale across all desktop viewports */
+.markdown h1 {
+  font-size: 1.85rem !important;
+  line-height: 1.25 !important;
+  letter-spacing: -0.02em;
+  margin-bottom: 1rem !important;
+}
+
+.markdown h2 {
+  font-size: 1.45rem !important;
+  line-height: 1.35 !important;
+  letter-spacing: -0.015em;
+  margin-top: 2rem !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.markdown h3 {
+  font-size: 1.2rem !important;
+  line-height: 1.4 !important;
+  letter-spacing: -0.01em;
+  margin-top: 1.5rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.markdown h4 {
+  font-size: 1.05rem !important;
+  line-height: 1.45 !important;
+  margin-top: 1.25rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+/* Ensure code badges in headings are balanced, sleek, and proportional */
+.markdown h1 code,
+.markdown h2 code,
+.markdown h3 code,
+.markdown h4 code {
+  font-size: 0.85em !important;
+  padding: 0.12em 0.35em !important;
+  vertical-align: 0.05em;
+  border-radius: 4px;
 }
 
 /* ===================================================================
@@ -561,8 +610,8 @@ html[data-theme='dark'] .prism-code .token.punctuation {
 /* ----- Hero Section ----- */
 .csf-hero {
   text-align: center;
-  padding: 5rem 2rem 2rem;
-  max-width: 700px;
+  padding: 1.75rem 2rem 1.25rem;
+  max-width: 900px;
   margin: 0 auto;
   position: relative;
   overflow: visible;
@@ -570,11 +619,11 @@ html[data-theme='dark'] .prism-code .token.punctuation {
 
 .csf-hero__glow {
   position: absolute;
-  top: 10%;
+  top: 5%;
   left: 50%;
   transform: translateX(-50%);
-  width: 500px;
-  height: 300px;
+  width: 480px;
+  height: 220px;
   background: radial-gradient(
     ellipse at center,
     rgba(96, 165, 250, 0.14) 0%,
@@ -588,11 +637,11 @@ html[data-theme='dark'] .prism-code .token.punctuation {
 }
 
 .csf-hero__title {
-  font-size: 3.8rem;
+  font-size: 3.5rem;
   font-weight: 800;
   letter-spacing: -0.04em;
   line-height: 1.05;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   position: relative;
   z-index: 1;
 }
@@ -614,9 +663,9 @@ html:not([data-theme='dark']) .csf-hero__title {
 
 .csf-hero__subtitle {
   font-size: 1.05rem;
-  max-width: 420px;
+  max-width: 820px;
   margin: 0 auto;
-  line-height: 1.7;
+  line-height: 1.5;
   position: relative;
   z-index: 1;
   font-weight: 400;
@@ -631,12 +680,74 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
 }
 
 @media screen and (max-width: 640px) {
-  .csf-hero__title { font-size: 2.4rem; }
-  .csf-hero { padding: 3.5rem 1.5rem 1.5rem; }
-  .csf-hero__glow { width: 280px; height: 180px; }
+  .csf-hero__title { font-size: 2.2rem; }
+  .csf-hero { padding: 1.5rem 1rem 1rem; }
+  .csf-hero__glow { width: 260px; height: 160px; }
 }
 
-/* ----- Grid Layout ----- */
+/* ----- Two-Column Split Layout ----- */
+.csf-main-container {
+  max-width: 1580px;
+  margin: 0 auto;
+  padding: 0 2rem 4rem 4.5rem;
+  display: grid;
+  grid-template-columns: minmax(280px, 0.75fr) minmax(580px, 1.6fr);
+  gap: 5rem;
+  align-items: start;
+}
+
+@media screen and (max-width: 1280px) {
+  .csf-main-container {
+    grid-template-columns: minmax(260px, 0.7fr) minmax(520px, 1.55fr);
+    gap: 3.5rem;
+    padding: 0 1.5rem 3.5rem 3.5rem;
+  }
+}
+
+@media screen and (max-width: 1080px) {
+  .csf-main-container {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 0 1rem 3rem;
+  }
+}
+
+.csf-column-left {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  max-width: 340px;
+  margin-left: 5.5rem;
+}
+
+@media screen and (max-width: 1280px) {
+  .csf-column-left {
+    margin-left: 4rem;
+    max-width: 320px;
+  }
+}
+
+@media screen and (max-width: 1080px) {
+  .csf-column-left {
+    max-width: 100%;
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+.csf-column-right {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+  padding-left: 1rem;
+}
+
+@media screen and (max-width: 1080px) {
+  .csf-column-right {
+    padding-left: 0;
+  }
+}
+
 .csf-grid-wrapper {
   max-width: 720px;
   margin: 0 auto;
@@ -644,11 +755,11 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
 }
 
 .csf-section-label {
-  font-size: 0.7rem;
+  font-size: 0.64rem;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
-  margin: 0 0 0.75rem 0.25rem;
+  letter-spacing: 0.16em;
+  margin: 0 0 0.35rem 0.2rem;
 }
 
 [data-theme='dark'] .csf-section-label { color: #52525b; }
@@ -656,7 +767,7 @@ html:not([data-theme='dark']) .csf-section-label { color: #a1a1aa; }
 
 .csf-section-divider {
   height: 1px;
-  margin: 2rem 0;
+  margin: 0.65rem 0;
   border: none;
 }
 
@@ -670,16 +781,15 @@ html:not([data-theme='dark']) .csf-section-divider {
 
 .csf-compact-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 7px;
 }
 
-@media screen and (max-width: 768px) {
-  .csf-compact-grid { grid-template-columns: repeat(2, 1fr); }
-}
-
-@media screen and (max-width: 400px) {
-  .csf-compact-grid { grid-template-columns: 1fr; }
+@media screen and (max-width: 480px) {
+  .csf-compact-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .csf-compact-card { min-height: 64px; padding: 10px 8px; gap: 4px; }
+  .csf-compact-card__icon { width: 22px; height: 22px; }
+  .csf-compact-card__title { font-size: 0.76rem; }
 }
 
 /* ----- Compact Cards with Neon Glow ----- */
@@ -689,9 +799,10 @@ html:not([data-theme='dark']) .csf-section-divider {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 20px 12px;
-  border-radius: 14px;
+  gap: 3px;
+  padding: 8px 6px;
+  min-height: 56px;
+  border-radius: 8px;
   text-decoration: none !important;
   color: inherit !important;
   transition: transform 0.2s ease, border-color 0.3s ease, box-shadow 0.3s ease;
@@ -700,17 +811,209 @@ html:not([data-theme='dark']) .csf-section-divider {
   cursor: pointer;
 }
 
+/* ----- Natural Blending DSA Roadmap ----- */
+.csf-dsa-roadmap-wrapper {
+  position: relative;
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.csf-dsa-svg-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.csf-dsa-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+/* Mobile: allow roadmap to breathe — horizontal scroll on tiny screens */
+@media screen and (max-width: 600px) {
+  .csf-dsa-roadmap-wrapper {
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.5rem;
+  }
+
+  .csf-dsa-svg-wrapper {
+    min-width: 520px;
+    width: 520px;
+  }
+
+  .csf-dsa-svg {
+    width: 100%;
+  }
+}
+
+/* Tree Edges */
+.csf-dsa-edge {
+  fill: none;
+  stroke-width: 2.5px;
+  transition: stroke 0.25s ease, stroke-width 0.25s ease, opacity 0.25s ease;
+}
+
+[data-theme='dark'] .csf-dsa-edge {
+  stroke: rgba(255, 255, 255, 0.08);
+}
+
+html:not([data-theme='dark']) .csf-dsa-edge {
+  stroke: rgba(0, 0, 0, 0.1);
+}
+
+.csf-dsa-edge--highlighted {
+  stroke-width: 3.5px !important;
+  filter: drop-shadow(0 0 7px rgba(56, 189, 248, 0.8));
+  opacity: 1 !important;
+}
+
+.csf-dsa-edge--dimmed {
+  opacity: 0.15;
+}
+
+/* Tree Topic Nodes — Matching TopDown CS Homepage Cards */
+.csf-dsa-node-group {
+  outline: none;
+}
+
+.csf-dsa-hit-box {
+  pointer-events: all;
+  cursor: pointer;
+  fill: transparent;
+}
+
+.csf-dsa-node-card {
+  pointer-events: none;
+  transition: fill 0.25s ease, stroke 0.25s ease, stroke-width 0.25s ease, filter 0.25s ease;
+}
+
+[data-theme='dark'] .csf-dsa-node-card {
+  fill: rgba(255, 255, 255, 0.035);
+  stroke: rgba(255, 255, 255, 0.09);
+  stroke-width: 1px;
+}
+
+html:not([data-theme='dark']) .csf-dsa-node-card {
+  fill: var(--csf-surface, #ffffff);
+  stroke: var(--csf-border-subtle, rgba(0, 0, 0, 0.08));
+  stroke-width: 1px;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.04));
+}
+
+.csf-dsa-node-label {
+  font-size: 16.5px;
+  font-weight: 700;
+  font-family: var(--ifm-font-family-base);
+  letter-spacing: -0.015em;
+  pointer-events: none;
+  user-select: none;
+  transition: fill 0.2s ease;
+}
+
+[data-theme='dark'] .csf-dsa-node-label {
+  fill: #e4e4e7;
+}
+
+html:not([data-theme='dark']) .csf-dsa-node-label {
+  fill: #18181b;
+}
+
+/* Hover State — Pure Visual Elevation without Coordinate Jitter */
+[data-theme='dark'] .csf-dsa-node-group:hover .csf-dsa-node-card,
+[data-theme='dark'] .csf-dsa-node-group.is-hovered .csf-dsa-node-card {
+  fill: rgba(255, 255, 255, 0.065);
+  stroke: color-mix(in srgb, var(--node-accent, #38bdf8) 85%, transparent);
+  stroke-width: 1.5px;
+  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 16px var(--node-accent, #38bdf8));
+}
+
+[data-theme='dark'] .csf-dsa-node-group:hover .csf-dsa-node-label,
+[data-theme='dark'] .csf-dsa-node-group.is-hovered .csf-dsa-node-label {
+  fill: #ffffff;
+}
+
+html:not([data-theme='dark']) .csf-dsa-node-group:hover .csf-dsa-node-card,
+html:not([data-theme='dark']) .csf-dsa-node-group.is-hovered .csf-dsa-node-card {
+  fill: #ffffff;
+  stroke: var(--node-accent, #0284c7);
+  stroke-width: 1.5px;
+  filter: drop-shadow(0 8px 20px rgba(50, 40, 30, 0.15)) drop-shadow(0 0 12px color-mix(in srgb, var(--node-accent, #0284c7) 35%, transparent));
+}
+
+html:not([data-theme='dark']) .csf-dsa-node-group:hover .csf-dsa-node-label,
+html:not([data-theme='dark']) .csf-dsa-node-group.is-hovered .csf-dsa-node-label {
+  fill: #09090b;
+}
+
+[data-theme='dark'] .csf-dsa-node-group.is-connected .csf-dsa-node-card {
+  stroke: color-mix(in srgb, var(--node-accent, #38bdf8) 40%, rgba(255, 255, 255, 0.2));
+  stroke-width: 1.25px;
+}
+
+html:not([data-theme='dark']) .csf-dsa-node-group.is-connected .csf-dsa-node-card {
+  stroke: color-mix(in srgb, var(--node-accent, #0284c7) 40%, rgba(0, 0, 0, 0.2));
+  stroke-width: 1.25px;
+}
+
+/* Tooltip */
+.csf-dsa-tooltip {
+  position: absolute;
+  transform: translate(-50%, -135%);
+  padding: 7px 14px;
+  border-radius: 9px;
+  pointer-events: none;
+  z-index: 100;
+  white-space: nowrap;
+  text-align: center;
+}
+
+[data-theme='dark'] .csf-dsa-tooltip {
+  background: #18181b;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #fafafa;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+html:not([data-theme='dark']) .csf-dsa-tooltip {
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  color: #0f172a;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+.csf-dsa-tooltip__title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.csf-dsa-tooltip__subtitle {
+  font-size: 11.5px;
+  opacity: 0.75;
+}
+
+.csf-dsa-tooltip__status {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #38bdf8;
+  margin-top: 3px;
+}
+
 .csf-compact-card__glow {
   position: absolute;
   top: 30%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 60px;
-  height: 60px;
+  width: 44px;
+  height: 44px;
   background: var(--card-accent);
   border-radius: 50%;
   opacity: 0;
-  filter: blur(24px);
+  filter: blur(18px);
   transition: opacity 0.3s ease;
   pointer-events: none;
   z-index: 0;
@@ -756,14 +1059,14 @@ html:not([data-theme='dark']) .csf-compact-card:not(.csf-compact-card--soon):hov
 
 .csf-compact-card__badge {
   position: absolute;
-  top: 6px;
-  right: 6px;
-  font-size: 0.55rem;
+  top: 4px;
+  right: 4px;
+  font-size: 0.48rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 1.5px 5px;
+  border-radius: 3px;
 }
 
 [data-theme='dark'] .csf-compact-card__badge {
@@ -777,8 +1080,8 @@ html:not([data-theme='dark']) .csf-compact-card__badge {
 }
 
 .csf-compact-card__icon {
-  width: 28px;
-  height: 28px;
+  width: 20px;
+  height: 20px;
   position: relative;
   z-index: 1;
   color: #a1a1aa;
@@ -801,11 +1104,12 @@ html:not([data-theme='dark']) .csf-compact-card__badge {
 }
 
 .csf-compact-card__title {
-  font-size: 0.85rem;
+  font-size: 0.73rem;
   font-weight: 600;
   line-height: 1.2;
   position: relative;
   z-index: 1;
+  text-align: center;
   transition: color 0.2s ease;
 }
 
@@ -898,7 +1202,8 @@ html:not([data-theme='dark']) table th {
   background: var(--csf-surface-raised);
   font-weight: 600;
 }
-html:not([data-theme='dark']) table td,
+
+html:not([data-theme='dark']) table td,
 html:not([data-theme='dark']) table th {
   border-color: var(--csf-border-subtle);
 }
@@ -1038,7 +1343,7 @@ html:not([data-theme='dark']) .theme-code-block pre.prism-code {
 /* Small screen hero optimizations (<= 640px) */
 @media screen and (max-width: 640px) {
   .csf-hero {
-    padding: 2.5rem 1rem 1.5rem;
+    padding: 1.5rem 1rem 1rem;
   }
   .csf-hero__title {
     font-size: 2.2rem;
@@ -1535,3 +1840,49 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
     display: none !important;
   }
 }
+
+/* ===================================================================
+   21. COMPACT CODE TABS (SLEEK & SHORT)
+   =================================================================== */
+:root {
+  --ifm-tabs-padding-vertical: 0.25rem;
+  --ifm-tabs-padding-horizontal: 0.75rem;
+}
+
+ul.tabs {
+  margin-bottom: 0 !important;
+  border-bottom: 1px solid var(--csf-border-subtle, #27272a);
+  padding: 0;
+  gap: 2px;
+}
+
+li.tabs__item {
+  font-size: 0.82rem !important;
+  font-weight: 500 !important;
+  padding: 0.25rem 0.65rem !important;
+  border-bottom-width: 2px !important;
+  border-radius: 4px 4px 0 0 !important;
+  line-height: 1.35 !important;
+  transition: all 0.15s ease-in-out;
+}
+
+li.tabs__item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+html:not([data-theme='dark']) li.tabs__item:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+li.tabs__item--active {
+  font-weight: 600 !important;
+  border-bottom-color: var(--ifm-color-primary) !important;
+  color: var(--ifm-color-primary) !important;
+}
+
+/* Tighten the vertical space between the tab bar and the code block */
+.tabs + .margin-top--md,
+.tabs ~ div.margin-top--md {
+  margin-top: 0.4rem !important;
+}
+
