@@ -1,6 +1,7 @@
 ---
 id: 8-ecommerce-amazon-flipkart
-title: "Design Amazon / Flipkart"
+title: "Design Amazon / Flipkart: E-Commerce Inventory & Checkout"
+description: "Design an e-commerce checkout backend like Amazon/Flipkart: flash-sale flash cart inventory reservation, distributed transactions, and two-phase commits."
 sidebar_position: 8
 sidebar_class_name: sidebar-medium
 ---

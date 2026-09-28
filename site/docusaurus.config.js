@@ -9,6 +9,22 @@ const config = {
   favicon: 'favicon.ico',
 
   headTags: [
+    // Explicit ICO for Google favicon crawler
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'shortcut icon',
+        href: '/favicon.ico',
+      },
+    },
+    {
+      tagName: 'link',
+      attributes: {
+        rel: 'icon',
+        type: 'image/x-icon',
+        href: '/favicon.ico',
+      },
+    },
     {
       tagName: 'link',
       attributes: {
@@ -128,7 +144,13 @@ const config = {
       },
       image: 'img/topdown-social-card.png',
       metadata: [
-        {name: 'keywords', content: 'computer science, software engineering, coding interviews, object oriented programming, system design, dbms'}
+        {name: 'keywords', content: 'computer science, software engineering, coding interviews, operating systems, dbms, computer networks, object oriented programming, system design'},
+        {property: 'og:site_name', content: 'TopDown CS'},
+        {property: 'og:image:width', content: '1200'},
+        {property: 'og:image:height', content: '630'},
+        {property: 'og:image:alt', content: 'TopDown CS - Interview-Ready CS Fundamentals'},
+        {name: 'twitter:card', content: 'summary_large_image'},
+        {name: 'twitter:image:alt', content: 'TopDown CS - Interview-Ready CS Fundamentals'},
       ],
       navbar: {
         title: 'TopDown CS',

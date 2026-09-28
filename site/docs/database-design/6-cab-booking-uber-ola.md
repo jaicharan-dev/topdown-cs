@@ -1,6 +1,7 @@
 ---
 id: 6-cab-booking-uber-ola
-title: "Design Uber / Ola"
+title: "Design Uber / Ola: Ride-Hailing & Geospatial Matching"
+description: "Design a ride-hailing backend like Uber/Ola: geospatial indexing with H3/Geohash, matching drivers to riders, distributed locking, and ETA estimation."
 sidebar_position: 6
 sidebar_class_name: sidebar-medium
 ---

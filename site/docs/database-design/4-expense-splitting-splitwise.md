@@ -1,6 +1,7 @@
 ---
 id: 4-expense-splitting-splitwise
-title: "Design Splitwise"
+title: "Design Splitwise: Expense Splitting & Debt Simplification"
+description: "Design an expense splitting system like Splitwise: modeling users, groups, multi-currency splits, debt simplification algorithms, and ledger reconciliation."
 sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---

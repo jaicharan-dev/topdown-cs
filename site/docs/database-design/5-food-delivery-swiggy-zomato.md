@@ -1,6 +1,7 @@
 ---
 id: 5-food-delivery-swiggy-zomato
-title: "Design Swiggy / Zomato"
+title: "Design Swiggy / Zomato: Food Delivery & Order State Machine"
+description: "Design a food delivery backend like Swiggy/Zomato: order state machines, real-time driver dispatch, surge pricing, and inventory decrement concurrency."
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---

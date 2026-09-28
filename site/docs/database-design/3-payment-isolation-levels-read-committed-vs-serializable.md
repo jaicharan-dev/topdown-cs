@@ -1,6 +1,7 @@
 ---
 id: 3-payment-isolation-levels-read-committed-vs-serializable
 title: "Isolation Levels: Read Committed vs Serializable"
+description: "Compare Read Committed vs. Serializable isolation levels in payment systems: preventing non-repeatable reads, phantom reads, and write skew under high load."
 sidebar_position: 3
 sidebar_class_name: sidebar-medium
 ---

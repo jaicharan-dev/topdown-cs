@@ -1,6 +1,7 @@
 ---
 id: 7-stock-trading-zerodha-groww
-title: "Design Zerodha / Groww"
+title: "Design Zerodha / Groww: Stock Trading & Ledger Accounting"
+description: "Design a stock trading backend like Zerodha/Groww: order matching engines, ledger transactions, price-time priority queues, and atomic balance deductions."
 sidebar_position: 7
 sidebar_class_name: sidebar-medium
 ---

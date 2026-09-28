@@ -1,6 +1,6 @@
 ---
 id: 4-where-vs-having
-title: "WHERE vs. HAVING Clause"
+title: "WHERE vs. HAVING: Row vs. Group Filtering & SQL Execution Order"
 description: "Clarify the differences between WHERE and HAVING in SQL, the 8-step query execution lifecycle, and aggregation filtering performance."
 sidebar_position: 4
 sidebar_class_name: sidebar-easy

@@ -1,7 +1,7 @@
 ---
 id: 7-this-keyword
-title: "The this Keyword"
-description: "Understand the purpose of the this keyword for resolving shadowing and referencing the current object instance."
+title: "The this Keyword: Variable Shadowing, Chaining & Inner Classes"
+description: "Understand the this keyword in Java: resolving variable shadowing, fluent method chaining, constructor delegation, and inner class references."
 
 sidebar_position: 7
 sidebar_class_name: sidebar-easy

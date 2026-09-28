@@ -1,7 +1,7 @@
 ---
 id: 9-static-keyword
-title: "The Static Keyword"
-description: "Explain class-level memory allocation, method hiding, and use cases for the static keyword."
+title: "The static Keyword: Class vs. Instance Memory & Method Hiding"
+description: "Understand the static keyword in Java: Metaspace storage, single-copy sharing across instances, why static methods cannot be overridden, and static blocks."
 
 sidebar_position: 9
 sidebar_class_name: sidebar-medium

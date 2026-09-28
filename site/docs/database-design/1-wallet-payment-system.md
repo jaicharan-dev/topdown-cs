@@ -1,6 +1,7 @@
 ---
 id: 1-wallet-payment-system
 title: "Design a Digital Wallet System"
+description: "Design a digital wallet backend: handling network drops with idempotency keys, preventing double withdrawals, and concurrency control with row-level locks."
 sidebar_position: 1
 sidebar_class_name: sidebar-medium
 ---
