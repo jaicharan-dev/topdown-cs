@@ -1886,3 +1886,26 @@ li.tabs__item--active {
   margin-top: 0.4rem !important;
 }
 
+/* Question Header with Subtle Share Button */
+.csf-question-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.csf-question-header__title {
+  flex: 1;
+  margin-bottom: 0 !important;
+  line-height: 1.25;
+}
+
+@media screen and (max-width: 640px) {
+  .csf-question-header {
+    gap: 0.85rem;
+    margin-bottom: 1rem;
+  }
+}
+
+
