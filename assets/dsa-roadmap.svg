@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 880 940" width="880" height="940" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0e0e11" />
+      <stop offset="100%" stop-color="#09090b" />
+    </linearGradient>
+  </defs>
+
+  <!-- Canvas background -->
+  <rect width="880" height="940" rx="16" ry="16" fill="url(#bgGrad)" stroke="rgba(255, 255, 255, 0.08)" stroke-width="1" />
+
+  <!-- Flowchart connectors -->
+  <g id="connectors">
+    <path d="M 440 97 L 440 120.5 Q 440 128.5 432 128.5 L 258 128.5 Q 250 128.5 250 136.5 L 250 160" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 440 97 L 440 120.5 Q 440 128.5 448 128.5 L 622 128.5 Q 630 128.5 630 136.5 L 630 160" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 250 220 L 250 244.5 Q 250 252.5 242 252.5 L 148 252.5 Q 140 252.5 140 260.5 L 140 285" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 250 220 L 250 244.5 Q 250 252.5 258 252.5 L 342 252.5 Q 350 252.5 350 260.5 L 350 285" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 630 220 L 630 285" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 140 345 L 140 371 Q 140 379 148 379 L 432 379 Q 440 379 440 387 L 440 413" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 350 345 L 350 371 Q 350 379 358 379 L 432 379 Q 440 379 440 387 L 440 413" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 630 345 L 630 371 Q 630 379 622 379 L 448 379 Q 440 379 440 387 L 440 413" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 440 477 L 440 505.5 Q 440 513.5 432 513.5 L 168 513.5 Q 160 513.5 160 521.5 L 160 550" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 440 477 L 440 550" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 440 477 L 440 505.5 Q 440 513.5 448 513.5 L 712 513.5 Q 720 513.5 720 521.5 L 720 550" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 160 610 L 160 642 Q 160 650 152 650 L 93 650 Q 85 650 85 658 L 85 690" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 160 610 L 160 642 Q 160 650 168 650 L 267 650 Q 275 650 275 658 L 275 690" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 440 610 L 440 642 Q 440 650 448 650 L 572 650 Q 580 650 580 658 L 580 690" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 720 610 L 720 642 Q 720 650 712 650 L 588 650 Q 580 650 580 658 L 580 690" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 580 750 L 580 778.5 Q 580 786.5 572 786.5 L 448 786.5 Q 440 786.5 440 794.5 L 440 823" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+    <path d="M 580 750 L 580 779.5 Q 580 787.5 588 787.5 L 712 787.5 Q 720 787.5 720 795.5 L 720 825" stroke="rgba(255, 255, 255, 0.16)" stroke-width="2.5" fill="none" />
+  </g>
+
+  <!-- Flowchart nodes -->
+  <g id="nodes">
+    <g transform="translate(440, 65)">
+      <!-- Glow backshadow -->
+      <rect x="-120" y="-32" width="240" height="64" rx="12" ry="12" fill="#60a5fa" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-120" y="-32" width="240" height="64" rx="12" ry="12" fill="#141416" stroke="#60a5fa" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">Arrays & Hashing</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#60a5fa" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">9 Problems</text>
+    </g>
+    <g transform="translate(250, 190)">
+      <!-- Glow backshadow -->
+      <rect x="-100" y="-30" width="200" height="60" rx="12" ry="12" fill="#38bdf8" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-100" y="-30" width="200" height="60" rx="12" ry="12" fill="#141416" stroke="#38bdf8" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">Two Pointers</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#38bdf8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">5 Problems</text>
+    </g>
+    <g transform="translate(630, 190)">
+      <!-- Glow backshadow -->
+      <rect x="-105" y="-30" width="210" height="60" rx="12" ry="12" fill="#818cf8" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-105" y="-30" width="210" height="60" rx="12" ry="12" fill="#141416" stroke="#818cf8" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">Stacks & Queues</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#818cf8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">8 Problems</text>
+    </g>
+    <g transform="translate(140, 315)">
+      <!-- Glow backshadow -->
+      <rect x="-95" y="-30" width="190" height="60" rx="12" ry="12" fill="#34d399" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-95" y="-30" width="190" height="60" rx="12" ry="12" fill="#141416" stroke="#34d399" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">Binary Search</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#34d399" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">7 Problems</text>
+    </g>
+    <g transform="translate(350, 315)">
+      <!-- Glow backshadow -->
+      <rect x="-100" y="-30" width="200" height="60" rx="12" ry="12" fill="#38bdf8" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-100" y="-30" width="200" height="60" rx="12" ry="12" fill="#141416" stroke="#38bdf8" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">Sliding Window</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#38bdf8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">6 Problems</text>
+    </g>
+    <g transform="translate(630, 315)">
+      <!-- Glow backshadow -->
+      <rect x="-97.5" y="-30" width="195" height="60" rx="12" ry="12" fill="#a78bfa" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-97.5" y="-30" width="195" height="60" rx="12" ry="12" fill="#141416" stroke="#a78bfa" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">Linked Lists</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#a78bfa" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">11 Problems</text>
+    </g>
+    <g transform="translate(440, 445)">
+      <!-- Glow backshadow -->
+      <rect x="-110" y="-32" width="220" height="64" rx="12" ry="12" fill="#f59e0b" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-110" y="-32" width="220" height="64" rx="12" ry="12" fill="#141416" stroke="#f59e0b" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">Trees & BST</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#f59e0b" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">15 Problems</text>
+    </g>
+    <g transform="translate(160, 580)">
+      <!-- Glow backshadow -->
+      <rect x="-105" y="-30" width="210" height="60" rx="12" ry="12" fill="#fb923c" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-105" y="-30" width="210" height="60" rx="12" ry="12" fill="#141416" stroke="#fb923c" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">Heaps & Priority</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#fb923c" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">7 Problems</text>
+    </g>
+    <g transform="translate(440, 580)">
+      <!-- Glow backshadow -->
+      <rect x="-110" y="-30" width="220" height="60" rx="12" ry="12" fill="#c084fc" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-110" y="-30" width="220" height="60" rx="12" ry="12" fill="#141416" stroke="#c084fc" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">Graph Algorithms</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#c084fc" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">13 Problems</text>
+    </g>
+    <g transform="translate(720, 580)">
+      <!-- Glow backshadow -->
+      <rect x="-132.5" y="-30" width="265" height="60" rx="12" ry="12" fill="#ec4899" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-132.5" y="-30" width="265" height="60" rx="12" ry="12" fill="#141416" stroke="#ec4899" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">Recursion & Backtracking</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#ec4899" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">9 Problems</text>
+    </g>
+    <g transform="translate(85, 720)">
+      <!-- Glow backshadow -->
+      <rect x="-77.5" y="-30" width="155" height="60" rx="12" ry="12" fill="#facc15" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-77.5" y="-30" width="155" height="60" rx="12" ry="12" fill="#141416" stroke="#facc15" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">Intervals</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#facc15" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">6 Problems</text>
+    </g>
+    <g transform="translate(275, 720)">
+      <!-- Glow backshadow -->
+      <rect x="-102.5" y="-30" width="205" height="60" rx="12" ry="12" fill="#fbbf24" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-102.5" y="-30" width="205" height="60" rx="12" ry="12" fill="#141416" stroke="#fbbf24" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">Greedy Algorithms</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#fbbf24" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">8 Problems</text>
+    </g>
+    <g transform="translate(580, 720)">
+      <!-- Glow backshadow -->
+      <rect x="-135" y="-30" width="270" height="60" rx="12" ry="12" fill="#fb7185" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-135" y="-30" width="270" height="60" rx="12" ry="12" fill="#141416" stroke="#fb7185" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">1D Dynamic Programming</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#fb7185" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">12 Problems</text>
+    </g>
+    <g transform="translate(440, 855)">
+      <!-- Glow backshadow -->
+      <rect x="-135" y="-32" width="270" height="64" rx="12" ry="12" fill="#f43f5e" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-135" y="-32" width="270" height="64" rx="12" ry="12" fill="#141416" stroke="#f43f5e" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">2D Dynamic Programming</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#f43f5e" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">11 Problems</text>
+    </g>
+    <g transform="translate(720, 855)">
+      <!-- Glow backshadow -->
+      <rect x="-105" y="-30" width="210" height="60" rx="12" ry="12" fill="#a855f7" opacity="0.08" />
+      <!-- Node card background -->
+      <rect x="-105" y="-30" width="210" height="60" rx="12" ry="12" fill="#141416" stroke="#a855f7" stroke-width="1.5" stroke-opacity="0.55" />
+      <!-- Node title -->
+      <text x="0" y="-3" text-anchor="middle" dominant-baseline="middle" fill="#f4f4f5" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="14.5" font-weight="700" letter-spacing="-0.01em">Bit Manipulation</text>
+      <!-- Problem count badge -->
+      <text x="0" y="16" text-anchor="middle" dominant-baseline="middle" fill="#a855f7" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Inter, sans-serif" font-size="10.5" font-weight="600" opacity="0.95">7 Problems</text>
+    </g>
+  </g>
+</svg>
