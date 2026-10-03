@@ -108,7 +108,7 @@ The VFS abstracts whether the target is an ext4 file, an NFS network mount, an a
 #### 5. Process Blocking & Asynchronous DMA Transfer
 1. Because reading from physical NVMe/SATA storage takes microseconds to milliseconds, the kernel moves the calling thread from `TASK_RUNNING` to `TASK_UNINTERRUPTIBLE` (or `TASK_KILLABLE`).
 2. The thread is enqueued on the file's wait queue, and the kernel invokes `schedule()` to perform a context switch, assigning the CPU core to another task.
-3. The disk controller's **Direct Memory Access (DMA)** engine transfers the requested sectors from physical storage media directly into the kernel's allocated page cache RAM frames—**without consuming CPU cycles**.
+3. The disk controller's **Direct Memory Access (DMA)** engine transfers the requested sectors from physical storage media directly into the kernel's allocated page cache RAM frames, **without consuming CPU cycles**.
 
 #### 6. Hardware Interrupt & Wakeup
 1. Once DMA completes, the disk controller asserts an electrical pulse on the CPU interrupt line.

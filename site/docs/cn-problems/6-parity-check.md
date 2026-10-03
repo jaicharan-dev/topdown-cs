@@ -14,7 +14,7 @@ sidebar_class_name: sidebar-easy
 
 A parity bit is the simplest form of error-detecting code. While computationally negligible (requiring a single XOR tree in hardware), single-dimensional parity provides weak error guarantees over physical channels prone to electromagnetic noise and burst interference.
 
-Understanding why 1D parity fails—and how 2D matrix parity upgrades detection to single-bit correction—is a foundational computer networking interview topic.
+Understanding why 1D parity fails, and how 2D matrix parity upgrades detection to single-bit correction, is a foundational computer networking interview topic.
 
 ---
 
@@ -90,7 +90,7 @@ Col Parity(LRC): 0      0      0      1      1      0      0   |     1 (Corner)
 3. **Three-Bit Error Detection:**
    At least one row or column parity will always register an odd count $\implies$ **100% detection**.
 4. **The 4-Bit Geometric Trap:**
-   2D parity only fails if an even number of bits flip in a configuration that preserves parity across both dimensions simultaneously—namely, **4 bits forming the vertices of a rectangle**.
+   2D parity only fails if an even number of bits flip in a configuration that preserves parity across both dimensions simultaneously, namely **4 bits forming the vertices of a rectangle**.
 
 ---
 

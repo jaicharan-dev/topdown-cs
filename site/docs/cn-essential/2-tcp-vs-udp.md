@@ -74,7 +74,7 @@ Why do High-Frequency Trading (HFT) platforms and live video calls choose UDP ov
 
 > **"Late data is worse than lost data."**
 
-1. **Market Ticks in HFT:** In algorithmic trading, stock exchanges broadcast live market price feeds using UDP Multicast. If a price packet is dropped on a TCP connection, TCP halts the stream, requests a retransmission, and waits. By the time that packet arrives 5 milliseconds later, the market price has moved—**the delayed data is stale, useless, and financially dangerous**. It is far better to drop the missing tick and immediately consume the next real-time tick.
+1. **Market Ticks in HFT:** In algorithmic trading, stock exchanges broadcast live market price feeds using UDP Multicast. If a price packet is dropped on a TCP connection, TCP halts the stream, requests a retransmission, and waits. By the time that packet arrives 5 milliseconds later, the market price has moved: **the delayed data is stale, useless, and financially dangerous**. It is far better to drop the missing tick and immediately consume the next real-time tick.
 2. **Video Conferencing (Zoom / WebRTC):** If one audio frame drops during a live call, retransmitting it 200ms later would cause jarring audio stutter. The user prefers a momentary, unnoticeable audio glitch over creeping conversation lag.
 
 ---

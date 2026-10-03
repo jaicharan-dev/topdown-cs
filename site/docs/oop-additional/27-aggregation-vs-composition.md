@@ -15,7 +15,7 @@ import TabItem from '@theme/TabItem';
 
 ### The Quick Answer
 
-Both aggregation and composition model whole-part ("has-a") relationships, but they differ fundamentally in lifecycle dependency and ownership. In Aggregation (UML hollow diamond `◇`), components exist independently with shared ownership—if the container is destroyed, the child component survives (e.g., a Department and Professors). In Composition (UML solid diamond `♦`), the container has exclusive ownership and co-terminating lifecycles—if the parent is destroyed, the child is destroyed too (e.g., a House and Rooms), which requires defensive copying in getters and constructors to prevent external reference leaks from inadvertently degrading composition into aggregation.
+Both aggregation and composition model whole-part ("has-a") relationships, but they differ fundamentally in lifecycle dependency and ownership. In Aggregation (UML hollow diamond `◇`), components exist independently with shared ownership: if the container is destroyed, the child component survives (e.g., a Department and Professors). In Composition (UML solid diamond `♦`), the container has exclusive ownership and co-terminating lifecycles: if the parent is destroyed, the child is destroyed too (e.g., a House and Rooms), which requires defensive copying in getters and constructors to prevent external reference leaks from inadvertently degrading composition into aggregation.
 
 ---
 

@@ -31,7 +31,7 @@ sidebar_class_name: sidebar-hard
 ### How the JVM Decides What to Collect: GC Roots
 
 The JVM does not use naive reference counting (which fails on circular references). It uses **Reachability Analysis**:
-1. It identifies **GC Roots**—unquestionably alive root references:
+1. It identifies **GC Roots**, unquestionably alive root references:
    * Local variables and method parameters on active thread call stacks.
    * Active, running Java threads.
    * Static fields belonging to loaded classes.

@@ -89,4 +89,4 @@ When a parent row is deleted or updated, the foreign key defines how the databas
 ### Crucial Nuance: Composite Primary Key vs. Multiple Primary Keys
 
 Interviewers often ask: *"Can a table have multiple primary keys?"* 
-The strict technical answer is **No**—a table can only have **one** primary key. However, that single primary key can consist of **multiple columns** working together, known as a **Composite Primary Key** (e.g., `PRIMARY KEY (order_id, product_id)`). Do not confuse having multiple columns in one composite key with having multiple distinct primary keys.
+The strict technical answer is **No**: a table can only have **one** primary key. However, that single primary key can consist of **multiple columns** working together, known as a **Composite Primary Key** (e.g., `PRIMARY KEY (order_id, product_id)`). Do not confuse having multiple columns in one composite key with having multiple distinct primary keys.

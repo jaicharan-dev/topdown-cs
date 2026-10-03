@@ -44,7 +44,7 @@ $$\text{Selectivity} = \frac{\text{Rows Returned}}{\text{Total Table Rows}}$$
 If a table has fewer than 1,000 to 2,000 rows (e.g., lookup tables like `country_codes` or `roles`):
 - The entire table occupies just one or two 8KB/16KB disk pages in memory.
 - A sequential scan reads these pages in under 0.05 milliseconds.
-- Using an index requires reading an index page to find a pointer, then reading the data page—doubling memory page dereferences for zero gain.
+- Using an index requires reading an index page to find a pointer, then reading the data page, doubling memory page dereferences for zero gain.
 
 #### 3. Write-Heavy Ingestion Pipelines
 In systems where the write-to-read ratio is extreme ($50:1$ or $100:1$, such as IoT telemetry, audit logs, or clickstreams):

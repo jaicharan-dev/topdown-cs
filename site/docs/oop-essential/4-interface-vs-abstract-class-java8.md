@@ -43,7 +43,7 @@ Because a class can implement multiple interfaces, `default` methods introduce t
 
 #### Rule 1: The "Class Always Wins" Rule
 If a class inherits a concrete method from a superclass and a default method from an interface with the identical signature, **the superclass implementation always wins**. The interface default method is completely ignored.
-> **Note:** This is also why an interface can never declare default implementations for `java.lang.Object` methods (`toString()`, `equals()`, `hashCode()`)—the class hierarchy always overrides interface defaults.
+> **Note:** This is also why an interface can never declare default implementations for `java.lang.Object` methods (`toString()`, `equals()`, `hashCode()`), because the class hierarchy always overrides interface defaults.
 
 #### Rule 2: Sub-interface Wins Over Super-interface
 If `InterfaceB` extends `InterfaceA`, and both define the same default method, the more specific sub-interface (`InterfaceB`) wins.

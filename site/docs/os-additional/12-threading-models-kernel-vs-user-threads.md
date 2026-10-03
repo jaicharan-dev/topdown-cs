@@ -19,7 +19,7 @@ The core tradeoff is **Execution Overhead (Creation & Context Switch Latency) vs
 ### The ELI5 Analogy: The Restaurant Kitchen
 
 Imagine an enterprise restaurant kitchen:
-- **User-Level Threads (Tasks):** The individual recipes the chefs want to cook—chopping onions, boiling pasta, searing salmon.
+- **User-Level Threads (Tasks):** The individual recipes the chefs want to cook: chopping onions, boiling pasta, searing salmon.
 - **Kernel-Level Threads (Physical Stoves):** The actual gas burners provided by the building owner (the OS Kernel).
 
 ```
@@ -93,7 +93,7 @@ flowchart TD
 
 ### The Many-to-Many Triumph: The Go $M:N:P$ Scheduler
 
-Historically, M:N models struggled with the **"Scheduler Activation"** problem—when a user thread blocked in the kernel on I/O, the kernel had no clean way to notify the user-space scheduler to swap in another task.
+Historically, M:N models struggled with the **"Scheduler Activation"** problem, when a user thread blocked in the kernel on I/O, the kernel had no clean way to notify the user-space scheduler to swap in another task.
 
 The **Go Runtime** revolutionized the M:N model using three primitives ($M:N:P$):
 - **$G$ (Goroutine):** A lightweight user thread with a dynamic stack starting at just **2 KB**.

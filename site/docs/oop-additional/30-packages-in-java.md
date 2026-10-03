@@ -23,7 +23,7 @@ import TabItem from '@theme/TabItem';
 
 Imagine you are organizing a massive physical filing cabinet for a growing company.
 
-If you throw 1,000 loose papers into one giant drawer, it is pure chaos. Worse, if you have a paper labeled *Invoice* from 2024 and another paper labeled *Invoice* from 2025 in the same drawer, you have a naming conflict—nobody knows which one you are referring to.
+If you throw 1,000 loose papers into one giant drawer, it is pure chaos. Worse, if you have a paper labeled *Invoice* from 2024 and another paper labeled *Invoice* from 2025 in the same drawer, you have a naming conflict: nobody knows which one you are referring to.
 
 To fix this, you create labeled manila folders to group related papers together:
 - You create a folder named `Billing` and a folder named `HR`.
@@ -148,5 +148,5 @@ Many developers default to making every class `public`. However, senior engineer
 
 1. **Definition & Physical Mapping:** A Java package is a namespace mapped directly to the filesystem folder structure that prevents naming collisions and groups related classes.
 2. **Access Control Matrix:** `default` (package-private) permits access strictly within the same folder; `protected` permits access within the same folder plus subclasses across different packages via inheritance.
-3. **Inheritance Constraint:** When accessing a `protected` member from another package, access is restricted to the subclass's own inherited context—arbitrary instances of the parent class cannot be dereferenced.
+3. **Inheritance Constraint:** When accessing a `protected` member from another package, access is restricted to the subclass's own inherited context; arbitrary instances of the parent class cannot be dereferenced.
 4. **Architecture Value:** Package-private visibility provides strong encapsulation by hiding concrete implementation classes inside a package while exposing only public interface contracts.

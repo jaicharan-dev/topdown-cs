@@ -133,7 +133,7 @@ flowchart LR
 
 ### Summary
 
-"A context switch between processes requires a TLB flush because each process uses independent virtual-to-physical address mappings; failing to invalidate stale entries would allow one process to corrupt or inspect another process's physical memory. This flush imposes a high performance penalty by forcing expensive 4-level page table walks during cold-cache startup. Modern CPUs mitigate this through tagged TLBs—x86 PCID and ARM ASID—which tag cache lines with process IDs, enabling multiple address spaces to coexist in the TLB without flushes."
+"A context switch between processes requires a TLB flush because each process uses independent virtual-to-physical address mappings; failing to invalidate stale entries would allow one process to corrupt or inspect another process's physical memory. This flush imposes a high performance penalty by forcing expensive 4-level page table walks during cold-cache startup. Modern CPUs mitigate this through tagged TLBs (x86 PCID and ARM ASID), which tag cache lines with process IDs, enabling multiple address spaces to coexist in the TLB without flushes."
 
 ---
 

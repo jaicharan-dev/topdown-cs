@@ -127,7 +127,7 @@ While mathematically elegant, the Banker's Algorithm is almost **never used in p
 
 ### Summary
 
-"Banker's Algorithm avoids deadlock by verifying that every resource allocation preserves a safe state—one where at least one valid execution sequence exists for all processes to finish using maximum declared needs. Although theoretically sound, it is impractical for general-purpose OS kernels because processes cannot declare peak resource demands upfront and running the $O(m \cdot n^2)$ safety algorithm on every allocation incurs prohibitive latency."
+"Banker's Algorithm avoids deadlock by verifying that every resource allocation preserves a safe state, one where at least one valid execution sequence exists for all processes to finish using maximum declared needs. Although theoretically sound, it is impractical for general-purpose OS kernels because processes cannot declare peak resource demands upfront and running the $O(m \cdot n^2)$ safety algorithm on every allocation incurs prohibitive latency."
 
 ---
 

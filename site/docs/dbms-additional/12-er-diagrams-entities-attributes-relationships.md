@@ -105,7 +105,7 @@ Extract the multivalued attribute into a new child table consisting of the paren
 
 > "An ER diagram is a high-level conceptual model representing real-world entities, attributes, and relationship cardinalities.
 >
-> While Chen's notation uses geometric shapes—rectangles for entities, diamonds for relationships, and ovals for attributes—Crow's Foot notation is the industry standard for physical relational design.
+> While Chen's notation uses geometric shapes (rectangles for entities, diamonds for relationships, and ovals for attributes), Crow's Foot notation is the industry standard for physical relational design.
 >
 > In ER modeling, strong entities have independent primary keys, whereas weak entities rely on an identifying strong entity, combining the parent's primary key with a local discriminator to form a composite key with cascading deletes. Participation constraints dictate whether a relationship is mandatory (`NOT NULL`) or optional (`NULL` allowed).
 >

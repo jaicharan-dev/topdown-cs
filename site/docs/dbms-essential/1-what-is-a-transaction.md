@@ -113,7 +113,7 @@ If the server crashes mid-transaction, the engine reads the WAL log:
 
 ### The ELI5 Analogy: Packing a Parachute
 
-Imagine you are packing an emergency parachute. The packing procedure has 5 sequential folding and fastening steps. If you complete steps 1, 2, and 3, but the fire alarm rings and you walk away leaving steps 4 and 5 undone, you cannot jump with that half-packed parachute—doing so is fatal.
+Imagine you are packing an emergency parachute. The packing procedure has 5 sequential folding and fastening steps. If you complete steps 1, 2, and 3, but the fire alarm rings and you walk away leaving steps 4 and 5 undone, you cannot jump with that half-packed parachute; doing so is fatal.
 
 You either pack the **entire** parachute completely to 100% readiness (Commit), or if interrupted, you discard the partial fold and start over from scratch (Rollback). There is no such thing as a valid "half-packed" parachute.
 

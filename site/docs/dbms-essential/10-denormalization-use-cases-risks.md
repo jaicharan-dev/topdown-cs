@@ -26,7 +26,7 @@ Executing real-time aggregations over millions of rows on every user request deg
 - *Example:* Instead of executing `SELECT COUNT(*) FROM comments WHERE post_id = 99` on every feed scroll, store `comment_count INT DEFAULT 0` directly on the `posts` row.
 
 #### 3. Preserving Historical Snapshots (Temporal Immutability)
-In financial, invoicing, and e-commerce applications, deliberate duplication is not merely an optimization—it is a strict legal and domain requirement:
+In financial, invoicing, and e-commerce applications, deliberate duplication is not merely an optimization; it is a strict legal and domain requirement:
 - *Example:* An `order_items` table must store `unit_price_at_purchase`, and `orders` must store `shipping_address_at_checkout`. If the merchant increases product prices or the user updates their account profile next week, historical invoices must **never** mutate.
 
 ---

@@ -8,14 +8,14 @@ sidebar_class_name: sidebar-medium
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
-**Interviewer:** Today we're going to design the database schema for an e-commerce platform like Amazon or Flipkart. Users need to be able to browse products, add them to a cart, and place orders containing multiple products from multiple sellers. Each product can be listed by multiple sellers at different prices, and each has its own inventory count. I want to see how you'd handle atomicity—if two users order the last unit, only one should succeed. We'll also need coupons, order statuses, and reviews, but reviewers must have a confirmed delivery of that product. How would you start?
+**Interviewer:** Today we're going to design the database schema for an e-commerce platform like Amazon or Flipkart. Users need to be able to browse products, add them to a cart, and place orders containing multiple products from multiple sellers. Each product can be listed by multiple sellers at different prices, and each has its own inventory count. I want to see how you'd handle atomicity: if two users order the last unit, only one should succeed. We'll also need coupons, order statuses, and reviews, but reviewers must have a confirmed delivery of that product. How would you start?
 
 **Candidate:** An e-commerce platform combines the strict financial ledgers of a payment system with the chaotic logistics of the physical world. Before defining tables, I have a few clarifying questions about the boundaries of our design:
 1. **Order Splitting:** If I buy a laptop from Seller A and a mouse from Seller B in a single checkout, do we create one monolithic "Order", or do we split them immediately?
 2. **The Shopping Cart:** Does the active cart live in this relational database, or can we assume it lives in a fast cache like Redis and only hits our SQL database at checkout?
 3. **Coupons:** Are they applied as a flat currency amount or a percentage, and do they apply to the final cart total or specific products?
 
-**Interviewer:** Good questions. Let's assume a single checkout creates one parent Order containing multiple items. The shopping cart lives in a Redis cache—we only touch SQL at checkout. Coupons are a percentage off the total cart, but have a maximum usage limit across all users and an expiry date. 
+**Interviewer:** Good questions. Let's assume a single checkout creates one parent Order containing multiple items. The shopping cart lives in a Redis cache; we only touch SQL at checkout. Coupons are a percentage off the total cart, but have a maximum usage limit across all users and an expiry date. 
 
 **Candidate:** Perfect. I'll use a "Catalog vs. Listing" model to handle multiple sellers selling the same product. Let's outline the core entities:
 - **User:** The customer buying the items.
@@ -57,7 +57,7 @@ Finally, **Reviews** will have a unique foreign key to `item_id`. By tying it to
 
 **Candidate:** You caught that! There are two deliberate 3NF violations here for the sake of scale and safety. 
 
-First, the `total_amount` in the **Orders** table. Strictly speaking, it's a derived value—I could calculate it by summing the quantities and locked prices in `Order_Items` and subtracting the coupon discount. But I intentionally store this derived value to freeze the financial receipt. If marketing later changes the "DIWALI50" coupon from 10% to 15% off, dynamically calculating the total would retroactively change the price of past orders. Ledgers must be immutable.
+First, the `total_amount` in the **Orders** table. Strictly speaking, it's a derived value: I could calculate it by summing the quantities and locked prices in `Order_Items` and subtracting the coupon discount. But I intentionally store this derived value to freeze the financial receipt. If marketing later changes the "DIWALI50" coupon from 10% to 15% off, dynamically calculating the total would retroactively change the price of past orders. Ledgers must be immutable.
 
 Second, the `product_id` in the **Reviews** table. I already have `item_id`, so I could join `Reviews -> Order_Items -> Inventory_Listings -> Products`. But that's a transitive dependency. However, this is a massive read-optimization. In e-commerce, the most frequent query is loading a product page and showing its reviews. Adhering strictly to 3NF would require a computationally expensive 4-table join on every page load. Denormalizing `product_id` lets me fetch all reviews instantly with a single query.
 
@@ -84,7 +84,7 @@ PostgreSQL's internal row-locking guarantees one of these concurrent queries exe
 
 **Candidate:** No, setting the entire database to `SERIALIZABLE` would make Amazon too slow to function. We'd experience massive lock contention and retry storms. Instead, I'd use the default `READ COMMITTED` isolation level. Combined with our atomic `UPDATE` query (or a `SELECT ... FOR UPDATE` row-level lock), it perfectly prevents the "Lost Update" anomaly for the exact inventory row, while keeping the rest of the database unlocked and blazing fast for people just browsing. 
 
-We use the exact same atomic concurrency control for the coupon limits—we increment the `times_used` counter with a `WHERE times_used < max_usage` condition. 
+We use the exact same atomic concurrency control for the coupon limits: we increment the `times_used` counter with a `WHERE times_used < max_usage` condition. 
 
 **Interviewer:** Perfect. The prompt also asked how you would answer: "what are the top 5 best selling products in the last 7 days by units sold". How do you query this efficiently? 
 
@@ -100,7 +100,7 @@ To keep it fast, I would create a composite index on `Orders(placed_at, status)`
 
 **Candidate:** Relational SQL is amazing, but it has limits at extreme scale. I would make three major trade-offs:
 1. **Offloading Search:** Users search with typos ("blue sony hedphones"). Running SQL `LIKE` queries on 500 million products would kill the database. I'd stream catalog updates via Kafka to Elasticsearch. We trade strict consistency (there's a slight replication delay) for lightning-fast, typo-tolerant text search.
-2. **Flash Sale Cache:** For a highly anticipated iPhone drop, 100,000 users checking out in a 5-second window will max out PostgreSQL connection pools. I'd pre-warm the inventory into a Redis cache and use Lua scripts for atomic decrements in RAM. The trade-off is durability—if Redis crashes before the background queue updates SQL, we temporarily lose the exact inventory state, but we gain the ability to process thousands of checkouts per millisecond. 
+2. **Flash Sale Cache:** For a highly anticipated iPhone drop, 100,000 users checking out in a 5-second window will max out PostgreSQL connection pools. I'd pre-warm the inventory into a Redis cache and use Lua scripts for atomic decrements in RAM. The trade-off is durability: if Redis crashes before the background queue updates SQL, we temporarily lose the exact inventory state, but we gain the ability to process thousands of checkouts per millisecond. 
 3. **OLTP vs OLAP:** Running that "Top 5 Products" analytics query on the primary database during a sale will block write queries. I'd stream completed orders into a data warehouse like Snowflake. We sacrifice real-time analytics dashboards for a highly performant checkout engine.
 
 **Interviewer:** Let's pivot to a more foundational transaction problem. Design a basic database schema for a wallet or payment system where users send money to each other. Keep it lean.

@@ -100,7 +100,7 @@ Consider a modern cross-continental link:
 If this connection is restricted to the default 16-bit window ($65,535\text{ bytes} = 524,280\text{ bits}$):
 $$\text{Throughput}_{\max} = \frac{524,280\text{ bits}}{0.1\text{ s}} = \mathbf{5.24\text{ Mbps}}$$
 
-**A 10 Gbps link is throttled down to 5.24 Mbps—a staggering 99.95% waste of available capacity!**
+**A 10 Gbps link is throttled down to 5.24 Mbps, a staggering 99.95% waste of available capacity!**
 
 #### The Fix: TCP Window Scale Option (RFC 1323 / RFC 7323)
 To overcome this limitation, TCP includes a Window Scale option negotiated during the initial 3-way handshake (`SYN` packets):

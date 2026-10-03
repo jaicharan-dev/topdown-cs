@@ -43,7 +43,7 @@ A transaction executes a range query (e.g., `SELECT COUNT(*) FROM orders WHERE u
 In 1995, database researchers (Berenson et al.) published a landmark paper proving that the ANSI-92 isolation definitions were incomplete because they were framed strictly around lock-based locking behaviors and omitted anomalies present in snapshot-based engines:
 
 #### The Classic Anomaly: Write Skew
-**Write Skew** occurs under **Snapshot Isolation / Repeatable Read** when two concurrent transactions read overlapping data, verify a shared application invariant, perform disjoint writes, and commit—leaving the database in a state that violates the invariant.
+**Write Skew** occurs under **Snapshot Isolation / Repeatable Read** when two concurrent transactions read overlapping data, verify a shared application invariant, perform disjoint writes, and commit, leaving the database in a state that violates the invariant.
 
 #### The Doctor On-Call Problem:
 - **Hospital Invariant:** At least one doctor must be actively on call at all times.

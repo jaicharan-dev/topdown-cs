@@ -15,7 +15,7 @@ import TabItem from '@theme/TabItem';
 
 ### The Quick Answer
 
-Java provides 5 primary mechanisms to instantiate objects: the standard `new` operator, Reflection (`Constructor.newInstance()`), `Object.clone()`, Deserialization (`readObject()`), and low-level memory allocation (`Unsafe.allocateInstance()`). Crucially, only `new` and Reflection invoke the target class constructor; `clone()` makes a direct bitwise shallow heap copy, and `Unsafe` allocates raw memory bypassing all constructors entirely. During Deserialization, the target serializable class constructor is bypassed, but the JVM strictly walks up the hierarchy to invoke the no-argument constructor of the first **non-serializable superclass**—failing with `InvalidClassException` if none exists.
+Java provides 5 primary mechanisms to instantiate objects: the standard `new` operator, Reflection (`Constructor.newInstance()`), `Object.clone()`, Deserialization (`readObject()`), and low-level memory allocation (`Unsafe.allocateInstance()`). Crucially, only `new` and Reflection invoke the target class constructor; `clone()` makes a direct bitwise shallow heap copy, and `Unsafe` allocates raw memory bypassing all constructors entirely. During Deserialization, the target serializable class constructor is bypassed, but the JVM strictly walks up the hierarchy to invoke the no-argument constructor of the first **non-serializable superclass**, failing with `InvalidClassException` if none exists.
 
 ---
 

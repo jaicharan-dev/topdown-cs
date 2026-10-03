@@ -20,7 +20,7 @@ Interviewers test this to see if you understand the boundary between a system th
 
 Imagine a narrow hallway wide enough for only one person to pass at a time:
 - **Deadlock (The Stare-down):** Alice and Bob enter from opposite sides and meet in the center. Alice says: *"I won't back up until you back up."* Bob says: *"I won't back up until you back up."* Both stand frozen, glaring at each other forever. Zero energy is spent; zero progress is made.
-- **Livelock (The Polite Dance):** Alice and Bob meet in the center. Being polite, Alice steps to her right, but Bob simultaneously steps to his left—bumping into each other again. Alice steps left; Bob steps right. Bump. They rapidly dodge side-to-side in perfect synchronization. They are sweating and burning calories, but neither can walk down the hall.
+- **Livelock (The Polite Dance):** Alice and Bob meet in the center. Being polite, Alice steps to her right, but Bob simultaneously steps to his left, bumping into each other again. Alice steps left; Bob steps right. Bump. They rapidly dodge side-to-side in perfect synchronization. They are sweating and burning calories, but neither can walk down the hall.
 - **Starvation (The VIP Bouncer):** The hallway is open, but a bouncer stands at the door giving priority to anyone with a VIP badge. Charlie has a regular ticket and waits in line. Every time Charlie reaches the front, a new VIP arrives and gets ushered through. The hallway is moving 100 people per minute (System progress is great!), but Charlie waits in line forever.
 
 ---

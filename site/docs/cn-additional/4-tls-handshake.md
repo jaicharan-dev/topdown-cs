@@ -55,7 +55,7 @@ sequenceDiagram
 
 #### Step-by-Step Chronology in TLS 1.3:
 1. **ClientHello (1-RTT Optimization):** The client sends its supported cipher suites *and speculatively generates an Ephemeral Diffie-Hellman Key Share* (using modern curves like Curve25519 or P-256), sending its public parameter in the very first packet.
-2. **ServerHello & Completion:** The server selects a matching cipher, computes the shared secret using the client's key share, generates its own key share, and transmits its Certificate and `Finished` message—**all in its first response!**
+2. **ServerHello & Completion:** The server selects a matching cipher, computes the shared secret using the client's key share, generates its own key share, and transmits its Certificate and `Finished` message, **all in its first response!**
 3. **Application Data:** The client computes the symmetric key and immediately begins streaming encrypted HTTP data in its second roundtrip.
 
 ---

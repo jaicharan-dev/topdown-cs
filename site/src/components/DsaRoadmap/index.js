@@ -171,7 +171,7 @@ export default function DsaRoadmap() {
                   role="button"
                   aria-label={`${node.label} roadmap topic`}
                 >
-                  {/* Stationary invisible hit boundary — guarantees 0 hover cursor jitter */}
+                  {/* Stationary invisible hit boundary - guarantees 0 hover cursor jitter */}
                   <rect
                     x={-node.w / 2 - 14}
                     y={-node.h / 2 - 14}

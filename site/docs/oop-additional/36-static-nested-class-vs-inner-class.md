@@ -51,7 +51,7 @@ graph TD
 ### The ELI5 Analogy: Attached Room vs. Toolbox in the Garage
 
 1. **Non-Static Inner Class (The Attached Living Room):**
-   Think of a House (`Outer`) and its Living Room (`Inner`). A living room cannot exist floating in empty space—it must physically belong to a specific house. Because it is physically inside that house, anyone standing in the living room can directly adjust that house's thermostat or open its private refrigerator (the outer instance's private variables).
+   Think of a House (`Outer`) and its Living Room (`Inner`). A living room cannot exist floating in empty space; it must physically belong to a specific house. Because it is physically inside that house, anyone standing in the living room can directly adjust that house's thermostat or open its private refrigerator (the outer instance's private variables).
 2. **Static Nested Class (The Toolbox in the Garage):**
    Think of a Toolbox (`StaticNested`) stored inside the house's garage. The toolbox is stored there for neat organization and grouping, but it is a completely autonomous object. You can pick up the toolbox, drive it to another city, and use its wrenches independently. It has no physical wire connecting it to the house's thermostat.
 

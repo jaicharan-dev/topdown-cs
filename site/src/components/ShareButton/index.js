@@ -18,7 +18,7 @@ export default function ShareButton({ title, permalink }) {
     return canonicalUrl;
   };
 
-  const shareTitle = `TopDown CS — ${title || 'Interview Question'}`;
+  const shareTitle = `TopDown CS - ${title || 'Interview Question'}`;
 
   const handleShareClick = async (e) => {
     e.stopPropagation();

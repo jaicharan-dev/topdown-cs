@@ -99,7 +99,7 @@ Depending on reporting requirements, you can format the output hierarchy:
 
 ### Bar-Raiser Challenge: Cumulative Roll-Up Budget
 
-> **Classic Senior Problem:** *"Calculate the total organizational budget for every manager—defined as their own salary PLUS the combined salaries of all employees reporting directly and indirectly under them."*
+> **Classic Senior Problem:** *"Calculate the total organizational budget for every manager, defined as their own salary PLUS the combined salaries of all employees reporting directly and indirectly under them."*
 
 ```sql
 WITH RECURSIVE SubordinateTree AS (

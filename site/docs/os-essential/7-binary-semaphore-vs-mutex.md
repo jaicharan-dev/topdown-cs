@@ -19,9 +19,9 @@ The question *"Isn't a binary semaphore simply a mutex initialized to 1?"* is on
 
 ### The ELI5 Analogy: The Bathroom Key vs. The Restaurant Pager
 
-- **Mutex (Mutual Exclusion) — The Bathroom Key:**  
+- **Mutex (Mutual Exclusion), The Bathroom Key:**  
   You take the single bathroom key from the coffee shop counter, enter, and lock the door. You are the registered **owner** of that key. When finished, you must unlock the door and hand the key back. If a stranger attempts to return a duplicate key while you are inside, the barista rejects it.
-- **Binary Semaphore — The Restaurant Pager:**  
+- **Binary Semaphore, The Restaurant Pager:**  
   You arrive at a busy restaurant and are handed a buzzer (`value = 0`). You cannot sit down; you must wait. Inside, a completely different customer finishes eating and leaves. The host presses a button, your buzzer vibrates (`value = 1`), and you sit down.  
   *The difference:* One entity waits, while a completely different entity triggers the signal. There is **no ownership**.
 

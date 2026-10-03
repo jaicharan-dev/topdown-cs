@@ -10,7 +10,7 @@ sidebar_class_name: sidebar-medium
 
 **Interviewer:** Let's talk about fault tolerance. How would you ensure no money is lost or duplicated if the system crashes mid-transaction?
 
-**Candidate:** This is really the ultimate test of a robust backend architecture. In a real-world system, servers crash constantly—power goes out, AWS regions go down, or memory limits are exceeded. We have to design for failure from the ground up.
+**Candidate:** This is really the ultimate test of a robust backend architecture. In a real-world system, servers crash constantly: power goes out, AWS regions go down, or memory limits are exceeded. We have to design for failure from the ground up.
 
 To survive a mid-transaction crash without losing a single cent, we need to address failures across three different layers: the database, the application server, and external third-party services.
 
@@ -20,11 +20,11 @@ To survive a mid-transaction crash without losing a single cent, we need to addr
 
 If I were to explain it simply: Imagine you are a bank teller. Before you hand $50 in cash to a customer, you write down in a thick, permanent notebook: "I am about to give John $50." Only after the ink dries do you actually reach into the drawer and hand over the cash.
 
-If the fire alarm goes off—which represents our system crash—while your hand is in the drawer, you drop everything and run outside. When the fire is out and you return to your desk, you check the notebook. You see "I am about to give John $50," but there is no checkmark next to it. You know instantly the transaction didn't finish, so you cross it out and tell John to start over.
+If the fire alarm goes off (which represents our system crash) while your hand is in the drawer, you drop everything and run outside. When the fire is out and you return to your desk, you check the notebook. You see "I am about to give John $50," but there is no checkmark next to it. You know instantly the transaction didn't finish, so you cross it out and tell John to start over.
 
 **Interviewer:** That's a great analogy. So how does that map to the actual database internals?
 
-**Candidate:** Exactly like the notebook, a database does not immediately overwrite the old balance on the hard drive. Instead, it writes a detailed record of what it intends to do to a secure, append-only log file—the WAL. 
+**Candidate:** Exactly like the notebook, a database does not immediately overwrite the old balance on the hard drive. Instead, it writes a detailed record of what it intends to do to a secure, append-only log file: the WAL. 
 
 When the database server reboots after a crash, before it allows any user to connect, it reads the WAL. If it finds a transaction that started but never logged a `COMMIT` command, it performs a Rollback. It undoes any partial changes, returning the balances exactly to where they were before the crash. No money is lost or duplicated; it simply acts like the transaction never happened.
 

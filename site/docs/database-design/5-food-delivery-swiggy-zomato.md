@@ -8,7 +8,7 @@ sidebar_class_name: sidebar-medium
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
-**Interviewer:** Welcome! Today I'd like you to design the database schema for a food delivery app like Swiggy or Zomato. The requirements are: Users can browse restaurants and place orders containing multiple items from a single restaurant. Each menu item has a name, price, and availability status—restaurants can update their menu at any time. Once an order is placed, the price of items must be preserved even if the restaurant later changes the menu price. Orders go through multiple statuses. Users can rate and review a restaurant only after a confirmed delivered order. Delivery partners are assigned to orders and their live location is tracked. 
+**Interviewer:** Welcome! Today I'd like you to design the database schema for a food delivery app like Swiggy or Zomato. The requirements are: Users can browse restaurants and place orders containing multiple items from a single restaurant. Each menu item has a name, price, and availability status (restaurants can update their menu at any time). Once an order is placed, the price of items must be preserved even if the restaurant later changes the menu price. Orders go through multiple statuses. Users can rate and review a restaurant only after a confirmed delivered order. Delivery partners are assigned to orders and their live location is tracked. 
 
 I'd like you to define the core tables, explain how you'd preserve item prices, handle soft-deletions of restaurants, and ensure we can query average delivery times efficiently.
 
@@ -74,7 +74,7 @@ The second violation is what you caught: `restaurant_id` in the Reviews table. B
 
 **Interviewer:** I like that practical tradeoff. Let's talk about **Step 6: Edge Cases**. How would you handle the query for the average delivery time over the last 30 days?
 
-**Candidate:** If we blindly write `AVG(delivered_at - placed_at)`, our math will be completely ruined by canceled orders. Canceled orders never receive a `delivered_at` timestamp—it remains NULL—which breaks aggregate SQL functions. 
+**Candidate:** If we blindly write `AVG(delivered_at - placed_at)`, our math will be completely ruined by canceled orders. Canceled orders never receive a `delivered_at` timestamp, it remains NULL, which breaks aggregate SQL functions. 
 The fix is to strictly filter by the order state in the query:
 `SELECT AVG(delivered_at - placed_at) FROM Orders WHERE restaurant_id = X AND status = 'delivered' AND placed_at >= NOW() - INTERVAL '30 days';`
 
@@ -92,7 +92,7 @@ For real-time viewing on the user's phone, I'd route the GPS pings through a fas
 
 **Candidate:** We need to anticipate our exact backend query patterns to build targeted indexes.
 
-For loading a restaurant menu—our most common query—we'd use a composite index on `Menu_Items(restaurant_id, is_available)`. This allows the engine to jump directly to a restaurant's items with out-of-stock items already filtered out.
+For loading a restaurant menu (our most common query), we'd use a composite index on `Menu_Items(restaurant_id, is_available)`. This allows the engine to jump directly to a restaurant's items with out-of-stock items already filtered out.
 
 For calculating that average delivery time, we'd use a composite index on `Orders(restaurant_id, status, placed_at)`. Order matters heavily in a composite index! B-Trees filter from left to right. We put `restaurant_id` and `status` first because they are strict equality checks, and `placed_at` last because it's a range check (`>=`). If we put the range check first, the index stops working efficiently.
 
@@ -106,6 +106,6 @@ Finally, an index on `Reviews(restaurant_id)` supports our denormalized rating q
 
 1. **Perfect Consistency vs. High Availability (The Rating Problem):** Running `AVG(rating)` across millions of rows every time a user opens a restaurant page will eventually bottleneck. We'd introduce Eventual Consistency by adding a `cached_average_rating` directly to the Restaurants table. A background cron job recalculates the averages every 15 minutes. We sacrifice real-time accuracy to keep the app lightning fast.
 2. **Storage Space vs. Financial Immutability:** By copying the `current_price` into a new `locked_price` column, we violate the DRY principle and use more hard drive space. The trade-off is sacrificing storage efficiency to guarantee strict historical accuracy. Storage is cheap; legal disputes over altered financial receipts are expensive.
-3. **Global Queries vs. Sharding:** A single database simply cannot handle the write load of an entire country at 8:00 PM. Because food delivery is inherently localized (a user in Delhi doesn't care about inventory in Mangaluru), we would shard the database using a geographic partition key like `city_id`. The sacrifice is losing the ability to run simple global SQL queries. To get total national revenue, the backend must perform a Scatter-Gather query—asking every city's shard for their totals—and combine the math in memory.
+3. **Global Queries vs. Sharding:** A single database simply cannot handle the write load of an entire country at 8:00 PM. Because food delivery is inherently localized (a user in Delhi doesn't care about inventory in Mangaluru), we would shard the database using a geographic partition key like `city_id`. The sacrifice is losing the ability to run simple global SQL queries. To get total national revenue, the backend must perform a Scatter-Gather query (asking every city's shard for their totals) and combine the math in memory.
 
 **Interviewer:** That is a fantastic, production-ready blueprint. You've navigated the real-world complexities of a massive delivery app exceptionally well. Great job!

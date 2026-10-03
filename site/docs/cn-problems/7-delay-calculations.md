@@ -107,7 +107,7 @@ Because routers forward packet $i$ on link 2 while the source is transmitting pa
 $$\text{Total Time} = (k + N - 1) \cdot T_{\text{trans, pkt}} + N \cdot T_{\text{prop}}$$
 $$\text{Total Time} = (1334 + 3 - 1) \times 1.2\text{ ms} + 3 \times 10\text{ ms} = 1.6032\text{ s} + 0.03\text{ s} \approx \mathbf{1.633\text{ seconds}}$$
 
-Packetization reduces total latency from **4.83 s to 1.63 s**—a **66% reduction** achieved purely through store-and-forward pipelining.
+Packetization reduces total latency from **4.83 s to 1.63 s**, a **66% reduction** achieved purely through store-and-forward pipelining.
 
 ---
 

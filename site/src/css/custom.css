@@ -1,5 +1,5 @@
 /**
- * CS Fundamentals — Premium Dark Mode Theme
+ * CS Fundamentals - Premium Dark Mode Theme
  * Built on top of Docusaurus Infima defaults.
  */
 
@@ -11,7 +11,7 @@
 }
 
 /* ===================================================================
-   1. GLOBAL TYPOGRAPHY — Inter
+   1. GLOBAL TYPOGRAPHY - Inter
    =================================================================== */
 :root {
   --ifm-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont,
@@ -81,6 +81,7 @@
   /* Kindle warm paper comfortable reading colors */
   --ifm-background-color: #f8f5ee;
   --ifm-background-surface-color: #f0ebe0;
+  --ifm-footer-background-color: #f0ebe0;
   --ifm-font-color-base: #38342d;
   --ifm-font-color-secondary: #6e675b;
   --ifm-heading-color: #24211b;
@@ -99,7 +100,7 @@
 }
 
 /* ===================================================================
-   3. DARK MODE PALETTE — Soft Slate
+   3. DARK MODE PALETTE - Soft Slate
    =================================================================== */
 [data-theme='dark'] {
   --ifm-background-color: #18181b;
@@ -131,7 +132,7 @@
 }
 
 /* ===================================================================
-   4. NAVBAR — Frosted glass effect
+   4. NAVBAR - Frosted glass effect
    =================================================================== */
 @media (min-width: 997px) {
   [data-theme='dark'] .navbar {
@@ -142,7 +143,7 @@
 }
 
 /* ===================================================================
-   5. SIDEBAR — Breathable, refined
+   5. SIDEBAR - Breathable, refined
    =================================================================== */
 
 /* Sidebar background */
@@ -151,7 +152,7 @@
   border-right: 1px solid var(--csf-border-subtle) !important;
 }
 
-/* Sidebar link items — more padding, breathing room */
+/* Sidebar link items - more padding, breathing room */
 .theme-doc-sidebar-menu .menu__link {
   font-size: 0.84rem;
   font-weight: 450;
@@ -183,7 +184,7 @@
   color: var(--ifm-font-color-secondary);
 }
 
-/* Sidebar counter badges — subtle tint instead of harsh solid colors */
+/* Sidebar counter badges - subtle tint instead of harsh solid colors */
 .theme-doc-sidebar-menu {
   counter-reset: sidebar-item;
 }
@@ -209,7 +210,7 @@
   border: 1px solid;
 }
 
-/* Easy — rich subdued dark green */
+/* Easy - rich subdued dark green */
 [data-theme='dark'] .sidebar-easy > .menu__link::before {
   background: #14532d;
   color: #86efac;
@@ -221,7 +222,7 @@ html:not([data-theme='dark']) .sidebar-easy > .menu__link::before {
   border-color: #86efac;
 }
 
-/* Medium — rich subdued dark amber */
+/* Medium - rich subdued dark amber */
 [data-theme='dark'] .sidebar-medium > .menu__link::before {
   background: #78350f;
   color: #fde047;
@@ -233,7 +234,7 @@ html:not([data-theme='dark']) .sidebar-medium > .menu__link::before {
   border-color: #fcd34d;
 }
 
-/* Hard — rich subdued dark red */
+/* Hard - rich subdued dark red */
 [data-theme='dark'] .sidebar-hard > .menu__link::before {
   background: #7f1d1d;
   color: #fca5a5;
@@ -246,7 +247,7 @@ html:not([data-theme='dark']) .sidebar-hard > .menu__link::before {
 }
 
 /* ===================================================================
-   6. CONTENT — H1 sizing
+   6. CONTENT - H1 sizing
    =================================================================== */
 .markdown > header h1, .markdown > h1 {
   font-size: 2rem !important;
@@ -255,7 +256,7 @@ html:not([data-theme='dark']) .sidebar-hard > .menu__link::before {
 }
 
 /* ===================================================================
-   7. BLOCKQUOTES — Modern interview-question cards
+   7. BLOCKQUOTES - Modern interview-question cards
    =================================================================== */
 [data-theme='dark'] .markdown blockquote {
   background: var(--csf-surface-raised);
@@ -272,7 +273,7 @@ html:not([data-theme='dark']) .sidebar-hard > .menu__link::before {
 }
 
 /* ===================================================================
-   8. DIFFICULTY BADGES — Tinted, modern pill style
+   8. DIFFICULTY BADGES - Tinted, modern pill style
    =================================================================== */
 .badge {
   font-weight: 600;
@@ -303,7 +304,7 @@ html:not([data-theme='dark']) .sidebar-hard > .menu__link::before {
 }
 
 /* ===================================================================
-   9. TABLES — Subtle borders
+   9. TABLES - Subtle borders
    =================================================================== */
 [data-theme='dark'] table {
   border-collapse: collapse;
@@ -320,7 +321,7 @@ html:not([data-theme='dark']) .sidebar-hard > .menu__link::before {
 }
 
 /* ===================================================================
-   10. ADMONITIONS (:::tip, :::caution, etc.) — Softer backgrounds
+   10. ADMONITIONS (:::tip, :::caution, etc.) - Softer backgrounds
    =================================================================== */
 [data-theme='dark'] .alert {
   border-radius: 8px;
@@ -329,14 +330,33 @@ html:not([data-theme='dark']) .sidebar-hard > .menu__link::before {
 }
 
 /* ===================================================================
-   11. FOOTER — Subtle
+   11. FOOTER - Subtle
    =================================================================== */
 [data-theme='dark'] .footer {
   border-top: 1px solid var(--csf-border-subtle);
+  background-color: #111113;
+  color: #a1a1aa;
+}
+
+[data-theme='dark'] .footer .footer__title {
+  color: #fafafa;
+  font-weight: 700;
+}
+
+[data-theme='dark'] .footer .footer__link-item {
+  color: #a1a1aa;
+}
+
+[data-theme='dark'] .footer .footer__link-item:hover {
+  color: var(--ifm-color-primary);
+}
+
+[data-theme='dark'] .footer .footer__copyright {
+  color: #71717a;
 }
 
 /* ===================================================================
-   12. SCROLLBAR — Thin, modern
+   12. SCROLLBAR - Thin, modern
    =================================================================== */
 [data-theme='dark'] ::-webkit-scrollbar {
   width: 6px;
@@ -437,7 +457,7 @@ html body .theme-doc-sidebar-container {
   transform: scale(1.08) !important;
 }
 
-/* Collapsed Badges — Dark Mode */
+/* Collapsed Badges - Dark Mode */
 [data-theme='dark'] .my-custom-mini-sidebar .sidebar-easy > .menu__link::before {
   background: #14532d !important;
   color: #86efac !important;
@@ -463,7 +483,7 @@ html body .theme-doc-sidebar-container {
   box-shadow: 0 0 0 2px #60a5fa, 0 2px 6px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* Collapsed Badges — Light Mode (Kindle) */
+/* Collapsed Badges - Light Mode (Kindle) */
 html:not([data-theme='dark']) .my-custom-mini-sidebar .sidebar-easy > .menu__link::before {
   background: #d1fae5 !important;
   color: #14532d !important;
@@ -489,7 +509,7 @@ html:not([data-theme='dark']) .my-custom-mini-sidebar .menu__link--active::befor
   box-shadow: 0 0 0 2px #254d77, 0 2px 6px rgba(60, 50, 40, 0.15) !important;
 }
 
-/* Lock inner content — no text reflow */
+/* Lock inner content - no text reflow */
 html body article,
 html body .theme-doc-markdown {
   max-width: 85ch !important;
@@ -830,7 +850,7 @@ html:not([data-theme='dark']) .csf-section-divider {
   overflow: visible;
 }
 
-/* Mobile: allow roadmap to breathe — horizontal scroll on tiny screens */
+/* Mobile: allow roadmap to breathe - horizontal scroll on tiny screens */
 @media screen and (max-width: 600px) {
   .csf-dsa-roadmap-wrapper {
     overflow-x: auto;
@@ -874,7 +894,7 @@ html:not([data-theme='dark']) .csf-dsa-edge {
   opacity: 0.15;
 }
 
-/* Tree Topic Nodes — Matching TopDown CS Homepage Cards */
+/* Tree Topic Nodes - Matching TopDown CS Homepage Cards */
 .csf-dsa-node-group {
   outline: none;
 }
@@ -921,7 +941,7 @@ html:not([data-theme='dark']) .csf-dsa-node-label {
   fill: #18181b;
 }
 
-/* Hover State — Pure Visual Elevation without Coordinate Jitter */
+/* Hover State - Pure Visual Elevation without Coordinate Jitter */
 [data-theme='dark'] .csf-dsa-node-group:hover .csf-dsa-node-card,
 [data-theme='dark'] .csf-dsa-node-group.is-hovered .csf-dsa-node-card {
   fill: rgba(255, 255, 255, 0.065);
@@ -1215,10 +1235,32 @@ html:not([data-theme='dark']) .alert {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
 }
 
-html:not([data-theme='dark']) .footer {
+html:not([data-theme='dark']) .footer,
+html:not([data-theme='dark']) .footer--dark {
   border-top: 1px solid var(--csf-border-subtle);
-  background: #f0ebe0;
-  color: var(--ifm-font-color-secondary);
+  background: #f0ebe0 !important;
+  color: #6e675b !important;
+}
+
+html:not([data-theme='dark']) .footer .footer__title,
+html:not([data-theme='dark']) .footer--dark .footer__title {
+  color: #24211b !important;
+  font-weight: 700;
+}
+
+html:not([data-theme='dark']) .footer .footer__link-item,
+html:not([data-theme='dark']) .footer--dark .footer__link-item {
+  color: #38342d !important;
+}
+
+html:not([data-theme='dark']) .footer .footer__link-item:hover,
+html:not([data-theme='dark']) .footer--dark .footer__link-item:hover {
+  color: var(--ifm-color-primary) !important;
+}
+
+html:not([data-theme='dark']) .footer .footer__copyright,
+html:not([data-theme='dark']) .footer--dark .footer__copyright {
+  color: #6e675b !important;
 }
 
 html:not([data-theme='dark']) ::-webkit-scrollbar {

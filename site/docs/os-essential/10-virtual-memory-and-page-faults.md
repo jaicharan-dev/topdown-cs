@@ -81,7 +81,7 @@ Interviewers frequently distinguish between two types of page faults:
 | :--- | :--- | :--- |
 | **Data Location** | The page **already resides in physical RAM**, but lacks an active mapping in this process's page table. | The page is **not in RAM** and must be fetched from disk or swap partition. |
 | **Disk I/O Required?** | **Zero disk I/O.** Resolved completely in memory. | **Yes.** Requires physical disk/SSD read. |
-| **Latency Penalty** | Microseconds ($\approx 1-5\ \mu\text{s}$). | Milliseconds ($\approx 1-10\text{ ms}$) — up to **10,000x slower**! |
+| **Latency Penalty** | Microseconds ($\approx 1-5\ \mu\text{s}$). | Milliseconds ($\approx 1-10\text{ ms}$), up to **10,000x slower**! |
 | **Common Scenarios** | 1. Memory allocated via `malloc()` / `mmap()` (Demand Paging: allocated on first write).<br/>2. Attaching to a shared library (`libc.so`) already loaded by another process.<br/>3. Reclaiming a page sitting in the OS page cache. | 1. Reading cold code/data from binary file.<br/>2. Re-fetching a page that was swapped out under memory pressure. |
 
 ---

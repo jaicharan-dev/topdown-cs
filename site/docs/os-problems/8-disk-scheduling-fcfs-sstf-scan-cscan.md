@@ -133,7 +133,7 @@ C-SCAN provides uniform waiting times by treating the disk tracks as a circular 
 
 ---
 
-## 6. Part 5: The Edge Optimization — LOOK & C-LOOK
+## 6. Part 5: The Edge Optimization: LOOK & C-LOOK
 
 SCAN and C-SCAN force the disk arm to travel all the way to cylinder boundaries `0` and `199`, even when no requests exist at the extremities. **LOOK** and **C-LOOK** inspect pending requests and "look" ahead, reversing or resetting as soon as the outermost requested track is serviced.
 

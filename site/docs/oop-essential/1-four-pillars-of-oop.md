@@ -9,7 +9,7 @@ sidebar_class_name: sidebar-easy
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
-> **Interview Question:** "What are the four pillars of OOP? More specifically, I hear people mix up abstraction and encapsulation all the time—how do you draw the line between them?"
+> **Interview Question:** "What are the four pillars of OOP? More specifically, I hear people mix up abstraction and encapsulation all the time. How do you draw the line between them?"
 
 ### The Four Pillars
 
@@ -20,12 +20,12 @@ To confidently answer this, provide the technical definition an interviewer expe
 * **The Understanding:** Think of a coffee machine. You press a button labeled "Espresso" (the interface), and you get your coffee. You don't need to know the water temperature, pipe pressure, or bean grinding mechanics inside (the implementation).
 
 ### 2. Encapsulation (Protecting State & Enforcing Invariants)
-* **The Definition:** Encapsulation consists of two parts: (1) **bundling** data (fields) and the behaviors (methods) that operate on that data into a single cohesive unit (a class), and (2) **restricting direct access** to that internal state using access modifiers (`private`, `protected`). Its core goal is to maintain **class invariants**—rules that guarantee the object never enters an invalid or corrupted state.
+* **The Definition:** Encapsulation consists of two parts: (1) **bundling** data (fields) and the behaviors (methods) that operate on that data into a single cohesive unit (a class), and (2) **restricting direct access** to that internal state using access modifiers (`private`, `protected`). Its core goal is to maintain **class invariants**: rules that guarantee the object never enters an invalid or corrupted state.
 * **The Understanding:** Think of a digital bank account. You cannot reach in and overwrite the `balance` variable directly (private state). You must call `deposit()` or `withdraw()` (public methods), which validate business rules (e.g., rejecting negative deposits or overdrafts) before updating the balance.
 
 ### 3. Inheritance (Reusing Code & Subtyping)
 * **The Definition:** A mechanism where a child class derives fields and methods from a parent class, establishing an **IS-A** relationship. While it enables code reuse, its most powerful role in modern design is modeling subtype relationships so child objects can be treated polymorphically as their parent type.
-* **The Understanding:** Think of a general `Vehicle` blueprint that has an engine and wheels. A `Car` or `Motorcycle` doesn't start from scratch—it inherits those attributes from `Vehicle` and adds specific features like air conditioning or a sidecar. *(Interview Tip: Be ready to mention that modern architecture often favors composition over inheritance to avoid tight coupling).*
+* **The Understanding:** Think of a general `Vehicle` blueprint that has an engine and wheels. A `Car` or `Motorcycle` doesn't start from scratch; it inherits those attributes from `Vehicle` and adds specific features like air conditioning or a sidecar. *(Interview Tip: Be ready to mention that modern architecture often favors composition over inheritance to avoid tight coupling).*
 
 ### 4. Polymorphism (Many Forms)
 * **The Definition:** The ability of different underlying classes to be accessed through the same common interface, with each class providing its own specific implementation. It comes in two primary forms:

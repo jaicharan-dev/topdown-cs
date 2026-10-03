@@ -204,7 +204,7 @@ if (list instanceof List<?>) { ... }
 @SuppressWarnings("unchecked")
 T[] items = (T[]) new Object[10];
 ```
-*Why:* Java arrays are **reified**—they carry their exact component type into runtime to enforce array-store checks (`ArrayStoreException`). Generics are **erased**. The two systems are fundamentally incompatible.
+*Why:* Java arrays are **reified**: they carry their exact component type into runtime to enforce array-store checks (`ArrayStoreException`). Generics are **erased**. The two systems are fundamentally incompatible.
 
 #### 4. Cannot Use Primitives as Type Arguments
 ```java

@@ -26,9 +26,9 @@ $$2^r \ge m + r + 1$$
 
 Given $m = 4$ data bits:
 - Try $r = 2$: $2^2 = 4 \ge 4 + 2 + 1 = 7$ (False)
-- Try $r = 3$: $2^3 = 8 \ge 4 + 3 + 1 = 8$ (True — **exact match!**)
+- Try $r = 3$: $2^3 = 8 \ge 4 + 3 + 1 = 8$ (True: **exact match!**)
 
-We require **$r = 3$ parity bits**, resulting in a **Hamming $(7, 4)$** block code of length $n = 7$. Because $2^3 = 8 = 7 + 1$, the $(7, 4)$ code is a **perfect code**—every single vector in the 7-dimensional space is either a valid codeword or within Hamming distance 1 of exactly one valid codeword.
+We require **$r = 3$ parity bits**, resulting in a **Hamming $(7, 4)$** block code of length $n = 7$. Because $2^3 = 8 = 7 + 1$, the $(7, 4)$ code is a **perfect code**: every single vector in the 7-dimensional space is either a valid codeword or within Hamming distance 1 of exactly one valid codeword.
 
 ---
 

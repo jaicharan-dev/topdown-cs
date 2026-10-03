@@ -12,7 +12,7 @@ sidebar_class_name: sidebar-medium
 
 Here are the requirements:
 - Users can buy and sell stocks.
-- Stock prices change continuously — the current market price is separate from the execution price.
+- Stock prices change continuously: the current market price is separate from the execution price.
 - Users have a wallet balance to fund trades (buying debits, selling credits).
 - Transactions must be highly atomic; if the wallet debit succeeds but the portfolio update fails, the entire transaction rolls back.
 - Users can place both market orders and limit orders.
@@ -58,7 +58,7 @@ If a user owns 10 shares at an average of ₹100 (₹1000 total invested), and t
 
 **Candidate:** You caught my deliberate 3NF violations! These denormalizations are entirely intentional for a high-scale trading platform.
 
-First, duplicating `user_id` and `stock_symbol` onto `Trades` prevents disastrous JOINs. If I need to generate an end-of-year tax report of every trade a user made, joining millions of executed trades against an `Orders` table—which is flooded with cancelled or expired intents—would be incredibly slow. By denormalizing those columns onto `Trades`, I can index them and query the immutable ledger in milliseconds.
+First, duplicating `user_id` and `stock_symbol` onto `Trades` prevents disastrous JOINs. If I need to generate an end-of-year tax report of every trade a user made, joining millions of executed trades against an `Orders` table, which is flooded with cancelled or expired intents, would be incredibly slow. By denormalizing those columns onto `Trades`, I can index them and query the immutable ledger in milliseconds.
 
 Second, dynamically calculating a user's portfolio from scratch by summing up 10 years of historical trades every time they open the app is computationally impossible at Zerodha's scale. We use an architecture pattern similar to CQRS (Command Query Responsibility Segregation). The `Trades` table acts as the immutable Event Log, and the `Holdings` table acts as a materialized view of the Current State. We gladly sacrifice storage space and strict normalization to guarantee instantaneous dashboard read speeds.
 
@@ -68,7 +68,7 @@ Second, dynamically calculating a user's portfolio from scratch by summing up 10
 
 But the real threat is the Lost Update Anomaly. What if a user double-clicks the "Buy" button, triggering two separate execution requests at the exact same millisecond, but they only have enough wallet balance for one? If both transactions read the wallet simultaneously, they both see enough funds and execute, pushing the wallet into a negative balance.
 
-We can't set the database isolation level to `SERIALIZABLE`—forcing all transactions sequentially would make the platform painfully slow. Instead, I would use the `READ COMMITTED` isolation level combined with a pessimistic Row-Level Lock. 
+We can't set the database isolation level to `SERIALIZABLE`: forcing all transactions sequentially would make the platform painfully slow. Instead, I would use the `READ COMMITTED` isolation level combined with a pessimistic Row-Level Lock. 
 
 Before the wallet deduction, we run: `SELECT balance FROM Wallets WHERE wallet_id = X FOR UPDATE;`
 This physically locks that specific user's wallet row. The second simultaneous click is forced to wait in line. By the time the second transaction gets the lock, the balance has been updated, is now too low, and the trade is safely rejected.
@@ -97,7 +97,7 @@ WHERE h.user_id = 'target_uuid';
 **Candidate:** In high-frequency trading, you constantly balance strict ACID compliance against extreme throughput. I'd make three core trade-offs:
 
 1. **Live Ticker Prices (SQL vs. WebSockets/Redis):** Querying PostgreSQL every second for live stock prices would melt the database. We decouple the live price ticker entirely, pushing prices from the exchange directly to the user's phone via WebSockets and Redis. The core SQL `Stocks` table is just updated periodically as a fallback. We trade strict synchronization in the main DB for extreme frontend performance.
-2. **Write-Heavy Ledger vs. Read-Heavy Dashboards:** At 9:15 AM, the primary database is hammered with write locks from executing trades. Simultaneously, users are continuously refreshing their portfolios. We use Read Replicas (CQRS). The primary database only handles writes, then replicates to read-only clones. We accept a tiny bit of replication lag—a user might execute a trade and not see it in their portfolio for 50 milliseconds—to keep the system from locking up.
+2. **Write-Heavy Ledger vs. Read-Heavy Dashboards:** At 9:15 AM, the primary database is hammered with write locks from executing trades. Simultaneously, users are continuously refreshing their portfolios. We use Read Replicas (CQRS). The primary database only handles writes, then replicates to read-only clones. We accept a tiny bit of replication lag (a user might execute a trade and not see it in their portfolio for 50 milliseconds) to keep the system from locking up.
 3. **Infinite Ledger Growth (Table Partitioning):** The `Trades` ledger is immutable and will quickly reach billions of rows, slowing down indexes. We can't just archive this to cold storage because financial regulations require fast access for tax audits. Instead, we use PostgreSQL Table Partitioning by time (e.g., `Trades_Jan_2026`). The trade-off is added backend complexity, and cross-year queries become slightly slower as they scan multiple partitions, but it prevents the core indexes from suffocating. 
 
 **Interviewer:** Fantastic breakdown. You've balanced strict data integrity with practical scaling techniques perfectly.

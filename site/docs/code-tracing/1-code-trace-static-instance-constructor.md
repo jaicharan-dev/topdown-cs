@@ -104,7 +104,7 @@ This question is a standard FAANG/Tier-1 screening problem. While entry-level ca
 #### Detailed Breakdown of Critical Inflection Points:
 
 1. **Why do static blocks run before `main starts`?**
-   Before the JVM can invoke the `main` method of `Child`, it must load, link, and initialize `Child.class`. Since `Child extends Parent`, the JVM specification mandates that all superclasses must be fully initialized before a subclass can be initialized. Thus, `Parent`'s static initializers execute first, followed immediately by `Child`'s static initializers—all **before line 1 of `main()` begins**.
+   Before the JVM can invoke the `main` method of `Child`, it must load, link, and initialize `Child.class`. Since `Child extends Parent`, the JVM specification mandates that all superclasses must be fully initialized before a subclass can be initialized. Thus, `Parent`'s static initializers execute first, followed immediately by `Child`'s static initializers, all **before line 1 of `main()` begins**.
 
 2. **The Inheritance Trap: Child Static vs. Parent Instance:**
    Candidates often guess that `Parent Instance Block` runs before `Child Static Block`. This is false. **All static initializers across the entire class hierarchy execute during class loading**, which finishes entirely before any object instantiation begins.

@@ -77,7 +77,7 @@ The sender appends this checksum word and transmits all three 8-bit words across
 
 ### 3. Receiver-Side Verification Protocol
 
-The beauty of the 1's complement checksum lies in its receiver-side simplicity. The receiver does not need to subtract or recalculate from scratch—it simply **sums all received data words PLUS the checksum word**.
+The beauty of the 1's complement checksum lies in its receiver-side simplicity. The receiver does not need to subtract or recalculate from scratch; it simply **sums all received data words PLUS the checksum word**.
 
 ```text
        0 1 1 1 0 1 0 0  (Sum of Word 1 and Word 2 after carry wrap)

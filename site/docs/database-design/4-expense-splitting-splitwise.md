@@ -36,7 +36,7 @@ sidebar_class_name: sidebar-medium
 
 **Candidate:** Lastly, how big is this app? And are people mostly checking their balances or adding new expenses?
 
-**Interviewer:** We're designing for about 50 million active users. And it's very read-heavy—people open the app to check their balances or look at past bills about ten times more often than they actually log a new expense.
+**Interviewer:** We're designing for about 50 million active users. And it's very read-heavy: people open the app to check their balances or look at past bills about ten times more often than they actually log a new expense.
 
 ---
 
@@ -152,9 +152,9 @@ If we used two separate tables, calculating someone's balance would mean the dat
 **Candidate:** I'd create a dedicated `Settlements` table:
 - `settlement_id` (Primary Key, UUID)
 - `group_id` (Foreign Key `Groups.group_id`)
-- `payer_id` (Foreign Key `Users.user_id` — Bob)
-- `payee_id` (Foreign Key `Users.user_id` — Alice)
-- `amount` (DECIMAL — \$10.00)
+- `payer_id` (Foreign Key `Users.user_id`, Bob)
+- `payee_id` (Foreign Key `Users.user_id`, Alice)
+- `amount` (DECIMAL - \$10.00)
 - `created_at` (TIMESTAMP)
 
 This keeps peer-to-peer cash repayments completely separated from real-world spending on things like food or rent.
@@ -193,7 +193,7 @@ The database never does the division; it only stores the exact, perfectly balanc
 
 ### Phase 7: Debt Simplification & Querying Balances
 
-**Interviewer:** How does the app answer a question like, "How much does Alice owe Bob across all groups?" And how do you simplify debts—for example, if Alice owes Bob \$10, and Bob owes Charlie \$10, the app should just tell Alice to pay Charlie \$10 directly?
+**Interviewer:** How does the app answer a question like, "How much does Alice owe Bob across all groups?" And how do you simplify debts, for example, if Alice owes Bob \$10, and Bob owes Charlie \$10, the app should just tell Alice to pay Charlie \$10 directly?
 
 **Candidate:** The key thing to realize is that the database doesn't actually store a record that says "Alice owes Bob \$10". Instead, for any given group, the database just tracks each person's overall position in the pool:
 - Alice is net **+\$50** (the group owes her \$50).
@@ -233,7 +233,7 @@ Then the backend code takes those numbers and runs a matching algorithm in memor
 
 **Interviewer:** What's the trade-off of doing that?
 
-**Candidate:** Reading her balance becomes instant—the database just looks at a single row and shows it on her screen. But writing becomes slightly slower, because every single time a new expense or settlement is added, the database has to lock her row and update that cached balance. Since users open the app to check balances far more often than they add expenses, sacrificing a tiny bit of write speed to gain lightning-fast reads is well worth it.
+**Candidate:** Reading her balance becomes instant: the database just looks at a single row and shows it on her screen. But writing becomes slightly slower, because every single time a new expense or settlement is added, the database has to lock her row and update that cached balance. Since users open the app to check balances far more often than they add expenses, sacrificing a tiny bit of write speed to gain lightning-fast reads is well worth it.
 
 ---
 
@@ -251,7 +251,7 @@ ON Group_Members (user_id, status);
 
 **Candidate:** A composite index on `(group_id, user_id)` is sorted by `group_id` first, and then `user_id`. 
 
-Think of it like a phone book sorted by Last Name, then First Name. If you only know the first name (the `user_id`), the phone book doesn't help you at all—you would have to read every single page to find them. That's why we need a separate index that starts with `user_id`.
+Think of it like a phone book sorted by Last Name, then First Name. If you only know the first name (the `user_id`), the phone book doesn't help you at all, because you would have to read every single page to find them. That's why we need a separate index that starts with `user_id`.
 
 **Interviewer:** That's a great analogy. What about loading the expense feed for a group?
 
@@ -335,7 +335,7 @@ ON Expense_Splits (user_id);
 
 #### How to Approach Any Database Design Problem:
 1. **Start simple:** Propose a basic model first. Don't try to solve every tricky edge case in the first five minutes.
-2. **Deconstruct events into splits:** An event often has two sides—who paid money in, and who took value out. Putting both in the split record makes math straightforward.
+2. **Deconstruct events into splits:** An event often has two sides: who paid money in, and who took value out. Putting both in the split record makes math straightforward.
 3. **Separate payments from spending:** Never mix debt repayments with actual expenses, or your spending analytics will be corrupted.
 4. **Never hard-delete financial data:** Use soft deletes so historical balances and receipts remain safe and audit-proof.
 5. **Know when to use SQL vs code:** Use SQL for storage, data integrity, and basic math; do complex algorithms (like debt simplification) in application code.

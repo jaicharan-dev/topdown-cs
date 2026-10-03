@@ -12,7 +12,7 @@ sidebar_class_name: sidebar-hard
 
 The **Multilevel Feedback Queue (MLFQ)** is widely regarded as one of the most celebrated achievements in systems scheduling. 
 
-It solves the fundamental paradox of general-purpose operating systems: **Shortest Job First (SJF)** is mathematically optimal for minimizing turnaround time, but requires knowing the future execution time of every process—an impossible requirement for general-purpose computing.
+It solves the fundamental paradox of general-purpose operating systems: **Shortest Job First (SJF)** is mathematically optimal for minimizing turnaround time, but requires knowing the future execution time of every process, an impossible requirement for general-purpose computing.
 
 MLFQ dynamically **learns from past process behavior** to predict future execution patterns, optimizing simultaneously for **low turnaround time** (for long batch jobs) and **low response time** (for interactive user applications).
 

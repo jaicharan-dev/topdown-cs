@@ -37,7 +37,7 @@ sidebar_class_name: sidebar-hard
 
 The "Diamond Problem" occurs in multiple inheritance when a class inherits from two parent classes that share a common base. 
 
-In Python, `super()` does **not** mean "call my lexical parent class." It means **"call the next class in the Method Resolution Order (MRO) of the instantiated object."** Understanding this distinction—and being able to manually compute C3 Linearization—is a hallmark of a staff engineer.
+In Python, `super()` does **not** mean "call my lexical parent class." It means **"call the next class in the Method Resolution Order (MRO) of the instantiated object."** Understanding this distinction, and being able to manually compute C3 Linearization, is a hallmark of a staff engineer.
 
 ---
 

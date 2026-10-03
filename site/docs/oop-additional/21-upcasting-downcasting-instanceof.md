@@ -132,7 +132,7 @@ if (obj instanceof Dog d) {
 >
 > Two critical edge cases interviewers look for:
 > 1. Evaluating `null instanceof Type` always safely yields `false` without throwing `NullPointerException`.
-> 2. Casting an un-finalized concrete class to an interface will always compile—even if the class doesn't implement the interface—because the compiler cannot rule out that a future subclass might implement it at runtime."
+> 2. Casting an un-finalized concrete class to an interface will always compile, even if the class doesn't implement the interface, because the compiler cannot rule out that a future subclass might implement it at runtime."
 
 ---
 

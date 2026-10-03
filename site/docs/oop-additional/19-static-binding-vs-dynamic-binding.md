@@ -12,7 +12,7 @@ sidebar_class_name: sidebar-hard
 
 ### The Quick Answer
 
-Static binding (early binding) occurs at compile time when the compiler resolves method invocations based strictly on the declared reference type—applying to `static`, `private`, `final`, and overloaded methods (`invokestatic`, `invokespecial`). Dynamic binding (late binding) defers resolution to runtime based on the actual concrete object allocated on the heap, powering method overriding via Virtual Method Table (`v-table`) lookups (`invokevirtual`, `invokeinterface`). Importantly, member variables (fields) and static methods are never dynamically dispatched; they are always resolved statically at compile time.
+Static binding (early binding) occurs at compile time when the compiler resolves method invocations based strictly on the declared reference type, applying to `static`, `private`, `final`, and overloaded methods (`invokestatic`, `invokespecial`). Dynamic binding (late binding) defers resolution to runtime based on the actual concrete object allocated on the heap, powering method overriding via Virtual Method Table (`v-table`) lookups (`invokevirtual`, `invokeinterface`). Importantly, member variables (fields) and static methods are never dynamically dispatched; they are always resolved statically at compile time.
 
 ---
 
@@ -148,7 +148,7 @@ obj.printType();               // Prints "Parent Static" (NOT "Child Static"!)
 >
 > Under the hood, the HotSpot JVM uses a Virtual Method Table (v-table). Each class has an array of method pointers. Subclasses inherit parent offsets, and overridden methods overwrite that specific slot. At runtime, the JVM performs an O(1) pointer lookup through the object's header to the v-table.
 >
-> Finally, a classic interview trap is field shadowing: fields and static methods are never dynamically dispatched—they are always resolved statically based on the reference type."
+> Finally, a classic interview trap is field shadowing: fields and static methods are never dynamically dispatched: they are always resolved statically based on the reference type."
 
 ---
 

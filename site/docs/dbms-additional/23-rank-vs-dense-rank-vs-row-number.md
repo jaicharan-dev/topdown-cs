@@ -134,7 +134,7 @@ ORDER BY department_id, rnk;
 >
 > `DENSE_RANK()` also gives tied values the same rank, but leaves zero gaps, ensuring that the N-th distinct value receives rank $N$. This makes `DENSE_RANK()` the correct tool for finding the N-th highest metrics.
 >
-> Finally, because window functions are evaluated in the `SELECT` phase—long after the `WHERE` clause filters rows—filtering by rank requires wrapping the window query inside a CTE or subquery."
+> Finally, because window functions are evaluated in the `SELECT` phase, long after the `WHERE` clause filters rows, filtering by rank requires wrapping the window query inside a CTE or subquery."
 
 ---
 

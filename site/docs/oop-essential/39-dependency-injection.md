@@ -56,7 +56,7 @@ Interviewers frequently ask you to evaluate the 3 mechanisms of dependency injec
 
 ### The ELI5 Analogy: The Formula 1 Driver
 
-* **Without DI (Using `new` inside):** Imagine an F1 driver who is hardcoded to manufacture their own car. Before racing, the driver must weld the chassis and attach slick tires. If it starts raining, the driver is helpless—they are permanently glued to the dry-weather tires they manufactured.
+* **Without DI (Using `new` inside):** Imagine an F1 driver who is hardcoded to manufacture their own car. Before racing, the driver must weld the chassis and attach slick tires. If it starts raining, the driver is helpless, permanently glued to the dry-weather tires they manufactured.
 * **With DI:** The driver simply declares: *"I need a `Vehicle` to race."* The pit crew assembles the car outside with rain tires and hands it to the driver. The driver focuses purely on racing logic without coupling to tire manufacturing.
 
 ---

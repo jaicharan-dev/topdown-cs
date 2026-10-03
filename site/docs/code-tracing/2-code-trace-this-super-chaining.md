@@ -206,4 +206,4 @@ public class ConstructorChainingDemo {
 >
 > A constructor can never invoke both `this()` and `super()` because Java guarantees that the superclass state is initialized exactly once per object creation. When `this()` is used, the compiler suppresses the implicit `super()` call and transfers the duty of calling `super()` to the target constructor.
 >
-> Crucially, `javac` inlines instance initializer blocks and field declarations strictly into the constructor that calls `super()`, immediately after `super()` returns. Therefore, `Car`'s instance initializer block executes exactly once—inside `Car(String)`—before control returns to `Car()` to complete construction."
+> Crucially, `javac` inlines instance initializer blocks and field declarations strictly into the constructor that calls `super()`, immediately after `super()` returns. Therefore, `Car`'s instance initializer block executes exactly once, inside `Car(String)`, before control returns to `Car()` to complete construction."

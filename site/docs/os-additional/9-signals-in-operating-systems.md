@@ -12,7 +12,7 @@ sidebar_class_name: sidebar-medium
 
 A **Signal** is an asynchronous software interrupt delivered by the operating system kernel to a process to notify it that an event has occurred.
 
-Unlike standard Inter-Process Communication (IPC) channels like pipes or shared memory—which transmit structured data payloads—a signal carries almost **no data** (historically just an integer signal number). Instead, it forcibly interrupts the target process's normal instruction flow, requiring the process to react immediately.
+Unlike standard Inter-Process Communication (IPC) channels like pipes or shared memory (which transmit structured data payloads), a signal carries almost **no data** (historically just an integer signal number). Instead, it forcibly interrupts the target process's normal instruction flow, requiring the process to react immediately.
 
 ---
 

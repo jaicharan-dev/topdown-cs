@@ -132,7 +132,7 @@ Interviewers often ask candidates to contrast nuanced pairs of status codes:
 - **`308 Permanent Redirect`:** Permanent redirect that guarantees method preservation (RFC 7538).
 
 #### 2. Authentication vs. Authorization: `401` vs. `403`
-- **`401 Unauthorized`:** A misnomer—it actually means **Unauthenticated**. The client has not provided valid credentials. The server response must include a `WWW-Authenticate` header indicating the required authentication challenge.
+- **`401 Unauthorized`:** A misnomer, as it actually means **Unauthenticated**. The client has not provided valid credentials. The server response must include a `WWW-Authenticate` header indicating the required authentication challenge.
 - **`403 Forbidden`:** The client is successfully authenticated (their identity is known), but they **lack permission** to access the resource (e.g., a standard user trying to access `/admin`). Re-authenticating with the same credentials will not change the outcome.
 
 #### 3. Rate Limiting: `429 Too Many Requests`

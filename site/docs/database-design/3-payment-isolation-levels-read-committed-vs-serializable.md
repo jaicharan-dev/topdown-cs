@@ -12,7 +12,7 @@ sidebar_class_name: sidebar-medium
 
 **Candidate:** This is a crucial decision, and honestly, it's where textbook theory often clashes with production reality. Textbooks usually say, "always use Serializable for financial data because it prevents all anomalies." But in the real world of high-traffic payment systems, you almost never use Serializable.
 
-Instead, I would use **Read Committed**, paired with explicit row-level locking—specifically, `SELECT ... FOR UPDATE`.
+Instead, I would use **Read Committed**, paired with explicit row-level locking, specifically `SELECT ... FOR UPDATE`.
 
 **Interviewer:** That's an interesting take. Serializable guarantees correctness. Why step down to Read Committed? Let's break down the "why." 
 

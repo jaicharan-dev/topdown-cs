@@ -145,7 +145,7 @@ Now test whether the system remains in a safe state with $\text{Work} = (2, 3, 0
 
 | Step | Work Vector | Process Tested | Need Vector | Need $\le$ Work? | Action / New Work Vector | Safe Sequence |
 | :---: | :---: | :---: | :---: | :---: | :--- | :--- |
-| **1** | (2, 3, 0) | P0 | (7, 4, 3) | ❌ False | Skip P0. | — |
+| **1** | (2, 3, 0) | P0 | (7, 4, 3) | ❌ False | Skip P0. | - |
 | **2** | (2, 3, 0) | P1 | (0, 2, 0) | ✅ **True** | Run P1. Work = (2,3,0) + (3,0,2) = **(5, 3, 2)** | [P1] |
 | **3** | (5, 3, 2) | P2 | (6, 0, 0) | ❌ False | Skip P2. | [P1] |
 | **4** | (5, 3, 2) | P3 | (0, 1, 1) | ✅ **True** | Run P3. Work = (5,3,2) + (2,1,1) = **(7, 4, 3)** | [P1, P3] |

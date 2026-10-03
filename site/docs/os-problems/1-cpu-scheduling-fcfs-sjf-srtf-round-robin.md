@@ -57,7 +57,7 @@ FCFS executes processes strictly in order of their arrival without preemption.
 
 ---
 
-### Part 2: Shortest Job First (SJF) — Non-Preemptive
+### Part 2: Shortest Job First (SJF): Non-Preemptive
 
 In Non-Preemptive SJF, once a process begins execution, it runs to completion. Whenever the CPU becomes idle, the scheduler dispatches the available arrived process with the shortest burst time.
 
@@ -87,7 +87,7 @@ In Non-Preemptive SJF, once a process begins execution, it runs to completion. W
 
 ---
 
-### Part 3: Shortest Remaining Time First (SRTF) — Preemptive SJF
+### Part 3: Shortest Remaining Time First (SRTF): Preemptive SJF
 
 In SRTF, if a newly arrived process has a remaining burst time strictly less than the currently running process, the current process is **preempted immediately**.
 

@@ -23,7 +23,7 @@ Imagine ordering from an online grocery store versus a specialty bakery:
 * **Superclass Contract (The Grocery Store):** A general store guarantees: *"Order from our kitchen department, and you will receive `Food`."*
 * **Subclass Specialization (The Artisan Bakery):** A boutique bakery fulfills that contract, but specifies: *"Order from our kitchen, and you will receive `FreshCroissant`."*
 
-Because every `FreshCroissant` **IS-A** `Food`, any customer expecting general sustenance is 100% satisfied without breaking expectations (Liskov Substitution Principle). Furthermore, customers ordering specifically from the bakery don't need to open the box, inspect the item, and run tests to confirm it is a pastry—they can enjoy their croissant immediately without manual "downcasting."
+Because every `FreshCroissant` **IS-A** `Food`, any customer expecting general sustenance is 100% satisfied without breaking expectations (Liskov Substitution Principle). Furthermore, customers ordering specifically from the bakery don't need to open the box, inspect the item, and run tests to confirm it is a pastry; they can enjoy their croissant immediately without manual "downcasting."
 
 ---
 

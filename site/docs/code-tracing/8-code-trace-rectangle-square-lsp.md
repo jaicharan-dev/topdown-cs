@@ -52,7 +52,7 @@ sidebar_class_name: sidebar-hard
 
 ---
 
-The Rectangle/Square dilemma is the canonical illustration of the **Liskov Substitution Principle (LSP)**—the "L" in the SOLID design principles. 
+The Rectangle/Square dilemma is the canonical illustration of the **Liskov Substitution Principle (LSP)**, the "L" in the SOLID design principles. 
 
 While candidates easily notice that `resizeRectangle(new Square())` outputs 100 instead of 50, staff-level interviewers expect you to articulate the violation using formal **Design by Contract** terminology (preconditions, postconditions, and invariants).
 

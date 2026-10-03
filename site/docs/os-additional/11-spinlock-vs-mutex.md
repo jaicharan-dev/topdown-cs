@@ -25,7 +25,7 @@ Imagine waiting for a single-occupancy restroom at a bustling airport terminal:
 - **The Mutex (Taking a Pager to the Lounge):** You take an electronic pager from the attendant, walk 5 minutes over to a lounge bench, and go to sleep. When the restroom opens, the attendant buzzes your pager, you wake up, gather your luggage, and walk 5 minutes back to the door.
 
 #### When Which Strategy Wins:
-- If the person inside is merely washing their hands (**Short Critical Section**, e.g., 5 seconds), going to sleep was a terrible decision—by the time you sat down on the bench, the restroom was already empty.
+- If the person inside is merely washing their hands (**Short Critical Section**, e.g., 5 seconds), going to sleep was a terrible decision: by the time you sat down on the bench, the restroom was already empty.
 - If the person inside is taking a 30-minute shower (**Long Critical Section**), standing at the door jiggling the handle 1,800 times is a massive, exhausting waste of energy.
 
 ---

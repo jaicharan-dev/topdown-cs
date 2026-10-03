@@ -74,7 +74,7 @@ processor.processPayment();
 * **Early Binding (Overloading):** The compiler inspects the argument types at the call site and statically binds the call to a specific method address before the program runs.
 * **Late Binding (Overriding):** At compile time, the compiler only verifies that `PaymentProcessor` contains a `processPayment()` method. At runtime, the JVM uses dynamic dispatch:
   1. The JVM inspects the object header of `processor` on the heap to determine its true runtime class (`CryptoProcessor`).
-  2. It accesses that class's **Virtual Method Table (vtable)**—an internal lookup array pointing to the memory addresses of that class's executable methods.
+  2. It accesses that class's **Virtual Method Table (vtable)**, an internal lookup array pointing to the memory addresses of that class's executable methods.
   3. It executes the overridden version in `CryptoProcessor`. This enables polymorphic behavior at $O(1)$ lookup speed.
 
 ---

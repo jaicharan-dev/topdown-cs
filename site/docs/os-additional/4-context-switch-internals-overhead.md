@@ -92,7 +92,7 @@ The indirect costs are often an order of magnitude more expensive than the direc
 
 ### Summary
 
-"A context switch stores the CPU hardware execution state—program counter, stack pointer, general-purpose registers, floating-point vectors, and page table root—into the PCB/TCB. It is considered pure overhead because the CPU executes administrative kernel instructions rather than application logic, while indirectly imposing severe latency penalties through TLB flushes, CPU cache pollution, and branch predictor invalidation."
+"A context switch stores the CPU hardware execution state (program counter, stack pointer, general-purpose registers, floating-point vectors, and page table root) into the PCB/TCB. It is considered pure overhead because the CPU executes administrative kernel instructions rather than application logic, while indirectly imposing severe latency penalties through TLB flushes, CPU cache pollution, and branch predictor invalidation."
 
 ---
 

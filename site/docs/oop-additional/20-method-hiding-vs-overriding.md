@@ -12,14 +12,14 @@ sidebar_class_name: sidebar-medium
 
 ### The Quick Answer
 
-Method overriding applies to instance methods and provides runtime polymorphism via dynamic dispatch (`invokevirtual`), resolving the call based on the actual object on the heap using the Virtual Method Table (v-table). Method hiding applies to static methods and provides compile-time binding (`invokestatic`), resolving the call strictly based on the declared reference type. Attempting to override a static method with an instance method—or hide an instance method with a static method—causes an immediate compile-time error.
+Method overriding applies to instance methods and provides runtime polymorphism via dynamic dispatch (`invokevirtual`), resolving the call based on the actual object on the heap using the Virtual Method Table (v-table). Method hiding applies to static methods and provides compile-time binding (`invokestatic`), resolving the call strictly based on the declared reference type. Attempting to override a static method with an instance method, or hide an instance method with a static method, causes an immediate compile-time error.
 
 ---
 
 ### The ELI5 Analogy
 
 * **Method Overriding (The Local Branch Policy):** Corporate headquarters (`Parent`) defines a default return-and-refund policy. When you visit the regional Tokyo branch (`Child`), that specific branch has overridden the policy with its own customized regional process. Because you are physically standing inside the Tokyo store (the actual heap object), the Tokyo branch policy executes.
-* **Method Hiding (The Highway Billboard):** Corporate headquarters installs a huge advertising billboard along the turnpike (`Parent.staticMethod()`). The local branch erects its own billboard right next to it (`Child.staticMethod()`). The local billboard does not tear down corporate's billboard—it merely stands alongside it. If an observer looks through binoculars calibrated strictly toward corporate headquarters (`Parent ref = new Child()`), they see corporate's billboard, not the branch's.
+* **Method Hiding (The Highway Billboard):** Corporate headquarters installs a huge advertising billboard along the turnpike (`Parent.staticMethod()`). The local branch erects its own billboard right next to it (`Child.staticMethod()`). The local billboard does not tear down corporate's billboard; it merely stands alongside it. If an observer looks through binoculars calibrated strictly toward corporate headquarters (`Parent ref = new Child()`), they see corporate's billboard, not the branch's.
 
 ---
 
@@ -119,7 +119,7 @@ Every subclass instance physically allocates space for **both** `Super.score` an
 >
 > Method hiding applies to static methods. Because static methods belong to the class blueprint rather than an instance, they are resolved at compile time via `invokestatic`. When you call a static method through an object reference, the compiler strips the reference entirely and binds the call to the declared reference type.
 >
-> Furthermore, the Java compiler strictly forbids mixing the two: you cannot override a static method with an instance method, nor can you hide an instance method with a static method. Finally, instance variables behave exactly like static methods—they cannot be overridden, only hidden."
+> Furthermore, the Java compiler strictly forbids mixing the two: you cannot override a static method with an instance method, nor can you hide an instance method with a static method. Finally, instance variables behave exactly like static methods: they cannot be overridden, only hidden."
 
 ---
 

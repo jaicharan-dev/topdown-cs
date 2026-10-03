@@ -12,7 +12,7 @@ sidebar_class_name: sidebar-medium
 
 ### The Quick Answer
 
-In Java, an `enum` is not merely an integer constant or a primitive alias—it is a specialized, final class implicitly extending `java.lang.Enum<E>`. Each enum constant is a public, static, final instance of that class pre-allocated when the class is initialized. Because Java enums can define private fields, parameterized constructors, and business methods, they model rich, domain-driven value objects cleanly.
+In Java, an `enum` is not merely an integer constant or a primitive alias; it is a specialized, final class implicitly extending `java.lang.Enum<E>`. Each enum constant is a public, static, final instance of that class pre-allocated when the class is initialized. Because Java enums can define private fields, parameterized constructors, and business methods, they model rich, domain-driven value objects cleanly.
 
 The **Enum Singleton** is widely regarded as the gold standard implementation of the Singleton pattern in Java. By JVM design, enum constants are inherently thread-safe, immune to reflection attacks (the JVM's `Constructor.newInstance()` explicitly throws `IllegalArgumentException: Cannot reflectively create enum objects`), and natively serializable without risking duplicate instance generation.
 

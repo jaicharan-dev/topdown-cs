@@ -24,16 +24,16 @@ sidebar_class_name: sidebar-medium
 
 ### The Five Principles Explained
 
-#### 1. S — Single Responsibility Principle (SRP)
+#### 1. S: Single Responsibility Principle (SRP)
 * **Definition:** A class should have one, and only one, reason to change (meaning it is responsible to only one actor or business concern).
 * **Code Smell:** A "Swiss Army Knife" class. If an `Invoice` class calculates totals, formats PDFs, and saves records to SQL, it has three separate reasons to change.
 * **The Fix:** Split it into three cohesive classes: `InvoiceCalculator`, `InvoicePdfGenerator`, and `InvoiceRepository`.
 
-#### 2. O — Open/Closed Principle (OCP)
+#### 2. O: Open/Closed Principle (OCP)
 * **Definition:** Software entities should be open for extension, but closed for modification. You should be able to introduce new behavior without altering existing, tested source code.
 * **The Fix:** Program to interfaces. When adding a new `CryptoPayment` gateway, create a class implementing `PaymentGateway` rather than adding another `if/else` block inside your existing `PaymentProcessor`.
 
-#### 3. L — Liskov Substitution Principle (LSP)
+#### 3. L: Liskov Substitution Principle (LSP)
 * **Definition:** If $S$ is a subtype of $T$, objects of type $T$ may be replaced with objects of type $S$ without altering any desirable properties of the program (correctness, task performed, etc.).
 * **The Classic Rectangle vs. Square Violation:**
   * In geometry, a square is a rectangle. But in OOP, modeling `class Square extends Rectangle` violates LSP!
@@ -44,12 +44,12 @@ sidebar_class_name: sidebar-medium
   2. **Postconditions cannot be weakened** (cannot guarantee less output).
   3. **Invariants must be preserved.**
 
-#### 4. I — Interface Segregation Principle (ISP)
+#### 4. I: Interface Segregation Principle (ISP)
 * **Definition:** Clients should not be forced to depend on methods they do not use.
 * **Code Smell:** A "fat interface" like `Worker { void work(); void eat(); void sleep(); }`. When implementing a `RobotWorker`, the developer is forced to supply empty dummy implementations for `eat()` and `sleep()`.
 * **The Fix:** Break the fat interface into smaller role interfaces: `Workable`, `Feedable`.
 
-#### 5. D — Dependency Inversion Principle (DIP)
+#### 5. D: Dependency Inversion Principle (DIP)
 * **Definition:** High-level modules (business rules) should not depend on low-level modules (database drivers, network clients). Both should depend on abstractions (interfaces). Furthermore, abstractions should not depend on details; details should depend on abstractions.
 
 ---
@@ -68,7 +68,7 @@ Candidates frequently conflate these three related terms:
 
 ### Crucial Nuance: Pragmatic SOLID vs. "Ravioli Code"
 
-Dogmatically applying all five principles on Day 1 is an antipattern. Over-abstracting every variable into single-method interfaces before requirements stabilize produces "Ravioli Code"—hundreds of tiny, fragmented files that obscure business logic.
+Dogmatically applying all five principles on Day 1 is an antipattern. Over-abstracting every variable into single-method interfaces before requirements stabilize produces "Ravioli Code", hundreds of tiny, fragmented files that obscure business logic.
 
 Senior engineers follow Sandi Metz’s rule: *"Duplication is far cheaper than the wrong abstraction."* Build the straightforward implementation first, and introduce abstractions reactively when you encounter the "pain of change."
 

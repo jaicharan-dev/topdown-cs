@@ -57,7 +57,7 @@ sequenceDiagram
 
 ---
 
-### Phase 3: The Missing Step — ARP & Local Gateway Resolution
+### Phase 3: The Missing Step: ARP & Local Gateway Resolution
 
 > **Interview Bar-Raiser:** Most candidates jump directly from DNS to the TCP handshake. However, a computer cannot transmit an IP packet onto a local physical network without knowing the **Layer 2 MAC address** of the next hop!
 

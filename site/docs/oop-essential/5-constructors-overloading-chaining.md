@@ -13,7 +13,7 @@ sidebar_class_name: sidebar-easy
 
 ### The Quick Answer
 
-"A constructor is a special block of code invoked when an object is instantiated, responsible for setting its initial valid state. It can be overloaded by varying parameter signatures. **Constructor chaining** is the mechanism where one constructor calls another—using `this()` to reuse initialization logic within the same class, or `super()` to ensure the parent class's state is properly constructed before the child class initializes."
+"A constructor is a special block of code invoked when an object is instantiated, responsible for setting its initial valid state. It can be overloaded by varying parameter signatures. **Constructor chaining** is the mechanism where one constructor calls another, using `this()` to reuse initialization logic within the same class, or `super()` to ensure the parent class's state is properly constructed before the child class initializes."
 
 ---
 

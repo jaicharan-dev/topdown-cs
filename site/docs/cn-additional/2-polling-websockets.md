@@ -10,7 +10,7 @@ sidebar_class_name: sidebar-medium
 
 > **Interview Question:** "Compare Short Polling, Long Polling, Server-Sent Events (SSE), and WebSockets. What network and memory overhead does each carry, and what architectural tradeoff do you accept when scaling WebSockets across a multi-server cluster?"
 
-Real-time web applications—such as financial market order books, collaborative text editors, live location trackers, and AI chat streams—require transmitting updates from server to client with millisecond latency.
+Real-time web applications, such as financial market order books, collaborative text editors, live location trackers, and AI chat streams, require transmitting updates from server to client with millisecond latency.
 
 Because standard HTTP was designed as a client-initiated, request-response protocol, engineering teams choose between four progressive real-time paradigms: **Short Polling**, **Long Polling**, **Server-Sent Events (SSE)**, and **WebSockets**.
 

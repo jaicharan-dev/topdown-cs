@@ -15,7 +15,7 @@ import TabItem from '@theme/TabItem';
 
 ### The Quick Answer
 
-`Comparable<T>` defines a single, internal natural ordering implemented directly by the domain class via `compareTo(T other)` (`java.lang`), whereas `Comparator<T>` defines multiple, external, interchangeable sorting strategies via `compare(T o1, T o2)` (`java.util`) without modifying the target class. When implementing either interface, never subtract integer fields (`a - b`) because numeric underflow/overflow will invert signs and corrupt sort order—always use `Integer.compare(a, b)`. Furthermore, comparisons should remain consistent with `equals()`, because sorted collections like `TreeSet` and `TreeMap` use `compareTo() == 0` (not `equals()`) to determine duplicate identity, silently dropping unequal items if their comparison keys collide.
+`Comparable<T>` defines a single, internal natural ordering implemented directly by the domain class via `compareTo(T other)` (`java.lang`), whereas `Comparator<T>` defines multiple, external, interchangeable sorting strategies via `compare(T o1, T o2)` (`java.util`) without modifying the target class. When implementing either interface, never subtract integer fields (`a - b`) because numeric underflow/overflow will invert signs and corrupt sort order; always use `Integer.compare(a, b)`. Furthermore, comparisons should remain consistent with `equals()`, because sorted collections like `TreeSet` and `TreeMap` use `compareTo() == 0` (not `equals()`) to determine duplicate identity, silently dropping unequal items if their comparison keys collide.
 
 ---
 

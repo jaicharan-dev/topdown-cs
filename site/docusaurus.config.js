@@ -162,7 +162,6 @@ const config = {
         items: [],
       },
       footer: {
-        style: 'dark',
         links: [
           {
             title: 'Legal',

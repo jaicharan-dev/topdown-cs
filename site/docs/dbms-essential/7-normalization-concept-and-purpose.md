@@ -49,7 +49,7 @@ To understand why normalization is necessary, consider an unnormalized table com
 When decomposing a large table $R$ into smaller tables $R_1, R_2, \dots, R_n$, the decomposition must satisfy two formal criteria:
 
 1. **Lossless-Join Decomposition ($R_1 \bowtie R_2 = R$):**
-   Re-joining the decomposed tables using a natural join must produce the exact original dataset—**without generating spurious (hallucinated) rows**. 
+   Re-joining the decomposed tables using a natural join must produce the exact original dataset, **without generating spurious (hallucinated) rows**. 
    *Mathematical Guarantee:* For two decomposed tables $R_1$ and $R_2$, the join is lossless if and only if their common attribute is a superkey of at least one relation:
    $$ (R_1 \cap R_2) \to R_1 \quad \text{or} \quad (R_1 \cap R_2) \to R_2 $$
 

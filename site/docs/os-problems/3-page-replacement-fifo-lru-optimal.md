@@ -24,29 +24,29 @@ sidebar_class_name: sidebar-medium
 
 ### Part 1: FIFO (First-In, First-Out)
 
-FIFO maintains a strict queue of memory residency. The page that has been in RAM the longest—regardless of how frequently or recently it was accessed—is selected for eviction.
+FIFO maintains a strict queue of memory residency. The page that has been in RAM the longest, regardless of how frequently or recently it was accessed, is selected for eviction.
 
 #### Step-by-Step Trace Table (FIFO)
 
 | Step | Page Req | Frame 1 | Frame 2 | Frame 3 | Result | Evicted Victim |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **1** | **7** | **7** | — | — | ❌ **Fault** | — |
-| **2** | **0** | 7 | **0** | — | ❌ **Fault** | — |
-| **3** | **1** | 7 | 0 | **1** | ❌ **Fault** | — |
+| **1** | **7** | **7** | - | - | ❌ **Fault** | - |
+| **2** | **0** | 7 | **0** | - | ❌ **Fault** | - |
+| **3** | **1** | 7 | 0 | **1** | ❌ **Fault** | - |
 | **4** | **2** | **2** | 0 | 1 | ❌ **Fault** | 7 (Oldest) |
-| **5** | **0** | 2 | 0 | 1 | ✅ **Hit** | — |
+| **5** | **0** | 2 | 0 | 1 | ✅ **Hit** | - |
 | **6** | **3** | 2 | **3** | 1 | ❌ **Fault** | 0 (Oldest) |
 | **7** | **0** | 2 | 3 | **0** | ❌ **Fault** | 1 (Oldest) |
 | **8** | **4** | **4** | 3 | 0 | ❌ **Fault** | 2 (Oldest) |
 | **9** | **2** | 4 | **2** | 0 | ❌ **Fault** | 3 (Oldest) |
 | **10** | **3** | 4 | 2 | **3** | ❌ **Fault** | 0 (Oldest) |
 | **11** | **0** | **0** | 2 | 3 | ❌ **Fault** | 4 (Oldest) |
-| **12** | **3** | 0 | 2 | 3 | ✅ **Hit** | — |
-| **13** | **2** | 0 | 2 | 3 | ✅ **Hit** | — |
+| **12** | **3** | 0 | 2 | 3 | ✅ **Hit** | - |
+| **13** | **2** | 0 | 2 | 3 | ✅ **Hit** | - |
 | **14** | **1** | 0 | **1** | 3 | ❌ **Fault** | 2 (Oldest) |
 | **15** | **2** | 0 | 1 | **2** | ❌ **Fault** | 3 (Oldest) |
-| **16** | **0** | 0 | 1 | 2 | ✅ **Hit** | — |
-| **17** | **1** | 0 | 1 | 2 | ✅ **Hit** | — |
+| **16** | **0** | 0 | 1 | 2 | ✅ **Hit** | - |
+| **17** | **1** | 0 | 1 | 2 | ✅ **Hit** | - |
 | **18** | **7** | **7** | 1 | 2 | ❌ **Fault** | 0 (Oldest) |
 | **19** | **0** | 7 | **0** | 2 | ❌ **Fault** | 1 (Oldest) |
 | **20** | **1** | 7 | 0 | **1** | ❌ **Fault** | 2 (Oldest) |
@@ -65,26 +65,26 @@ LRU leverages the principle of **temporal locality**: pages accessed recently ar
 
 | Step | Page Req | Frame 1 | Frame 2 | Frame 3 | Result | Evicted Victim (Least Recently Used) |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **1** | **7** | **7** | — | — | ❌ **Fault** | — |
-| **2** | **0** | 7 | **0** | — | ❌ **Fault** | — |
-| **3** | **1** | 7 | 0 | **1** | ❌ **Fault** | — |
+| **1** | **7** | **7** | - | - | ❌ **Fault** | - |
+| **2** | **0** | 7 | **0** | - | ❌ **Fault** | - |
+| **3** | **1** | 7 | 0 | **1** | ❌ **Fault** | - |
 | **4** | **2** | **2** | 0 | 1 | ❌ **Fault** | 7 (Last used at step 1) |
-| **5** | **0** | 2 | 0 | 1 | ✅ **Hit** | — |
+| **5** | **0** | 2 | 0 | 1 | ✅ **Hit** | - |
 | **6** | **3** | 2 | 0 | **3** | ❌ **Fault** | 1 (Last used at step 3) |
-| **7** | **0** | 2 | 0 | 3 | ✅ **Hit** | — |
+| **7** | **0** | 2 | 0 | 3 | ✅ **Hit** | - |
 | **8** | **4** | **4** | 0 | 3 | ❌ **Fault** | 2 (Last used at step 4) |
 | **9** | **2** | 4 | 0 | **2** | ❌ **Fault** | 3 (Last used at step 6) |
 | **10** | **3** | 4 | **3** | 2 | ❌ **Fault** | 0 (Last used at step 7) |
 | **11** | **0** | **0** | 3 | 2 | ❌ **Fault** | 4 (Last used at step 8) |
-| **12** | **3** | 0 | 3 | 2 | ✅ **Hit** | — |
-| **13** | **2** | 0 | 3 | 2 | ✅ **Hit** | — |
+| **12** | **3** | 0 | 3 | 2 | ✅ **Hit** | - |
+| **13** | **2** | 0 | 3 | 2 | ✅ **Hit** | - |
 | **14** | **1** | **1** | 3 | 2 | ❌ **Fault** | 0 (Last used at step 11) |
-| **15** | **2** | 1 | 3 | 2 | ✅ **Hit** | — |
+| **15** | **2** | 1 | 3 | 2 | ✅ **Hit** | - |
 | **16** | **0** | 1 | **0** | 2 | ❌ **Fault** | 3 (Last used at step 12) |
-| **17** | **1** | 1 | 0 | 2 | ✅ **Hit** | — |
+| **17** | **1** | 1 | 0 | 2 | ✅ **Hit** | - |
 | **18** | **7** | 1 | 0 | **7** | ❌ **Fault** | 2 (Last used at step 15) |
-| **19** | **0** | 1 | 0 | 7 | ✅ **Hit** | — |
-| **20** | **1** | 1 | 0 | 7 | ✅ **Hit** | — |
+| **19** | **0** | 1 | 0 | 7 | ✅ **Hit** | - |
+| **20** | **1** | 1 | 0 | 7 | ✅ **Hit** | - |
 
 - **Total LRU Page Faults:** **12**
 - **Total LRU Page Hits:** **8**
@@ -100,26 +100,26 @@ Optimal page replacement evicts the page that **will not be referenced for the l
 
 | Step | Page Req | Frame 1 | Frame 2 | Frame 3 | Result | Evicted Victim (Furthest Future Use) |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **1** | **7** | **7** | — | — | ❌ **Fault** | — |
-| **2** | **0** | 7 | **0** | — | ❌ **Fault** | — |
-| **3** | **1** | 7 | 0 | **1** | ❌ **Fault** | — |
+| **1** | **7** | **7** | - | - | ❌ **Fault** | - |
+| **2** | **0** | 7 | **0** | - | ❌ **Fault** | - |
+| **3** | **1** | 7 | 0 | **1** | ❌ **Fault** | - |
 | **4** | **2** | **2** | 0 | 1 | ❌ **Fault** | 7 (Next used at step 18; 0 used at step 5, 1 at step 14) |
-| **5** | **0** | 2 | 0 | 1 | ✅ **Hit** | — |
+| **5** | **0** | 2 | 0 | 1 | ✅ **Hit** | - |
 | **6** | **3** | 2 | 0 | **3** | ❌ **Fault** | 1 (Next used at step 14; 0 used at step 7, 2 at step 9) |
-| **7** | **0** | 2 | 0 | 3 | ✅ **Hit** | — |
+| **7** | **0** | 2 | 0 | 3 | ✅ **Hit** | - |
 | **8** | **4** | 2 | **4** | 3 | ❌ **Fault** | 0 (Next used at step 11; 2 used at step 9, 3 at step 10) |
-| **9** | **2** | 2 | 4 | 3 | ✅ **Hit** | — |
-| **10** | **3** | 2 | 4 | 3 | ✅ **Hit** | — |
+| **9** | **2** | 2 | 4 | 3 | ✅ **Hit** | - |
+| **10** | **3** | 2 | 4 | 3 | ✅ **Hit** | - |
 | **11** | **0** | 2 | **0** | 3 | ❌ **Fault** | 4 (Never used again in reference string!) |
-| **12** | **3** | 2 | 0 | 3 | ✅ **Hit** | — |
-| **13** | **2** | 2 | 0 | 3 | ✅ **Hit** | — |
+| **12** | **3** | 2 | 0 | 3 | ✅ **Hit** | - |
+| **13** | **2** | 2 | 0 | 3 | ✅ **Hit** | - |
 | **14** | **1** | 2 | 0 | **1** | ❌ **Fault** | 3 (Never used again in reference string!) |
-| **15** | **2** | 2 | 0 | 1 | ✅ **Hit** | — |
-| **16** | **0** | 2 | 0 | 1 | ✅ **Hit** | — |
-| **17** | **1** | 2 | 0 | 1 | ✅ **Hit** | — |
+| **15** | **2** | 2 | 0 | 1 | ✅ **Hit** | - |
+| **16** | **0** | 2 | 0 | 1 | ✅ **Hit** | - |
+| **17** | **1** | 2 | 0 | 1 | ✅ **Hit** | - |
 | **18** | **7** | **7** | 0 | 1 | ❌ **Fault** | 2 (Never used again in reference string!) |
-| **19** | **0** | 7 | 0 | 1 | ✅ **Hit** | — |
-| **20** | **1** | 7 | 0 | 1 | ✅ **Hit** | — |
+| **19** | **0** | 7 | 0 | 1 | ✅ **Hit** | - |
+| **20** | **1** | 7 | 0 | 1 | ✅ **Hit** | - |
 
 - **Total Optimal Page Faults:** **9**
 - **Total Optimal Page Hits:** **11**

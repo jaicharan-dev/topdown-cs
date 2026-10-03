@@ -41,7 +41,7 @@ A favorite interviewer trap is: *"If you can never call `new AbstractClass()`, w
 
 ### The ELI5 Analogy
 
-* **Abstract Class (DNA & Lineage):** Think of an abstract class as a `Mammal`. A `Dog` is a Mammal; a `Whale` is a Mammal. Because they share this strict biological lineage, `Mammal` provides shared internal state (warm blood, heart rate) and concrete shared behaviors (breathing). You cannot manifest a generic, standalone "Mammal" in the wild—it must be a concrete species.
+* **Abstract Class (DNA & Lineage):** Think of an abstract class as a `Mammal`. A `Dog` is a Mammal; a `Whale` is a Mammal. Because they share this strict biological lineage, `Mammal` provides shared internal state (warm blood, heart rate) and concrete shared behaviors (breathing). You cannot manifest a generic, standalone "Mammal" in the wild; it must be a concrete species.
 * **Interface (A License or Certification):** Think of an interface as a `Swimmer` certificate. A `Human` can swim, a `Whale` can swim, and an autonomous `Submarine` can swim. They share zero lineage or internal biology, but they all satisfy a contract promising they implement a `swim()` method.
 
 ---

@@ -51,7 +51,7 @@ graph TD
 In physical networks, optical fiber cables get severed, switches fail, and cloud hypervisors drop packets. **Network Partitions (`P`) are an unavoidable physical reality.**
 
 Therefore, CAP is **not** a menu where you can choose "Consistency + Availability":
-- A single-node database (like traditional single-instance PostgreSQL or MySQL) can claim "CA" only because it does not run across a network—meaning partition tolerance is not applicable.
+- A single-node database (like traditional single-instance PostgreSQL or MySQL) can claim "CA" only because it does not run across a network, meaning partition tolerance is not applicable.
 - **In any distributed system, Partition Tolerance (`P`) is mandatory.**
 - The real question is: **When a Network Partition occurs, do you choose Consistency (CP) or Availability (AP)?**
 
@@ -102,11 +102,11 @@ $$\mathbf{If\ P\ (Partition)} \implies \mathbf{A\text{ vs. }C} \quad \mathbf{ELS
 
 ### The Interview Answer (60-90 seconds)
 
-> "The CAP Theorem states that in the event of a network partition, a distributed system must choose between Linearizable Consistency and High Availability. Because physical network failures are inevitable, 'CA' cannot exist in distributed systems—the trade-off is strictly CP versus AP.
+> "The CAP Theorem states that in the event of a network partition, a distributed system must choose between Linearizable Consistency and High Availability. Because physical network failures are inevitable, 'CA' cannot exist in distributed systems: the trade-off is strictly CP versus AP.
 >
 > In CP systems like etcd or MongoDB, minority partitions reject writes using quorum majorities to prevent split-brain data corruption, prioritizing correctness over uptime. In AP systems like Cassandra or DynamoDB, all nodes accept writes, sacrificing immediate consistency in exchange for uninterrupted availability and single-digit latency.
 >
-> A crucial interview distinction is that Consistency in CAP means Linearizability—the external illusion of a single atomic copy—whereas Consistency in ACID refers to application invariants, like foreign keys and check constraints.
+> A crucial interview distinction is that Consistency in CAP means Linearizability (the external illusion of a single atomic copy), whereas Consistency in ACID refers to application invariants, like foreign keys and check constraints.
 >
 > Finally, the PACELC theorem extends CAP to normal operations: if there is a partition, trade off Availability or Consistency; else, trade off Latency or Consistency."
 

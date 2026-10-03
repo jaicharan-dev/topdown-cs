@@ -10,11 +10,11 @@ sidebar_class_name: sidebar-medium
 
 **Interviewer:** Let's design a digital wallet system. Imagine a scenario where a user on a spotty 4G connection taps the "Send Money" button on their phone. The connection drops, they don't see a success message, and in a panic, they tap the button again. At the exact same millisecond, they share a joint account with someone who goes to an ATM and attempts to withdraw cash. How would you design the backend API to prevent double charges and race conditions?
 
-**Candidate:** That's a great real-world scenario. When dealing with payments, ensuring nobody accidentally loses—or duplicates—their money is paramount. To build a robust fintech backend, we essentially need two lines of defense: a network shield and a database shield. For the network retries, we use an Idempotency Key, and for the database race conditions, we use row-level locking, commonly implemented via `SELECT ... FOR UPDATE` in SQL.
+**Candidate:** That's a great real-world scenario. When dealing with payments, ensuring nobody accidentally loses or duplicates their money is paramount. To build a robust fintech backend, we essentially need two lines of defense: a network shield and a database shield. For the network retries, we use an Idempotency Key, and for the database race conditions, we use row-level locking, commonly implemented via `SELECT ... FOR UPDATE` in SQL.
 
 **Interviewer:** Let's break those down. What exactly is an Idempotency Key, and how does it protect the network?
 
-**Candidate:** The word "idempotent" means that performing an action multiple times yields the exact same result as performing it once—like multiplying a number by 1. 
+**Candidate:** The word "idempotent" means that performing an action multiple times yields the exact same result as performing it once, like multiplying a number by 1. 
 
 In the real world, networks are completely unreliable. To explain this like you're five: imagine you buy a coffee on a laggy card machine. You swipe, the screen freezes, and you panic. Did it go through? You swipe again. An Idempotency Key is like a unique token generated *before* you swipe. If the machine receives two swipes with the exact same token, it realizes, "I already charged you for this exact transaction," and ignores the second swipe, saving you from a double charge. 
 
@@ -22,7 +22,7 @@ In the real world, networks are completely unreliable. To explain this like you'
 
 **Candidate:** The flow works like this: when the user opens the checkout or transfer screen, the frontend generates a unique string, usually a UUID. When the user hits send, the frontend attaches that UUID in the HTTP headers of the API request, like `Idempotency-Key: 9b1deb4d-3b7d`. 
 
-When our backend receives the request, it checks a database table or a fast cache like Redis. If it's a completely new key, it proceeds with moving the money. But if the exact same request comes in again with a key we already processed, the backend recognizes it and simply returns the cached success message—without moving any money again.
+When our backend receives the request, it checks a database table or a fast cache like Redis. If it's a completely new key, it proceeds with moving the money. But if the exact same request comes in again with a key we already processed, the backend recognizes it and simply returns the cached success message, without moving any money again.
 
 **Interviewer:** That handles the network retry issue. Now, what about the database shield? How do we handle the spouse at the ATM withdrawing cash at the exact same time our server is processing the app transfer?
 

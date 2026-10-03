@@ -16,7 +16,7 @@ sidebar_class_name: sidebar-medium
 
 In standard operating system design, increasing the amount of physical memory (allocated page frames) is assumed to improve or at least preserve system throughput by reducing cache misses (page faults). 
 
-In 1969, László Bélády demonstrated that under certain page replacement policies—most notably **FIFO (First-In, First-Out)**—allocating **more page frames can paradoxically result in more page faults**. This counterintuitive phenomenon is known as **Bélády's Anomaly**.
+In 1969, László Bélády demonstrated that under certain page replacement policies, most notably **FIFO (First-In, First-Out)**, allocating **more page frames can paradoxically result in more page faults**. This counterintuitive phenomenon is known as **Bélády's Anomaly**.
 
 ```
 Reference String: 1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5  (12 Requests)
@@ -35,18 +35,18 @@ Under FIFO, memory behaves as a strict queue. The page residing in physical memo
 
 | Step | Page Req | Frame 1 | Frame 2 | Frame 3 | FIFO Queue (Oldest -> Newest) | Result | Evicted Victim |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **1** | 1 | 1 | — | — | [1] | ❌ **Fault** | — |
-| **2** | 2 | 1 | 2 | — | [1, 2] | ❌ **Fault** | — |
-| **3** | 3 | 1 | 2 | 3 | [1, 2, 3] | ❌ **Fault** | — |
+| **1** | 1 | 1 | - | - | [1] | ❌ **Fault** | - |
+| **2** | 2 | 1 | 2 | - | [1, 2] | ❌ **Fault** | - |
+| **3** | 3 | 1 | 2 | 3 | [1, 2, 3] | ❌ **Fault** | - |
 | **4** | 4 | 4 | 2 | 3 | [2, 3, 4] | ❌ **Fault** | 1 |
 | **5** | 1 | 4 | 1 | 3 | [3, 4, 1] | ❌ **Fault** | 2 |
 | **6** | 2 | 4 | 1 | 2 | [4, 1, 2] | ❌ **Fault** | 3 |
 | **7** | 5 | 5 | 1 | 2 | [1, 2, 5] | ❌ **Fault** | 4 |
-| **8** | 1 | 5 | 1 | 2 | [1, 2, 5] | ✅ **Hit** | — |
-| **9** | 2 | 5 | 1 | 2 | [1, 2, 5] | ✅ **Hit** | — |
+| **8** | 1 | 5 | 1 | 2 | [1, 2, 5] | ✅ **Hit** | - |
+| **9** | 2 | 5 | 1 | 2 | [1, 2, 5] | ✅ **Hit** | - |
 | **10** | 3 | 5 | 3 | 2 | [2, 5, 3] | ❌ **Fault** | 1 |
 | **11** | 4 | 5 | 3 | 4 | [5, 3, 4] | ❌ **Fault** | 2 |
-| **12** | 5 | 5 | 3 | 4 | [5, 3, 4] | ✅ **Hit** | — |
+| **12** | 5 | 5 | 3 | 4 | [5, 3, 4] | ✅ **Hit** | - |
 
 - **Total Page Faults (3 Frames):** **9**
 - **Total Page Hits (3 Frames):** **3**
@@ -62,12 +62,12 @@ Now expand physical memory to 4 frames. Intuitively, having an extra frame shoul
 
 | Step | Page Req | Frame 1 | Frame 2 | Frame 3 | Frame 4 | FIFO Queue (Oldest -> Newest) | Result | Evicted Victim |
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **1** | 1 | 1 | — | — | — | [1] | ❌ **Fault** | — |
-| **2** | 2 | 1 | 2 | — | — | [1, 2] | ❌ **Fault** | — |
-| **3** | 3 | 1 | 2 | 3 | — | [1, 2, 3] | ❌ **Fault** | — |
-| **4** | 4 | 1 | 2 | 3 | 4 | [1, 2, 3, 4] | ❌ **Fault** | — |
-| **5** | 1 | 1 | 2 | 3 | 4 | [1, 2, 3, 4] | ✅ **Hit** | — |
-| **6** | 2 | 1 | 2 | 3 | 4 | [1, 2, 3, 4] | ✅ **Hit** | — |
+| **1** | 1 | 1 | - | - | - | [1] | ❌ **Fault** | - |
+| **2** | 2 | 1 | 2 | - | - | [1, 2] | ❌ **Fault** | - |
+| **3** | 3 | 1 | 2 | 3 | - | [1, 2, 3] | ❌ **Fault** | - |
+| **4** | 4 | 1 | 2 | 3 | 4 | [1, 2, 3, 4] | ❌ **Fault** | - |
+| **5** | 1 | 1 | 2 | 3 | 4 | [1, 2, 3, 4] | ✅ **Hit** | - |
+| **6** | 2 | 1 | 2 | 3 | 4 | [1, 2, 3, 4] | ✅ **Hit** | - |
 | **7** | 5 | 5 | 2 | 3 | 4 | [2, 3, 4, 5] | ❌ **Fault** | 1 |
 | **8** | 1 | 5 | 1 | 3 | 4 | [3, 4, 5, 1] | ❌ **Fault** | 2 |
 | **9** | 2 | 5 | 1 | 2 | 4 | [4, 5, 1, 2] | ❌ **Fault** | 3 |
