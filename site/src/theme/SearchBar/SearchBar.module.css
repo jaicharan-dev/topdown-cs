@@ -1,0 +1,580 @@
+/* ===================================================================
+   SEARCH BAR — navbar field, results dropdown, empty state.
+
+   Built on the same language as the rest of the site: soft accent-tinted
+   surfaces, a left accent rail on the active row, and the gradient dash
+   used by the homepage section labels. Everything here is scoped to this
+   module so it never collides with custom.css.
+   =================================================================== */
+
+:root {
+  --csf-search-accent: var(--ifm-color-primary);
+}
+
+/* ----------------------------------------------------------- the field */
+
+.searchBarContainer {
+  margin-left: 16px;
+}
+
+.searchBarContainer :global(.navbar__search-input) {
+  height: 2.25rem;
+  width: 13rem;
+  padding: 0 4.6rem 0 2.3rem;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  background-image: none;
+  transition: width 0.22s ease, border-color 0.2s ease, background-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+html[data-theme="dark"] .searchBarContainer :global(.navbar__search-input) {
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #e4e4e7;
+}
+
+html:not([data-theme="dark"]) .searchBarContainer :global(.navbar__search-input) {
+  background-color: rgba(0, 0, 0, 0.025);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  color: #18181b;
+}
+
+html[data-theme="dark"] .searchBarContainer :global(.navbar__search-input):hover {
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+html:not([data-theme="dark"]) .searchBarContainer :global(.navbar__search-input):hover {
+  background-color: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.14);
+}
+
+.searchBarContainer :global(.navbar__search-input):focus {
+  width: 17rem;
+  outline: none;
+  border-color: var(--csf-search-accent);
+  box-shadow: 0 0 0 3px
+    color-mix(in srgb, var(--csf-search-accent) 18%, transparent);
+}
+
+/* The module's own hook, kept so the plugin's markup still matches. */
+.searchInput {
+  background-image: none;
+}
+
+.searchInput:focus {
+  outline: none;
+}
+
+.searchIcon {
+  position: absolute;
+  top: 50%;
+  left: 0.8rem;
+  width: 0.95rem;
+  height: 0.95rem;
+  color: var(--ifm-navbar-search-input-placeholder-color);
+  pointer-events: none;
+  transform: translateY(-50%);
+  transition: color 0.2s ease;
+  z-index: 1;
+}
+
+.searchBarContainer.focused .searchIcon {
+  color: var(--csf-search-accent);
+}
+
+:global(.navbar__search) {
+  position: relative;
+}
+
+/* ------------------------------------------------------- the ⌘K chip */
+
+.searchHintContainer {
+  position: absolute;
+  right: 9px;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  pointer-events: none;
+  gap: 3px;
+}
+
+.searchHint {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.25rem;
+  height: 1.25rem;
+  padding: 0 0.3rem;
+  border-radius: 5px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  line-height: 1;
+  box-shadow: none;
+  transition: opacity 0.15s ease;
+}
+
+html[data-theme="dark"] .searchHint {
+  color: #8f8f99;
+  background-color: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+html:not([data-theme="dark"]) .searchHint {
+  color: #71717a;
+  background-color: rgba(0, 0, 0, 0.045);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.searchBarContainer.focused .searchHintContainer {
+  opacity: 0;
+}
+
+/* --------------------------------------------------- loading + clear */
+
+.searchBarContainer .searchBarLoadingRing {
+  display: none;
+  position: absolute;
+  left: 9px;
+  top: 7px;
+}
+
+.searchBarContainer .searchClearButton {
+  position: absolute;
+  right: 0.6rem;
+  top: 50%;
+  transform: translate(0, -50%);
+  padding: 2px;
+  background: none;
+  border: none;
+  line-height: 1rem;
+  border-radius: 5px;
+  color: var(--ifm-navbar-search-input-placeholder-color);
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.searchBarContainer .searchClearButton:hover {
+  color: var(--ifm-font-color-base);
+  background-color: var(--ifm-color-emphasis-200);
+}
+
+.searchIndexLoading :global(.navbar__search-input) {
+  background-image: none;
+}
+
+.searchIndexLoading .searchIcon {
+  display: none;
+}
+
+.searchBarContainer.searchIndexLoading .searchBarLoadingRing {
+  display: inline-block;
+}
+
+/* -------------------------------------------------------- the results */
+
+.searchBar .dropdownMenu {
+  left: auto !important;
+  right: 0 !important;
+
+  border-radius: 16px;
+  margin-top: 10px;
+  width: var(--search-local-modal-width, 620px);
+  position: relative;
+  padding: 8px;
+
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+html[data-theme="dark"] .searchBar .dropdownMenu {
+  background: #1a1a1e;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+html:not([data-theme="dark"]) .searchBar .dropdownMenu {
+  background: var(--csf-surface, #ffffff);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 20px 44px -14px rgba(32, 26, 20, 0.22),
+    0 2px 6px rgba(32, 26, 20, 0.06);
+}
+
+.searchBar .dropdownMenu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.searchBar .dropdownMenu::-webkit-scrollbar-thumb {
+  background-color: var(--ifm-color-emphasis-300);
+  border-radius: 999px;
+}
+
+.searchBar .dropdownMenu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------------------------------------------------------- a result */
+
+.searchBar .dropdownMenu .suggestion {
+  cursor: pointer;
+  background: transparent;
+  box-shadow: none;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 0 10px 0 12px;
+  width: 100%;
+  position: relative;
+
+  align-items: center;
+  color: var(--ifm-font-color-base);
+  display: flex;
+  flex-direction: row;
+  height: var(--search-local-hit-height, 52px);
+  transition: background-color 0.15s ease, border-color 0.15s ease,
+    color 0.15s ease;
+}
+
+.searchBar .dropdownMenu .suggestion:not(:last-child) {
+  margin-bottom: 2px;
+}
+
+/* The accent rail that slides in on the highlighted row */
+.searchBar .dropdownMenu .suggestion::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  width: 2px;
+  height: 0;
+  border-radius: 2px;
+  background: var(--csf-search-accent);
+  transform: translateY(-50%);
+  transition: height 0.18s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.searchBar .dropdownMenu .suggestion.cursor::before {
+  height: 54%;
+}
+
+html[data-theme="dark"] .dropdownMenu .suggestion {
+  background: transparent;
+  color: var(--ifm-font-color-base);
+}
+
+html[data-theme="dark"] .searchBar .dropdownMenu .suggestion.cursor {
+  background-color: color-mix(
+    in srgb,
+    var(--csf-search-accent) 13%,
+    rgba(255, 255, 255, 0.03)
+  );
+  border-color: color-mix(in srgb, var(--csf-search-accent) 26%, transparent);
+}
+
+html:not([data-theme="dark"]) .searchBar .dropdownMenu .suggestion.cursor {
+  background-color: color-mix(
+    in srgb,
+    var(--csf-search-accent) 9%,
+    transparent
+  );
+  border-color: color-mix(in srgb, var(--csf-search-accent) 26%, transparent);
+}
+
+/* ------------------------------------------------------ result innards */
+
+.hitTree,
+.hitIcon,
+.hitPath,
+.noResultsIcon,
+.hitFooter a {
+  color: var(--ifm-color-emphasis-500);
+}
+
+.hitTree {
+  display: flex;
+  align-items: center;
+}
+
+.hitTree > svg {
+  height: var(--search-local-hit-height, 52px);
+  opacity: 0.45;
+  stroke-width: var(--search-local-icon-stroke-width, 1.4);
+  width: 22px;
+}
+
+.hitIcon {
+  stroke-width: var(--search-local-icon-stroke-width, 1.5);
+  height: 18px;
+  width: 18px;
+  flex: none;
+  opacity: 0.75;
+  transition: color 0.15s ease, opacity 0.15s ease;
+}
+
+.suggestion.cursor .hitIcon {
+  color: var(--csf-search-accent);
+  opacity: 1;
+}
+
+.hitWrapper {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-weight: 500;
+  justify-content: center;
+  margin: 0 10px;
+  overflow-x: hidden;
+  width: 80%;
+}
+
+.hitWrapper mark {
+  background: none;
+  font-weight: 700;
+  color: var(--csf-search-accent);
+}
+
+.hitTitle {
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.hitPath {
+  font-size: 0.72rem;
+  font-weight: 450;
+  opacity: 0.85;
+}
+
+.hitPath,
+.hitTitle {
+  white-space: nowrap;
+  overflow-x: hidden;
+  text-overflow: ellipsis;
+}
+
+.hitAction {
+  height: 18px;
+  width: 18px;
+  flex: none;
+  color: var(--csf-search-accent);
+}
+
+.hideAction > svg {
+  display: none;
+}
+
+.cursor .hideAction > svg {
+  display: block;
+}
+
+/* The highlighted row keeps the page's own ink — no inverted fill. */
+.suggestion.cursor .hitTitle {
+  color: var(--ifm-font-color-base);
+}
+
+.suggestion.cursor .hitTree,
+.suggestion.cursor .hitPath {
+  color: var(--ifm-color-emphasis-600);
+}
+
+.suggestion.cursor mark {
+  text-decoration: none;
+}
+
+/* ------------------------------------------------------- nothing found */
+
+.noResults {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1.6rem 1rem 1.3rem;
+  text-align: center;
+}
+
+.noResultsIcon {
+  margin-bottom: 12px;
+  opacity: 0.4;
+}
+
+.noResultsTitle {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--ifm-font-color-base);
+}
+
+.noResultsHint {
+  margin-top: 6px;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--ifm-color-emphasis-600);
+  max-width: 360px;
+}
+
+.noResultsChips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 18px;
+}
+
+.noResultsChip {
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 6px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--ifm-color-emphasis-300);
+  color: var(--ifm-font-color-base) !important;
+  text-decoration: none !important;
+  transition: border-color 0.15s ease, background-color 0.15s ease,
+    color 0.15s ease, transform 0.15s ease;
+}
+
+.noResultsChip:hover {
+  border-color: var(--csf-search-accent);
+  background-color: color-mix(
+    in srgb,
+    var(--csf-search-accent) 12%,
+    transparent
+  );
+  color: var(--csf-search-accent) !important;
+  transform: translateY(-1px);
+}
+
+/* ------------------------------------------------------------- footer */
+
+.hitFooter {
+  text-align: center;
+  margin-top: 6px;
+  padding-top: 10px;
+  border-top: 1px solid var(--ifm-color-emphasis-200);
+  font-size: 0.78rem;
+}
+
+.hitFooter a {
+  text-decoration: none;
+  font-weight: 600;
+  color: var(--csf-search-accent);
+}
+
+.hitFooter a:hover {
+  text-decoration: underline;
+}
+
+/* -------------------------------------------------------- Ask AI theme */
+
+html[data-theme="dark"] div:global(.ask-ai),
+div:global(.ask-ai) {
+  --ask-ai-primary: var(--ifm-color-primary);
+  --ask-ai-primary-hover: var(--ifm-color-primary-light);
+  --ask-ai-foreground: var(--ifm-color-content);
+  --ask-ai-border: var(--ifm-color-emphasis-300);
+  --ask-ai-error: var(--ifm-color-danger);
+  --ask-ai-button-bg: var(--ifm-color-emphasis-200);
+}
+
+:global(.ask-ai) {
+  --ask-ai-background: var(--csf-surface, #ffffff);
+  --ask-ai-muted: var(--ifm-color-emphasis-500);
+}
+
+html[data-theme="dark"] :global(.ask-ai) {
+  --ask-ai-background: #1a1a1e;
+  --ask-ai-muted: var(--ifm-color-emphasis-500);
+}
+
+/* --------------------------------------------------------- responsive */
+
+@media not (max-width: 996px) {
+  .searchBar.searchBarLeft .dropdownMenu {
+    left: 0 !important;
+    right: auto !important;
+  }
+}
+
+@media (max-width: 996px) {
+  .searchBarContainer :global(.navbar__search-input) {
+    width: 11rem;
+  }
+
+  .searchBarContainer :global(.navbar__search-input):focus {
+    width: 13rem;
+  }
+}
+
+@media (max-width: 576px) {
+  :global(.navbar__search-input):not(:focus) {
+    width: 2rem;
+  }
+
+  .searchBar .dropdownMenu {
+    width: var(--search-local-modal-width-sm, 340px);
+    max-width: calc(100vw - var(--ifm-navbar-padding-horizontal) * 2);
+  }
+
+  .searchBarContainer:not(.focused) .searchClearButton,
+  .searchHintContainer {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .searchBarContainer :global(.navbar__search-input),
+  .searchBar .dropdownMenu .suggestion,
+  .searchBar .dropdownMenu .suggestion::before,
+  .noResultsChip {
+    transition: none;
+  }
+}
+
+/* ------------------------------------------------------------- RTL */
+
+html[dir="rtl"] .searchHintContainer {
+  right: auto;
+  left: 10px;
+}
+
+html[dir="rtl"] .searchBarContainer .searchClearButton {
+  right: auto;
+  left: 0.6rem;
+}
+
+html[dir="rtl"] .searchBarContainer .searchBarLoadingRing {
+  left: auto;
+  right: 10px;
+}
+
+html[dir="rtl"] :global(.navbar__search-input) {
+  padding: 0 2.3rem 0 4.6rem;
+}
+
+html[dir="rtl"] .searchIcon {
+  left: auto;
+  right: 0.8rem;
+}
+
+html[dir="rtl"] .searchBar .dropdownMenu .suggestion::before {
+  left: auto;
+  right: 4px;
+}
+
+/* For autocomplete.js only. */
+.input {
+}
+.hint {
+}
+.suggestions {
+}
+.dataset {
+}
+.empty {
+}
+/**/

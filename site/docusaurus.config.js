@@ -81,7 +81,29 @@ const config = {
     }
   },
 
-  themes: ['@docusaurus/theme-mermaid'],
+  themes: [
+    '@docusaurus/theme-mermaid',
+    [
+      require.resolve('@easyops-cn/docusaurus-search-local'),
+      /** @type {import('@easyops-cn/docusaurus-search-local').PluginOptions} */
+      ({
+        hashed: true,
+        language: ['en'],
+        indexDocs: true,
+        indexBlog: false,
+        indexPages: true,
+        docsRouteBasePath: '/docs',
+        highlightSearchTermsOnTargetPage: true,
+        explicitSearchResultPath: true,
+        searchResultLimits: 10,
+        searchResultContextMaxLength: 60,
+        // Tolerate common typos (1-2 character mistakes) so a misspelled
+        // query like "incapsulation" or "hahsmap" still surfaces matches
+        // instead of a dead "no results" state.
+        fuzzyMatchingDistance: 2,
+      }),
+    ],
+  ],
 
   plugins: [
     function dsaStatsPlugin() {
@@ -108,6 +130,7 @@ const config = {
           remarkPlugins: [remarkMath],
           rehypePlugins: [rehypeKatex],
         },
+        blog: false,
         sitemap: {
           ignorePatterns: [
             '/docs/database-design/**',
