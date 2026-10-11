@@ -1,97 +1,86 @@
 ---
 id: 6-dns-resolution
 title: "DNS Resolution: Caches, Root, TLD & Authoritative"
-description: "Explore the end-to-end DNS lookup process, cache hierarchy, Root/TLD/Authoritative nameservers, BGP Anycast, and core DNS record types."
+description: "How a browser turns a domain name into an IP address: the cache hierarchy, Root/TLD/Authoritative nameservers, BGP Anycast, and the core DNS record types."
 sidebar_position: 6
 sidebar_class_name: sidebar-medium
 ---
+
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Walk through what happens when a browser resolves a domain to an IP address. What is the cache hierarchy, how do Root, TLD, and Authoritative servers interact, what are the primary DNS record types, and what is BGP Anycast?"
 
-The **Domain Name System (DNS)** functions as the global phonebook of the internet, mapping human-readable hostnames (such as `example.com`) to machine-routable IP addresses (`93.184.216.34`).
+DNS is the internet's phonebook. You know a name (`example.com`), you need a number (`93.184.216.34`), and DNS is the lookup that gets you there.
 
 ---
 
-### The 4-Tier DNS Cache Hierarchy
+### First, it checks caches — nobody wants to ask the internet every time
 
-Before any query touches the public internet, the operating system attempts to satisfy the lookup locally through a sequential hierarchy of caches governed by **Time-To-Live (TTL)** values:
+Before any request leaves your machine, four layers of cache get checked in order, because asking a remote server for something you already know is wasteful:
 
-```
-[ Browser Cache ] ──► [ OS DNS Cache & /etc/hosts ] ──► [ Local Router Cache ] ──► [ ISP / Recursive Resolver ]
-   (Chrome, Safari)       (getaddrinfo, nscd)             (Home Wi-Fi Gateway)       (8.8.8.8 / 1.1.1.1)
-```
+1. **Browser cache** — Chrome/Safari remember recent lookups for about a minute.
+2. **OS cache** — the operating system has its own resolver cache, plus the static `hosts` file (`/etc/hosts` or the Windows equivalent).
+3. **Router cache** — your home/office router remembers answers from other devices on the same network.
+4. **Recursive resolver** — your ISP's resolver, or a public one like `1.1.1.1` or `8.8.8.8`. If *it* has the answer cached, you get it back immediately.
 
-1. **Browser Cache:** Modern browsers cache DNS mappings for short durations (e.g., 60 seconds) to avoid OS context switches.
-2. **OS Client Cache:** If missed, the kernel checks its DNS client resolver cache and the static local **`hosts` file** (`/etc/hosts` or `C:\Windows\System32\drivers\etc\hosts`).
-3. **Local Router Gateway Cache:** The home/office router typically caches DNS responses from previous requests on the local network.
-4. **Recursive Resolver (ISP / Public DNS):** The query exits the LAN and hits the configured recursive resolver (e.g., Cloudflare `1.1.1.1` or Google `8.8.8.8`). If cached, it returns the IP immediately.
+Only if all four miss does DNS actually go hunt down the answer.
 
 ---
 
-### The Full Resolution Pipeline (Iterative Chain)
+### If everything misses: the resolver asks around
 
-If all four caches miss, the Recursive Resolver initiates an iterative lookup across the global DNS hierarchy:
+Think of the recursive resolver as someone with no idea where you live, asking for directions in stages: first "which country?", then "which city?", then "which street?". Each answer narrows things down until the final one is the actual address.
 
-```
-                      ┌──────────────────────────────────────────────┐
-                      │          1. Ask: Where is example.com?       │
-                      ▼                                              │
-               [ ROOT NAMESERVER ]                                   │
-               Returns: Referral to .com TLD                         │
-                      │                                              │
-                      ├──────────────────────────────────────────────┤
-                      │          2. Ask: Where is example.com?       │
-                      ▼                                              │
-               [ TLD NAMESERVER (.com) ]                             │
-               Returns: Referral to Authoritative Server             │
-                      │                                              │
-                      ├──────────────────────────────────────────────┤
-                      │          3. Ask: What is the A record?       │
-                      ▼                                              ▼
-         [ AUTHORITATIVE NAMESERVER ] ──────────────────► [ RECURSIVE RESOLVER ]
-         Returns: 93.184.216.34 (TTL=3600)                 Caches & returns to client
-```
+<Diagram>
+<Row>
+<Box title="Recursive Resolver" accent="#60a5fa"><Field icon="🔍" code="Where is example.com?" variant="neutral" /></Box>
+<Arrow label="asks" />
+<Box title="Root Nameserver" accent="#a1a1aa"><Field icon="📍" code={'"try the .com servers"'} variant="neutral" /></Box>
+<Arrow label="asks" />
+<Box title="TLD Nameserver (.com)" accent="#f59e0b"><Field icon="📍" code={'"try example.com’s own NS"'} variant="neutral" /></Box>
+<Arrow label="asks" />
+<Box title="Authoritative Nameserver" accent="#34d399"><Field icon="✅" code="93.184.216.34" variant="public" /></Box>
+</Row>
+</Diagram>
 
-1. **Root Nameserver Query:** The resolver queries one of the **13 logical root server clusters** worldwide. The root server does not know the final IP, but returns a referral to the **Top-Level Domain (TLD) Nameservers** for `.com`.
-2. **TLD Nameserver Query:** The resolver queries the `.com` TLD server (managed by registries like Verisign). It replies with a referral to the specific **Authoritative Nameservers** delegated by the domain owner (e.g., AWS Route53 or Cloudflare).
-3. **Authoritative Nameserver Query:** The authoritative server holds the actual zone files. It answers with the final IP address (e.g., `A 93.184.216.34`), which the resolver caches and returns to the client.
+1. **Root nameserver** — doesn't know the IP, but knows which servers handle `.com` and sends the resolver there.
+2. **TLD nameserver** (`.com`, run by registries like Verisign) — doesn't know the IP either, but knows which nameservers the domain owner delegated to, and points there.
+3. **Authoritative nameserver** — this one actually holds the records for `example.com` and answers with the real IP. The resolver caches this answer (for as long as the TTL says) and hands it back to you.
 
-#### Recursive vs. Iterative Queries:
-- **Recursive Query (Client $\to$ Resolver):** The client demands a complete answer or an error; the client does no further work.
-- **Iterative Query (Resolver $\to$ Nameservers):** The nameservers reply with referrals: *"I don't know the final IP, but go ask this other server."*
+Each hop in this chain is a **referral**, not a full answer — that's called an **iterative query** ("I don't know, ask this other server"). Your original request to the resolver, by contrast, is a **recursive query** — you just want the final answer and don't care how many hops it takes to get there.
 
 ---
 
-### Core DNS Record Types
+### Core DNS record types
 
 | Record Type | Name | Purpose | Example |
 | :--- | :--- | :--- | :--- |
-| **`A`** | Address | Maps a hostname to a 32-bit **IPv4 address**. | `example.com -> 93.184.216.34` |
-| **`AAAA`** | Quad-A | Maps a hostname to a 128-bit **IPv6 address**. | `example.com -> 2606:2800:220:1:248:1893:25c8:1946` |
-| **`CNAME`** | Canonical Name | Maps an alias hostname to another hostname. | `www.example.com -> example.com` |
-| **`MX`** | Mail Exchange | Directs emails to mail servers with priority weights. | `10 mail.example.com` |
-| **`TXT`** | Text | Stores arbitrary metadata (SPF, DKIM, DMARC, SSL domain validation). | `"v=spf1 include:_spf.google.com ~all"` |
-| **`NS`** | Nameserver | Delegates a DNS zone to authoritative nameservers. | `ns1.cloudflare.com` |
+| **`A`** | Address | Hostname → IPv4 address | `example.com -> 93.184.216.34` |
+| **`AAAA`** | Quad-A | Hostname → IPv6 address | `example.com -> 2606:2800:220:1:248:1893:25c8:1946` |
+| **`CNAME`** | Canonical Name | Alias hostname → another hostname | `www.example.com -> example.com` |
+| **`MX`** | Mail Exchange | Where to deliver email, with priority | `10 mail.example.com` |
+| **`TXT`** | Text | Arbitrary metadata (SPF, DKIM, domain verification) | `"v=spf1 include:_spf.google.com ~all"` |
+| **`NS`** | Nameserver | Delegates a zone to its authoritative servers | `ns1.cloudflare.com` |
 
 ---
 
-### The Staff Differentiator: BGP Anycast Routing
+### Why there are only 13 root servers — and how that's not a bottleneck
 
-A classic bar-raiser question: *"Why are there only 13 logical root server IP addresses (`a.root-servers.net` to `m.root-servers.net`), and how can 13 servers survive all global traffic?"*
+A good follow-up question to expect: *"If there are only 13 root server addresses, how do they handle all the world's DNS traffic without falling over?"*
 
-1. **The 13-Server Limit:** Originally imposed by the legacy 512-byte UDP DNS packet size limit (RFC 1035) so all 13 addresses fit in a single response datagram.
-2. **The Anycast Solution:** While there are only 13 IP addresses, there are over **1,500 physical server installations** worldwide. Using **BGP Anycast**, hundreds of physical data centers announce the exact same IP address. Internet routers route a user's DNS query to the topologically closest physical server, distributing load and delivering DDoS resilience.
-
----
-
-### Summary
-"DNS maps human domain names to IP addresses. It checks a 4-tier cache hierarchy (Browser $\to$ OS $\to$ Router $\to$ Resolver). If uncached, the recursive resolver performs iterative queries to Root, TLD, and Authoritative nameservers. Record types include A (IPv4), AAAA (IPv6), CNAME (aliases), MX (mail), and TXT (verification). BGP Anycast distributes 13 logical root IPs across thousands of servers worldwide."
+The 13-address limit is historical — it comes from the old 512-byte UDP packet limit (RFC 1035), which needed all 13 addresses to fit in a single response. But "13 addresses" doesn't mean 13 machines. Using **BGP Anycast**, over 1,500 physical servers around the world all answer to the same 13 IP addresses. Your query gets routed to whichever physical server is network-closest to you, so the load is spread globally and any single location going down barely matters.
 
 ---
 
-### Code Demonstration: Resolving Multiple DNS Records in Python
+### Say this in the interview
+
+*"DNS resolves domain names to IPs. It checks four cache layers first — browser, OS, router, resolver — before doing any real lookup. If all miss, the recursive resolver walks the hierarchy: Root tells it which TLD server to ask, the TLD server tells it which authoritative server to ask, and the authoritative server returns the actual IP. BGP Anycast is what lets just 13 root server addresses handle global traffic — each address is actually answered by over a thousand physical servers, and routing sends you to the nearest one."*
+
+---
+
+### Code: resolving DNS records in Python
 
 ```python
 import socket

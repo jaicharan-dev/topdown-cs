@@ -1,86 +1,75 @@
 ---
 id: 16-system-call-lifecycle
-title: "System Calls: Hardware Traps, Mode Switching & Vector Tables"
-description: "Learn how user-mode applications safely request OS services via modern SYSCALL/SYSRET instructions, the IDT, and libc wrapper buffering."
+title: "System Calls: The Full Lifecycle"
+description: "Walk through exactly what happens when an app makes a system call — the SYSCALL trap, the kernel dispatch table, and libc's buffering trick."
 sidebar_position: 16
 sidebar_class_name: sidebar-easy
 ---
+
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What is a system call, and what exact sequence of hardware and software steps occurs when an application executes one? How do modern SYSCALL instructions differ from legacy INT 0x80 traps?"
 
-A **System Call** is the programmatic boundary through which a user-mode application requests privileged services from the operating system kernel (such as allocating memory, reading files, or opening network sockets). It transitions the CPU from unprivileged **User Mode (Ring 3)** into privileged **Kernel Mode (Ring 0)**.
+A system call is how an app asks the OS to do something it isn't allowed to do itself — read a file, allocate memory, open a socket. It's the one legal door between user mode and kernel mode.
+
+Think of it like going to a bank. You can't walk into the vault yourself. You go to the teller window, hand over a withdrawal slip, and the teller — who's allowed into the vault — gets your cash and hands it back through the slot. You never set foot inside.
 
 ---
 
-### The ELI5 Analogy: The Bank Teller
+### What actually happens, step by step
 
-- **User Space:** The bank lobby. You can write on forms and talk to other customers, but you are strictly forbidden from entering the vault.
-- **Kernel Space:** The secure subterranean vault holding all currency and gold bars (hardware, disk sectors, network interfaces).
-- **The System Call:** You walk up to the Bank Teller's bulletproof window and hand them a withdrawal slip. The Teller validates your identity, steps into the vault on your behalf, retrieves the cash, hands it to you through the slot, and returns you to the lobby. You never stepped foot into the vault.
+<Diagram>
+<Row>
+<Box title="App (libc)" accent="#60a5fa"><Field icon="📞" code="write(fd, buf, n)" hint="calls the libc wrapper" variant="neutral" /></Box>
+<Arrow label="SYSCALL trap" />
+<Box title="Kernel" accent="#818cf8"><Field icon="🛡️" code="dispatch + run" hint="validates, does the real work" variant="neutral" /></Box>
+<Arrow label="SYSRET" />
+<Box title="App" accent="#60a5fa"><Field icon="✅" code="result in RAX" hint="execution resumes" variant="neutral" /></Box>
+</Row>
+</Diagram>
 
----
+1. **The app calls a libc wrapper.** You write `write(fd, buf, count)`, not raw assembly.
+2. **libc loads the registers.** It puts the syscall number for `write` (1, on x86-64) into `RAX`, and the arguments into `RDI`, `RSI`, `RDX`.
+3. **The `SYSCALL` instruction runs.** This is the actual hardware trap.
+4. **The CPU flips privilege levels.** It saves the current instruction pointer, switches from Ring 3 to Ring 0, and loads the kernel's own stack.
+5. **The kernel dispatches the call.** It jumps to a fixed entry point (stored in a CPU register called `MSR_LSTAR`), then looks up `RAX` in its syscall table to find the right handler. It also double-checks that the buffer pointer the app passed is actually valid — a process can't be allowed to trick the kernel into reading or writing kernel memory.
+6. **The kernel does the real work**, then puts the result back into `RAX`.
+7. **`SYSRET` runs**, flipping back to Ring 3 and resuming the app exactly where it left off.
 
-### The Step-by-Step System Call Lifecycle
-
-```
-USER SPACE (Ring 3)                                    KERNEL SPACE (Ring 0)
-┌─────────────────────────────────┐                    ┌───────────────────────────────────┐
-│ 1. Application calls write(...) │                    │                                   │
-│    in C Standard Library (libc) │                    │                                   │
-├─────────────────────────────────┤                    │                                   │
-│ 2. libc loads RAX = 1 (sys_write)                    │                                   │
-│    Loads RDI, RSI, RDX args     │                    │                                   │
-├─────────────────────────────────┤                    │                                   │
-│ 3. Executes "SYSCALL"           │ ── Hardware Trap ─►│ 4. CPU flips to Ring 0            │
-│                                 │                    │    Saves RIP, loads Kernel Stack  │
-│                                 │                    ├───────────────────────────────────┤
-│                                 │                    │ 5. Indexes sys_call_table[RAX]    │
-│                                 │                    │    Validates user pointers        │
-│                                 │                    │    Calls sys_write() driver       │
-│                                 │                    ├───────────────────────────────────┤
-│ 7. Application resumes execution│ ◄── Executes ──────│ 6. Writes return value to RAX     │
-│    with bytes written in RAX    │     "SYSRET"       │    Cleans kernel stack            │
-└─────────────────────────────────┘                    └───────────────────────────────────┘
-```
-
-1. **User Wrapper Invocation:** Application calls `write(fd, buf, count)` via `libc`.
-2. **Register Setup:** `libc` places the unique **System Call Number** (`1` for `sys_write` on x86-64) into the `RAX` register and copies arguments into `RDI`, `RSI`, and `RDX`.
-3. **The Hardware Trap:** The CPU executes the dedicated machine instruction: **`SYSCALL`**.
-4. **Privilege Mode Switch:** The CPU automatically saves the user Instruction Pointer (`RIP`) into `RCX`, switches from Ring 3 to Ring 0, and loads the kernel stack pointer (`RSP`).
-5. **Table Dispatch:** The kernel jumps to the address stored in the hardware `MSR_LSTAR` register, indexing into `sys_call_table` using the number in `RAX`.
-6. **Kernel Execution & Safety Verification:** The kernel verifies that the user-space memory buffer pointer is valid and legal (preventing processes from tricking the kernel into overwriting kernel memory). It then calls the underlying device driver or filesystem handler.
-7. **Return to User Space:** The kernel stores the result in `RAX` and executes **`SYSRET`**, restoring the user stack and returning execution to the application.
+None of this is visible to you as a programmer — it all happens inside that one call to `write()`.
 
 ---
 
-### The Core Interview Trap: Legacy `INT 0x80` vs. Modern `SYSCALL` / `SYSRET`
+### Old way vs. new way: `INT 0x80` vs. `SYSCALL`
 
-Interviewers frequently ask: *"How did system call invocation change from 32-bit x86 to modern 64-bit architectures?"*
+Older 32-bit x86 used a software interrupt (`INT 0x80`) to make this jump. It worked, but it was slow — it had to walk a table in RAM and push a bunch of registers. Modern 64-bit CPUs added a dedicated instruction pair, `SYSCALL`/`SYSRET`, built specifically for this job:
 
-| Feature | Legacy 32-bit (`INT 0x80`) | Modern 64-bit (`SYSCALL` / `SYSRET`) |
+| | Legacy (`INT 0x80`) | Modern (`SYSCALL` / `SYSRET`) |
 | :--- | :--- | :--- |
-| **Mechanism** | Software Interrupt via Interrupt Descriptor Table (IDT). | Dedicated CPU hardware instruction. |
-| **Execution Path** | Traverses memory-mapped IDT table in RAM, pushes multiple segment registers (`CS`, `SS`, `EFLAGS`). | Bypasses IDT entirely; jumps directly to target address stored in CPU Model-Specific Register (**`MSR_LSTAR`**). |
-| **Latency Cost** | **Slow:** $\approx 100 - 250$ CPU clock cycles. | **Fast:** $\approx 10 - 20$ CPU clock cycles. |
+| **How it jumps** | Walks the Interrupt Descriptor Table in RAM | Jumps straight to an address cached in a CPU register (`MSR_LSTAR`) |
+| **Registers touched** | Pushes `CS`, `SS`, `EFLAGS`, and more | Minimal — built for speed |
+| **Cost** | ~100-250 CPU cycles | ~10-20 CPU cycles |
 
 ---
 
-### The Role of the `libc` Wrapper Layer
+### Why bother with libc at all?
 
-Why do developers use `printf()` and `fopen()` rather than executing raw assembly `syscall`s directly?
-1. **User-Space Buffering:** `printf()` buffers string outputs in user space. If you print 50 individual characters, `libc` makes **one** single `write()` system call instead of 50 expensive trips to kernel mode!
-2. **Portability:** Translates standardized POSIX APIs across Linux, macOS, and BSD architectures where raw syscall numbers differ.
+You could, in theory, write raw `SYSCALL` assembly yourself. Nobody does, for two reasons:
 
----
-
-### Summary
-"A system call provides a controlled hardware gateway from User Mode to Kernel Mode. Modern 64-bit systems replace legacy INT 0x80 interrupts with high-speed SYSCALL/SYSRET instructions that jump directly to kernel entry points registered in CPU MSRs. Libraries like libc buffer I/O to minimize system call overhead."
+1. **Buffering.** `printf()` doesn't make a system call per character. It collects output in a user-space buffer and only calls `write()` once it's full (or you flush it) — turning what could be 50 expensive trips into the kernel into one.
+2. **Portability.** The actual syscall numbers differ between Linux, macOS, and BSD. libc hides that behind one stable API (`fopen`, `read`, `write`...) so your code doesn't care.
 
 ---
 
-### Code Demonstration: Invoking a System Call via Raw Assembly vs. `libc`
+### Say this in the interview
+
+*"A system call is the controlled gateway from user mode into kernel mode. The app loads a syscall number and arguments into registers, executes `SYSCALL`, and the CPU traps into the kernel, which validates the request, does the privileged work, and returns via `SYSRET`. Modern 64-bit CPUs replaced the older `INT 0x80` software interrupt with the dedicated `SYSCALL`/`SYSRET` instructions because they skip the interrupt table and jump straight to the kernel's entry point — about 10x faster. Libraries like libc buffer I/O so you're not paying that cost on every single byte."*
+
+---
+
+### Code: the libc wrapper vs. raw assembly, side by side
 
 ```c
 #include <stdio.h>

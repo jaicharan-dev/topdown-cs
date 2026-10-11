@@ -6,112 +6,100 @@ sidebar_position: 3
 sidebar_class_name: sidebar-medium
 ---
 
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Walk through the TCP 3-way handshake and 4-way termination sequence. Why does connection establishment need 3 steps instead of 2, why does termination need 4 steps, what is the TIME_WAIT state with 2MSL, and how do SYN Cookies defend against SYN Floods?"
 
-TCP provides a reliable, full-duplex stream of bytes over an unreliable underlying IP network. To guarantee that both parties are synchronized before exchanging data and that connections are torn down cleanly without lingering packets, TCP employs a **3-Way Handshake** to connect and a **4-Way Handshake** to terminate.
+Think of two people shouting across a noisy room, checking they can actually hear each other before talking. "Can you hear me?" "Yes, and can you hear me?" "Yes." Three messages, because each side needs to confirm the *other* side received something. TCP does the same thing before it'll send real data — that's the 3-way handshake. And when the conversation's over, both sides need to say goodbye independently, because either one might still have something left to say — that's the 4-way termination.
 
 ---
 
-### The TCP Lifecycle Sequence Diagram
+### The 3-way handshake
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant C as Client
-    participant S as Server
+<Diagram>
+<Row>
+<Box title="Client" accent="#60a5fa">
+<Field icon="📤" code="SYN (seq=x)" hint="1. let's connect, here's my starting number" variant="neutral" />
+</Box>
+<Arrow label="1" />
+<Box title="Server" accent="#34d399">
+<Field icon="📤" code="SYN-ACK (seq=y, ack=x+1)" hint="2. got it, here's mine too" variant="neutral" />
+</Box>
+<Arrow label="2" />
+<Box title="Client" accent="#60a5fa">
+<Field icon="✅" code="ACK (ack=y+1)" hint="3. got yours — ESTABLISHED" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-    Note over S: LISTEN
-    Note over C: CLOSED
+1. **`SYN` (seq=x):** client says "let's connect" and picks a starting sequence number, `x`.
+2. **`SYN-ACK` (seq=y, ack=x+1):** server confirms the client's number and sends its own starting number, `y`.
+3. **`ACK` (ack=y+1):** client confirms the server's number. Both sides are now `ESTABLISHED`.
 
-    rect rgb(240, 248, 255)
-    Note over C,S: 3-WAY HANDSHAKE (Establishment)
-    C->>S: SYN (seq=x)
-    Note over C: SYN_SENT
-    Note over S: SYN_RCVD
-    S->>C: SYN-ACK (seq=y, ack=x+1)
-    C->>S: ACK (seq=x+1, ack=y+1)
-    Note over C,S: ESTABLISHED (Data Transfer)
-    end
-
-    rect rgb(255, 245, 245)
-    Note over C,S: 4-WAY TEARDOWN (Termination)
-    C->>S: FIN (seq=u)
-    Note over C: FIN_WAIT_1
-    Note over S: CLOSE_WAIT
-    S->>C: ACK (ack=u+1)
-    Note over C: FIN_WAIT_2 (Half-Closed: Client reads, cannot write)
-    Note over S: Server drains remaining outgoing data...
-    S->>C: FIN (seq=w)
-    Note over S: LAST_ACK
-    C->>S: ACK (ack=w+1)
-    Note over C: TIME_WAIT (Waits 2MSL)
-    Note over S: CLOSED
-    Note over C: CLOSED (Timer expires)
-    end
-```
+**Why not just 2 steps?** Two problems show up immediately:
+1. **The server would be left hanging.** If it moved to `ESTABLISHED` right after sending `SYN-ACK`, and that packet got lost, the server would sit there holding memory for a client that never actually confirmed anything.
+2. **Old, dead packets could hijack a new connection.** If a stale `SYN` from a long-dead connection shows up late, a 2-step handshake would blindly accept it as new. Step 3 gives the client a chance to recognize this isn't a handshake it started, and reject it with an `RST`.
 
 ---
 
-### The 3-Way Handshake: Why 3 Steps and Not 2?
+### SYN floods and SYN cookies
 
-1. **Step 1 (`SYN`, $seq=x$):** Client requests connection and declares its Initial Sequence Number ($ISN_c = x$).
-2. **Step 2 (`SYN-ACK`, $seq=y, ack=x+1$):** Server acknowledges the client's sequence number and declares its own Initial Sequence Number ($ISN_s = y$).
-3. **Step 3 (`ACK`, $ack=y+1$):** Client confirms receipt of the server's sequence number.
+A **SYN flood** is an attacker sending a huge number of fake `SYN` packets and never sending the final `ACK`. The server's backlog queue fills up with these half-open connections, and it runs out of memory to accept real ones.
 
-#### Why a 2-Way Handshake Fails:
-A 2-way handshake would introduce two critical vulnerabilities:
-1. **Unilateral Commitment:** The server would transition to `ESTABLISHED` and allocate memory buffers the moment it sent `SYN-ACK`. If that packet was lost or delayed, the server would leave a "ghost" connection open waiting forever for a client that never arrived.
-2. **Old Duplicate Packets:** If an old delayed `SYN` packet from a previously dead connection arrived at the server, a 2-way handshake would falsely open a new connection, corrupting application state. Step 3 allows the client to reject stale handshakes with an `RST`.
+**SYN cookies** fix this without the server needing to remember anything. Instead of storing state for each half-open connection, the server encodes the connection details directly into its sequence number `y`:
 
----
+$$y = \text{HMAC}(\text{src\_ip}, \text{src\_port}, \text{dst\_ip}, \text{dst\_port}, \text{secret\_key}, \text{timestamp})$$
 
-### The Security Defense: SYN Flood Attacks & SYN Cookies
-
-In a **SYN Flood Attack**, an attacker sends millions of spoofed `SYN` packets without ever returning the final `ACK`. The server's **SYN Backlog Queue** fills up with half-open connections, exhausting kernel memory and denying service to legitimate users.
-
-#### The Defense: SYN Cookies
-Modern operating systems protect against SYN floods using **SYN Cookies** (`net.ipv4.tcp_syncookies = 1` in Linux):
-- When the SYN backlog queue overflows, the server **allocates zero memory state** for new SYNs.
-- Instead, it cryptographically encodes the connection metadata into the server's initial sequence number $y$:
-  $$y = \text{HMAC}(\text{src\_ip}, \text{src\_port}, \text{dst\_ip}, \text{dst\_port}, \text{secret\_key}, \text{timestamp})$$
-- When the client returns the final `ACK` with $ack = y + 1$, the server subtracts 1, recalculates the cryptographic hash, and verifies its authenticity. Only upon successful verification does the server allocate connection state in memory!
+When the real `ACK` comes back with `ack = y + 1`, the server just re-derives the hash and checks it matches. If it does, only *then* does it allocate real memory for the connection. No memory spent on connections that never finish.
 
 ---
 
-### 4-Way Teardown & The "Half-Closed" State
+### 4-way termination and the "half-closed" state
 
-Because TCP is **full-duplex**, data flows in two completely independent channels:
-1. **Client $\to$ Server Channel**
-2. **Server $\to$ Client Channel**
+TCP is full-duplex — the client-to-server and server-to-client directions are two independent streams, and each has to be closed separately.
 
-When the client sends `FIN`, it signals: *"I have finished sending data."* The server acknowledges (`ACK`). 
-However, the server may still have buffered database query results or file chunks to send back!
-- The connection enters a **Half-Closed State (`FIN_WAIT_2` on Client, `CLOSE_WAIT` on Server)**: the client can no longer transmit, but continues receiving incoming data.
-- Only when the server finishes all remaining transmissions does it send its own `FIN` packet, which the client acknowledges.
+<Diagram>
+<Row>
+<Box title="Client" accent="#60a5fa">
+<Field icon="🛑" code="FIN (seq=u)" hint="1. I'm done sending" variant="neutral" />
+</Box>
+<Arrow label="1" />
+<Box title="Server" accent="#34d399">
+<Field icon="✅" code="ACK (ack=u+1)" hint="2. half-closed: client can only receive now" variant="neutral" />
+</Box>
+<Arrow label="2" />
+<Box title="Server" accent="#34d399">
+<Field icon="🛑" code="FIN (seq=w)" hint="3. now I'm done too" variant="neutral" />
+</Box>
+<Arrow label="3" />
+<Box title="Client" accent="#60a5fa">
+<Field icon="✅" code="ACK (ack=w+1)" hint="4. client enters TIME_WAIT" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
----
-
-### The #1 TCP Interview Trap: The `TIME_WAIT` State & 2MSL
-
-Why does the client (the active closer) remain in the **`TIME_WAIT`** state for **$2 \times \text{MSL}$** (Maximum Segment Lifetime, typically 1 to 2 minutes) instead of closing immediately?
-
-There are two non-negotiable reasons:
-
-1. **Guaranteed Delivery of the Final ACK:**  
-   If the client's final `ACK` is dropped by network routers, the server will time out and retransmit its `FIN`. If the client had immediately closed to `CLOSED`, it would respond to the retransmitted `FIN` with a reset (`RST`), causing an abrupt, unclean connection error on the server. `TIME_WAIT` ensures the client stays alive to re-acknowledge any retransmitted `FIN`.
-2. **Draining Lingering Duplicate Segments:**  
-   Packets can wander through delayed routing loops on the internet. Waiting for $2\text{MSL}$ ensures that all packets belonging to this connection have died out in transit before a newly spawned connection can reuse the exact same 4-tuple `(src_ip, src_port, dst_ip, dst_port)`, preventing cross-connection data corruption.
-
----
-
-### Summary
-"The TCP 3-way handshake establishes bidirectional sequence numbers and protects against stale duplicates and memory exhaustion (mitigated under load via SYN Cookies). The 4-way teardown independently terminates the two full-duplex transmission streams via half-closed states. The active closer must stay in TIME_WAIT for 2MSL to ensure the final ACK arrives and allow lingering packets to expire."
+When the client sends `FIN`, it's only saying "I'm done sending" — not "I'm done listening." The server acknowledges, but might still have buffered data to send back (query results, file chunks, whatever). So the client enters a **half-closed** state: it can't send anymore, but keeps receiving. Only once the server has sent everything it needs to does *it* send a `FIN`, which the client acknowledges — and only then is the connection fully closed on both sides.
 
 ---
 
-### Code Demonstration: Half-Closed TCP Connection in Python
+### The `TIME_WAIT` trap: why wait 2×MSL before closing?
+
+After sending that last `ACK`, the client (whichever side closed first) doesn't close immediately — it sits in `TIME_WAIT` for 2×MSL (Maximum Segment Lifetime, usually 1-2 minutes). Two reasons this matters:
+
+1. **The last `ACK` might get lost.** If it does, the server will time out and resend its `FIN`. If the client had already closed, it would answer that retransmitted `FIN` with an `RST`, making the server think something went wrong. Staying in `TIME_WAIT` means the client is still around to re-acknowledge it.
+2. **Old packets need time to die.** Packets can get delayed and wander the network longer than expected. Waiting out 2×MSL makes sure every stray packet from this connection has expired before a brand-new connection can reuse the same `(src_ip, src_port, dst_ip, dst_port)` combination — otherwise an old packet could get mistaken for part of the new connection.
+
+---
+
+### Say this in the interview
+
+*"The 3-way handshake exists so both sides confirm they've received each other's sequence number before data flows — a 2-way version can't detect stale or lost packets. Termination needs 4 steps because TCP is full-duplex and each direction closes independently, which creates a half-closed state. The side that closes first waits in TIME_WAIT for 2×MSL so a lost final ACK can be recovered and old packets have time to disappear before the same connection tuple gets reused. SYN cookies defend against SYN floods by encoding connection state into the sequence number instead of storing it in memory."*
+
+---
+
+### Code: half-closed TCP connection in Python
 
 ```python
 import socket

@@ -1,85 +1,92 @@
 ---
 id: 12-tlb-translation-lookaside-buffer
 title: "Translation Lookaside Buffer (TLB) & Address Caching"
-description: "Discover why the TLB is essential for avoiding double memory accesses, EMAT mathematical formulas, and TLB miss vs. page fault mechanics."
+description: "Why the TLB exists, the EMAT formula for weighing hit vs. miss cost, and TLB miss vs. page fault."
 sidebar_position: 12
 sidebar_class_name: sidebar-medium
 ---
+
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is the TLB? Why does it exist, what is the formula for Effective Memory Access Time (EMAT), and what happens on a TLB miss versus a page fault?"
 
-Because page tables reside in physical RAM, translating every virtual memory reference would theoretically require accessing RAM twice: once to read the page table, and once to read the actual data. The **Translation Lookaside Buffer (TLB)** is a specialized, ultra-fast hardware associative cache in the CPU's **Memory Management Unit (MMU)** that eliminates this severe performance penalty.
+The page table lives in RAM. Without a shortcut, every memory access would need two trips to RAM: one to look up the translation, one to actually fetch the data. The **Translation Lookaside Buffer (TLB)** is a small, extremely fast cache inside the CPU that skips the first trip most of the time.
 
 ---
 
-### The ELI5 Analogy: The Librarian's Pocket Notepad
+### The analogy: a librarian's pocket notepad
 
-Imagine visiting a library with 10 million books:
-- To find a book's shelf location, you must walk to the front desk and consult a massive, heavy Master Index catalog (**The Page Table in RAM**).
-- **The Problem:** Every time you want a book, you make two full trips: one trip to the catalog to read the shelf number, and a second trip to the shelf to grab the book. This cuts your reading speed in half.
-- **The Solution:** The librarian carries a small index card in their pocket (**The TLB**). When a book is looked up, the librarian jots down its shelf number on the card. The card only holds 50 books.
-- **TLB Hit:** If the book's shelf number is on the card, you skip the catalog entirely and walk straight to the shelf.
-- **TLB Miss:** The card doesn't have it. You walk to the Master Catalog, look up the shelf, write it on the card, and proceed.
+A library has 10 million books. Finding one normally means walking to the front desk, flipping through a massive master catalog to find the shelf number (**the page table, in RAM**), then walking to the shelf. That's two trips every single time — it cuts your speed in half.
+
+The librarian's fix: keep a small pocket notepad (**the TLB**) with the shelf numbers of the last 50 books looked up.
+
+- **TLB hit:** the shelf number is already on the notepad — skip the catalog, walk straight to the shelf.
+- **TLB miss:** not on the notepad — walk to the catalog, look it up, write it down, then go to the shelf.
+
+<Diagram>
+<Row>
+<Box title="TLB hit — fast path" accent="#34d399">
+<Field icon="⚡" code="~1-2 ns" hint="translation already cached, go straight to RAM" variant="neutral" />
+</Box>
+<Box title="TLB miss — slow path" accent="#fb7185">
+<Field icon="🐢" code="100s of ns" hint="walk the page table in RAM first" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
 ---
 
-### The Mathematical Proof: Effective Memory Access Time (EMAT)
+### Doing the math: Effective Memory Access Time (EMAT)
 
-Interviewers frequently test systems candidates with **Effective Memory Access Time (EMAT)** calculations:
-
-Let:
-- $\alpha =$ TLB Hit Ratio (typically $0.95 - 0.99$)
+Interviewers like to turn this into a quick calculation. Let:
+- $\alpha =$ TLB hit ratio (typically $0.95$–$0.99$)
 - $t_{\text{TLB}} =$ TLB lookup time ($\approx 1\text{ ns}$)
-- $t_{\text{RAM}} =$ Main memory access time ($\approx 100\text{ ns}$)
+- $t_{\text{RAM}} =$ main memory access time ($\approx 100\text{ ns}$)
 
-#### Single-Level Page Table EMAT:
+**Single-level page table:**
 $$\text{EMAT} = \alpha \cdot (t_{\text{TLB}} + t_{\text{RAM}}) + (1 - \alpha) \cdot (t_{\text{TLB}} + 2 \cdot t_{\text{RAM}})$$
 
-#### Multi-Level Page Tables (Modern 64-bit Architecture):
-Modern x86-64 systems use **4-level or 5-level paging**. On a TLB miss, the MMU must traverse 4 separate page tables before reaching the physical frame:
+**Multi-level page tables** (what modern 64-bit CPUs actually use — 4 or 5 levels): on a miss, the MMU has to walk through all of them before it reaches the physical frame:
 $$\text{EMAT}_{\text{4-level}} = \alpha \cdot (t_{\text{TLB}} + t_{\text{RAM}}) + (1 - \alpha) \cdot (t_{\text{TLB}} + 5 \cdot t_{\text{RAM}})$$
 
-#### Concrete Numerical Example:
-If $\alpha = 0.98$, $t_{\text{TLB}} = 1\text{ ns}$, and $t_{\text{RAM}} = 100\text{ ns}$:
-- **On a Hit:** $1\text{ ns} + 100\text{ ns} = 101\text{ ns}$
-- **On a Miss (4-level walk):** $1\text{ ns} + (5 \times 100\text{ ns}) = 501\text{ ns}$
+**Worked example** — $\alpha = 0.98$, $t_{\text{TLB}} = 1\text{ ns}$, $t_{\text{RAM}} = 100\text{ ns}$:
+- On a hit: $1 + 100 = 101\text{ ns}$
+- On a miss (4-level walk): $1 + (5 \times 100) = 501\text{ ns}$
 - $\text{EMAT} = 0.98(101) + 0.02(501) = 98.98 + 10.02 = \mathbf{109.0\text{ ns}}$
 
-*Insight:* A high TLB hit ratio keeps overall memory access speed within **9%** of raw hardware RAM speed!
+A 98% hit ratio keeps average access within about 9% of raw RAM speed — that's how much the TLB is carrying.
 
 ---
 
-### The Staff Differentiator: Preventing TLB Flushes via ASID / PCID
+### Keeping the TLB warm across context switches: ASID/PCID
 
-Historically, whenever the OS executed a process context switch, it had to **flush the entire TLB** (e.g., by writing to the `CR3` register on x86) because virtual addresses in Process A map to completely different physical frames than in Process B.
+Historically, every context switch flushed the whole TLB — switching to a new process meant its virtual addresses pointed at completely different physical frames, so the old entries were useless and had to go (on x86, this happened whenever `CR3` was reloaded).
 
-Modern processors eliminate this overhead using **Address Space Identifiers (ASID)** or **Process Context Identifiers (PCID)**:
-- Each TLB entry is tagged with a hardware process ID bitmask.
-- The MMU only matches TLB entries where `tag == current_process_ASID`.
-- On a context switch, the OS simply updates the CPU's active ASID register. **The TLB is not flushed**, keeping cached address translations warm across context switches!
+Modern CPUs avoid this with **Address Space / Process Context Identifiers (ASID/PCID)**: every TLB entry is tagged with the ID of the process it belongs to, and the MMU only matches entries tagged with the *currently active* ID. A context switch just updates that one active-ID register — the TLB itself is left alone, so its entries for other processes stay warm for next time.
 
 ---
 
-### TLB Miss vs. Page Fault
+### TLB miss vs. page fault
 
 | Dimension | TLB Miss | Page Fault |
 | :--- | :--- | :--- |
-| **Definition** | Address translation is not cached in the TLB. | Target page is not resident in physical RAM. |
-| **Location of Data** | Page table exists in **Physical RAM**. | Page data resides on **Secondary Storage (Disk / Swap)**. |
-| **Handling Mechanism** | **Hardware MMU page walk** (x86/ARM) or lightweight trap. | **OS Kernel Interrupt Service Routine** (heavy software trap). |
-| **Latency Penalty** | Nanoseconds ($\approx 10 - 100\text{ ns}$). | Milliseconds ($\approx 1 - 10\text{ ms}$, **100,000× slower**). |
-| **Resolution** | Loads translation into TLB; retries memory read. | Allocates RAM frame, loads page from disk, updates page table, restarts instruction. |
+| **What's missing** | The translation isn't cached in the TLB. | The page itself isn't in RAM at all. |
+| **Where's the data** | The page table is in physical RAM — just not in the TLB cache. | The data is on disk/swap. |
+| **How it's handled** | Hardware MMU walks the page table (or a lightweight trap). | A full OS kernel interrupt — much heavier. |
+| **Latency** | Nanoseconds (~10–100 ns). | Milliseconds (~1–10 ms) — about 100,000× slower. |
+| **Resolution** | Load the translation into the TLB, retry the access. | Allocate a frame, read the page from disk, update the page table, restart the instruction. |
 
 ---
 
-### Summary
-"The TLB is an associative hardware cache in the MMU that stores recent virtual-to-physical address translations to eliminate the double memory access penalty. EMAT calculates weighted latency based on hit ratio and page table levels. A TLB miss is handled in hardware nanoseconds via a page table walk, whereas a page fault requires an OS kernel interrupt and millisecond disk I/O."
+### Say this in the interview
+
+*"The TLB is a hardware cache in the MMU that stores recent virtual-to-physical translations so most memory accesses don't need to walk the page table. EMAT weighs hit cost against miss cost by hit ratio. A TLB miss is cheap — a nanosecond-scale hardware page walk. A page fault is expensive — a millisecond-scale kernel interrupt and disk read, because the data itself isn't in RAM at all."*
 
 ---
 
-### Code Demonstration: Observing TLB & Cache Locality in C
+### Code: observing TLB & cache locality in C
 
 ```c
 #include <stdio.h>

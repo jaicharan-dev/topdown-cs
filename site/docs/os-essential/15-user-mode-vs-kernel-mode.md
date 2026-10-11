@@ -1,82 +1,82 @@
 ---
 id: 15-user-mode-vs-kernel-mode
-title: "User Mode vs. Kernel Mode: Dual-Mode Operation & Hardware Rings"
-description: "Understand dual-mode CPU operation, protection rings, privilege levels, privileged CPU instructions, and mode switch vs context switch."
+title: "User Mode vs. Kernel Mode"
+description: "Understand dual-mode CPU operation, protection rings, privileged instructions, and the difference between a mode switch and a context switch."
 sidebar_position: 15
 sidebar_class_name: sidebar-easy
 ---
+
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What is the difference between user mode and kernel mode? Which specific CPU instructions are privileged, and what is the difference between a mode switch and a context switch?"
 
-To ensure stability, security, and hardware isolation, modern computer processors enforce **Dual-Mode Operation**. A physical hardware flag on the CPU (the **mode bit**) dictates whether the processor is executing untrusted application code (**User Mode**) or the trusted operating system core (**Kernel Mode**).
+Think of an airplane. Passengers sit in the cabin — they can read, eat, move around, but they can't touch the flight controls. The pilots sit in the cockpit — they can do anything: change altitude, lower the landing gear, cut engine power.
+
+That's the whole idea behind **user mode** and **kernel mode**. Your app runs in the cabin (user mode). The OS runs in the cockpit (kernel mode). If a passenger wants the cabin temperature changed, they don't walk into the cockpit — they press the call button and ask a flight attendant to do it for them. That button press is a **system call**.
+
+Under the hood, this isn't a software convention — it's enforced by the CPU itself. A hardware flag (the **mode bit**) tells the processor whether it's currently running untrusted application code or trusted OS code.
 
 ---
 
-### The ELI5 Analogy: The Commercial Airplane
+### Hardware protection rings
 
-Imagine a passenger aircraft in flight:
-- **User Mode (The Passenger Cabin):** Passengers (user applications) can read, eat, sleep, and move around their seats. However, passengers have zero access to aircraft flight controls.
-- **Kernel Mode (The Cockpit):** The pilots (the Operating System) have total control: adjusting altitude, lowering landing gear, or cutting engine power.
-- If a passenger wants to change cabin temperature, they cannot walk into the cockpit; they must press the flight attendant call button (a **System Call**), asking authorized personnel to perform the action safely.
+x86 CPUs actually support four privilege rings (0 through 3), but modern OSs (Linux, Windows, macOS) only use two of them:
 
----
+<Diagram>
+<Row>
+<Box title="Ring 3 — User Mode" accent="#60a5fa">
+<Field icon="🧑" code="apps, browsers" hint="can't touch hardware directly" variant="neutral" />
+</Box>
+<Arrow label="syscall / trap" />
+<Box title="Ring 0 — Kernel Mode" accent="#818cf8">
+<Field icon="🛡️" code="OS kernel, drivers" hint="unrestricted access" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-### Hardware Protection Rings
-
-On CPU architectures like x86, hardware enforces four privilege rings (Rings 0 through 3). Modern operating systems (Linux, Windows, macOS) simplify this into two levels:
-
-```
-┌──────────────────────────────────────────────┐
-│ Ring 3: USER MODE (Applications, Web Browsers)│
-│    ┌────────────────────────────────────┐    │
-│    │ Ring 0: KERNEL MODE (OS Kernel,    │    │
-│    │         Device Drivers, Hardware)  │    │
-│    └────────────────────────────────────┘    │
-└──────────────────────────────────────────────┘
-```
-
-- **Ring 3 (User Mode):** Lowest privilege. Memory access is restricted to the process's own virtual address space; direct access to hardware ports and privileged instructions is physically blocked by CPU gates.
-- **Ring 0 (Kernel Mode / Supervisor Mode):** Unrestricted privilege. Can execute any machine instruction, access physical RAM directly, and communicate with hardware peripherals.
+- **Ring 3 (user mode):** lowest privilege. A process can only touch its own virtual memory. Hardware ports and privileged instructions are physically blocked.
+- **Ring 0 (kernel mode):** full privilege. Can run any instruction, touch physical RAM directly, talk to hardware.
 
 ---
 
-### The Core Interview Trap: Privileged CPU Instructions
+### What instructions are actually off-limits in user mode?
 
-Interviewers will ask: *"What specific CPU instructions are illegal in User Mode, and what happens if a user app attempts them?"*
+This is the classic follow-up question. A few examples of **privileged instructions** — ones only kernel mode can run:
 
-#### Examples of Privileged Instructions:
-1. **`CLI` / `STI` (Clear/Set Interrupt Flag):** Disabling hardware interrupts. If a user app could execute `CLI`, it could disable timer interrupts and seize the CPU forever.
-2. **`HLT` (Halt CPU):** Shuts down processor execution until the next external interrupt.
-3. **`LIDT` / `LGDT`:** Loading base addresses of the Interrupt Descriptor Table (IDT) or Global Descriptor Table (GDT).
-4. **Modifying Control Registers (`CR0`, `CR3`, `CR4`):** Writing to `CR3` reloads the page table base address.
-5. **`IN` / `OUT`:** Direct I/O bus port reads and writes to peripherals.
+1. **`CLI` / `STI`** — disable/enable hardware interrupts. If user code could run this, it could disable the timer interrupt and hog the CPU forever.
+2. **`HLT`** — halt the CPU entirely.
+3. **`LIDT` / `LGDT`** — load the interrupt/descriptor tables.
+4. **Writing control registers (`CR0`, `CR3`, `CR4`)** — `CR3` holds the page table address; writing it would let a process remap anyone's memory.
+5. **`IN` / `OUT`** — raw reads/writes to hardware I/O ports.
 
-#### The Hardware Trap:
-If code in User Mode attempts any privileged instruction, the CPU hardware raises a **General Protection Fault (`#GP`, Exception 13)**. The kernel catches the fault, sends a `SIGSEGV` or `SIGILL` signal to the process, and terminates it instantly.
+If user-mode code tries any of these, the CPU itself raises a **General Protection Fault** (`#GP`). The kernel catches it, sends the process a `SIGSEGV`/`SIGILL`, and kills it on the spot. There's no graceful failure here — the hardware simply refuses to execute the instruction.
 
 ---
 
-### Mode Switch vs. Context Switch
+### Mode switch vs. context switch — don't mix these up
 
-Candidates frequently confuse these two transitions:
+These sound similar but are completely different things:
 
-| Dimension | Mode Switch (Privilege Shift) | Context Switch (Process Swap) |
+| | Mode Switch | Context Switch |
 | :--- | :--- | :--- |
-| **What Changes?** | CPU privilege level shifts (Ring 3 $\to$ Ring 0 $\to$ Ring 3) within the **same process**. | The CPU stops executing Process A and starts executing Process B. |
-| **Trigger** | System call (`syscall`), hardware interrupt, or page fault. | Short-term CPU scheduler decision (time quantum expired or I/O block). |
-| **Memory Mapping** | **Virtual address space remains unchanged.** TLB and CPU caches stay valid. | **Page tables swapped (`CR3`).** TLB invalidated and CPU caches thrashed. |
-| **Performance Cost** | Nanoseconds ($\approx 10 - 50\text{ ns}$). | Microseconds ($\approx 1 - 5\ \mu\text{s}$, **100× more expensive**). |
+| **What changes** | Privilege level flips (Ring 3 → Ring 0 → Ring 3), same process the whole time | The CPU stops running Process A and starts running Process B |
+| **Triggered by** | A system call, interrupt, or page fault | The scheduler deciding it's someone else's turn |
+| **Memory mapping** | Unchanged — TLB and caches stay warm | Page tables swap out — TLB gets flushed, caches go cold |
+| **Cost** | Cheap: ~10-50 nanoseconds | Expensive: ~1-5 microseconds, roughly 100x more |
+
+A mode switch is just "same program, temporarily borrow kernel privileges, come back." A context switch is "stop this program entirely, run a different one." That's why the second one is so much more expensive — it has to reload the whole memory map.
 
 ---
 
-### Summary
-"User Mode and Kernel Mode are hardware-enforced privilege levels. User Mode prevents applications from executing privileged instructions (like disabling interrupts, altering control registers, or direct hardware I/O). A mode switch changes privilege level within the same process via a system call, whereas a context switch replaces the running process and invalidates memory mappings."
+### Say this in the interview
+
+*"User mode and kernel mode are hardware-enforced privilege levels. User mode blocks apps from running privileged instructions like disabling interrupts or touching control registers. A mode switch changes privilege within the same process via a system call — cheap, memory mapping untouched. A context switch replaces the running process entirely — expensive, because it flushes the TLB and invalidates caches."*
 
 ---
 
-### Code Demonstration: Attempting a Privileged Instruction in User Space
+### Code: tripping the hardware fault on purpose
 
 ```c
 #include <stdio.h>

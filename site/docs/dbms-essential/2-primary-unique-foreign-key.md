@@ -1,55 +1,63 @@
 ---
 id: 2-primary-unique-foreign-key
 title: "Primary Key vs. Unique Key vs. Foreign Key"
-description: "Master the architectural differences between Primary, Unique, and Foreign Keys, including surrogate keys, indexing, and referential integrity."
+description: "The practical differences between Primary, Unique, and Foreign keys, including surrogate keys, indexing, and referential integrity."
 sidebar_position: 2
 sidebar_class_name: sidebar-easy
 ---
+
+import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What is the difference between a Primary Key, Unique Key, and Foreign Key? When should you choose a Surrogate Key over a Natural Key, and why is it critical in production to manually index Foreign Key columns?"
 
-### The Quick Answer
+Think about a passport, a phone number, and a guardian's ID on a school form. A passport number is one-per-person and never blank — that's a primary key. A phone number is also one-per-person, but you're allowed to not have one — that's a unique key. And the "guardian ID" on a child's form only works if that ID actually exists in the parent records — that's a foreign key, pointing back to someone else's primary key.
 
-"A **Primary Key** uniquely identifies each row in a table, enforces `NOT NULL`, and establishes the physical clustered index on disk. A **Unique Key** prevents duplicate non-null values across candidate columns (allowing multiple keys per table). A **Foreign Key** links a child column to a parent Primary or Unique Key, enforcing referential integrity to prevent orphan rows."
+### The three keys, side by side
 
----
-
-### The Three Keys Compared
+<Diagram>
+<Row>
+<Box title="Primary Key" accent="#60a5fa">
+<Field icon="🪪" code="passport number" hint="one per table, never NULL" variant="public" />
+</Box>
+<Box title="Unique Key" accent="#34d399">
+<Field icon="📱" code="phone number" hint="many allowed, can be NULL" variant="neutral" />
+</Box>
+<Box title="Foreign Key" accent="#f59e0b">
+<Field icon="👪" code="guardian ID" hint="must match a real parent row" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
 | Dimension | Primary Key (PK) | Unique Key (UK) | Foreign Key (FK) |
 |---|---|---|---|
-| **Primary Purpose** | Unique row identity | Enforces uniqueness on business attributes | Enforces referential integrity between tables |
-| **Quantity per Table** | Exactly **one** (single or composite) | **Multiple** allowed per table | **Multiple** allowed per table |
-| **NULL Handling** | **Never allowed** (`NOT NULL` mandatory) | Allowed (Standard SQL permits multiple `NULL`s; SQL Server allows one) | Allowed (a `NULL` indicates no parent relationship) |
-| **Default Index** | Automatically creates a **Clustered Index** (InnoDB & SQL Server) | Automatically creates a **Non-Clustered (Secondary) Index** | Does **NOT** auto-create an index in most RDBMS |
-| **Target of References**| Primary target of foreign keys | Can also be the target of foreign keys | References a parent PK or UK |
+| **Purpose** | Identifies each row | Stops duplicates on a business column | Links a child row to a parent row |
+| **How many per table** | Exactly one (can span multiple columns) | As many as you want | As many as you want |
+| **Can it be NULL?** | Never | Yes (most databases allow several NULLs; SQL Server allows one) | Yes — NULL just means "no parent yet" |
+| **Index created automatically?** | Yes, a clustered index (InnoDB, SQL Server) | Yes, a secondary index | No — you have to add one yourself |
+| **Can other tables point to it?** | Yes, the usual target | Yes, also a valid target | References someone else's PK or UK |
 
 ---
 
-### System Design: Surrogate Key vs. Natural Key
+### Picking the primary key: natural vs. surrogate
 
-A classic interview debate focuses on what column(s) should form the Primary Key:
+The real design question isn't "what's a primary key" — it's "which column should it be."
 
-#### 1. Natural Keys (e.g., Email, Social Security Number, SKU)
-* Attributes that already exist in the real world and are inherently unique.
-* **The Fatal Flaw:** Real-world identifiers change. If a user updates their email or a company rebrands an SKU, the database must execute massive cascading foreign key updates across millions of child records, creating lock contention.
+**Natural keys** are real-world values that happen to be unique — email, SSN, a product SKU. The problem: real-world values change. If a user changes their email, every table that references it needs updating, and on a big table that means slow, lock-heavy cascading updates.
 
-#### 2. Surrogate Keys (e.g., Auto-Increment `BIGINT`, UUID)
-* Artificially generated, meaningless keys introduced solely for database architecture.
-* **Advantages:** Fixed byte width, completely immutable, and decouples database schema from business logic shifts.
+**Surrogate keys** are made-up IDs that exist only for the database — an auto-increment integer, or a UUID. They never change, so nothing downstream ever needs to update because of a business change. Most production schemas use these.
 
-#### 3. Auto-Increment vs. UUID (B+ Tree Performance Trap)
-* **Auto-Increment (`BIGINT`):** Sequential integers append directly to the rightmost leaf of the B+ tree index, causing zero page splits. However, sequential numbers leak business metrics (e.g., `/orders/105` reveals order volume) and cannot be generated independently across distributed multi-region databases.
-* **Random UUIDv4:** Globally unique without coordination, but completely random bits cause **severe B+ tree page splits** and cache pollution on write-heavy tables.
-* **Modern Solution (UUIDv7):** Combines a 48-bit UNIX timestamp with random bits, producing globally unique identifiers that remain **time-ordered**, preserving sequential B+ tree insertion speed.
+Within surrogate keys, there's a performance wrinkle:
+- **Auto-increment integers** insert efficiently because each new row just appends to the end of the index — no reshuffling. The downside: sequential IDs leak information (`/orders/105` tells a competitor roughly how many orders you've had), and they're awkward to generate across multiple regions without coordination.
+- **Random UUIDs** solve the "generate anywhere" problem, but because the values are random, new rows land all over the index instead of at the end — this causes expensive index rewrites on write-heavy tables.
+- **UUIDv7** is the newer middle ground: it starts with a timestamp and adds randomness after, so IDs stay roughly sorted by time (fast to insert) while still being safe to generate independently anywhere.
 
 ---
 
-### The Production Performance Trap: Indexing Foreign Keys
+### The trap: foreign keys don't index themselves
 
-While creating a Primary or Unique Key automatically builds an underlying B-Tree index, **creating a Foreign Key does NOT automatically index the child column** in engines like PostgreSQL and MySQL:
+Creating a primary or unique key automatically builds an index for you. Creating a foreign key does **not** — not in PostgreSQL, not in MySQL:
 
 ```sql
 CREATE TABLE orders (
@@ -59,34 +67,39 @@ CREATE TABLE orders (
 );
 ```
 
-* **Why this destroys performance:**
-  When a record in the `users` table is deleted or updated (`DELETE FROM users WHERE id = 10`), the database must check the `orders` table to enforce referential integrity.
-* Without an explicit index on `orders.user_id`, the database must execute a **Full Table Scan on the entire `orders` table**, locking thousands of pages and triggering deadlocks under high concurrency.
-* **The Rule:** In production, **always create an explicit index on foreign key columns**:
-  ```sql
-  CREATE INDEX idx_orders_user_id ON orders(user_id);
-  ```
+Here's why that matters: when a row in `users` gets deleted or updated, the database has to check `orders` for anything referencing it. Without an index on `orders.user_id`, that check is a full table scan — on every delete, locking a lot of rows and inviting deadlocks under load.
+
+The fix is simple and easy to forget:
+
+```sql
+CREATE INDEX idx_orders_user_id ON orders(user_id);
+```
+
+**Rule of thumb: always index your foreign key columns yourself.**
 
 ---
 
-### Referential Integrity Actions
+### What happens when the parent row disappears
 
-When a parent row is deleted or updated, the foreign key defines how the database reacts:
-* **`ON DELETE RESTRICT / NO ACTION`:** Aborts and rejects the parent delete if child records exist.
-* **`ON DELETE CASCADE`:** Automatically deletes all referencing child rows when the parent is deleted.
-* **`ON DELETE SET NULL`:** Retains child records but sets the foreign key column to `NULL` (requires column to be nullable).
-
----
-
-### The ELI5 Analogy: Passports and Citizens
-
-* **Primary Key (Passport Number):** Every citizen has exactly one passport number. No two citizens can share one, and nobody can have a "blank" passport number. It is your permanent physical identifier.
-* **Unique Key (Phone Number & Email):** You can have a unique phone number and unique email. You might have zero phone numbers (NULL), but if you do have one, no other person can share your exact number.
-* **Foreign Key (Parent Guardian ID):** On a child's school application, the "Guardian ID" references the Parent's Passport Number. The school will not allow a child to register with a guardian ID that does not exist in the citizen database.
+A foreign key also defines what the database should do if the row it points to gets deleted or changed:
+- **`RESTRICT` / `NO ACTION`** — refuse the delete if children still reference it.
+- **`CASCADE`** — delete the children too.
+- **`SET NULL`** — keep the children, just clear the foreign key column (the column has to allow NULL).
 
 ---
 
-### Crucial Nuance: Composite Primary Key vs. Multiple Primary Keys
+### "Can a table have multiple primary keys?"
 
-Interviewers often ask: *"Can a table have multiple primary keys?"* 
-The strict technical answer is **No**: a table can only have **one** primary key. However, that single primary key can consist of **multiple columns** working together, known as a **Composite Primary Key** (e.g., `PRIMARY KEY (order_id, product_id)`). Do not confuse having multiple columns in one composite key with having multiple distinct primary keys.
+No — a table has exactly one primary key. But that one primary key can be made of several columns together, called a **composite primary key**:
+
+```sql
+PRIMARY KEY (order_id, product_id)
+```
+
+That's one key with two columns, not two keys. Interviewers ask this specifically to see if you confuse the two.
+
+---
+
+### Say this in the interview
+
+*"A Primary Key uniquely identifies a row and can't be NULL. A Unique Key also prevents duplicates but allows NULLs and you can have several. A Foreign Key links a child row to a parent's Primary or Unique Key, and — unlike the other two — it doesn't get an index automatically, so you have to add one yourself."*

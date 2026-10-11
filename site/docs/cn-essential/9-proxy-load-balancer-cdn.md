@@ -1,11 +1,12 @@
 ---
 id: 9-proxy-load-balancer-cdn
 title: "Forward Proxy, Reverse Proxy, Load Balancer & CDN"
-description: "Understand the roles of forward proxies, reverse proxies, Layer 4 vs Layer 7 load balancers, consistent hashing, and CDNs in distributed architectures."
+description: "What forward proxies, reverse proxies, load balancers, and CDNs actually each do, Layer 4 vs Layer 7 load balancing, and why consistent hashing matters."
 sidebar_position: 9
 sidebar_class_name: sidebar-medium
 ---
 
+import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
@@ -13,116 +14,96 @@ import TabItem from '@theme/TabItem';
 
 > **Interview Question:** "Explain the fundamental differences between a forward proxy, a reverse proxy, and a load balancer. How does Layer 4 differ from Layer 7 load balancing? Why is consistent hashing crucial for distributed caching, and how does a CDN fit into modern web scale?"
 
----
-
-### Architectural Roles: The Middlemen of Networking
-
-Intermediate network components act as intermediaries between clients and servers, but their positioning, visibility, and architectural responsibilities differ fundamentally:
-
-```
-[ Clients ] ---> [ Forward Proxy ] ---> ( Internet ) ---> [ CDN Edge ] ---> [ L4/L7 Load Balancer ] ---> [ Reverse Proxy ] ---> [ Backend Services ]
-(Protects Client)                                       (Caches Static)     (Distributes Traffic)    (Terminates TLS/Auth)
-```
-
-#### 1. Forward Proxy (Protects the Client)
-- **Positioning:** Sits in front of a private client pool (e.g., an enterprise internal network).
-- **Core Function:** Intercepts outbound internet requests on behalf of clients. It masks the client's internal IP address, enforces corporate filtering, logs outbound web traffic, and bypasses regional geolocation firewalls (VPNs).
-- **Visibility:** The destination server on the internet has no knowledge of the real client IP; it only sees the forward proxy's IP.
-
-#### 2. Reverse Proxy (Protects the Server)
-- **Positioning:** Sits in front of private backend application servers.
-- **Core Function:** Intercepts inbound public traffic. It masks backend server topology, handles SSL/TLS termination, provides centralized authentication/rate limiting, and caches frequently accessed responses.
-- **Visibility:** The client has no idea which backend server executed their request; they communicate exclusively with the reverse proxy.
-
-#### 3. Load Balancer (Scales Availability & Capacity)
-- A specialized reverse proxy whose primary purpose is to balance inbound requests across a pool of redundant backend instances, preventing any single node from crashing under load and automatically bypassing degraded nodes via active health checks.
-
-#### 4. Content Delivery Network (CDN)
-- A globally distributed network of reverse proxy edge nodes (Points of Presence / PoPs). CDNs cache static assets (HTML, CSS, JS, images, video segments) geographically close to end users, offloading traffic from origin servers and minimizing speed-of-light transoceanic latency.
+All four of these things are "middlemen" sitting between a client and a server. The simplest way to tell them apart: **who are they protecting?**
 
 ---
 
-### Layer 4 vs. Layer 7 Load Balancing
+### Forward proxy: protects the client
 
-A major bar-raising interview distinction is understanding the trade-offs between transport-layer (L4) and application-layer (L7) load balancing:
+Picture a company's outbound internet traffic all going through one gatekeeper. That's a forward proxy — it sits in front of a pool of clients (like everyone on a company network), and every outbound request goes through it first. It hides each client's real IP, enforces content filtering, logs what left the building, and can route around geo-blocks. From the destination server's point of view, it only ever sees the proxy — never the actual client.
 
-```
-Layer 4 (L4) Load Balancing               Layer 7 (L7) Load Balancing
----------------------------               ---------------------------
-Packet / Flow Level (TCP/UDP)             Application / Content Level (HTTP/HTTPS)
-Inspects: IP addresses + TCP/UDP ports     Inspects: URI Path, HTTP Headers, Cookies
-Does NOT terminate TLS                    Terminates TLS (Decrypts Payload)
-Routing: Blind TCP packet forwarding      Routing: Path-based (/api vs /static), Cookie stickiness
-Latency: Nanoseconds / Microseconds       Latency: Milliseconds (CPU-bound crypto & parsing)
-Throughput: Millions of packets/sec       Throughput: Tens of thousands of requests/sec
-Examples: AWS NLB, IPVS, HAProxy (L4)     Examples: AWS ALB, NGINX, Envoy, Traefik
-```
+### Reverse proxy: protects the server
 
-| Dimension | Layer 4 (Transport) | Layer 7 (Application) |
+This is the mirror image — it sits in front of backend servers instead of in front of clients. It hides which actual machine handled your request, terminates TLS, does auth/rate-limiting centrally, and caches responses. The client only ever talks to the reverse proxy; it has no idea which backend server actually did the work.
+
+### Load balancer: a reverse proxy whose job is spreading the load
+
+A load balancer is really just a reverse proxy with one specific goal: distribute incoming requests across a pool of backend instances so no single one gets overwhelmed, and route around any instance that's failing a health check.
+
+### CDN: reverse proxy edges, close to the user
+
+A CDN is a globally distributed set of reverse-proxy nodes (points of presence) that cache static content — HTML, images, video, JS/CSS — physically close to users, so requests don't have to cross oceans to reach the origin server every time.
+
+<Diagram>
+<Row>
+<Box title="Client" accent="#60a5fa"><Field icon="💻" code="makes a request" variant="neutral" /></Box>
+<Arrow label="protects client" />
+<Box title="Forward Proxy" accent="#a1a1aa"><Field icon="🛡️" code="hides client IP" variant="neutral" /></Box>
+<Arrow />
+<Box title="CDN Edge" accent="#f59e0b"><Field icon="📦" code="serves cached assets" variant="neutral" /></Box>
+<Arrow />
+<Box title="Load Balancer" accent="#818cf8"><Field icon="⚖️" code="picks a healthy backend" variant="neutral" /></Box>
+<Arrow label="protects server" />
+<Box title="Backend" accent="#34d399"><Field icon="🖥️" code="handles the request" variant="public" /></Box>
+</Row>
+</Diagram>
+
+---
+
+### Layer 4 vs. Layer 7 load balancing
+
+The difference comes down to how much of the request the load balancer actually looks at.
+
+- **Layer 4** only sees IP addresses and TCP/UDP ports — it forwards packets blind, without opening them. It never touches TLS. This makes it extremely fast (millions of packets/sec) but it can't make decisions based on URL path, headers, or cookies.
+- **Layer 7** decrypts TLS and reads the actual HTTP request — path, headers, cookies — so it can route `/api` one way and `/static` another, or keep a user pinned to the same backend via cookie stickiness. That costs CPU (crypto + parsing), so it's slower and lower-throughput than L4.
+
+| Dimension | Layer 4 | Layer 7 |
 | :--- | :--- | :--- |
-| **Protocol Awareness** | IP, TCP, UDP | HTTP, HTTPS, gRPC, WebSocket |
-| **TLS Termination** | Passes encrypted packets through untouched (or offloaded via hardware). | Decrypts TLS to inspect plaintext HTTP headers and paths. |
-| **Routing Decision** | Destination IP and TCP port tuple only. | Content-aware: URL paths (`/api` vs `/images`), HTTP headers, JWT tokens, session cookies. |
-| **Performance & CPU** | Extremely high throughput, ultra-low memory/CPU footprint. | Higher CPU consumption due to TLS decryption, HTTP parsing, and stream reassembly. |
-| **Direct Server Return (DSR)** | Supported: Backends can respond directly to clients, bypassing the LB on return traffic. | Impossible: Reverse proxy terminates connection; both request and response must flow through L7 proxy. |
+| **Sees** | IP + TCP/UDP port only | Full HTTP: path, headers, cookies |
+| **Terminates TLS** | No | Yes |
+| **Routing** | Destination IP/port only | Content-aware (path, headers, tokens) |
+| **Throughput** | Very high, low CPU | Lower, CPU-bound on crypto/parsing |
+| **Direct server return** | Possible — backend can reply directly to client | Not possible — proxy must stay in the loop both ways |
 
 ---
 
-### Load Balancing Algorithms
+### Load balancing algorithms, briefly
 
-1. **Round Robin / Weighted Round Robin:** Cycles through servers sequentially. Weighted assigns higher shares to more powerful machines.
-2. **Least Connections / Weighted Least Connections:** Directs traffic to the server currently handling the fewest active concurrent connections (ideal for long-lived WebSocket or database transactions).
-3. **Power of Two Random Choices:** Picks two servers at random and routes to the one with fewer active connections. Eliminates herd behavior without requiring centralized coordination.
-4. **IP Hash:** Hashes the client IP to choose a backend, maintaining rudimentary session stickiness.
-
----
-
-### Consistent Hashing: Preventing Cache Stampedes
-
-In distributed systems (such as Memcached, Redis clusters, or CDN edge caches), routing cached requests using traditional modulo hashing causes catastrophic failures when nodes change:
-
-$$\text{Server Index} = \text{hash}(\text{Key}) \pmod N$$
-
-If you have $N = 4$ cache servers and one node crashes ($N = 3$), almost **every single key** ($N / (N+1)$ or roughly 75%–90%) hashes to a different index. The entire cache pool suffers a **cache stampede**, pounding the database origin with simultaneous misses.
-
-#### The Solution: The Consistent Hashing Ring
-
-Consistent hashing maps both **servers** and **keys** onto a circular 32-bit hash space ($[0, 2^{32} - 1]$):
-
-```mermaid
-graph TD
-    subgraph "Hash Ring [0 to 2^32 - 1]"
-        NodeA["Server A (Hash: 10,000)"]
-        NodeB["Server B (Hash: 50,000)"]
-        NodeC["Server C (Hash: 90,000)"]
-    end
-
-    Key1["Key: 'user_123' (Hash: 25,000)"] -.->|Clockwise Lookup| NodeB
-    Key2["Key: 'user_456' (Hash: 70,000)"] -.->|Clockwise Lookup| NodeC
-    Key3["Key: 'user_789' (Hash: 95,000)"] -.->|Wrap around| NodeA
-```
-
-1. **Ring Assignment:** Keys are placed on the ring by hashing their identifier. A key is assigned to the **first server encountered by moving clockwise**.
-2. **Graceful Node Add/Drop:** If Server B crashes, only the keys that previously mapped to Server B are reassigned (to Server C). All other keys mapping to Server A and Server C remain untouched. On average, only $K / N$ keys need to be moved.
-3. **Virtual Nodes (VNodes):** To prevent non-uniform data distribution (hotspots where one server receives 80% of keys), each physical machine is assigned multiple virtual positions across the ring (e.g., `ServerA_#1`, `ServerA_#2`, ... `ServerA_#100`). This balances the load evenly across all nodes.
+1. **Round robin** — cycle through servers in order; weighted round robin gives bigger shares to stronger machines.
+2. **Least connections** — send traffic to whichever server currently has the fewest active connections. Good for long-lived connections like WebSockets.
+3. **Power of two random choices** — pick two servers at random, send to whichever has fewer connections. Avoids herd behavior without needing central coordination.
+4. **IP hash** — hash the client's IP to pick a backend, giving basic session stickiness.
 
 ---
 
-### The Interview Answer (60-90 seconds)
+### Consistent hashing: why losing one cache server shouldn't wreck the whole cache
 
-> "A forward proxy sits in front of clients to protect their privacy, enforce enterprise filtering, and route outbound internet traffic. The destination web server only sees the proxy's IP. In contrast, a reverse proxy sits in front of backend servers to terminate TLS, cache responses, and hide internal architecture. The client only sees the reverse proxy.
->
-> A load balancer is a specialized reverse proxy designed to distribute traffic across a server farm for high availability and throughput.
->
-> The key architectural distinction is Layer 4 versus Layer 7 load balancing. An L4 balancer operates at the TCP/UDP packet level without inspecting application payloads or terminating TLS. It offers massive throughput and ultra-low latency, but cannot inspect URL paths or cookies. An L7 balancer terminates TLS and reconstructs HTTP requests, enabling content-based routing (such as routing `/api` to microservices and `/static` to storage), session stickiness, and WAF inspection, at the cost of higher CPU overhead.
->
-> In distributed caching, standard modulo hashing causes severe cache stampedes when a server dies because nearly all keys are reshuffled. Consistent hashing solves this by placing servers and keys on a circular hash ring, ensuring that adding or removing a node only impacts $1/N$ keys on average, with virtual nodes guaranteeing uniform load distribution."
+If you route cache keys with plain modulo hashing (`hash(key) % N`), losing one server out of four changes `N`, and nearly every key now maps to a different server than before — a **cache stampede**, where almost everything misses at once and slams the database.
+
+**Consistent hashing** fixes this by placing both servers and keys on a circular hash space, and assigning each key to the first server found going clockwise from it.
+
+<Diagram>
+<Tree root={
+<Box title="Hash Ring" accent="#818cf8"><Field icon="⭕" code="servers + keys placed by hash" variant="neutral" /></Box>
+}>
+<Box title="Server A" accent="#34d399"><Field icon="🖥️" code="owns this ring segment" variant="neutral" /></Box>
+<Box title="Server B" accent="#34d399"><Field icon="🖥️" code="owns this ring segment" variant="neutral" /></Box>
+<Box title="Server C" accent="#34d399"><Field icon="🖥️" code="owns this ring segment" variant="neutral" /></Box>
+</Tree>
+</Diagram>
+
+- If Server B goes down, only the keys that mapped to B get reassigned (to C) — Server A's and C's existing keys are untouched. On average only `K/N` keys move, not nearly all of them.
+- **Virtual nodes:** each physical server gets many positions on the ring (e.g. 100 each), so load spreads evenly instead of one server getting a disproportionate chunk by bad luck.
 
 ---
 
-### Code Demonstration: Python L7 Reverse Proxy with Round-Robin & Health Checks
+### Say this in the interview
 
-The following standalone Python script implements an active Layer 7 reverse proxy. It inspects incoming HTTP requests, maintains an active health-checked backend server pool, and routes traffic using Round-Robin load balancing.
+*"A forward proxy protects clients — it sits in front of them and hides their identity from the destination server. A reverse proxy protects servers — it sits in front of backends and hides them from the client. A load balancer is a reverse proxy whose job is specifically spreading traffic across healthy backends. A CDN is a globally distributed set of reverse-proxy edges caching static content near users. For load balancing, Layer 4 just forwards packets by IP/port — fast but blind — while Layer 7 terminates TLS and reads the actual HTTP request, enabling path-based routing at the cost of CPU. For caching, plain modulo hashing reshuffles almost every key when a server dies, causing a cache stampede; consistent hashing avoids that by placing servers and keys on a ring, so losing a node only displaces that node's own keys."*
+
+---
+
+### Code: a simple Python L7 reverse proxy with round-robin and health checks
 
 ```python
 import http.server

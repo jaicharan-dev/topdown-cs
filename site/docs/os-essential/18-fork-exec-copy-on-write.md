@@ -1,83 +1,70 @@
 ---
 id: 18-fork-exec-copy-on-write
-title: "Process Creation: fork(), exec(), and Copy-on-Write (COW)"
-description: "Trace Unix process creation via fork() and exec(), Copy-on-Write (COW) memory optimization, memory overcommit, and the OOM killer."
+title: "fork(), exec(), and Copy-on-Write"
+description: "Understand how fork() creates processes instantly using Copy-on-Write, why that matters for exec(), and what happens when memory gets overcommitted."
 sidebar_position: 18
 sidebar_class_name: sidebar-medium
 ---
+
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What happens internally when a process calls fork()? How does Copy-on-Write (COW) work, what happens when memory is overcommitted, and why is COW critical for the fork-exec pattern?"
 
-In Unix-like systems, new processes are created through the `fork()` and `exec()` system calls. Historically, `fork()` physically duplicated the parent's entire physical address space. Modern operating systems make process creation nearly instantaneous using **Copy-on-Write (COW)**.
+`fork()` creates a new process by cloning the current one. The old, naive way to do that was to physically copy all of the parent's memory — which is slow and, as you'll see below, usually pointless. Modern OSs use a trick called **Copy-on-Write** to make `fork()` almost instant.
+
+Think of it like two people sharing a textbook instead of photocopying it. You and a colleague both need to read the same 1,000-page physics book. Instead of spending three hours at the copier, you just put one book on the desk between you — you both read the same physical pages. Only if one of you picks up a pen and starts writing notes on page 42 does anyone bother making a copy — and even then, only that one page gets copied. The other 999 stay shared.
 
 ---
 
-### The ELI5 Analogy: The Shared Textbook
+### Shared until someone writes
 
-Imagine you and a colleague need to study a 1,000-page physics textbook:
-- The old way: Stand at a photocopier for 3 hours, duplicating all 1,000 pages before your colleague can begin reading.
-- **Copy-on-Write (COW):** Place the single book on a desk between you. You both read the exact same physical pages simultaneously.
-- If your colleague picks up a pen and writes notes on **Page 42**, the supervisor (the OS) halts them, photocopies *only* Page 42, hands the copy to your colleague, and lets them write on it.
-- You still share 999 pages in common, with zero wasted paper.
+<Diagram>
+<Box title="Shared pages (copy-on-write)" accent="#818cf8">
+<Field icon="📄" code="physical frame 842" hint="marked read-only, shared by both" variant="neutral" />
+<Row>
+<Box title="Parent" accent="#34d399"><Field icon="📝" code="page table → frame 842" variant="neutral" /></Box>
+<Box title="Child" accent="#34d399"><Field icon="📝" code="page table → frame 842" variant="neutral" /></Box>
+</Row>
+</Box>
+</Diagram>
 
----
+Here's what actually happens, step by step:
 
-### Step-by-Step Technical Execution of Copy-on-Write
+1. **`fork()` copies only the page table**, not the memory itself. Both parent and child's page table entries point at the exact same physical frames. Zero bytes of RAM are duplicated.
+2. **Those shared pages get marked read-only** in both processes' page tables — even pages that were originally writable.
+3. **Either process tries to write** to one of those pages — say, `counter = 42`.
+4. **The CPU's memory management unit catches it.** Writing to a read-only page triggers a hardware page fault.
+5. **The kernel steps in.** It recognizes this as a COW fault (not a real error), allocates one new physical frame, copies the 4KB of data into it, points the faulting process's page table at the new frame, marks both the original and new frame read-write again, and replays the write instruction — all transparently. The app never knows this happened.
 
-```
-INITIAL STATE AFTER fork()
-Parent Virtual Page 10 ──┐
-                         ├─► [ Physical Frame 842 ] (Marked READ-ONLY)
-Child Virtual Page 10  ──┘
-
-AFTER CHILD WRITES TO PAGE 10 (Page Fault Triggers Copy)
-Parent Virtual Page 10 ───► [ Physical Frame 842 ] (Restored READ-WRITE)
-Child Virtual Page 10  ───► [ Physical Frame 999 ] (Newly Allocated Copy, READ-WRITE)
-```
-
-1. **Page Table Duplication (Zero RAM Copy):** When `fork()` is called, the OS duplicates only the parent's **Page Table**. The physical memory frames are not copied. Both parent and child PTEs point to the exact same physical frames.
-2. **Read-Only Protection Trap:** The OS sets the permissions on all shared physical pages to **Read-Only** in both parent and child page tables.
-3. **The Write Attempt:** Either process attempts to write to a variable (e.g., `counter = 42`).
-4. **Hardware Page Fault (Protection Fault):** The CPU Memory Management Unit (MMU) catches a write attempt on a read-only page and triggers a **Page Fault Exception**.
-5. **Kernel Intervention & Page Duplication:**
-   - The OS kernel intercepts the fault and recognizes it as a COW trigger.
-   - It allocates a single brand-new physical frame in RAM.
-   - It copies the 4KB data from the shared frame into the new frame.
-   - It updates the faulting process's page table to point to the new frame.
-   - It marks both the original and new frame as **Read-Write**.
-   - It restarts the faulting write instruction transparently.
+So the parent and child only diverge in memory exactly where one of them actually writes. Everything else stays shared for free.
 
 ---
 
-### Why COW Is Essential: The `fork()` + `exec()` Paradigm
+### Why this matters: `fork()` is almost always followed by `exec()`
 
-In Unix, launching any program (such as running `ls` in Bash) requires the shell to `fork()` a child clone, which immediately calls `execve()`:
-- `execve()` completely discards the child's address space and loads the new binary from disk.
-- If `fork()` copied 4GB of physical RAM, that 4GB would be completely destroyed and deallocated a millisecond later when `execve()` is called!
-- Copy-on-Write makes `fork()` an $O(1)$ lightweight pointer-copy operation.
+In Unix, running any program — even just `ls` in your shell — means the shell calls `fork()` to clone itself, then immediately calls `execve()` in the child to replace that clone's entire memory with a new program.
 
----
-
-### The Staff Differentiator: Memory Overcommit & The OOM Killer
-
-Because COW delays physical RAM allocation, the Linux kernel permits **Memory Overcommit** (controlled by `/proc/sys/vm/overcommit_memory`). A server with 16GB of RAM can successfully fork processes that together demand 32GB of virtual memory.
-
-#### The Critical Risk:
-What happens if both parent and child simultaneously write to all their shared pages, but physical RAM is completely exhausted?
-1. The kernel attempts to satisfy the COW page fault, but finds zero free frames in RAM and zero swap space.
-2. The kernel invokes the **Out-Of-Memory (OOM) Killer (`mm/oom_kill.c`)**.
-3. The OOM Killer calculates an `oom_score` for all processes (weighing RSS memory footprint and process priority) and forcefully terminates the highest-scoring rogue process with `SIGKILL` to prevent a full system freeze.
+If `fork()` had actually copied, say, 4GB of RAM, all of that work would be thrown away a few microseconds later when `execve()` wipes the child's address space clean. Copy-on-write means `fork()` is a cheap, constant-time pointer copy — no wasted work, no matter how much memory the parent is using.
 
 ---
 
-### Summary
-"fork() creates a process clone by copying page table entries without duplicating physical RAM, setting shared pages to Read-Only. Writing to a page triggers a hardware protection fault, prompting the OS to allocate and copy only that specific 4KB page (Copy-on-Write). This optimizes the fork-exec pattern. If dirtied COW pages exceed physical memory, the Linux OOM Killer terminates processes."
+### The dark side: memory overcommit and the OOM killer
+
+Because COW delays the actual memory allocation until someone writes, Linux lets you **overcommit** memory — a machine with 16GB of RAM can happily fork processes that together claim 32GB of virtual memory, betting that they won't all write to everything at once.
+
+Usually that bet pays off. But if parent and child both start writing to all their shared pages at the same time, and physical RAM actually runs out with no swap space left, the kernel has a problem: a COW page fault it literally cannot satisfy. Its last resort is the **OOM killer** — it scores every process (roughly, by how much memory it's using) and force-kills the worst offender with `SIGKILL` to free up RAM before the whole system locks up.
 
 ---
 
-### Code Demonstration: Observing Copy-on-Write Behavior in C
+### Say this in the interview
+
+*"`fork()` doesn't copy memory — it copies the page table and marks the shared physical pages read-only in both processes. The first write to any shared page triggers a hardware page fault, and the kernel copies just that one 4KB page before letting the write through. This makes `fork()` essentially free, which matters because it's almost always immediately followed by `exec()`, which throws the copied memory away anyway. The tradeoff is memory overcommit — if too many COW pages get dirtied at once and RAM runs out, the OOM killer starts force-killing processes."*
+
+---
+
+### Code: watching Copy-on-Write happen
 
 ```c
 #include <stdio.h>

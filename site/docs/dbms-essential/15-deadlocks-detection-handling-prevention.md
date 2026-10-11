@@ -1,138 +1,101 @@
 ---
 id: 15-deadlocks-detection-handling-prevention
 title: "Database Deadlocks: Detection, Prevention & Handling"
-description: "Master database deadlocks, Wait-For Graphs, distributed deadlock schemes (Wait-Die vs. Wound-Wait), and lock ordering prevention."
+description: "What a deadlock actually is, how databases detect and break one, Wait-Die vs. Wound-Wait for distributed systems, and how to prevent them in your code."
 sidebar_position: 12
 sidebar_class_name: sidebar-medium
 ---
+
+import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is a database deadlock? How do single-node and distributed engines detect or prevent them, how does victim selection work, and how do you design application code to prevent them?"
 
-A **deadlock** is an irreconcilable concurrency state in a relational database where two or more transactions permanently block one another because each holds an exclusive lock on a resource that the other requires, forming a circular wait dependency.
+Picture two cars meeting head-on on a narrow one-lane bridge. Neither can move forward, and neither will back up on its own. That's a deadlock: two transactions, each holding a lock the other one needs, waiting on each other forever.
 
 ---
 
-### The Classic Deadlock Scenario
+### The classic example
 
-Consider two concurrent accounts transferring money to each other:
+Alice and Bob transfer money to each other at the same time:
+
+<Diagram>
+<Row>
+<Box title="Transaction 1: Alice → Bob" accent="#fb7185">
+<Field icon="🔒" code="holds lock on Alice's row" hint="waiting for Bob's row" variant="neutral" />
+</Box>
+<Arrow label="waits for ↔ waits for" />
+<Box title="Transaction 2: Bob → Alice" accent="#fb7185">
+<Field icon="🔒" code="holds lock on Bob's row" hint="waiting for Alice's row" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
 ```
-Transaction 1: Alice transfers $50 to Bob
-Transaction 2: Bob transfers $30 to Alice
-
-Time | Transaction 1 (Alice -> Bob)         | Transaction 2 (Bob -> Alice)
------+--------------------------------------+-------------------------------------
-T1   | BEGIN;                               | BEGIN;
-T2   | UPDATE accounts SET bal = bal - 50   | 
-     | WHERE id = 'Alice';                  | 
-     | [Acquires Exclusive Lock on Alice]   | 
-T3   |                                      | UPDATE accounts SET bal = bal - 30
-     |                                      | WHERE id = 'Bob';
-     |                                      | [Acquires Exclusive Lock on Bob]
-T4   | UPDATE accounts SET bal = bal + 50   | 
-     | WHERE id = 'Bob';                    | 
-     | [BLOCKED: Waiting for Bob's lock...] | 
-T5   |                                      | UPDATE accounts SET bal = bal + 30
-     |                                      | WHERE id = 'Alice';
-     |                                      | [DEADLOCK! Waiting for Alice's lock]
+T1 locks Alice's row, then asks for Bob's row    -> BLOCKED (T2 has it)
+T2 locks Bob's row,   then asks for Alice's row  -> BLOCKED (T1 has it)
 ```
 
-Neither transaction can complete. Transaction 1 is waiting for Bob; Transaction 2 is waiting for Alice.
+Neither transaction can finish. Each is waiting on a lock the other one is holding.
 
 ---
 
-### How Single-Node Engines Detect Deadlocks
+### How a single-node database detects this
 
-Relational database engines like PostgreSQL and MySQL InnoDB employ two detection strategies:
+#### 1. The Wait-For Graph
+The engine keeps an internal graph in memory: each active transaction is a node, and an edge `T1 → T2` means "T1 is blocked waiting on a lock T2 holds." A background check runs every second or so. If it finds a cycle (`T1 → T2 → T1`), that's a confirmed deadlock.
 
-#### 1. Wait-For Graph (WFG) Cycle Detection
-The engine maintains an internal directed dependency graph in memory:
-- **Nodes:** Active transactions ($T_1, T_2$).
-- **Directed Edges:** $T_1 \to T_2$ means $T_1$ is blocked waiting for a lock held by $T_2$.
-- A background worker runs periodically (e.g., every 500ms or 1s). If a **directed cycle** is detected ($T_1 \to T_2 \to T_1$), a deadlock has definitively formed.
-
-```mermaid
-graph LR
-    T1((Txn 1)) -->|Waits for Lock on Bob| T2((Txn 2))
-    T2 -->|Waits for Lock on Alice| T1
-```
-
-#### 2. Lock Wait Timeouts
-If a transaction waits for a lock longer than a configured threshold (e.g., MySQL's `innodb_lock_wait_timeout = 50s`), the engine terminates the waiting transaction, regardless of whether a full cycle exists.
+#### 2. Lock wait timeouts
+If a transaction waits longer than a configured limit (MySQL's `innodb_lock_wait_timeout`, default 50s), the engine just kills it — whether or not a full cycle actually exists.
 
 ---
 
-### How Engines Resolve Deadlocks: Victim Selection
+### Breaking the tie: victim selection
 
-Once a cycle is identified, the engine breaks the circular wait by choosing a **Victim Transaction** to abort and roll back:
-- The engine rolls back the victim's uncommitted writes and returns a specific error to the client (e.g., PostgreSQL `40P01: deadlock detected`, MySQL `1213: Deadlock found`).
-- **Victim Selection Heuristics:**
-  - **Undo Log Volume:** The transaction that has generated the smallest undo log (cheapest to roll back).
-  - **Transaction Age:** The younger transaction is aborted so the older, longer-running transaction can complete.
-  - **Lock Footprint:** The transaction holding the fewest locks.
+Once a cycle is found, the engine picks one transaction to abort and roll back (PostgreSQL returns `40P01`, MySQL returns `1213`). It usually picks based on:
+- **Least rollback cost** — whichever transaction has done the least work (smallest undo log).
+- **Youngest transaction** — so the older, further-along transaction survives.
+- **Fewest locks held.**
 
 ---
 
-### Distributed Deadlock Prevention: Wait-Die vs. Wound-Wait
+### Distributed databases do this differently
 
-In distributed databases (e.g., Google Spanner, CockroachDB), maintaining a centralized Wait-For Graph across dozens of physical nodes is too slow and chatty. Instead, distributed systems use **timestamp-based deadlock prevention**:
+In a distributed database (Spanner, CockroachDB), building one central wait-for graph across many nodes is too slow. Instead, each transaction gets a timestamp when it starts, and the system uses that timestamp to decide who waits and who dies — no graph needed:
 
-Each transaction is assigned a monotonically increasing timestamp upon creation ($TS(T_i)$). Smaller timestamps indicate **older** transactions.
-
-| Algorithm | Mechanism | Priority Behavior |
+| Scheme | Rule | Effect |
 | :--- | :--- | :--- |
-| **Wait-Die** (Non-preemptive) | If $T_{\text{old}}$ requests a lock held by $T_{\text{young}}$: **$T_{\text{old}}$ waits**. <br/> If $T_{\text{young}}$ requests a lock held by $T_{\text{old}}$: **$T_{\text{young}}$ dies (aborts and restarts)**. | Younger transactions are killed immediately when competing with older ones. |
-| **Wound-Wait** (Preemptive) | If $T_{\text{old}}$ requests a lock held by $T_{\text{young}}$: **$T_{\text{old}}$ wounds (aborts/preempts) $T_{\text{young}}$**. <br/> If $T_{\text{young}}$ requests a lock held by $T_{\text{old}}$: **$T_{\text{young}}$ waits**. | Older transactions preempt younger transactions immediately; minimizes aborts of near-complete work. |
+| **Wait-Die** | Older transaction waits for a younger one. Younger transaction asking for a lock held by an older one just aborts and retries. | Young transactions get killed quickly. |
+| **Wound-Wait** | Older transaction forces a younger one to abort immediately. Younger transaction asking for a lock held by an older one waits. | Older transactions never get killed, so long-running work isn't wasted. |
 
 ---
 
-### The Hidden Trap: Deadlocks on `INSERT` Statements
+### A deadlock trap that surprises people: `INSERT`
 
-Deadlocks do not only occur on updates! In MySQL InnoDB under Repeatable Read, **`INSERT` statements frequently deadlock on Gap Locks**:
-
-1. Transaction A and Transaction B both attempt to insert into an empty range (e.g., between IDs 10 and 20).
-2. Both transactions acquire **Shared Gap Locks** on the open interval `(10, 20)`. (Shared gap locks do not conflict with each other).
-3. Both transactions then attempt to write their new row, which requires an **Exclusive Insert Intention Lock** on that same gap.
-4. Because each transaction holds a shared gap lock that blocks the other's exclusive intention lock, an immediate deadlock occurs!
+Deadlocks aren't just an `UPDATE` problem. Under MySQL's Repeatable Read, two plain `INSERT`s can deadlock each other:
+1. Transaction A and Transaction B both try to insert into the same empty range (say, between IDs 10 and 20).
+2. Both take a **shared gap lock** on `(10, 20)` — shared locks don't conflict with each other, so both succeed.
+3. Both then try to upgrade to an **exclusive** lock to actually write their row.
+4. Each is now waiting on the other's shared lock. Instant deadlock.
 
 ---
 
-### How to Prevent Deadlocks in Application Code
+### How to avoid deadlocks in your own code
 
-#### 1. Strict Global Lock Ordering (The Gold Standard)
-Ensure that **every transaction in the entire codebase acquires locks in the exact same deterministic order** (e.g., sorted numerically by Primary Key):
+**1. Always lock resources in the same order.** If every transaction in the codebase locks accounts in, say, ascending ID order, then whichever account has the smaller ID always gets locked first by everyone — no cycle can ever form.
 
 ```
-Always lock min(Account_A, Account_B) first, then lock max(Account_A, Account_B) second.
+Always lock min(Account_A, Account_B) first, then max(Account_A, Account_B) second.
 ```
-Because both transactions attempt to lock `Alice` before `Bob`, Transaction 2 waits at step 1 instead of acquiring Bob and forming a cycle.
 
-#### 2. Keep Transactions Short
-Never execute HTTP API calls, external webhook notifications, or heavy CPU parsing inside a database transaction block. Open the transaction, execute queries, and commit immediately.
+**2. Keep transactions short.** Don't make an HTTP call, send a webhook, or do heavy CPU work while a transaction is open. Open it, run your queries, commit, move on.
 
-#### 3. Exponential Backoff with Jitter Retry Loops
-Deadlocks are inevitable under heavy concurrency. Applications must handle deadlock error codes automatically with a randomized backoff retry decorator.
+**3. Retry on deadlock, with backoff.** Deadlocks will happen under enough concurrency — catch the error code and retry with randomized exponential backoff so retries don't all collide again.
 
 ---
 
-### The ELI5 Analogy: The Narrow One-Way Bridge
-
-Two cars drive onto a narrow, single-lane bridge from opposite sides and meet in the middle. Neither can move forward:
-- **Detection (WFG):** A traffic drone sees the circular standoff.
-- **Victim Selection:** The police officer orders the smaller car (cheapest to reverse) to back up off the bridge.
-- **Distributed Prevention:** A timestamp camera grants older cars right-of-way, forcing newer cars to wait or turn around before entering.
-- **Lock Ordering:** Building two separate one-way lanes so cars never cross in opposing directions.
-
----
-
-### Summary
-"Deadlocks occur when transactions form a circular lock dependency. Engines detect them via Wait-For Graphs and abort a victim transaction. Distributed engines prevent them using timestamp schemes (Wait-Die / Wound-Wait). Applications prevent them by enforcing deterministic global lock ordering, keeping transactions short, and retrying on deadlock codes."
-
----
-
-### Code Demonstration: Deterministic Lock Ordering & Retry Loop
+### Code: lock ordering + retry
 
 ```python
 import time
@@ -141,28 +104,33 @@ import random
 MAX_RETRIES = 3
 
 def transfer_funds(db, from_account_id: int, to_account_id: int, amount: float):
-    # CRITICAL: Always acquire locks in identical global order (by ID)
+    # CRITICAL: always acquire locks in the same global order (by ID)
     first_id, second_id = sorted([from_account_id, to_account_id])
     
     for attempt in range(MAX_RETRIES):
         try:
             with db.transaction():
-                # Step 1: Acquire exclusive locks in deterministic order
+                # Step 1: lock in deterministic order
                 db.execute("SELECT id, balance FROM accounts WHERE id = %s FOR UPDATE", [first_id])
                 db.execute("SELECT id, balance FROM accounts WHERE id = %s FOR UPDATE", [second_id])
                 
-                # Step 2: Validate balance and transfer
+                # Step 2: do the actual transfer
                 db.execute("UPDATE accounts SET balance = balance - %s WHERE id = %s", [amount, from_account_id])
                 db.execute("UPDATE accounts SET balance = balance + %s WHERE id = %s", [amount, to_account_id])
                 
-                # Transaction commits cleanly
                 return True
                 
         except DeadlockDetectedException:
             if attempt == MAX_RETRIES - 1:
                 raise RuntimeError("Transfer failed after maximum deadlock retries")
             
-            # Randomized exponential backoff (Jitter) to prevent thundering herds
+            # Randomized backoff so retries don't collide again
             sleep_duration = (0.05 * (2 ** attempt)) + random.uniform(0.01, 0.05)
             time.sleep(sleep_duration)
 ```
+
+---
+
+### Say this in the interview
+
+*"A deadlock is a circular lock dependency between transactions. Single-node engines detect it with a wait-for graph and abort a victim. Distributed engines prevent it with timestamp schemes like Wait-Die or Wound-Wait. In application code, you prevent it by always locking resources in the same order, keeping transactions short, and retrying with backoff on deadlock errors."*

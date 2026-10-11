@@ -6,27 +6,27 @@ sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---
 
+import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What is a transaction, and why do we need it? What happens if an operation fails halfway through without one, how do Savepoints enable partial rollbacks, and what is the WAL Log-Ahead Rule?"
 
-### The Quick Answer
-
-"A database transaction is a single logical unit of work consisting of one or more database operations (reads, writes, updates, deletes) that execute under an **all-or-nothing** contract. Either every statement succeeds and becomes permanent (**Commit**), or if any failure occurs, all tentative changes are completely reversed (**Rollback**), preserving system invariants."
+Think about packing a parachute. You either finish every folding step, or none of them count — there's no such thing as jumping with a half-packed parachute. A database transaction works the same way: a group of changes that either all happen, or none of them do.
 
 ---
 
-### Why Do We Need Transactions?
+### Why we need transactions
 
-Without transactions, multi-step database workflows are vulnerable to **partial failure anomalies** and **concurrency race conditions**.
+Take a bank transfer of $100 from Alice to Bob. That's two separate steps:
 
-Consider a basic peer-to-peer bank transfer of \$100 from Alice to Bob:
-1. `Deduct $100 from Alice's account`
-2. `Add $100 to Bob's account`
+1. Subtract $100 from Alice's account
+2. Add $100 to Bob's account
 
-If step 1 succeeds, but the database server crashes, power trips, or a network partition occurs before step 2 executes:
-* **Without a transaction:** \$100 vanishes from Alice's balance without ever appearing in Bob's account. The database is left in a corrupted, inconsistent state.
-* **With a transaction:** The database recovery engine detects an uncommitted in-flight transaction on reboot. It reads the **undo log / Write-Ahead Log (WAL)** to reverse step 1, restoring Alice's \$100.
+Say step 1 finishes, then the server crashes before step 2 runs.
+
+- **Without a transaction:** Alice's $100 is just gone. It never reached Bob. The database is now wrong.
+- **With a transaction:** on reboot, the database sees step 2 never finished, and undoes step 1 too. Alice gets her $100 back.
 
 ```sql
 BEGIN TRANSACTION;
@@ -35,8 +35,8 @@ UPDATE accounts
 SET balance = balance - 100 
 WHERE user_id = 'alice' AND balance >= 100;
 
--- If application crashes here or throws an exception:
--- The database aborts and rolls back automatically.
+-- If the app crashes or throws here:
+-- the database aborts and rolls back automatically.
 
 UPDATE accounts 
 SET balance = balance + 100 
@@ -47,35 +47,36 @@ COMMIT;
 
 ---
 
-### The Transaction State Machine
+### The transaction state machine
 
-During its lifecycle, a database transaction moves through five formal states:
+A transaction moves through five states as it runs:
 
-```mermaid
-stateDiagram-v2
-    [*] --> Active: BEGIN
-    Active --> Partially_Committed: Last Statement Done
-    Active --> Failed: Error / Crash
-    Partially_Committed --> Committed: Flush to Disk (WAL)
-    Partially_Committed --> Failed: Disk I/O Failure
-    Failed --> Aborted: ROLLBACK
-    Committed --> [*]
-    Aborted --> [*]
-```
+<Diagram>
+<Tree root={
+<Box title="Active" accent="#818cf8">
+<Field icon="▶️" code="BEGIN" hint="statements are running" variant="neutral" />
+</Box>
+}>
+<Box title="Partially Committed → Committed" accent="#34d399">
+<Field icon="✅" code="flush to disk (WAL)" hint="durable — can't be rolled back after this" variant="neutral" />
+</Box>
+<Box title="Failed → Aborted" accent="#fb7185">
+<Field icon="❌" code="rollback" hint="undo log reverses every change" variant="neutral" />
+</Box>
+</Tree>
+</Diagram>
 
-1. **Active:** The initial state where read and write statements are actively being executed.
-2. **Partially Committed:** All query statements have executed in RAM, but final write verification has not yet been flushed to non-volatile disk.
-3. **Failed:** An integrity check failed, deadlock was detected, or a hardware crash occurred.
-4. **Aborted:** The database uses rollback logs to reverse all partial changes, restoring the state prior to `BEGIN`.
-5. **Committed:** Changes are guaranteed durable on disk. Once committed, a transaction cannot be rolled back.
+1. **Active** — statements are running.
+2. **Partially Committed** — every statement has run in memory, but hasn't been flushed to disk yet.
+3. **Failed** — something went wrong: a check failed, a deadlock, a crash.
+4. **Aborted** — the database uses the rollback log to undo every change, back to how things were before `BEGIN`.
+5. **Committed** — changes are safely on disk. From here, nothing can roll this back.
 
 ---
 
-### Partial Rollbacks: Savepoints
+### Rolling back just one step: Savepoints
 
-Interviewers often ask: *"Can you roll back a single failed operation without aborting the entire transaction?"*
-
-**Yes, using Savepoints.** A savepoint creates a designated checkpoint within an active transaction:
+Interviewers like to ask: *"Can you undo one failed operation without throwing away the whole transaction?"* Yes — with a savepoint, a named checkpoint inside the transaction:
 
 ```sql
 BEGIN TRANSACTION;
@@ -83,42 +84,40 @@ BEGIN TRANSACTION;
 INSERT INTO orders (order_id, user_id) VALUES (501, 'alice');
 SAVEPOINT payment_attempt;
 
--- Attempting secondary payment gateway
+-- Try a secondary payment method
 INSERT INTO payments (order_id, method, status) VALUES (501, 'crypto', 'FAILED');
 
--- Roll back ONLY the failed payment attempt, keeping the order intact
+-- Undo only the failed payment, keep the order
 ROLLBACK TO payment_attempt;
 
--- Fallback to credit card
+-- Fall back to credit card
 INSERT INTO payments (order_id, method, status) VALUES (501, 'credit_card', 'SUCCESS');
 
 COMMIT;
 ```
 
-*(Note: Most relational engines like PostgreSQL and MySQL do not support true autonomous nested transactions; they use savepoints to simulate nested transaction blocks).*
+Most databases (PostgreSQL, MySQL) don't have true nested transactions — savepoints are how they fake it.
 
 ---
 
-### The Recovery Engine: The "Log-Ahead" Rule
+### How crash recovery works: the Log-Ahead rule
 
-How does the database guarantee that rollbacks and crash recovery always work? Through **Write-Ahead Logging (WAL)** governed by the **Log-Ahead Rule**:
+How does the database guarantee rollbacks and crash recovery always work? With **Write-Ahead Logging (WAL)**:
 
-> **The Log-Ahead Invariant:** A dirty data page in volatile RAM (the Buffer Pool) can **never** be flushed to permanent disk until the corresponding log record describing the update has first been flushed and synced (`fsync`) to non-volatile WAL storage.
+> **The rule:** before any change is written to the real data file on disk, the database must first write (and confirm) a log entry describing that change.
 
-If the server crashes mid-transaction, the engine reads the WAL log:
-* **REDO Phase:** Replays changes for transactions marked as committed.
-* **UNDO Phase:** Reverses changes for transactions that were active without a commit mark.
-
----
-
-### The ELI5 Analogy: Packing a Parachute
-
-Imagine you are packing an emergency parachute. The packing procedure has 5 sequential folding and fastening steps. If you complete steps 1, 2, and 3, but the fire alarm rings and you walk away leaving steps 4 and 5 undone, you cannot jump with that half-packed parachute; doing so is fatal.
-
-You either pack the **entire** parachute completely to 100% readiness (Commit), or if interrupted, you discard the partial fold and start over from scratch (Rollback). There is no such thing as a valid "half-packed" parachute.
+So if the server crashes mid-transaction, the database reads that log on restart and knows exactly what to do:
+- **Redo** — replay the changes for transactions that had already committed.
+- **Undo** — reverse the changes for transactions that were still in progress.
 
 ---
 
-### Crucial Nuance: Transactions vs. Auto-Commit
+### Say this in the interview
 
-In most relational databases (such as MySQL InnoDB or PostgreSQL CLI clients), the default session mode is `AUTOCOMMIT = ON`. In this mode, every standalone SQL statement (`UPDATE ...`) executes as its own immediate, single-statement transaction. Backend services must explicitly open an interactive transaction block (`BEGIN` / `START TRANSACTION`) to group interdependent queries into a single atomic boundary.
+*"A transaction is a group of database operations that either all succeed (**commit**) or all get undone (**rollback**) — there's no in-between state."*
+
+---
+
+### One more thing: auto-commit
+
+By default, most databases (MySQL, PostgreSQL) run in `AUTOCOMMIT = ON` mode — every single statement is automatically its own mini-transaction. To group several statements into one atomic unit, you have to explicitly wrap them in `BEGIN` ... `COMMIT`.

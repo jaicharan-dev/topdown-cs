@@ -6,98 +6,105 @@ sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---
 
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What is the OSI model, and why do we use a layered architecture? What is the Protocol Data Unit (PDU) at each layer, and how does OSI map onto the 4-layer TCP/IP model actually used in practice?"
 
-Computer networking organizes communication through **Layered Architectures**. The theoretical **OSI 7-Layer Model** provides a conceptual framework for network protocols, while the pragmatic **TCP/IP 4-Layer Model** powers the real-world internet.
+Imagine a bank sending a secure legal contract to an overseas branch:
+
+- The **lawyers** draft the contract, translate it, and encrypt it.
+- The **courier** stamps a tracking number on the envelope so missing pages can be detected.
+- **Dispatch** glues on the recipient's address and country code.
+- The **driver** figures out the actual streets to drive.
+- The **truck** rolls on the physical road.
+
+If the truck switches from driving to flying, the lawyers don't touch the contract at all — the layer that changed (the road) is completely separate from the layer that didn't (the legal content). That's the whole point of a layered network architecture: each layer only has to do its own job.
 
 ---
 
-### The ELI5 Analogy: The Secure Contract Delivery
+### Why split it into layers at all?
 
-Imagine a multinational bank sending a secure legal contract to an overseas branch:
-- **Application/Presentation/Session:** The legal team drafts the contract, translates it into the recipient's language, and encrypts the document.
-- **Transport:** The courier stamps an order number on the envelope, verifying all pages are numbered and none are missing.
-- **Network:** The dispatch department glues on the recipient's global postal address and country code.
-- **Data Link:** The armored truck driver checks the local street map and navigates between specific neighborhood intersections.
-- **Physical:** The truck rolls over the physical asphalt road.
-
-If the truck switches from asphalt to an airplane (**Physical Layer change**), the lawyers don't need to rewrite the legal contract (**Application Layer remains completely untouched**).
+1. **You can change one layer without touching the others.** Swap Wi-Fi for 5G, and your browser doesn't need a single line changed.
+2. **Different vendors can interoperate.** Windows, Linux, a Cisco router, and an iPhone all speak the same layered standards.
+3. **It makes debugging targeted.** If a cable's unplugged (Layer 1), you're not digging through HTTP payloads (Layer 7) to find the problem.
 
 ---
 
-### Why a Layered Architecture?
+### What data actually looks like at each layer
 
-1. **Modularity & Separation of Concerns:** Changes at one layer (e.g., swapping Wi-Fi for 5G cellular) do not require rewriting higher-level applications like web browsers or databases.
-2. **Standardized Interoperability:** Allows diverse hardware and software vendors (Windows, Linux, Cisco routers, Apple smartphones) to communicate over universal standards.
-3. **Targeted Troubleshooting:** Isolates failures. If physical cables are unplugged (Layer 1), network engineers don't waste time debugging application HTTP payloads (Layer 7).
+As data moves down the stack, each layer wraps it in its own header — that's **encapsulation**. On the way back up, each header gets stripped off in reverse — **decapsulation**.
 
----
+<Diagram>
+<Row>
+<Box title="Application" accent="#60a5fa">
+<Field icon="📄" code="HTTP / JSON data" variant="neutral" />
+</Box>
+<Arrow label="+ TCP header" />
+<Box title="Transport" accent="#34d399">
+<Field icon="📦" code="Segment" hint="adds ports, sequence #s" variant="neutral" />
+</Box>
+<Arrow label="+ IP header" />
+<Box title="Network" accent="#f59e0b">
+<Field icon="📦" code="Packet" hint="adds source/destination IP" variant="neutral" />
+</Box>
+<Arrow label="+ MAC header" />
+<Box title="Data Link" accent="#a78bfa">
+<Field icon="📦" code="Frame" hint="adds MAC addresses + checksum" variant="neutral" />
+</Box>
+<Arrow label="→ bits" />
+<Box title="Physical" accent="#a1a1aa">
+<Field icon="⚡" code="0110100..." variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-### The Core Interview Trap: PDUs & Encapsulation / Decapsulation
-
-Interviewers frequently ask: *"What is the exact name of the data unit at each layer, and what headers are added as data travels down the stack?"*
-
-As data moves down the stack, each layer wraps the payload with its own protocol header (**Encapsulation**). When received, headers are stripped off layer-by-layer (**Decapsulation**):
-
-```
-APPLICATION LAYER ───► [ User Data (HTTP, JSON, HTML) ]
-                            │
-                            ▼ (Encapsulate Transport Header)
-TRANSPORT LAYER   ───► [ TCP Header | Data ]                 ==> SEGMENT
-                            │
-                            ▼ (Encapsulate Network Header)
-NETWORK LAYER     ───► [ IP Header | TCP Header | Data ]     ==> PACKET
-                            │
-                            ▼ (Encapsulate Data Link Header & Trailer)
-DATA LINK LAYER   ───► [ MAC Header | IP | TCP | Data | FCS Trailer ] ==> FRAME
-                            │
-                            ▼ (Modulate to Physical Media)
-PHYSICAL LAYER    ───► 01101001 01110100 01100011 01110000   ==> BITS
-```
-
-| Layer | Protocol Data Unit (PDU) | Added Information | Key Protocols |
+| Layer | What it's called here | What gets added | Protocols |
 | :--- | :--- | :--- | :--- |
-| **7. Application** | **Data** / Message | Application-specific payloads, request headers. | HTTP, DNS, SSH, SMTP |
-| **6. Presentation** | **Data** | Data formatting, compression, encryption. | TLS/SSL, ASCII, JPEG |
-| **5. Session** | **Data** | Session checkpointing and token tracking. | NetBIOS, RPC, Sockets |
-| **4. Transport** | **Segment** (TCP) / **Datagram** (UDP) | Source/Destination Port numbers, Sequence #s. | TCP, UDP, QUIC |
-| **3. Network** | **Packet** | Source/Destination logical IP addresses, TTL. | IPv4, IPv6, ICMP, BGP |
-| **2. Data Link** | **Frame** | Source/Destination physical MAC addresses, CRC/FCS. | Ethernet, Wi-Fi (802.11), ARP |
-| **1. Physical** | **Bits** | Raw electrical voltages, fiber-optic light pulses. | Cables, Radio frequencies |
+| 7. Application | Data | Request/response payload | HTTP, DNS, SSH, SMTP |
+| 6. Presentation | Data | Formatting, compression, encryption | TLS/SSL, JPEG |
+| 5. Session | Data | Session tracking | RPC, Sockets |
+| 4. Transport | Segment (TCP) / Datagram (UDP) | Ports, sequence numbers | TCP, UDP, QUIC |
+| 3. Network | Packet | Source/destination IP, TTL | IPv4, IPv6, ICMP |
+| 2. Data Link | Frame | MAC addresses, checksum | Ethernet, Wi-Fi, ARP |
+| 1. Physical | Bits | Raw voltage / light pulses | Cables, radio |
 
 ---
 
-### OSI vs. TCP/IP: Why TCP/IP Won in the Real World
+### Why the real internet uses 4 layers, not 7
 
-```
-OSI 7-LAYER MODEL                      TCP/IP 4-LAYER MODEL
-┌──────────────────────┐               ┌──────────────────────┐
-│ 7. Application       │ ──┐           │                      │
-│ 6. Presentation      │ ──┼──────────►│ 4. Application       │
-│ 5. Session           │ ──┘           │    (HTTP, DNS, SSH)  │
-├──────────────────────┤               ├──────────────────────┤
-│ 4. Transport         │ ─────────────►│ 3. Transport (TCP/UDP)│
-├──────────────────────┤               ├──────────────────────┤
-│ 3. Network           │ ─────────────►│ 2. Internet (IP)     │
-├──────────────────────┤               ├──────────────────────┤
-│ 2. Data Link         │ ──┐           │ 1. Network Access /  │
-│ 1. Physical          │ ──┴──────────►│    Link (Ethernet)   │
-└──────────────────────┘               └──────────────────────┘
-```
+<Diagram>
+<Row>
+<Box title="OSI — 7 layers (the theory)" accent="#a1a1aa">
+<Field icon="7" code="Application" variant="neutral" />
+<Field icon="6" code="Presentation" variant="neutral" />
+<Field icon="5" code="Session" variant="neutral" />
+<Field icon="4" code="Transport" variant="neutral" />
+<Field icon="3" code="Network" variant="neutral" />
+<Field icon="2" code="Data Link" variant="neutral" />
+<Field icon="1" code="Physical" variant="neutral" />
+</Box>
+<Box title="TCP/IP — 4 layers (what's actually used)" accent="#34d399">
+<Field icon="4" code="Application" hint="merges OSI layers 5, 6, 7" variant="public" />
+<Field icon="3" code="Transport" variant="public" />
+<Field icon="2" code="Internet" variant="public" />
+<Field icon="1" code="Network Access" hint="merges OSI layers 1, 2" variant="public" />
+</Box>
+</Row>
+</Diagram>
 
-1. **Pragmatic Implementation vs. Academic Committee:** OSI was developed by an ISO committee before implementation. TCP/IP was built directly in working software on ARPANET and Berkeley Unix (BSD), following the IETF ethos: *"We reject kings, presidents, and voting. We believe in rough consensus and running code."*
-2. **Redundant Layers:** In practice, separate Session and Presentation layers proved unnecessary; modern applications handle formatting, compression, and TLS encryption directly in user space.
-
----
-
-### Summary
-"The OSI 7-layer model is a theoretical framework, whereas the TCP/IP 4-layer model is the practical architecture of the internet. Data moves down layers via Encapsulation: Application Data becomes a Transport Segment (ports), a Network Packet (IP addresses), a Data Link Frame (MAC addresses), and Physical Bits. TCP/IP won in production because it prioritized running code over committee bureaucracy."
+OSI was designed by a committee before anyone built it. TCP/IP was built directly into working software (ARPANET, BSD Unix) and won because it shipped. In practice, nobody needed separate Session and Presentation layers — compression and encryption just happen in the application itself now.
 
 ---
 
-### Code Demonstration: Observing Socket Encapsulation in Python
+### Say this in the interview
+
+*"The OSI model is the 7-layer theoretical framework; TCP/IP is the 4-layer model the real internet actually runs on. Going down the stack, data gets wrapped at each layer — Application data becomes a Transport Segment (adds ports), a Network Packet (adds IP addresses), a Data Link Frame (adds MAC addresses), and finally raw Physical bits. TCP/IP won because it was built and shipped, while OSI stayed a committee spec."*
+
+---
+
+### Code: watching the layers in action
 
 ```python
 import socket

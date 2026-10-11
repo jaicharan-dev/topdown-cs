@@ -8,93 +8,96 @@ sidebar_class_name: sidebar-easy
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What is the difference between a process and a thread? Why is a process context switch significantly more expensive than a thread context switch, and when would you use one over the other?"
 
-At the core of multitasking operating systems lies the distinction between a **Process** (the container of resources and isolated address space) and a **Thread** (the actual unit of CPU execution scheduled on a processor core).
+A process and a thread are both "running code" — the difference is how isolated each one is.
 
 ---
 
-### The ELI5 Analogy: The Restaurant and the Workers
+### The analogy: a restaurant and its workers
 
-Think of a **Process** as a restaurant:
-- The restaurant has its own private building, its own ingredients, and its own lease (**isolated address space and file descriptors**).
-- A **Thread** is an employee (chef, waiter) inside that restaurant.
-- **Shared Kitchen:** All employees share the same kitchen, pantry, and dining floor (**shared heap, global variables, and code**).
-- **Private Notepad:** Each employee carries their own private notepad to track current tasks (**private stack and CPU registers**).
-- **Scaling Overhead:** Building a brand-new restaurant from scratch takes weeks and heavy capital (heavyweight process creation). Hiring another worker in an existing restaurant takes minutes (lightweight thread creation).
-- **Blast Radius:** If one restaurant burns down, neighboring restaurants are unharmed (**process fault isolation**). But if one chef spills toxic chemicals into the shared soup pot, the entire restaurant shuts down (**thread memory corruption**).
+Think of a **process** as a restaurant: it has its own building, its own ingredients, its own lease — nothing is shared with the restaurant next door. A **thread** is a worker inside that restaurant — a chef, a waiter.
 
----
-
-### Under the Hood: Architectural Breakdown
-
-```
-        PROCESS 1 (Isolated Address Space)
-┌─────────────────────────────────────────────────┐
-│ Code (Text) Segment  |  Global / Data Segment   │
-├─────────────────────────────────────────────────┤
-│ Heap (Dynamic Allocation - Shared across threads)│
-├───────────────────────┬─────────────────────────┤
-│       Thread 1        │        Thread 2         │
-│  [Registers | Stack]  │   [Registers | Stack]   │
-└───────────────────────┴─────────────────────────┘
-```
-
-#### 1. Internal Kernel Control Blocks
-- **Process Control Block (PCB):** Maintained by the kernel. Contains Process ID (PID), memory management maps (Page Tables), open file descriptors, user credentials, signal handlers, and IPC state.
-- **Thread Control Block (TCB):** Much smaller footprint. Contains Thread ID (TID), thread scheduling priority, program counter (PC), CPU register state, and stack pointer (SP). Points back to its parent PCB.
-
-#### 2. The Core Interview Trap: Why Process Context Switches Are Slow
-Candidates often answer that "processes use more memory." The real hardware explanation lies in **address translation and CPU caching**:
-
-- **Thread Context Switch:** Both threads belong to the same process. They share the same virtual-to-physical memory page table. The CPU switches registers and stack pointers, but **the memory mapping remains intact**. The **Translation Lookaside Buffer (TLB)** remains valid, and CPU L1/L2 caches stay warm.
-- **Process Context Switch:** The OS must switch virtual address spaces by loading a new page table base address into the CPU (e.g., reloading the `CR3` control register on x86). This hardware reload **completely flushes/invalidates the TLB** (unless using tagged ASIDs). Subsequent memory reads experience severe cache misses and TLB misses until the CPU warms up the new process's working set.
-
-#### 3. Thread Execution Models
-- **1:1 (Kernel-Level Threads / KLT):** Every application thread maps directly to an OS kernel thread (standard in modern Linux `pthreads`, Java, C++). Handled directly by the kernel scheduler; true multi-core parallelism.
-- **M:1 (User-Level Threads / ULT / Green Threads):** Multiple user threads multiplexed on one kernel thread. Fast user-space context switches, but a single blocking system call blocks all $M$ threads.
-- **M:N (Hybrid / Two-Tier):** Multiplexes $M$ lightweight user routines across $N$ OS kernel threads (e.g., Go Goroutines, Erlang BEAM). Achieves high-concurrency with minimal stack memory overhead.
+- **Shared kitchen:** every worker shares the same kitchen, pantry, and dining floor — that's the process's shared heap, global variables, and code.
+- **Private notepad:** each worker still keeps their own notepad for their own current task — that's a thread's private stack and registers.
+- **Opening a new restaurant** takes weeks and real money (creating a process). **Hiring another worker** in an existing restaurant takes minutes (creating a thread).
+- **If one restaurant burns down**, the one next door is fine — that's process isolation. But **if one chef dumps something toxic in the shared pot**, the whole restaurant is affected — that's what a thread crash does to its process.
 
 ---
 
-### Technical Comparison Matrix
+### What's actually shared, under the hood
 
-| Feature | Process | Thread |
+<Diagram>
+<Box title="Process: isolated address space" accent="#818cf8">
+<Field icon="📄" code="Code + Data segment" hint="shared by every thread in this process" variant="neutral" />
+<Field icon="🗄️" code="Heap" hint="shared, dynamically allocated" variant="neutral" />
+<Row>
+<Box title="Thread 1" accent="#34d399">
+<Field icon="📝" code="registers + stack" hint="private to this thread" variant="neutral" />
+</Box>
+<Box title="Thread 2" accent="#34d399">
+<Field icon="📝" code="registers + stack" hint="private to this thread" variant="neutral" />
+</Box>
+</Row>
+</Box>
+</Diagram>
+
+#### 1. What the kernel tracks for each one
+
+- **Process Control Block (PCB):** one per process. Holds the process ID, its page tables (memory map), open file descriptors, and more.
+- **Thread Control Block (TCB):** much smaller. Holds the thread ID, its registers, its stack pointer, and a pointer back to its parent PCB.
+
+#### 2. Why switching processes is so much slower than switching threads
+
+The common wrong answer is "processes use more memory." The real reason is about hardware, not size:
+
+- **Switching threads:** both threads belong to the same process, so they share the same memory map. The CPU just swaps registers and the stack pointer — the memory map stays valid, so the CPU's address-translation cache (the **TLB**) and its data caches stay warm.
+- **Switching processes:** the CPU has to load a whole new memory map (on x86, reloading the `CR3` register). That flushes the TLB. Every memory access afterward runs slow until the cache warms back up.
+
+#### 3. How threads actually get scheduled
+
+- **1:1 (kernel threads):** each thread you create maps to one real OS thread. This is how Linux, Java, and C++ normally work — true parallelism across cores.
+- **M:1 (green threads):** many threads multiplexed onto a single OS thread. Fast to switch between, but one blocking call blocks all of them.
+- **M:N (hybrid):** M lightweight threads spread across N OS threads — what Go's goroutines and Erlang do. High concurrency, low memory overhead.
+
+---
+
+### Comparison
+
+| | Process | Thread |
 | :--- | :--- | :--- |
-| **Definition** | Independent executing program instance. | Smallest schedulable unit of CPU execution. |
-| **Memory Isolation** | **Strictly isolated.** Separate code, data, heap, and stack. | **Shared heap, data, and code.** Private stack and registers. |
-| **Context Switch Overhead** | **High.** Requires TLB flush, page table swap (`CR3`), cache thrashing. | **Low.** Only saves/restores CPU registers and stack pointer. |
-| **Inter-Communication** | Requires **IPC** (Pipes, Unix Sockets, Shared Memory, Message Queues). | Direct shared memory reads/writes (requires synchronization locks). |
-| **Creation Cost** | High (memory allocation, page table setup, COW pages). | Minimal (allocates thread stack and registers). |
-| **Fault Isolation** | High (process crash does not affect other processes). | Low (unhandled segmentation fault kills entire process). |
+| **Memory** | Fully isolated — separate code, data, heap, stack | Shares heap, data, code — private stack and registers |
+| **Context switch cost** | High — flushes the TLB, reloads the page table | Low — just swaps registers and the stack pointer |
+| **Talking to each other** | Needs IPC — pipes, sockets, shared memory | Direct shared-memory access (needs locks) |
+| **Creation cost** | High — new memory space, new page tables | Low — just a new stack and register set |
+| **If it crashes** | Other processes are unaffected | Can take down the whole process |
 
 ---
 
-### When to Use Which?
+### When to reach for which
 
-- **Use Processes When:**
-  - Tasks require strict fault tolerance and security isolation.
-  - *Example:* Google Chrome tabs. Each tab runs in an isolated sandboxed process so a malformed JavaScript exploit or crash in one tab cannot read secrets or crash other tabs.
-- **Use Threads When:**
-  - Tasks require high-throughput parallel computation and tight data sharing with low communication latency.
-  - *Example:* High-performance web servers (e.g., multi-threaded HTTP servers or database query execution engines).
+- **Use processes** when you need real fault isolation. Chrome runs each tab in its own process, so a crash or exploit in one tab can't touch another.
+- **Use threads** when you need fast, tightly-shared parallel work. A multi-threaded web server or database engine is the classic case.
 
 ---
 
-### Summary
-"A process is an isolated instance of an executing program with its own address space, PCB, and open handles. A thread is an execution context within a process that shares the heap, data, and code segments, but owns its private stack and registers. Process context switches are significantly slower because swapping page tables invalidates the Translation Lookaside Buffer (TLB) and thrashes CPU caches."
+### Say this in the interview
+
+*"A process is an isolated running program with its own address space. A thread is a unit of execution inside a process, sharing its heap and code but owning a private stack and registers. Process switches are slower because reloading the page table flushes the TLB and cold-starts the CPU cache — not because of memory size."*
 
 ---
 
-### Crucial Nuance: Thread-Local Storage (TLS)
-Although threads share the heap and static global variables, modern runtimes provide **Thread-Local Storage (TLS)** (e.g., `__thread` in C, `thread_local` in C++, `ThreadLocal` in Java). TLS variables allocate a separate copy for each thread, providing static-variable semantics without race conditions.
+### One more thing: Thread-Local Storage (TLS)
+
+Threads share the heap and global variables — but most languages also give each thread its own private copy of specific variables, via `__thread` in C, `thread_local` in C++, or `ThreadLocal` in Java. That's Thread-Local Storage: same variable name, a separate value per thread, no locks needed.
 
 ---
 
-### Code Demonstration: Memory Isolation vs. Shared Memory
+### Code: shared memory vs. isolated memory
 
 <Tabs groupId="programming-language">
 <TabItem value="c" label="C">

@@ -1,97 +1,98 @@
 ---
 id: 10-virtual-memory-and-page-faults
 title: "Virtual Memory & Page Fault Mechanics"
-description: "Understand virtual memory abstractions, the exact step-by-step hardware/OS page fault lifecycle, and Minor (Soft) vs. Major (Hard) page faults."
+description: "How virtual memory decouples a program's address space from physical RAM, the step-by-step page fault lifecycle, and minor vs. major page faults."
 sidebar_position: 10
 sidebar_class_name: sidebar-easy
 ---
+
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What is virtual memory, what problems does it solve, and what is the exact step-by-step lifecycle of a page fault? What is the difference between a major and a minor page fault?"
 
-**Virtual Memory** is one of the greatest abstractions in computer systems. It completely decouples a program's logical view of memory from physical hardware reality, presenting every process with a massive, contiguous, and isolated address space while physical RAM holds only the pages actively in use.
+Virtual memory is the illusion the OS gives every program: a huge, private, contiguous address space — even though real RAM is small and shared, and the data is actually scattered wherever it happens to fit.
 
 ---
 
-### The ELI5 Analogy: The Desk and the Filing Cabinet
+### The analogy: a desk and a filing cabinet
 
-Imagine an office:
-- **CPU:** The worker.
-- **Physical RAM:** Your desktop. It is blazingly fast to grab papers from, but small (can fit only 100 pages).
-- **Hard Drive (Secondary Storage):** A massive filing cabinet in the basement. It holds 100,000 pages, but walking down to fetch a page takes ages.
+- **CPU** = the worker.
+- **Physical RAM** = your desk. Blazing fast to grab a page from, but small — it only fits 100 pages.
+- **Hard drive** = a filing cabinet in the basement. Holds 100,000 pages, but walking down there takes a while.
 
-Now, imagine working on a massive 10,000-page project:
-- **Virtual Memory:** The illusion the OS gives you that your desk is infinite. The OS tells you: *"Ask for any page from 1 to 10,000; I will handle the logistics."* The OS keeps the 100 pages you are actively reading on your desk, and leaves the remaining 9,900 in the basement.
-- **The Page Fault:** What happens if you request Page 500, but it is currently in the basement? You must pause work. The OS walks to the basement, grabs Page 500, brings it to your desk, and resumes your work. If your desk is full, the OS moves an old, unread page from your desk back to the basement.
+Say you're working on a 10,000-page project. **Virtual memory** is the OS telling you: "Ask for any page from 1 to 10,000, I'll handle where it actually lives." It keeps the 100 pages you're actively using on your desk, and leaves the other 9,900 in the basement.
 
----
-
-### Technical Breakdown: Core Abstractions
-
-```
-VIRTUAL ADDRESS SPACE (Process View: Contiguous 0x0000 to 0xFFFF)
-[ Page 0 ] [ Page 1 ] [ Page 2 ] [ Page 3 ] [ Page 4 ]
-    |          |          |          |          |
-    └──────────┼──────────┼──────────┼──────────┘
-               ▼          ▼          ▼
-         PAGE TABLE (MMU Hardware Translation)
-               │          │          │
-    ┌──────────┘          │          └──────────┐
-    ▼                     ▼                     ▼
-[ Frame 12 ]         [ Frame 4 ]           [ Frame 87 ]
-PHYSICAL RAM (Hardware Reality: Scattered 4KB Frames)
-```
-
-1. **Virtual Pages:** Fixed-size logical blocks of memory (typically $4\text{ KB}$ on x86/ARM).
-2. **Physical Frames:** Fixed-size slots in hardware RAM matching the page size.
-3. **Page Table:** A per-process kernel data structure mapping virtual page numbers to physical frame numbers via **Page Table Entries (PTEs)**.
-4. **PTE Status Flags:**
-   - **Valid / Present Bit:** `1` if page resides in physical RAM; `0` if on disk/swap.
-   - **Dirty / Modified Bit:** `1` if the page was written to in RAM (must be flushed to disk before eviction).
-   - **Referenced / Access Bit:** `1` if the page was recently read/written (used by LRU/Clock algorithms).
+A **page fault** is what happens when you ask for a page that's currently in the basement. You pause. The OS walks down, grabs it, brings it up, and you resume. If your desk is already full, it first carries an old unused page back down to make room.
 
 ---
 
-### The 12-Step Hardware/OS Page Fault Lifecycle
+### What's actually going on underneath
 
-When a process references an unmapped or swapped-out virtual page, a **Page Fault** occurs. Here is the exact low-level execution sequence:
+<Diagram>
+<Row>
+<Box title="Virtual address space (contiguous)" accent="#60a5fa">
+<Field icon="📄" code="Page 0" variant="neutral" />
+<Field icon="📄" code="Page 1" variant="neutral" />
+<Field icon="📄" code="Page 2" variant="neutral" />
+</Box>
+<Arrow label="page table" />
+<Box title="Physical RAM (scattered)" accent="#34d399">
+<Field icon="🧱" code="Frame 12" variant="neutral" />
+<Field icon="🧱" code="Frame 4" variant="neutral" />
+<Field icon="🧱" code="Frame 87" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-1. **CPU Memory Reference:** An instruction tries to read or write a virtual address.
-2. **MMU Lookup:** The hardware **Memory Management Unit (MMU)** checks the Page Table.
-3. **Trap Triggered:** The MMU detects that the **Valid/Present bit is 0**. The MMU halts execution and triggers a **Hardware Trap (Page Fault Exception #14)** to the OS kernel.
-4. **Context Save:** The CPU switches to **Kernel Mode** and saves the process's registers and program counter onto the kernel stack.
-5. **Address Validity Check:** The OS verifies if the address is legally mapped in the process's Virtual Memory Area (VMA).
-   - *If invalid:* The access is illegal (e.g., dereferencing `NULL`); the OS dispatches a **`SIGSEGV` (Segmentation Fault)** and kills the process.
-6. **Frame Allocation:** If valid, the OS looks for a free physical memory frame.
-7. **Page Eviction (Replacement):** If RAM is 100% full, the OS selects a **Victim Frame** using a replacement algorithm (e.g., LRU or Clock).
-8. **Dirty Page Flush:** If the victim frame's **Dirty bit is 1**, the OS writes its contents out to the swap disk. The victim's PTE is set to `Valid = 0`.
-9. **Disk I/O Dispatch:** The OS schedules a disk read to load the requested page into the newly freed physical frame.
-10. **Process Suspended:** Because disk I/O is slow (milliseconds), the OS marks the faulting process as **Blocked/Waiting** and schedules another ready process on the CPU.
-11. **I/O Completion Interrupt:** When the disk controller finishes reading the page, it fires a hardware **I/O Interrupt**.
-12. **State Restoration & Instruction Restart:** The OS interrupt handler sets the page's PTE to the new frame number, sets **`Valid = 1`**, clears the dirty bit, and moves the process back to the **Ready Queue**. When rescheduled, the CPU **restarts the exact instruction that previously faulted**!
+- **Virtual pages:** fixed-size logical chunks (usually 4 KB on x86/ARM) — this is what the program sees.
+- **Physical frames:** fixed-size slots in actual RAM, same size as a page.
+- **Page table:** a per-process lookup table the kernel keeps, mapping each virtual page number to a physical frame number. Each entry is called a **PTE**.
+- **PTE status flags** worth knowing:
+  - **Valid/Present bit:** `1` if the page is currently in RAM, `0` if it's out on disk.
+  - **Dirty bit:** `1` if the page was written to since it was loaded — it has to be saved to disk before it can be evicted.
+  - **Referenced bit:** `1` if the page was recently touched — this is what LRU/Clock-style algorithms use to pick what to evict.
 
 ---
 
-### Minor (Soft) vs. Major (Hard) Page Faults
+### What happens, step by step, when a page fault fires
 
-Interviewers frequently distinguish between two types of page faults:
+A page fault happens when a process touches a virtual address that isn't currently mapped to RAM. Here's the exact sequence:
+
+1. **CPU memory reference:** an instruction tries to read or write a virtual address.
+2. **MMU lookup:** the hardware Memory Management Unit checks the page table for that address.
+3. **Trap:** the Valid/Present bit is `0`. The MMU halts and raises a hardware trap into the kernel.
+4. **Context save:** the CPU switches to kernel mode and saves the process's registers and program counter.
+5. **Validity check:** the OS checks whether this address is actually legal for this process (inside a mapped region). If it isn't — say, a null pointer dereference — the OS sends `SIGSEGV` and kills the process.
+6. **Frame allocation:** if the address is legal, the OS looks for a free physical frame.
+7. **Eviction, if needed:** if RAM is completely full, the OS picks a victim frame using a replacement algorithm (LRU, Clock, etc).
+8. **Dirty page flush:** if that victim's dirty bit is set, its contents get written to disk first, and its PTE is marked invalid.
+9. **Disk read:** the OS schedules a disk read to bring the requested page into the now-free frame.
+10. **Process blocked:** disk I/O takes milliseconds, so the OS marks this process as blocked and runs something else in the meantime.
+11. **I/O completes:** the disk controller fires an interrupt once the read finishes.
+12. **Resume:** the OS updates the PTE with the new frame number, sets Valid = 1, clears the dirty bit, and puts the process back on the ready queue. When it runs again, the CPU **re-executes the exact instruction that faulted** — as if nothing happened.
+
+---
+
+### Minor (soft) vs. major (hard) page faults
 
 | Feature | Minor (Soft) Page Fault | Major (Hard) Page Fault |
 | :--- | :--- | :--- |
-| **Data Location** | The page **already resides in physical RAM**, but lacks an active mapping in this process's page table. | The page is **not in RAM** and must be fetched from disk or swap partition. |
-| **Disk I/O Required?** | **Zero disk I/O.** Resolved completely in memory. | **Yes.** Requires physical disk/SSD read. |
-| **Latency Penalty** | Microseconds ($\approx 1-5\ \mu\text{s}$). | Milliseconds ($\approx 1-10\text{ ms}$), up to **10,000x slower**! |
-| **Common Scenarios** | 1. Memory allocated via `malloc()` / `mmap()` (Demand Paging: allocated on first write).<br/>2. Attaching to a shared library (`libc.so`) already loaded by another process.<br/>3. Reclaiming a page sitting in the OS page cache. | 1. Reading cold code/data from binary file.<br/>2. Re-fetching a page that was swapped out under memory pressure. |
+| **Where's the data** | Already sitting in RAM, just not mapped into this process yet. | Not in RAM at all — has to be read from disk/swap. |
+| **Disk I/O?** | None. Resolved entirely in memory. | Yes — a real disk/SSD read. |
+| **Latency** | Microseconds (~1-5 μs). | Milliseconds (~1-10 ms) — up to 10,000× slower. |
+| **Common causes** | Freshly `malloc()`'d/`mmap()`'d memory on first touch; attaching to a shared library already loaded by another process; reclaiming a page still sitting in the OS page cache. | Reading cold code or data from a binary for the first time; re-fetching a page that got swapped out under memory pressure. |
 
 ---
 
-### Summary
-"Virtual memory gives processes the illusion of a large, isolated, contiguous address space by mapping virtual pages to scattered physical frames via page tables. A page fault is a hardware interrupt triggered when a page's Valid bit is 0. The OS loads the page from disk, updates the page table, and transparently restarts the faulting instruction. Minor page faults resolve in RAM without disk I/O, while major page faults incur severe disk latency."
+### Say this in the interview
+
+*"Virtual memory gives each process the illusion of a large, contiguous, isolated address space, while the page table maps its virtual pages onto scattered physical frames. A page fault fires when the Valid bit on a PTE is 0 — the OS loads the page from disk, updates the page table, and transparently re-runs the faulting instruction. A minor fault resolves entirely in RAM with no disk I/O; a major fault has to go to disk and is orders of magnitude slower."*
 
 ---
 
-### Code Demonstration: Observing Page Faults via `getrusage`
+### Code: observing page faults with `getrusage`
 
 ```c
 #include <stdio.h>

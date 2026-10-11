@@ -8,79 +8,74 @@ sidebar_class_name: sidebar-medium
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is the difference between a mutex and a semaphore? What is a spinlock, how does ownership impact priority inheritance, and when do you use each?"
 
-Synchronization primitives manage concurrent access to shared resources. The two most fundamental primitives are the **Mutex** (a lock enforcing mutual exclusion) and the **Semaphore** (a counter-based signaling mechanism).
+Both a mutex and a semaphore control access to a shared resource. The difference comes down to one question: **does it track who's holding it?**
 
 ---
 
-### The ELI5 Analogy: The Bathroom Key vs. The Nightclub Bouncer
+### The analogy: a bathroom key vs. a nightclub bouncer
 
-- **A Mutex is a Single-Occupancy Bathroom Key:**  
-  A coffee shop has one bathroom. You take the physical key, walk inside, and lock the door. You are the sole **owner** of that key. When finished, you unlock the door and hand the key back. If another customer tries to return a duplicate key while you are inside, the barista rejects it because you are the documented owner.
-  - *Core Concept:* **Strict Thread Ownership.**
+- **A mutex is a single-occupancy bathroom key.** A coffee shop has one bathroom. You take the key, go in, lock the door. You *own* that key until you come back out and hand it over. If someone else tries to hand back a "duplicate" key while you're still inside, the barista rejects it — you're the only one allowed to release it.
+- **A semaphore is a bouncer with a clicker, capacity 3.** Three people go in, the clicker hits 0. A fourth person has to wait. Someone leaves through the side door, the clicker ticks back up to 1, and the next person in line gets in. Nobody "owns" a slot — anyone leaving frees one up for anyone waiting.
 
-- **A Semaphore is a Nightclub Bouncer with a Clicker:**  
-  A club has a legal capacity limit of 3 guests. The bouncer stands at the door holding a clicker:
-  - 3 people enter $\to$ bouncer clicks down to `0`.
-  - A 4th person arrives $\to$ bouncer says, *"Wait outside, we're at capacity."*
-  - Someone inside leaves through the fire exit $\to$ bouncer clicks up to `1` and admits the next person in line.
-  - *Core Concept:* **Signaling & Capacity Counter (No Ownership).**
-
----
-
-### Technical Breakdown
-
-#### 1. Mutex (Mutual Exclusion)
-- A **locking mechanism** designed to protect a critical section so that only one thread can execute it at a time.
-- Implemented as an atomic boolean flag (`Locked` / `Unlocked`).
-- **Strict Ownership:** The thread that invokes `lock()` is the **only** thread permitted to invoke `unlock()`. If another thread attempts to unlock it, the runtime raises an error.
-
-#### 2. Counting Semaphore
-- A **signaling mechanism** based on an atomic integer counter ($S \ge 0$).
-- Defined by two atomic operations (Dijkstra's notation):
-  - **`wait()` (or `P()`):** Decrements the counter. If $S \le 0$, the calling thread blocks until another thread signals.
-  - **`signal()` (or `V()`):** Increments the counter. Wakes up a waiting thread if one is blocked.
-- **No Ownership:** A semaphore has no concept of an owner. Thread A can call `wait()`, and a completely different Thread B can call `signal()`.
+<Diagram>
+<Row>
+<Box title="Mutex" accent="#60a5fa"><Field icon="🔑" code="locked by Thread A" hint="only Thread A can unlock it" variant="locked" /></Box>
+<Box title="Semaphore" accent="#f59e0b"><Field icon="🎫" code="count = 3" hint="any thread can signal or wait" variant="neutral" /></Box>
+</Row>
+</Diagram>
 
 ---
 
-### The Core Interview Traps
+### The technical version
 
-#### 1. Mutex vs. Spinlock (Sleep vs. Busy-Wait)
-Candidates frequently confuse how threads wait for locks:
-- **Mutex (Sleeping Lock):** If the lock is held, the OS puts the waiting thread to sleep, removes it from the CPU runqueue, and context-switches to another process. Overhead is $\approx 1-5\ \mu\text{s}$. Best for long critical sections.
-- **Spinlock (Busy-Waiting):** The waiting thread loops continuously on the CPU (`while(test_and_set(&lock))`). Zero context-switching overhead, but burns 100% CPU. Best for sub-microsecond critical sections or **OS Kernel Interrupt Service Routines (ISRs)** where sleeping is forbidden.
+**Mutex (mutual exclusion):**
+- A lock that lets exactly one thread into a critical section at a time.
+- Internally just a boolean — locked or unlocked.
+- Strict ownership: only the thread that called `lock()` is allowed to call `unlock()`. Anyone else trying gets an error.
 
-#### 2. Why Only Mutexes Support Priority Inheritance
-In real-time systems, if a low-priority thread holding a lock blocks a high-priority thread, the OS can elevate the low-priority thread's priority (**Priority Inheritance**) to prevent priority inversion.
-- **Mutexes can do this** because the kernel tracks the exact thread that owns the lock.
-- **Semaphores cannot do this** because semaphores have no concept of thread ownership. The kernel has no way of knowing which thread is "supposed" to call `signal()`.
+**Counting semaphore:**
+- A signaling tool built on an integer counter (≥ 0).
+- Two operations: `wait()` / `P()` decrements the counter (and blocks if it hits below 0), `signal()` / `V()` increments it (and wakes someone up if anyone's waiting).
+- No ownership at all — Thread A can call `wait()` and a completely unrelated Thread B can call `signal()`.
 
 ---
 
-### Technical Comparison Matrix
+### Two things interviewers love to probe
+
+**1. Mutex vs. spinlock — sleeping vs. busy-waiting.**
+A mutex, when blocked, puts the waiting thread to sleep and lets the CPU run something else — cheap in CPU time, but costs a few microseconds to wake back up. A spinlock just loops, checking the lock over and over, burning 100% CPU the whole time. Spinlocks only make sense for extremely short critical sections, like inside a kernel interrupt handler where sleeping isn't even an option.
+
+**2. Why only mutexes support priority inheritance.**
+If a low-priority thread is holding a lock a high-priority thread needs, the OS can temporarily boost the low-priority thread so it finishes fast and gets out of the way — that's priority inheritance. It only works for a mutex, because the kernel knows exactly which thread owns the lock. A semaphore has no concept of an owner, so there's no one specific thread to boost.
+
+---
+
+### Comparison
 
 | Dimension | Mutex | Counting Semaphore |
 | :--- | :--- | :--- |
-| **Mechanism** | Locking mechanism. | Signaling mechanism. |
-| **State** | Boolean flag (`Locked` / `Unlocked`). | Integer counter ($\ge 0$). |
-| **Ownership** | **Strict.** Only locking thread can unlock. | **None.** Any thread can signal. |
-| **Priority Inheritance** | Supported. | Not possible (no owner). |
-| **Primary Purpose** | Protecting critical sections / mutual exclusion. | Resource pooling, rate-limiting, handoffs. |
-| **Classic Use Case** | Modifying a shared in-memory data structure. | Limiting database connection pools (e.g., max 10). |
+| **What it is** | A lock | A signal/counter |
+| **State** | Locked / unlocked | An integer ≥ 0 |
+| **Ownership** | Strict — only the locker can unlock | None — anyone can signal |
+| **Priority inheritance** | Supported | Not possible |
+| **Used for** | Protecting a critical section | Rate-limiting, resource pools, handoffs |
+| **Typical case** | Guarding a shared data structure | Capping a DB connection pool at 10 |
 
 ---
 
-### Summary
-"A mutex is a locking primitive with strict thread ownership, ideal for mutual exclusion and capable of priority inheritance. A counting semaphore is a counter-based signaling mechanism with no ownership, ideal for regulating access to a finite pool of resources or coordinating execution order."
+### Say this in the interview
+
+*"A mutex is a lock with strict ownership — only the thread that locked it can unlock it, which is also why it can support priority inheritance. A semaphore is a counter for signaling with no ownership at all, which makes it a better fit for things like limiting how many threads can use a resource pool at once."*
 
 ---
 
-### Code Demonstration: Mutex vs. Counting Semaphore
+### Code: mutex vs. counting semaphore
 
 <Tabs groupId="programming-language">
 <TabItem value="c" label="C (pthreads & semaphores)">

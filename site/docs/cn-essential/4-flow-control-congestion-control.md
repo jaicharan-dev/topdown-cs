@@ -6,87 +6,91 @@ sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
 
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is the difference between flow control and congestion control? How does the sender determine its effective transmission window, and what are Slow Start, AIMD, and Fast Retransmit/Recovery?"
 
-While both mechanisms throttle the rate at which a TCP sender transmits data, they protect completely different network bottlenecks: **Flow Control** protects the *receiver*, while **Congestion Control** protects the *entire intermediate network*.
+Both of these slow down how fast TCP sends data — but they're protecting two completely different things.
+
+- **Flow control is about the receiver's parking garage.** A venue has 1,000 parking spots. A sign out front says "only 200 spots left" — cars need to stop arriving faster than spots free up. That's flow control: protecting the *receiver's* buffer from being overwhelmed.
+- **Congestion control is about the highway, not the garage.** Even with an empty parking garage, if 10,000 cars hit the highway at once, the toll booths (routers in between) jam up anyway. That's congestion control: protecting the *network path* itself.
+
+<Diagram>
+<Row>
+<Box title="Flow Control" accent="#60a5fa">
+<Field icon="🅿️" code="rwnd" hint="protects the receiver's buffer" variant="neutral" />
+</Box>
+<Box title="Congestion Control" accent="#f59e0b">
+<Field icon="🛣️" code="cwnd" hint="protects the network path" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
 ---
 
-### The ELI5 Analogy: The Parking Garage vs. The Highway
-
-- **Flow Control (The Destination's Parking Garage):** A sports arena has a 1,000-car parking garage (Receiver Buffer). The arena flashes an electronic sign: *"We only have 200 parking spots left."* The cars must not arrive faster than 200 cars until spots open up.
-- **Congestion Control (The Highway Traffic Jam):** Even if the destination parking garage is completely empty (infinite receiver buffer), if 10,000 cars enter the highway at the exact same second, the highway bottlenecks at the toll booths (intermediate routers), causing a massive gridlock.
-
----
-
-### Architectural Comparison
+### Comparison
 
 | Dimension | Flow Control | Congestion Control |
 | :--- | :--- | :--- |
-| **Protected Entity** | The **Receiver's socket buffer**. | The **Network path** (intermediate routers and switches). |
-| **Controlling Variable** | **`rwnd`** (Receive Window). | **`cwnd`** (Congestion Window). |
-| **Feedback Mechanism**| Explicitly advertised in every incoming TCP header. | Deduced implicitly through packet drops, RTT latency, or duplicate ACKs. |
-| **Scope** | End-to-End (Point-to-Point). | Global (Impacted by all competing network traffic). |
+| **Protects** | The receiver's socket buffer | The network path (routers, switches) |
+| **Controlling variable** | `rwnd` (receive window) | `cwnd` (congestion window) |
+| **How it's measured** | Advertised directly in every TCP header | Inferred from packet drops, RTT, or duplicate ACKs |
+| **Scope** | End-to-end, just this one connection | Global — shared with every other connection on the path |
 
 ---
 
-### The Fundamental Equation: Effective Window
+### How much can the sender actually send?
 
-How does a TCP sender determine how many unacknowledged bytes it can legally transmit onto the wire?
+$$\text{Effective Window} = \min(\text{rwnd}, \text{cwnd})$$
 
-$$\text{Effective Window Size} = \min(\text{rwnd}, \text{cwnd})$$
-
-The sender is capped by whichever constraint is tighter: the receiver's available buffer space or the network's carrying capacity.
+Whichever number is smaller wins. The sender is always bottlenecked by whichever is tighter: the receiver's free buffer space, or what the network can currently carry.
 
 ---
 
-### Congestion Control Mechanics (TCP Reno)
+### How TCP figures out `cwnd` (TCP Reno)
 
-Because routers do not explicitly inform senders of their bandwidth, TCP probes the network dynamically through four phases:
+Routers never tell a sender how much bandwidth is available — TCP has to probe for it, in three phases:
 
-```
-Congestion Window (cwnd)
-  ▲
-  │              AIMD Linear Growth (Congestion Avoidance: +1 MSS / RTT)
-  │                   /\        /\
-  │                  /  \      /  \  <-- Multiplicative Decrease (cwnd / 2 on 3 Dup ACKs)
-  │      ssthresh --┌    \    /
-  │                /      \--/
-  │               /
-  │  Exponential /  (Slow Start: Doubling cwnd every RTT)
-  │  Growth     /
-  └────────────┴──────────────────────────────► Time
-```
+<Diagram>
+<Row>
+<Box title="Slow Start" accent="#60a5fa">
+<Field icon="📈" code="cwnd doubles every RTT" hint="starts small, grows fast" variant="neutral" />
+</Box>
+<Arrow label="hits ssthresh" />
+<Box title="Congestion Avoidance" accent="#34d399">
+<Field icon="📈" code="cwnd +1 MSS per RTT" hint="linear growth (AIMD)" variant="neutral" />
+</Box>
+<Arrow label="packet loss" />
+<Box title="Fast Retransmit / Recovery" accent="#fb7185">
+<Field icon="✂️" code="cwnd halved, not reset" hint="3 dup ACKs trigger this" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-1. **Slow Start:**
-   - Starts with a small `cwnd` (typically $10\text{ MSS}$, where MSS is Maximum Segment Size $\approx 1460\text{ bytes}$).
-   - For every ACK received, `cwnd` increments by 1 MSS. This results in **exponential growth** ($1 \to 2 \to 4 \to 8 \dots$), doubling `cwnd` every Round Trip Time (RTT) to quickly discover available bandwidth.
-2. **Congestion Avoidance (Additive Increase):**
-   - When `cwnd` reaches the **Slow Start Threshold (`ssthresh`)**, exponential growth stops.
-   - TCP switches to **Additive Increase**: increasing `cwnd` linearly by just **$1\text{ MSS}$ per RTT**, cautiously probing for maximum throughput.
-3. **Loss Event Handling (Multiplicative Decrease):**
-   - **Timeout (Severe Congestion):** If the Retransmission Timeout (RTO) expires without an ACK, TCP assumes the network is heavily congested. It cuts $ssthresh = cwnd / 2$, resets $cwnd = 1\text{ MSS}$, and restarts Slow Start.
-   - **3 Duplicate ACKs (Fast Retransmit & Fast Recovery - TCP Reno):** If a single segment is lost but subsequent segments arrive, the receiver sends duplicate ACKs. Upon receiving **3 duplicate ACKs**:
-     - **Fast Retransmit:** TCP immediately retransmits the missing segment without waiting for the RTO timer.
-     - **Fast Recovery:** Instead of resetting `cwnd` to 1, TCP sets $ssthresh = cwnd / 2$ and sets $cwnd = ssthresh$, resuming linear additive increase directly.
+1. **Slow Start:** `cwnd` starts small (around 10 MSS, where MSS ≈ 1460 bytes) and *doubles* every round trip — `1 → 2 → 4 → 8...`. This is exponential growth, meant to find the available bandwidth quickly.
+2. **Congestion Avoidance:** once `cwnd` reaches the threshold `ssthresh`, exponential growth stops. TCP switches to adding just 1 MSS per round trip — much more cautious, probing gently for the ceiling.
+3. **Loss handling:**
+   - **Timeout (bad sign):** if an ACK never arrives in time, TCP assumes serious congestion. It sets `ssthresh = cwnd / 2`, drops `cwnd` all the way back to 1 MSS, and restarts Slow Start from scratch.
+   - **3 duplicate ACKs (minor sign):** if just one segment is lost but later ones arrive fine, the receiver sends repeated ACKs for the last good byte. On the 3rd duplicate, TCP does **Fast Retransmit** (resends the missing segment immediately, without waiting for a timeout) and **Fast Recovery** (just halves `cwnd` instead of collapsing to 1, then resumes linear growth from there).
 
 ---
 
-### Performance Pitfalls: Silly Window Syndrome & Nagle's Algorithm
+### Two gotchas: Silly Window Syndrome & Nagle's Algorithm
 
-- **Silly Window Syndrome:** If a slow application consumes data 1 byte at a time, the receiver advertises an `rwnd` of 1 byte. The sender then transmits a 41-byte packet (40 bytes of TCP/IP header for 1 byte of user data), saturating network capacity.
-- **Nagle's Algorithm (`TCP_NODELAY`):** Solves this on the sender by buffering small outgoing packets until an entire MSS is accumulated or until an ACK for previous data arrives. (In latency-sensitive gaming or trading, developers explicitly disable Nagle via `TCP_NODELAY` to prevent buffering latency).
-
----
-
-### Summary
-"Flow control uses the advertised receive window (rwnd) to prevent a fast sender from overwhelming a slow receiver. Congestion control dynamically computes the congestion window (cwnd) using Slow Start, AIMD, and Fast Retransmit/Recovery to prevent network buffer overflow. The sender's in-flight data is strictly bounded by min(rwnd, cwnd)."
+- **Silly Window Syndrome:** if a slow app only reads 1 byte at a time, the receiver keeps advertising `rwnd = 1`. The sender then wastes a 41-byte packet (40 bytes of header) just to deliver 1 byte of data.
+- **Nagle's Algorithm:** the usual fix — the sender buffers small outgoing chunks until it has a full MSS or an ACK comes back. Latency-sensitive apps (gaming, trading) often disable this with `TCP_NODELAY`, because they'd rather send small packets immediately than wait and risk extra delay.
 
 ---
 
-### Code Demonstration: Simulating TCP AIMD Congestion Control
+### Say this in the interview
+
+*"Flow control protects the receiver using the advertised rwnd. Congestion control protects the network using a self-computed cwnd that grows through Slow Start, then Congestion Avoidance, and backs off via Fast Retransmit/Recovery on loss. The sender's actual in-flight data is capped by min(rwnd, cwnd) — whichever constraint is tighter wins."*
+
+---
+
+### Code: simulating TCP AIMD congestion control
 
 ```python
 def simulate_tcp_aimd(rounds=20):

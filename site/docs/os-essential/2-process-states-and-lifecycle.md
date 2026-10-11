@@ -6,92 +6,95 @@ sidebar_position: 2
 sidebar_class_name: sidebar-easy
 ---
 
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What are the different states a process transitions through? How does the 7-state model handle memory swapping, and what are the roles of the long-term, medium-term, and short-term schedulers?"
 
-The Operating System manages hundreds of concurrent programs by orchestrating processes through a formal state machine. While standard textbooks introduce the **5-State Model**, production systems (like Linux and Windows) implement the **7-State Model** to handle virtual memory swapping under heavy RAM pressure.
+An OS is juggling hundreds of programs with a handful of CPU cores. To do that, every process moves through a small set of states — and the OS has separate schedulers that decide when it moves between them.
 
 ---
 
-### The ELI5 Analogy: The Medical Clinic
+### The analogy: a clinic
 
-Imagine a process is a patient visiting a specialized clinic:
-- **New:** Patient filling out admission forms at the reception desk.
-- **Ready:** Patient sitting in the primary waiting room inside the clinic, waiting for the doctor.
-- **Running:** Patient inside the examination room with the doctor (CPU).
-- **Blocked (Waiting):** Doctor sends patient for an X-ray (I/O). The doctor cannot continue until the X-ray results return.
-- **Suspend Blocked (Outside Waiting):** The clinic waiting room is overcrowded (RAM exhausted). The patient waiting for X-ray results is told to wait outside in a heated tent across the street (swapped out to disk).
-- **Suspend Ready:** The X-ray is done! The patient is ready to see the doctor, but the waiting room is still full, so they stay in the tent until a seat inside opens up.
-- **Terminated:** Examination complete; patient is discharged and leaves.
+Think of a process as a patient at a clinic:
 
----
+- **New** — filling out admission forms at reception.
+- **Ready** — sitting in the waiting room, waiting for a doctor.
+- **Running** — in the exam room with the doctor (the CPU).
+- **Blocked (Waiting)** — sent for an X-ray. Can't continue until results come back.
+- **Suspend Blocked** — the waiting room is overcrowded (RAM is full), so the patient waiting on X-ray results gets sent to a tent outside (swapped to disk).
+- **Suspend Ready** — the X-ray result is in, but the waiting room is still full, so they wait in the tent until a seat opens up.
+- **Terminated** — done, patient leaves.
 
-### The 7-State Transition Model
-
-```mermaid
-stateDiagram-v2
-    [*] --> New
-    New --> Ready: Admitted by Long-Term Scheduler
-    Ready --> Running: Dispatched by Short-Term Scheduler
-    Running --> Terminated: exit()
-    Running --> Blocked: I/O or Resource Request
-    Blocked --> Ready: I/O Completion
-    Running --> Ready: Timer Interrupt / Preemption
-
-    Ready --> SuspendReady: Swapped out by Medium-Term Scheduler
-    SuspendReady --> Ready: Swapped into RAM
-    Blocked --> SuspendBlocked: Swapped out by Medium-Term Scheduler
-    SuspendBlocked --> Blocked: Swapped into RAM
-    SuspendBlocked --> SuspendReady: I/O Complete while on Disk
-```
+That's the whole lifecycle. Textbooks call the first five the "5-state model." Real systems like Linux and Windows add the two suspend states to handle memory pressure, making it the "7-state model."
 
 ---
 
-### Deep Dive: The Three Schedulers
+### The core flow
 
-| Scheduler | Common Name | Frequency | Primary Responsibility |
+<Diagram>
+<Row>
+<Box title="New" accent="#a1a1aa"><Field icon="🆕" code="created" hint="admitted by long-term scheduler" variant="neutral" /></Box>
+<Arrow />
+<Box title="Ready" accent="#60a5fa"><Field icon="⏳" code="waiting for CPU" variant="neutral" /></Box>
+<Arrow label="dispatched" />
+<Box title="Running" accent="#34d399"><Field icon="▶️" code="on the CPU" variant="neutral" /></Box>
+<Arrow label="exit()" />
+<Box title="Terminated" accent="#fb7185"><Field icon="🏁" code="done" variant="neutral" /></Box>
+</Row>
+</Diagram>
+
+A running process can also get knocked back to **Ready** (timer interrupt — its turn is up) or sent to **Blocked** (it asked for I/O and has to wait). Once the I/O finishes, Blocked goes back to Ready.
+
+When RAM is tight, the OS can swap a waiting process out to disk entirely — that's what adds **Suspend Ready** and **Suspend Blocked** on top of Ready and Blocked.
+
+---
+
+### The three schedulers behind this
+
+| Scheduler | Also called | How often it runs | What it does |
 | :--- | :--- | :--- | :--- |
-| **Long-Term Scheduler** | Job Scheduler | Seconds / Minutes | Decides which programs are admitted into memory from disk; **controls the degree of multiprogramming**. |
-| **Short-Term Scheduler** | CPU Scheduler | Milliseconds (1-10 ms) | Selects which process in the in-memory `Ready Queue` gets CPU execution time. Must be blazingly fast. |
-| **Medium-Term Scheduler** | Swapper | Hundreds of ms | Manages memory oversubscription. **Swaps processes out to disk** when physical RAM is exhausted. |
+| **Long-Term** | Job Scheduler | Seconds / minutes | Decides which programs get loaded into memory at all — controls how many programs run at once. |
+| **Short-Term** | CPU Scheduler | Milliseconds | Picks which ready process gets the CPU next. Has to be extremely fast. |
+| **Medium-Term** | Swapper | Hundreds of ms | Swaps processes out to disk when RAM runs low, and back in when there's room. |
 
 ---
 
-### Process State Descriptions
+### What each state actually means
 
-1. **New (Created):** Process Control Block (PCB) is created; program code exists on secondary storage.
-2. **Ready:** Program is loaded into physical RAM and waits in the Ready Queue for CPU dispatch.
-3. **Running:** Instructions are actively executing on a CPU core.
-4. **Blocked (Waiting):** Process cannot continue until an external event (disk I/O, network socket, mutex lock) completes.
-5. **Suspend Ready (Swapped):** Process is ready to execute, but its pages have been swapped out to secondary storage (swap partition/file) to alleviate RAM pressure.
-6. **Suspend Blocked (Swapped):** Process is waiting for an event *and* its pages reside on swap disk.
-7. **Terminated:** Execution finished or killed. Process remains briefly as a zombie until the parent reads its exit status code.
-
----
-
-### Linux Kernel Process States (`ps aux` / `/proc`)
-
-In Linux, process states map to specific single-letter flags visible in `top` and `ps`:
-- **`R` (Running / Runnable):** Executing on CPU or sitting in the runqueue.
-- **`S` (Interruptible Sleep):** Waiting for an event/signal (e.g., waiting for user input or timer).
-- **`D` (Uninterruptible Sleep):** Waiting for hardware I/O (usually disk or network filesystem). Cannot be killed, even with `kill -9`!
-- **`T` (Stopped / Traced):** Paused by a signal (e.g., `Ctrl+Z` / `SIGSTOP`) or debugger.
-- **`Z` (Zombie):** Terminated, but waiting for its parent process to invoke `wait()` to collect its exit status.
+1. **New** — the process's control block (PCB) exists; the program itself is still on disk.
+2. **Ready** — loaded into RAM, sitting in the ready queue, waiting for CPU time.
+3. **Running** — actually executing on a core right now.
+4. **Blocked (Waiting)** — can't continue until something external finishes: disk I/O, a network call, a lock.
+5. **Suspend Ready** — ready to run, but swapped out to disk because RAM was full.
+6. **Suspend Blocked** — waiting on an event *and* swapped out to disk.
+7. **Terminated** — finished or killed. Sticks around briefly as a "zombie" until the parent process reads its exit code.
 
 ---
 
-### Summary
-"Processes transition through New, Ready, Running, Blocked, and Terminated states. Under physical RAM pressure, the medium-term scheduler swaps processes to disk, creating Suspend Ready and Suspend Blocked states. The long-term scheduler controls admission, the short-term scheduler dispatches CPU time, and the medium-term scheduler balances memory usage."
+### Linux process state flags (`ps`, `top`, `/proc`)
+
+Linux shows these as single letters:
+
+- **`R`** — running, or sitting in the run queue ready to run.
+- **`S`** — sleeping, waiting for an event (interruptible).
+- **`D`** — sleeping on hardware I/O (uninterruptible). Can't even be killed with `kill -9`.
+- **`T`** — stopped, usually by `Ctrl+Z` or a debugger.
+- **`Z`** — zombie: terminated, waiting for its parent to collect the exit status.
+
+> 💡 **Watch out for `D`.** A process stuck waiting on a hung NFS server sits in `D` state ignoring every signal, including `kill -9`. It holds its resources until the server comes back or the machine reboots — there's no way around it.
 
 ---
 
-### Crucial Nuance: The Danger of the `D` State (Uninterruptible Sleep)
-Processes in state `D` are waiting for synchronous hardware drivers or kernel locks. Because they ignore all POSIX signals, **a process in the `D` state cannot be terminated with `kill -9`**. If a network filesystem (NFS) server hangs while a process is reading from it, the process stays in `D` state indefinitely, holding resources until the server recovers or the host machine is rebooted.
+### Say this in the interview
+
+*"A process moves through New, Ready, Running, Blocked, and Terminated. The long-term scheduler controls admission, the short-term scheduler hands out CPU time, and when RAM gets tight, the medium-term scheduler swaps processes to disk — which is where the Suspend Ready and Suspend Blocked states in the 7-state model come from."*
 
 ---
 
-### Code Demonstration: Observing Process States in Python
+### Code: watching a real process change state
 
 ```python
 import os

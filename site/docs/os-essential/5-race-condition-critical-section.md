@@ -8,83 +8,86 @@ sidebar_class_name: sidebar-medium
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is a race condition? What is the critical section problem, what three formal requirements must any solution satisfy, and why do pure software algorithms fail on modern hardware?"
 
-In concurrent programming, a **Race Condition** is an insidious flaw where the correctness of a program depends on the non-deterministic scheduling order of concurrent threads. The segment of code accessing the shared state is called the **Critical Section**, and designing robust synchronization primitives to govern it is known as the **Critical Section Problem**.
+A race condition is what happens when two threads touch the same piece of data at the same time, and the result depends on which one happens to get there first. The piece of code where that shared data gets touched is called the **critical section** — and figuring out how to protect it safely is the **critical section problem**.
 
 ---
 
-### The ELI5 Analogy: The Shared Joint Account
+### The analogy: a shared joint bank account
 
-Imagine a joint bank account containing \$1,000. Alice and Bob simultaneously swipe their debit cards at two different stores at the exact same millisecond:
-- Alice buys a laptop for \$1,000.
-- Bob buys a phone for \$1,000.
-- Both store terminals read the balance simultaneously: both observe \$1,000.
-- Both transactions approve and deduct \$1,000.
-- The bank allows \$2,000 to be spent from a \$1,000 account because the two operations "raced" without proper synchronization.
+Alice and Bob share a bank account with \$1,000 in it. At the exact same moment, Alice buys a \$1,000 laptop and Bob buys a \$1,000 phone.
+
+<Diagram>
+<Row>
+<Box title="Alice's terminal" accent="#fb7185"><Field icon="💳" code="reads balance = $1000" hint="then charges $1000" variant="neutral" /></Box>
+<Arrow label="races with" />
+<Box title="Bob's terminal" accent="#fb7185"><Field icon="💳" code="reads balance = $1000" hint="then charges $1000" variant="neutral" /></Box>
+</Row>
+</Diagram>
+
+Both terminals read the balance before either write lands. Both see \$1,000, both approve, both deduct \$1,000 — and the bank just let \$2,000 walk out the door from a \$1,000 account. That's a race condition.
 
 ---
 
-### Anatomy of a Race Condition: The Lost Update
+### Why `counter++` isn't safe
 
-A high-level statement like `counter++` looks atomic in source code, but compiles down to **three distinct CPU machine instructions**:
+It looks like one line of code, but it's actually three CPU instructions:
 
 ```assembly
-MOV EAX, [counter]   ; 1. READ: Load value from RAM into CPU register
-ADD EAX, 1           ; 2. MODIFY: Increment register value
-MOV [counter], EAX   ; 3. WRITE: Store register value back to RAM
+MOV EAX, [counter]   ; 1. READ: load value into a register
+ADD EAX, 1            ; 2. MODIFY: add one
+MOV [counter], EAX   ; 3. WRITE: store it back
 ```
 
-If the OS preempts the thread between these instructions, data corruption occurs:
+If a thread gets interrupted between any of these steps, another thread can sneak in and corrupt the result:
 
-| Step | Thread A (Request 1) | Thread B (Request 2) | Shared Memory `counter` |
+| Step | Thread A | Thread B | `counter` in memory |
 | :--- | :--- | :--- | :--- |
-| `t1` | **READ:** loads `100` into `EAX` | *(idle)* | `100` |
-| `t2` | *(preempted by timer interrupt)* | **READ:** loads `100` into `EBX` | `100` |
-| `t3` | *(idle)* | **ADD:** `100 + 1 = 101` | `100` |
-| `t4` | *(idle)* | **WRITE:** stores `101` | `101` |
-| `t5` | **ADD:** `100 + 1 = 101` | *(idle)* | `101` |
-| `t6` | **WRITE:** stores `101` | *(idle)* | **`101` (Should be `102`!)** |
+| t1 | reads `100` | — | 100 |
+| t2 | *(preempted)* | reads `100` | 100 |
+| t3 | — | computes `101` | 100 |
+| t4 | — | writes `101` | 101 |
+| t5 | computes `101` | — | 101 |
+| t6 | writes `101` | — | **101 (should be 102!)** |
 
-Thread B's update is completely overwritten and lost.
-
----
-
-### The Three Formal Requirements for a Valid Solution
-
-To eliminate race conditions, the execution of critical sections must satisfy three mandatory criteria:
-
-1. **Mutual Exclusion:** If thread $T_i$ is executing inside its critical section, no other threads can be executing in their critical sections.
-2. **Progress (Deadlock Freedom):** If no thread is executing in its critical section and some threads wish to enter, only those threads that are not in their remainder sections can participate in deciding who enters next. This selection cannot be postponed indefinitely.
-3. **Bounded Waiting (Starvation Freedom):** There must be a formal upper bound on the number of times other threads are allowed to enter their critical sections after a thread has requested entry, ensuring no thread is starved indefinitely.
+Thread B's increment is silently lost. Both threads thought they were incrementing from a fresh value, but Thread A was actually working off stale data.
 
 ---
 
-### The Senior Interview Trap: Why Software Algorithms Fail on Modern CPUs
+### The three rules any fix must satisfy
 
-Textbooks frequently discuss software-only algorithms like **Peterson's Algorithm** or **Dekker's Algorithm** to achieve mutual exclusion without locks.
-
-Interviewers often ask: *"Can you run Peterson's Algorithm on a modern Intel or AMD multi-core processor?"*
-
-**The Answer is NO.**
-- **The Problem:** Peterson's algorithm assumes a **Sequentially Consistent Memory Model** (that reads and writes to RAM occur in the exact sequential order written in source code).
-- **Modern Hardware Reality:** Modern multi-core CPUs use **Out-of-Order Execution**, store buffers, and relaxed memory models. The CPU or compiler will aggressively reorder read and write instructions to maximize pipelining, breaking the assumptions of Peterson's algorithm.
-- **The Solution:** Modern synchronization relies on hardware-enforced atomic instructions:
-  - **Test-And-Set (TAS):** Atomically tests and sets a memory bit.
-  - **Compare-And-Swap (CAS):** Atomically updates a memory location only if it matches an expected value.
-  - **Memory Barriers (Fences):** Hardware instructions (`MFENCE` on x86) preventing the CPU from reordering memory accesses across the barrier.
+1. **Mutual exclusion** — while one thread is in its critical section, no other thread can be in theirs.
+2. **Progress** — if nobody's in the critical section and others want in, the decision of who goes next can't be stalled forever.
+3. **Bounded waiting** — there has to be a limit on how many times other threads can cut in line before a waiting thread gets its turn. No one waits forever.
 
 ---
 
-### Summary
-"A race condition occurs when concurrent threads interleave uncoordinated reads and writes on shared memory. Solving the critical section problem requires satisfying Mutual Exclusion, Progress (no deadlocks), and Bounded Waiting (no starvation). Pure software solutions fail on modern hardware due to instruction reordering, requiring hardware atomic primitives like Compare-And-Swap (CAS) and memory fences."
+### The trap: why pure software locks don't work on modern CPUs
+
+Textbooks teach lock-free algorithms like Peterson's or Dekker's that use only reads and writes — no hardware help. A sharp follow-up: *"Would that actually work on a real Intel or AMD chip today?"*
+
+No. These algorithms assume memory operations happen in exactly the order they're written in code. Modern CPUs don't honor that — they reorder instructions, buffer writes, and execute out of order to go faster, which breaks the assumptions these algorithms rely on.
+
+That's why real synchronization leans on hardware instead:
+
+- **Test-And-Set (TAS)** — atomically checks and sets a flag in one indivisible step.
+- **Compare-And-Swap (CAS)** — atomically updates a value only if it still matches what you expected.
+- **Memory barriers** (`MFENCE` on x86) — stop the CPU from reordering memory operations across a specific point.
 
 ---
 
-### Code Demonstration: Race Condition vs. Synchronization
+### Say this in the interview
+
+*"A race condition happens when threads interleave reads and writes on shared memory without coordination. Fixing it means satisfying mutual exclusion, progress, and bounded waiting. Pure software algorithms like Peterson's don't actually work on modern hardware because of instruction reordering — real fixes use hardware atomics like compare-and-swap and memory fences."*
+
+---
+
+### Code: race condition vs. synchronized access
 
 <Tabs groupId="programming-language">
 <TabItem value="c" label="C (pthread_mutex)">

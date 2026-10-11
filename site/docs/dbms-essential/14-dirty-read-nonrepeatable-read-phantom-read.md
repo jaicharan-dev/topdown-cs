@@ -1,159 +1,123 @@
 ---
 id: 14-dirty-read-nonrepeatable-read-phantom-read
 title: "Dirty Read vs. Non-Repeatable Read vs. Phantom Read"
-description: "Deep dive into Dirty Reads, Non-Repeatable Reads, Phantom Reads, Lost Updates, and why row locks cannot stop phantom records."
+description: "Dirty reads, non-repeatable reads, phantom reads, and lost updates — with concrete examples, and why row locks can't stop phantoms."
 sidebar_position: 11
 sidebar_class_name: sidebar-medium
 ---
+
+import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is the exact technical difference between a dirty read, a non-repeatable read, and a phantom read? Why can't row-level locks prevent phantom reads, and what is the lost update anomaly?"
 
-Concurrency anomalies emerge when multiple transactions execute simultaneously without adequate isolation barriers. The ANSI SQL standard defines three primary read phenomena: **Dirty Read**, **Non-Repeatable Read**, and **Phantom Read**. In senior engineering interviews, you are also expected to master the **Lost Update** anomaly and understand why traditional row-level locks fail against phantoms.
+These three anomalies all come from the same root cause: two transactions running at the same time, one reading while the other writes. The difference is *what* changed between the two reads — an uncommitted value, a committed update to the same row, or a brand new row that wasn't there before.
 
 ---
 
-### 1. Dirty Read ($G_1$: Reading Uncommitted Data)
+### 1. Dirty Read — reading a value that might not even happen
 
-A Dirty Read occurs when Transaction A reads modifications made by Transaction B before Transaction B has committed. If Transaction B subsequently **aborts and rolls back**, Transaction A has processed invalid data that never existed.
+Transaction A reads a change Transaction B made, before B has committed. If B then rolls back, A made a decision based on data that never actually existed.
 
-```
-Timeline of a Dirty Read:
+<Diagram>
+<Row>
+<Box title="Transaction B (writer)" accent="#fb7185">
+<Field icon="1" code="UPDATE balance = 5000" hint="not committed yet" variant="neutral" />
+<Field icon="2" code="ROLLBACK" hint="balance reverts to 100" variant="neutral" />
+</Box>
+<Arrow label="A reads mid-way" />
+<Box title="Transaction A (reader)" accent="#60a5fa">
+<Field icon="👀" code="SELECT balance" hint="reads 5000 — a value that never existed" variant="neutral" />
+<Field icon="⚠️" code="dispatches a $5000 loan" hint="based on dirty data" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-Time | Transaction A (Reader)             | Transaction B (Writer)
------+------------------------------------+-------------------------------------
-T1   |                                    | BEGIN;
-T2   |                                    | UPDATE accounts SET balance = 5000 
-     |                                    | WHERE id = 1; (Old balance: $100)
-T3   | BEGIN;                             |
-T4   | SELECT balance FROM accounts       | 
-     | WHERE id = 1;                      |
-     | --> Reads $5000 (Dirty Read!)      |
-T5   | Dispatches $5000 loan to user...   |
-T6   |                                    | ROLLBACK; (Transaction failed)
-     |                                    | (Balance on disk reverts to $100)
-T7   | COMMIT;                            |
-```
-*Impact:* Transaction A dispersed real capital based on temporary uncommitted dirty memory.
+*Impact:* A real loan gets issued against a balance that was never actually there.
 
 ---
 
-### 2. Non-Repeatable Read ($G_{2a}$: Fuzzy Read)
+### 2. Non-Repeatable Read — the same row gives two different answers
 
-A Non-Repeatable Read occurs when a transaction reads the **exact same row** twice within its transaction boundary and discovers that the row's values have been **modified or deleted** by a concurrent transaction that successfully committed.
+Transaction A reads a row once. Transaction B then updates (or deletes) that same row and commits. When A reads it again, the value has changed, even though A never changed anything itself.
 
-```
-Timeline of a Non-Repeatable Read:
+| Step | Transaction A (auditor) | Transaction B (admin) |
+| :--- | :--- | :--- |
+| 1 | `SELECT salary WHERE id=42` → $80,000 | |
+| 2 | | `UPDATE salary=95000 WHERE id=42`; `COMMIT` |
+| 3 | `SELECT salary WHERE id=42` → $95,000 (same query, different answer!) | |
 
-Time | Transaction A (Auditor)            | Transaction B (Salary Admin)
------+------------------------------------+-------------------------------------
-T1   | BEGIN;                             | 
-T2   | SELECT salary FROM employees       | 
-     | WHERE id = 42;                     | 
-     | --> Returns: $80,000               | 
-T3   |                                    | BEGIN;
-T4   |                                    | UPDATE employees SET salary = 95000 
-     |                                    | WHERE id = 42;
-T5   |                                    | COMMIT; (Persisted permanently)
-T6   | SELECT salary FROM employees       | 
-     | WHERE id = 42;                     | 
-     | --> Returns: $95,000!              |
-     | (Same query, different values!)    |
-T7   | COMMIT;                            | 
-```
-*Impact:* Transaction A generates an internally inconsistent audit report because row state mutated mid-transaction.
+*Impact:* A's audit report is internally inconsistent — the row changed underneath it mid-transaction.
 
 ---
 
-### 3. Phantom Read ($G_{2b}$: Range Mutation)
+### 3. Phantom Read — new rows show up out of nowhere
 
-A Phantom Read occurs when a transaction queries a **set of rows matching a search condition (predicate range)**, and upon re-executing the query, discovers **newly inserted rows** (or deleted rows) committed by another transaction.
+Transaction A runs a query over a range (e.g. "count everyone in Sales"). Transaction B inserts a new row that matches that range and commits. When A re-runs the same query, there's a row it didn't see the first time.
 
-```
-Timeline of a Phantom Read:
-
-Time | Transaction A (Bonus Evaluator)    | Transaction B (HR Onboarding)
------+------------------------------------+-------------------------------------
-T1   | BEGIN;                             | 
-T2   | SELECT COUNT(*) FROM employees     | 
-     | WHERE dept = 'Sales';              | 
-     | --> Returns: 10 employees          | 
-T3   |                                    | BEGIN;
-T4   |                                    | INSERT INTO employees (name, dept) 
-     |                                    | VALUES ('David', 'Sales');
-T5   |                                    | COMMIT; (New record persisted)
-T6   | SELECT COUNT(*) FROM employees     | 
-     | WHERE dept = 'Sales';              | 
-     | --> Returns: 11 employees!         | 
-     | (A "phantom" employee appeared!)   |
-T7   | COMMIT;                            | 
-```
+| Step | Transaction A (bonus evaluator) | Transaction B (HR onboarding) |
+| :--- | :--- | :--- |
+| 1 | `SELECT COUNT(*) WHERE dept='Sales'` → 10 | |
+| 2 | | `INSERT ... (David, Sales)`; `COMMIT` |
+| 3 | `SELECT COUNT(*) WHERE dept='Sales'` → 11 (a "phantom" row appeared) | |
 
 ---
 
-### The Crucial Interview Trap: Why Can't Row Locks Stop Phantoms?
+### Why row locks can't stop phantoms
 
-Interviewers frequently challenge candidates: *"If row-level locks prevent Non-Repeatable Reads, why don't they prevent Phantom Reads?"*
+A common follow-up: *"If row locks stop non-repeatable reads, why don't they stop phantom reads?"*
 
-#### The Non-Existence Problem:
-When Transaction A runs `SELECT * FROM employees WHERE dept = 'Sales'`, the database engine can lock every existing row where `dept = 'Sales'`. 
+The answer is simple: Transaction A can lock every row that currently matches `dept = 'Sales'`. But the row Transaction B is about to insert doesn't exist yet — you can't lock something that isn't there.
 
-However, the row Transaction B wants to insert (`David, Sales`) **does not exist yet on disk or in the buffer pool!** A database engine cannot place a lock on a row that does not physically exist.
-
-#### How Engines Solve It:
-1. **Gap Locks & Next-Key Locks (MySQL InnoDB):** Instead of locking only existing rows, InnoDB places locks on the **gaps** between index entries in the B+ tree. If existing IDs are 10 and 20, a gap lock covers the open interval `(10, 20)`, blocking any transaction attempting to insert ID 15.
-2. **Predicate Locking:** The theoretical gold standard where the engine locks the mathematical predicate (`dept = 'Sales'`), blocking any write whose tuple satisfies the predicate.
+Two real fixes:
+1. **Gap locks / next-key locks (MySQL InnoDB):** lock the *gap* between existing index entries. If IDs 10 and 20 exist, a gap lock on `(10, 20)` blocks anyone trying to insert ID 15 there.
+2. **Predicate locking:** the theoretical ideal — lock the condition itself (`dept = 'Sales'`), blocking any write that would satisfy it.
 
 ---
 
-### The Fourth Anomaly: The Lost Update ($P_4$)
+### The fourth anomaly: Lost Update
 
-A **Lost Update** occurs when two concurrent transactions read the same initial value and compute updates based on that value in application memory. The later commit silently overwrites the earlier commit without incorporating its changes.
+A **Lost Update** happens when two transactions read the same value, each compute a new value in application memory, and the second commit silently overwrites the first — without either side knowing about the other's change.
 
-```
-Time | Transaction 1 (Add $20)            | Transaction 2 (Add $30)
------+------------------------------------+-------------------------------------
-T1   | Reads balance ($100)               | 
-T2   |                                    | Reads balance ($100)
-T3   | Computes $100 + $20 = $120         | Computes $100 + $30 = $130
-T4   | Writes balance = $120; COMMIT;     | 
-T5   |                                    | Writes balance = $130; COMMIT;
-```
-*Result:* Balance is \$130. Transaction 1's \$20 deposit was completely lost!
+| Step | Transaction 1 (+$20) | Transaction 2 (+$30) |
+| :--- | :--- | :--- |
+| 1 | reads balance = $100 | |
+| 2 | | reads balance = $100 |
+| 3 | computes 100+20=120 | computes 100+30=130 |
+| 4 | writes 120, commits | |
+| 5 | | writes 130, commits |
 
-#### Prevention Strategies:
-1. **Atomic SQL Expressions:** `UPDATE accounts SET balance = balance + 20 WHERE id = 1;` (pushes calculation to database engine row-lock level).
-2. **Pessimistic Locking:** Read with `SELECT ... FOR UPDATE` to serialize access.
-3. **Optimistic Concurrency Control (OCC):** Add a `version` column: `UPDATE accounts SET balance = 120, version = version + 1 WHERE id = 1 AND version = 5;`.
+Final balance: $130. Transaction 1's $20 deposit just vanished.
+
+**How to prevent it:**
+1. **Push the math into SQL:** `UPDATE accounts SET balance = balance + 20 WHERE id = 1;` — the database does the read-and-write atomically under a row lock.
+2. **Pessimistic locking:** `SELECT ... FOR UPDATE` to lock the row before anyone computes anything.
+3. **Optimistic concurrency:** add a `version` column, and only write if the version hasn't moved: `UPDATE accounts SET balance = 120, version = version + 1 WHERE id = 1 AND version = 5;`
 
 ---
 
-### The Comparison Matrix
+### The comparison table
 
-| Anomaly | Scope | Triggering Operation | Engine Defense |
+| Anomaly | Affects | Caused by | Fixed by |
 | :--- | :--- | :--- | :--- |
-| **Dirty Read** | Single uncommitted row | `UPDATE` / `DELETE` rolled back | MVCC Statement Snapshot or Shared Read Locks |
-| **Non-Repeatable Read** | Single existing row | Committed `UPDATE` / `DELETE` | MVCC Transaction Snapshot or Long-term Row S-Locks |
-| **Phantom Read** | Range / Predicate of rows | Committed `INSERT` / `DELETE` | **Next-Key Locks** or Predicate Locks |
-| **Lost Update** | Single existing row | Concurrent uncoordinated writes | Atomic SQL, `FOR UPDATE`, or Version Columns |
+| **Dirty Read** | A row that might roll back | Uncommitted `UPDATE`/`DELETE` | Statement snapshot (MVCC) or shared read locks |
+| **Non-Repeatable Read** | An existing row | Committed `UPDATE`/`DELETE` | Transaction snapshot (MVCC) or long-held row locks |
+| **Phantom Read** | A range of rows | Committed `INSERT`/`DELETE` | Next-key locks or predicate locks |
+| **Lost Update** | An existing row | Two uncoordinated writes | Atomic SQL, `FOR UPDATE`, or a version column |
 
 ---
 
-### Summary
-"A dirty read reads uncommitted data that may roll back; a non-repeatable read sees modified values on an existing row; a phantom read sees newly inserted rows matching a range query. Traditional row locks cannot prevent phantoms because the phantom row does not yet exist, requiring Next-Key or gap locking."
+### One more thing: this isn't the whole story
+
+Even Postgres's Repeatable Read (Snapshot Isolation) — which blocks all three anomalies above — doesn't block **Write Skew**: two transactions can each check a shared rule, write to different rows, and still break the rule together. True protection needs `SERIALIZABLE` or explicit `SELECT ... FOR UPDATE` locks.
 
 ---
 
-### Crucial Nuance: Snapshot Isolation vs. Write Skew
-While PostgreSQL's `Repeatable Read` (Snapshot Isolation) prevents Dirty, Non-Repeatable, and Phantom reads, it does **not** prevent **Write Skew**. Two transactions reading overlapping rows to verify a shared invariant can make disjoint writes to separate rows and commit simultaneously, breaking the invariant (e.g., the classic Doctor On-Call problem). True protection requires `SERIALIZABLE` or explicit `SELECT ... FOR UPDATE` locks.
-
----
-
-### Code Demonstration: Preventing Lost Updates (Pessimistic vs. Atomic)
+### Code: preventing lost updates
 
 ```sql
--- Setup: Bank account table
+-- Setup: bank account table
 CREATE TABLE accounts (
     id INT PRIMARY KEY,
     balance NUMERIC(10, 2) NOT NULL,
@@ -163,30 +127,33 @@ CREATE TABLE accounts (
 INSERT INTO accounts VALUES (1, 100.00, 1);
 
 -- -------------------------------------------------------------
--- Strategy 1: Atomic Database Update (Best for Simple Counters)
+-- Strategy 1: Atomic database update (best for simple counters)
 -- -------------------------------------------------------------
--- Bypasses application memory; engine acquires row-level X-lock:
 UPDATE accounts 
 SET balance = balance + 20.00 
 WHERE id = 1;
 
 -- -------------------------------------------------------------
--- Strategy 2: Pessimistic Locking (SELECT ... FOR UPDATE)
+-- Strategy 2: Pessimistic locking (SELECT ... FOR UPDATE)
 -- -------------------------------------------------------------
 BEGIN;
--- Locks row 1 with an Exclusive lock; concurrent readers block until COMMIT:
+-- Locks the row; other writers block until COMMIT:
 SELECT balance FROM accounts WHERE id = 1 FOR UPDATE;
 
--- Application executes business rules safely:
 UPDATE accounts SET balance = balance + 20.00 WHERE id = 1;
 COMMIT;
 
 -- -------------------------------------------------------------
--- Strategy 3: Optimistic Concurrency Control (OCC)
+-- Strategy 3: Optimistic concurrency control (OCC)
 -- -------------------------------------------------------------
--- Application reads balance and current version (e.g., version = 1):
 UPDATE accounts 
 SET balance = 120.00, version = version + 1 
 WHERE id = 1 AND version = 1;
--- If affected rows == 0, another transaction modified the row; abort or retry!
+-- If 0 rows were affected, someone else updated it first — retry or abort.
 ```
+
+---
+
+### Say this in the interview
+
+*"A dirty read sees uncommitted data that might roll back. A non-repeatable read sees a committed change to a row it already read. A phantom read sees a new row appear in a range it already queried. Row locks can't stop phantoms because the row doesn't exist yet — that needs gap or predicate locking."*

@@ -8,83 +8,75 @@ sidebar_class_name: sidebar-easy
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What is the fundamental difference between TCP and UDP? Compare their header overheads, explain the difference between a byte stream and datagram boundaries, and explain why high-frequency trading chooses UDP."
 
-At Layer 4 (Transport Layer), the two foundational protocols represent a quintessential engineering trade-off: **TCP (Transmission Control Protocol)** prioritizes **reliability, ordering, and integrity**, while **UDP (User Datagram Protocol)** prioritizes **minimal latency, zero connection overhead, and speed**.
+Think about the difference between certified mail and a postcard. Certified mail gets a signature when it arrives — if it never shows up, you find out and can resend it. A postcard just goes in the mailbox — no confirmation, no resend if it's lost, but it's faster and cheaper to send.
+
+That's TCP and UDP. **TCP** trades speed for reliability, order, and integrity. **UDP** trades reliability for speed and simplicity. Both sit at Layer 4 (Transport).
+
+<Diagram>
+<Row>
+<Box title="TCP" accent="#60a5fa">
+<Field icon="✅" code="reliable, ordered, checked" hint="connection-based, 20-60 byte header" variant="neutral" />
+</Box>
+<Box title="UDP" accent="#f59e0b">
+<Field icon="⚡" code="fast, no guarantees" hint="connectionless, fixed 8 byte header" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
 ---
 
-### Technical Breakdown: Protocol Architecture
+### What's inside each header
 
-```
-TCP HEADER (Minimum 20 Bytes, up to 60 Bytes with Options)
-┌───────────────────────────────┬───────────────────────────────┐
-│     Source Port (16 bits)     │  Destination Port (16 bits)   │
-├───────────────────────────────┴───────────────────────────────┤
-│                    Sequence Number (32 bits)                  │
-├───────────────────────────────┴───────────────────────────────┤
-│                 Acknowledgment Number (32 bits)               │
-├───────┬────────────┬──────────┬───────────────────────────────┤
-│Offset │  Reserved  │  Flags   │      Window Size (16 bits)    │
-├───────┴────────────┴──────────┼───────────────────────────────┤
-│       Checksum (16 bits)      │     Urgent Pointer (16 bits)  │
-├───────────────────────────────┴───────────────────────────────┤
-│ Options (0 to 40 bytes: MSS, Window Scale, SACK, Timestamps)  │
-└───────────────────────────────────────────────────────────────┘
-
-UDP HEADER (Fixed 8 Bytes)
-┌───────────────────────────────┬───────────────────────────────┐
-│     Source Port (16 bits)     │  Destination Port (16 bits)   │
-├───────────────────────────────┼───────────────────────────────┤
-│        Length (16 bits)       │       Checksum (16 bits)      │
-└───────────────────────────────┴───────────────────────────────┘
-```
-
-#### 1. Header Overhead
-- **TCP Header:** Minimum **20 bytes** (can expand to 60 bytes with options). Manages sequence numbers, acknowledgments, flags (`SYN`, `ACK`, `FIN`, `RST`), and advertised receive window sizes.
-- **UDP Header:** Compact, fixed **8 bytes**. Contains only ports, packet length, and an optional checksum. Carries **60% less header overhead per packet**, maximizing payload bandwidth.
-
-#### 2. Byte Stream vs. Datagram Boundaries
-A frequent senior interview differentiator:
-- **TCP is an Unstructured Byte Stream:** TCP has **no concept of message boundaries**. If a client calls `send("Hello")` and `send("World")`, the receiver might read `"HelloWorld"` in one `recv()`, or read `"Hel"` in the first `recv()` and `"loWorld"` in the second. Applications running on TCP must implement their own message framing (e.g., length-prefixed bytes or delimiter tokens like `\r\n`).
-- **UDP Preserves Discrete Datagram Boundaries:** Packets are sent and received as independent, intact units. One `sendto()` call generates exactly one datagram, which is read in full by exactly one `recvfrom()` call.
+- **TCP header:** at least 20 bytes (up to 60 with options). Carries sequence numbers, acknowledgment numbers, flags (`SYN`, `ACK`, `FIN`, `RST`), and the advertised window size — everything needed to track order and confirm delivery.
+- **UDP header:** a fixed 8 bytes. Just source port, destination port, length, and an optional checksum. Roughly 60% less overhead per packet than TCP, so more of every packet is actual payload.
 
 ---
 
-### Comparison Matrix
+### Byte stream vs. datagram boundaries
 
-| Feature | TCP (Transmission Control Protocol) | UDP (User Datagram Protocol) |
+This is a common follow-up question, because it trips people up:
+
+- **TCP is just a stream of bytes — it doesn't know where one message ends and another begins.** If you call `send("Hello")` then `send("World")`, the receiver might get `"HelloWorld"` in one `recv()` call, or `"Hel"` and then `"loWorld"`. If your app needs to know where messages start and stop, you have to build that yourself — a length prefix, or a delimiter like `\r\n`.
+- **UDP keeps each message as its own separate packet.** One `sendto()` call produces exactly one datagram, and one `recvfrom()` call reads exactly one datagram, in full, with its boundaries intact.
+
+---
+
+### Comparison
+
+| Feature | TCP | UDP |
 | :--- | :--- | :--- |
-| **Connection State** | **Connection-Oriented** (3-way handshake). | **Connectionless** (fire-and-forget). |
-| **Reliability** | Guaranteed delivery (retransmits lost packets). | No delivery guarantee (packets can drop silently). |
-| **Ordering** | Strict in-order delivery via sequence numbers. | No ordering guarantee (packets can arrive out of order). |
-| **Header Size** | 20 to 60 bytes. | Fixed 8 bytes. |
-| **Flow & Congestion Control**| Built-in (Sliding Window, Slow Start, AIMD). | None (application must throttle itself). |
-| **Data Framing** | Continuous unstructured **Byte Stream**. | Independent **Datagrams** (preserves boundaries). |
-| **Transmission Type** | Unicast only (point-to-point). | Unicast, Multicast, and Broadcast. |
+| **Connection** | Connection-oriented (3-way handshake) | Connectionless — fire and forget |
+| **Reliability** | Guaranteed — lost packets get retransmitted | No guarantee — packets can silently drop |
+| **Ordering** | Strict, via sequence numbers | None — packets can arrive out of order |
+| **Header size** | 20 to 60 bytes | Fixed 8 bytes |
+| **Flow & congestion control** | Built in (sliding window, slow start, AIMD) | None — the app has to throttle itself |
+| **Data framing** | Byte stream, no boundaries | Independent datagrams, boundaries preserved |
+| **Transmission** | Unicast only | Unicast, multicast, and broadcast |
 
 ---
 
-### Real-World Case Study: High-Frequency Trading & Live Media
-
-Why do High-Frequency Trading (HFT) platforms and live video calls choose UDP over TCP?
+### Why high-frequency trading and video calls pick UDP
 
 > **"Late data is worse than lost data."**
 
-1. **Market Ticks in HFT:** In algorithmic trading, stock exchanges broadcast live market price feeds using UDP Multicast. If a price packet is dropped on a TCP connection, TCP halts the stream, requests a retransmission, and waits. By the time that packet arrives 5 milliseconds later, the market price has moved: **the delayed data is stale, useless, and financially dangerous**. It is far better to drop the missing tick and immediately consume the next real-time tick.
-2. **Video Conferencing (Zoom / WebRTC):** If one audio frame drops during a live call, retransmitting it 200ms later would cause jarring audio stutter. The user prefers a momentary, unnoticeable audio glitch over creeping conversation lag.
+1. **Market ticks:** exchanges broadcast live price feeds over UDP multicast. If a packet drops on a TCP connection, TCP stops, asks for a retransmit, and waits. By the time that packet shows up 5ms later, the price has already moved — the "recovered" data is stale and useless. It's better to drop the missed tick and move straight to the next real one.
+2. **Video calls (Zoom, WebRTC):** if one audio frame drops, retransmitting it 200ms later causes a jarring stutter. A tiny, barely-noticeable glitch beats growing lag.
 
 ---
 
-### Summary
-"TCP provides reliable, ordered, byte-stream delivery with congestion and flow control at the cost of connection handshakes and a 20-60 byte header. UDP provides lightweight, connectionless datagram delivery with a fixed 8-byte header, sacrificing reliability for raw throughput and low latency in real-time streaming, DNS, and financial market data."
+### Say this in the interview
+
+*"TCP gives you reliable, ordered, byte-stream delivery with built-in flow and congestion control, at the cost of a handshake and a bigger header. UDP gives you lightweight, connectionless datagram delivery with a fixed 8-byte header — you give up reliability in exchange for raw speed, which is exactly what real-time streaming, DNS, and market-data feeds need."*
 
 ---
 
-### Code Demonstration: TCP Stream vs. UDP Datagram in Python
+### Code: TCP stream vs. UDP datagram
 
 <Tabs groupId="programming-language">
 <TabItem value="python" label="Python">

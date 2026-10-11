@@ -1,96 +1,102 @@
 ---
 id: 4-where-vs-having
-title: "WHERE vs. HAVING: Row vs. Group Filtering & SQL Execution Order"
-description: "Clarify the differences between WHERE and HAVING in SQL, the 8-step query execution lifecycle, and aggregation filtering performance."
+title: "WHERE vs. HAVING: Row Filtering vs. Group Filtering"
+description: "The real difference between WHERE and HAVING, why aggregates can't go in WHERE, and the performance trap of misplacing filters."
 sidebar_position: 4
 sidebar_class_name: sidebar-easy
 ---
+
+import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What is the difference between WHERE and HAVING in SQL? Why can't aggregate functions be used in a WHERE clause, and what is the severe performance penalty of placing non-aggregate filters in HAVING?"
 
-### The Quick Answer
+Think about a teacher grading papers from 10 classrooms. First, she throws out any paper where the student cheated — one paper at a time, before any math happens. That's `WHERE`. Then she groups the remaining papers by classroom and averages each stack. Only after that does she decide which classrooms did well enough to get a pizza party. That's `HAVING` — it filters groups, not individual papers, and it only makes sense once the groups already exist.
 
-"The fundamental distinction lies in **when** the filter is evaluated and **what granularity** of data it operates on:
-* **`WHERE`** filters individual **raw rows before** grouping occurs and can leverage B-Tree indexes. It cannot use aggregate functions.
-* **`HAVING`** filters **aggregated summary groups after** `GROUP BY` has executed in memory. It is designed specifically for aggregate conditions (`COUNT`, `SUM`, `AVG`)."
+That's the whole difference: **`WHERE` filters rows before grouping. `HAVING` filters groups after grouping.**
 
 ---
 
-### The 8-Step SQL Query Execution Lifecycle
+### Where each one sits in the pipeline
 
-To truly impress an interviewer, explain *why* `WHERE` cannot use aggregates by walking through the database's internal logical processing pipeline:
+<Diagram>
+<Row>
+<Box title="1. FROM / JOIN" accent="#60a5fa">
+<Field icon="📋" code="get the rows" variant="neutral" />
+</Box>
+<Arrow />
+<Box title="2. WHERE" accent="#34d399">
+<Field icon="🔍" code="filter raw rows" hint="index-backed" variant="neutral" />
+</Box>
+<Arrow />
+<Box title="3. GROUP BY" accent="#f59e0b">
+<Field icon="🗂️" code="bucket into groups" variant="neutral" />
+</Box>
+<Arrow />
+<Box title="4. HAVING" accent="#818cf8">
+<Field icon="🔍" code="filter the groups" hint="works on SUM, COUNT, AVG..." variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-```
-1. FROM & JOIN  ───> Identify and combine table sources
-2. WHERE        ───> Filter raw individual rows (Index-backed)
-3. GROUP BY     ───> Aggregate rows into distinct buckets
-4. HAVING       ───> Filter calculated group buckets
-5. SELECT       ───> Project requested columns & calculate window functions
-6. DISTINCT     ───> Deduplicate rows
-7. ORDER BY     ───> Sort the final result set
-8. LIMIT/OFFSET ───> Paginate returned records
-```
-
-* **Why `WHERE SUM(salary) > 50000` is impossible:**
-  At Step 2 (`WHERE`), the database is simply reading individual rows off disk or cache. The `GROUP BY` grouping operation (Step 3) has not occurred yet. Because groups do not yet exist, aggregate functions (`SUM`, `COUNT`, `AVG`) are mathematically undefined at the time `WHERE` executes, resulting in:
-  `ERROR: aggregate functions are not allowed in WHERE`.
+This is exactly why `WHERE SUM(salary) > 50000` throws an error. At step 2, grouping hasn't happened yet, so there's no "group" for `SUM` to add up. The aggregate simply doesn't exist yet at that point in the pipeline.
 
 ---
 
-### Key Comparison
+### Side by side
 
-| Feature | `WHERE` Clause | `HAVING` Clause |
+| Feature | `WHERE` | `HAVING` |
 |---|---|---|
-| **Operates On** | Individual **raw rows** | **Grouped / Aggregated rows** |
-| **Pipeline Step** | **Step 2:** Before `GROUP BY` | **Step 4:** After `GROUP BY` |
-| **Aggregate Functions?** | ❌ **No** (`WHERE COUNT(*) > 1` is an error) | ✅ **Yes** (`HAVING SUM(amount) > 1000`) |
-| **Index Utilization** | ✅ **Yes.** Can directly scan B-Tree indexes | ❌ **No.** Evaluates computed buckets in RAM |
-| **Primary Goal** | Minimize dataset before heavy aggregation | Filter out groups failing business criteria |
+| **Works on** | individual raw rows | already-grouped rows |
+| **Runs** | before `GROUP BY` | after `GROUP BY` |
+| **Aggregate functions allowed?** | No (`WHERE COUNT(*) > 1` errors) | Yes (`HAVING SUM(amount) > 1000`) |
+| **Can use an index?** | Yes | No — it's filtering values already computed in memory |
+| **Best for** | shrinking the dataset early | rejecting groups that fail a business rule |
 
 ---
 
-### The Performance Trap: Non-Aggregate Conditions in `HAVING`
+### The performance trap
 
-Interviewers frequently present a query like this and ask for a critique:
+This query works, but it's slow:
 
 ```sql
--- ❌ BAD PERFORMANCE ANTIPATTERN:
+-- BAD: filters department_id too late
 SELECT department_id, AVG(salary)
 FROM employees
 GROUP BY department_id
 HAVING department_id = 10 AND AVG(salary) > 80000;
 ```
 
-* **The Problem:** Standard SQL allows non-aggregated columns in `HAVING` (if they exist in `GROUP BY`). However, placing `department_id = 10` in `HAVING` forces the engine to **sort, hash, and aggregate all 1,000,000 rows across all 50 departments in memory**, only to discard 49 departments at Step 4!
-* **The Fix:** Move non-aggregate conditions into `WHERE`:
-  ```sql
-  -- ✅ OPTIMIZED:
-  SELECT department_id, AVG(salary)
-  FROM employees
-  WHERE department_id = 10 -- Filters rows immediately using the index!
-  GROUP BY department_id
-  HAVING AVG(salary) > 80000;
-  ```
+Putting `department_id = 10` in `HAVING` means the engine groups and averages *all* 50 departments first, then throws away 49 of them. All that work for nothing. Move the non-aggregate condition into `WHERE` so it filters before the grouping even starts:
 
----
-
-### The ELI5 Analogy: Grading Classroom Quizzes
-
-Imagine a teacher sorting test papers from 10 classrooms:
-* **`WHERE` (Row filtering before grouping):** Before doing any math, the teacher immediately throws out papers where the student cheated: `WHERE cheated = FALSE`.
-* **`GROUP BY`:** The teacher sorts the remaining clean papers into 10 separate stacks, one for each classroom.
-* **`HAVING` (Group filtering after summary math):** The teacher calculates the average grade for each classroom stack. Then, the teacher only throws a pizza party for classrooms whose average exceeds 85%: `HAVING AVG(score) > 85`.
-
----
-
-### Crucial Nuance: Can `HAVING` Be Used Without `GROUP BY`?
-
-**Yes.** If a query contains a `HAVING` clause but no `GROUP BY`, the engine treats the **entire table as a single, global group**:
 ```sql
-SELECT AVG(salary) 
-FROM employees 
+-- GOOD: filters immediately, using the index
+SELECT department_id, AVG(salary)
+FROM employees
+WHERE department_id = 10
+GROUP BY department_id
+HAVING AVG(salary) > 80000;
+```
+
+**Rule of thumb:** if a condition doesn't involve an aggregate, it belongs in `WHERE`, not `HAVING` — even if it would technically work in either place.
+
+---
+
+### Can you use HAVING without GROUP BY?
+
+Yes. With no `GROUP BY`, the whole table is treated as one single group:
+
+```sql
+SELECT AVG(salary)
+FROM employees
 HAVING COUNT(*) > 10;
 ```
-If the table contains 10 or fewer total rows, the query returns an empty result set (0 rows). If it contains more than 10 rows, it returns the single overall average.
+
+If the table has 10 or fewer rows, you get zero rows back. Otherwise you get one row: the overall average.
+
+---
+
+### Say this in the interview
+
+*"WHERE filters individual rows before grouping and can use an index. HAVING filters already-grouped rows after GROUP BY, which is why it's the only place you can use an aggregate like SUM or COUNT in a filter condition."*

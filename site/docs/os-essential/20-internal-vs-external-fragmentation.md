@@ -1,92 +1,88 @@
 ---
 id: 20-internal-vs-external-fragmentation
-title: "Internal vs. External Fragmentation: Causes & Mitigation"
-description: "Define internal vs external fragmentation, mathematical expected waste, Knuth's 50% rule, the Buddy Allocator, and the Slab Allocator."
+title: "Internal vs. External Fragmentation"
+description: "Understand internal vs external memory fragmentation, the math behind how much gets wasted, and how the Buddy and Slab allocators fix it inside the kernel."
 sidebar_position: 20
 sidebar_class_name: sidebar-easy
 ---
+
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What is internal fragmentation versus external fragmentation? Why does paging eliminate external fragmentation while causing internal fragmentation, and how do operating system kernels (Buddy Allocator, Slab Allocator) eliminate sub-page memory waste?"
 
-Memory fragmentation represents wasted physical RAM that cannot be allocated to running processes. The architectural mechanism used to partition memory determines whether a system suffers from **Internal Fragmentation** (waste *inside* fixed blocks) or **External Fragmentation** (waste *between* variable blocks).
+Fragmentation is memory that's technically free, but unusable. There are two different ways that happens, and they come straight from the two memory models you'd expect: paging and segmentation.
+
+- **Internal fragmentation — the egg carton.** You need 10 eggs, but the store only sells rigid 12-packs. You buy one, use 10, and 2 slots sit empty — wasted, but nobody else can use them either, because the whole carton is yours. That's waste *inside* a block you were given.
+- **External fragmentation — the parking lot.** Cars park along a street. A compact car leaves an 8-foot gap; a minivan leaves a 12-foot gap further down. A delivery truck needing 16 feet can't park, even though 20 feet of free curb exists — it's just split into pieces too small to use. That's waste *between* blocks, scattered around.
 
 ---
 
-### The ELI5 Analogy: Egg Cartons vs. Parking Lots
+<Diagram>
+<Row>
+<Box title="Internal fragmentation" accent="#fb7185">
+<Field icon="🥚" code="waste inside a block" hint="e.g. last page of an allocation, half-empty" variant="neutral" />
+</Box>
+<Box title="External fragmentation" accent="#f59e0b">
+<Field icon="🚗" code="waste scattered between blocks" hint="free, but too small/split to use" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-- **Internal Fragmentation (The 12-Pack Egg Carton):**  
-  You need 10 eggs to bake a cake, but the grocery store only sells rigid 12-pack cartons (Pages). You are forced to buy the 12-pack. You use 10 eggs, leaving 2 empty slots inside your carton. That space is wasted, but no other customer can use those 2 slots because the carton belongs to you.  
-  *Wasted space inside an allocated boundary.*
-
-- **External Fragmentation (The Parallel Parking Lot):**  
-  A street has parallel parking for cars of all different lengths (Segments). A compact car leaves, leaving an 8-foot gap; down the street, a minivan leaves, leaving a 12-foot gap. A 16-foot delivery truck arrives. There is 20 feet of total free curb space, but the truck cannot park because the space is broken into small, non-contiguous holes.  
-  *Wasted space scattered outside allocated boundaries.*
-
----
-
-### Technical Comparison Matrix
-
-| Dimension | Internal Fragmentation | External Fragmentation |
+| | Internal Fragmentation | External Fragmentation |
 | :--- | :--- | :--- |
-| **Definition** | Unused memory allocated *inside* a fixed-size partition. | Unallocated memory broken into small, non-contiguous holes *between* partitions. |
-| **Primary Cause** | Fixed allocation granularity (e.g., 4KB paging frames). | Dynamic variable-sized allocations and deallocations. |
-| **Paging** | **Suffers from it** (in the final page of an allocation). | **Immune** (all frames are identical and interchangeable). |
-| **Segmentation** | **Immune** (segments sized exactly to process request). | **Suffers from it** (requires expensive memory compaction). |
-| **Mitigation** | Smaller pages, sub-page allocators (Slab/Buddy allocators). | Paging architectures, memory compaction defragmentation. |
+| **What it is** | Unused space inside a fixed-size block | Free space broken into small, scattered holes between blocks |
+| **Caused by** | Fixed allocation size (e.g. 4KB pages) | Variable-size allocations and frees |
+| **Paging** | Suffers from this (last page is rarely full) | Immune — every frame is identical |
+| **Segmentation** | Immune — segments are sized exactly to fit | Suffers from this — needs compaction |
+| **Fixed by** | Smaller pages, sub-page allocators (slab/buddy) | Switching to paging, or compaction |
+
+So this is really the mirror image of paging vs. segmentation: paging trades external fragmentation for a little internal fragmentation. Segmentation does the opposite.
 
 ---
 
-### Mathematical Foundations
+### How much actually gets wasted?
 
-#### 1. Average Internal Fragmentation ($S / 2$)
-If physical memory is allocated in fixed chunks of size $S$ (e.g., $4096\text{ bytes}$), and memory allocation sizes are uniformly distributed, the final page of any process is, on average, half full:
+If memory is handed out in fixed chunks of size $S$ (say 4096 bytes), the last chunk of any allocation is, on average, half-empty:
+
 $$\mathbb{E}[\text{Internal Fragmentation}] = \frac{S}{2} \text{ per allocation}$$
-For a 4KB page, an average of $2\text{ KB}$ is wasted per allocated segment.
 
-#### 2. Knuth's 50% Rule (External Fragmentation)
-Donald Knuth proved mathematically that in any variable-sized memory allocation system using first-fit or best-fit strategies:
-$$\text{Free Blocks} \approx 0.5 \times \text{Allocated Blocks}$$
-As the system reaches equilibrium, approximately **one-third of all available memory is lost to external fragmentation gaps**, proving why pure segmentation was abandoned for general-purpose RAM.
+For 4KB pages, that's roughly 2KB wasted per allocation, on average.
+
+For variable-size allocation (segmentation), Donald Knuth showed something similar happens to free space: once a system settles into a steady state using first-fit or best-fit allocation, free blocks end up roughly half the count of allocated ones — which works out to around a third of all memory being lost to unusable gaps. This is a big part of why segmentation never became the general-purpose standard.
 
 ---
 
-### The Staff Differentiator: Kernel Sub-Page Allocators
+### What about the kernel's own tiny allocations?
 
-Paging eliminates external fragmentation for user processes using 4KB pages. But what about the **Operating System Kernel**?
+Paging solves fragmentation for whole processes using 4KB pages. But the kernel itself allocates much smaller things — a file descriptor struct might be 64 bytes, an inode cache entry 512 bytes. If the kernel handed out a full 4KB page for every 64-byte struct, you'd be wasting over 98% of it — internal fragmentation gone wild.
 
-Kernel data structures are tiny: a file descriptor struct is 64 bytes; an `inode` cache is 512 bytes; a process `task_struct` is 2KB. If the Linux kernel allocated a full 4KB page for every 64-byte struct, internal fragmentation would exceed **98%**!
+Linux solves this with two allocators stacked on top of each other:
 
-Modern kernels solve this using a two-tier allocator architecture:
+<Diagram>
+<Row>
+<Box title="Buddy Allocator" accent="#818cf8">
+<Field icon="🧱" code="page-level, powers of 2" hint="4KB, 8KB, 16KB... merges free buddies back together" variant="neutral" />
+</Box>
+<Box title="Slab Allocator" accent="#34d399">
+<Field icon="🗃️" code="object-level, fixed-size slots" hint="carves a page into same-size structs" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-```
-┌─────────────────────────────────────────────────────────┐
-│               HARDWARE PHYSICAL RAM                     │
-└───────────────────────────┬─────────────────────────────┘
-                            ▼
-           [ BUDDY ALLOCATOR (Page-Level) ]
-    Allocates contiguous memory in powers-of-two (4KB, 8KB, 16KB, 32KB...)
-    Coalesces adjacent "buddies" on free to prevent external fragmentation.
-                            │
-                            ▼
-           [ SLAB / SLUB ALLOCATOR (Object-Level) ]
-    Carves 4KB pages into arrays of identical fixed-size object caches:
-    • Cache for mm_struct      • Cache for inode_struct
-    • Cache for task_struct    • Cache for socket buffers (sk_buff)
-```
-
-1. **The Buddy Allocator:** Manages physical memory frames in power-of-two blocks ($2^k \times 4\text{ KB}$). When a block is freed, it checks if its adjacent "buddy" block of equal size is also free; if so, it immediately merges (coalesces) them into a larger block to stop external fragmentation.
-2. **The Slab / Slub Allocator (Jeff Bonwick):** Sits directly on top of the buddy allocator. It takes a 4KB page and slices it into uniform, pre-allocated object slots (e.g., a slab of 64-byte descriptors). When the kernel requests an object, it assigns an empty slot in $O(1)$ time with **zero internal fragmentation**!
+1. **Buddy allocator** — manages physical memory in power-of-two blocks (4KB, 8KB, 16KB...). When a block is freed, it checks whether its "buddy" (the adjacent block of the same size) is also free, and if so, merges them back into one bigger block. This keeps external fragmentation from building up at the page level.
+2. **Slab allocator** — sits on top of the buddy allocator. It takes one 4KB page and slices it into a bunch of identical, pre-sized slots — a cache just for `task_struct`s, another just for `inode`s, and so on. Handing out an object is then just grabbing an empty slot — O(1), with no internal fragmentation, since every slot is sized exactly for what goes in it.
 
 ---
 
-### Summary
-"Paging eliminates external fragmentation via uniform 4KB frames, but incurs internal fragmentation on the final page (averaging S/2). Segmentation eliminates internal fragmentation but causes severe external fragmentation (governed by Knuth's 50% rule). Operating system kernels eliminate sub-page internal fragmentation using the Buddy Allocator for power-of-two coalescing and the Slab Allocator for caching fixed-size kernel structs."
+### Say this in the interview
+
+*"Internal fragmentation is wasted space inside a fixed-size block you were given — paging causes this because the last page of an allocation is rarely full. External fragmentation is wasted space scattered between variable-size blocks — segmentation causes this, and it needs expensive compaction to fix. The kernel avoids wasting space on its own tiny allocations by stacking a slab allocator — fixed-size object caches — on top of a buddy allocator, which manages page-level memory in power-of-two blocks it can merge back together on free."*
 
 ---
 
-### Code Demonstration: Buddy Allocator Power-of-Two Split & Coalesce
+### Code: a buddy allocator splitting and tracking free blocks
 
 ```python
 class BuddyAllocator:
