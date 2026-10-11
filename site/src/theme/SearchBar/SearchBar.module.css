@@ -508,11 +508,26 @@ html[data-theme="dark"] :global(.ask-ai) {
   .searchBarContainer :global(.navbar__search-input):focus {
     width: 13rem;
   }
+
+  /* Docusaurus's own navbar CSS makes the search field's outer wrapper
+     (the parent of .navbar__search, injected by NavbarContent — not a
+     node we render ourselves) `position: absolute; right: ...` below
+     996px, so it can expand on focus without reflowing siblings. That's
+     fine when search is the last navbar item, but this site also pins
+     the dark/light toggle to the right, so the floated search box lands
+     directly on top of it, swallowing its clicks. Put it back in normal
+     flex flow so it sits beside the toggle instead of over it. */
+  :global(div):has(> :global(.navbar__search)) {
+    position: static !important;
+    inset: auto !important;
+  }
 }
 
 @media (max-width: 576px) {
-  :global(.navbar__search-input):not(:focus) {
-    width: 2rem;
+  .searchBarContainer :global(.navbar__search-input):not(:focus) {
+    width: 2rem !important;
+    padding-left: 2.1rem;
+    padding-right: 0;
   }
 
   .searchBar .dropdownMenu {
