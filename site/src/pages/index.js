@@ -208,20 +208,7 @@ export default function Home() {
 
         {/* Right Column: DSA Roadmap */}
         <div className="csf-column-right">
-          <p className="csf-section-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            DSA Roadmap
-            <span style={{
-              fontSize: '0.5rem',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-              padding: '2px 7px',
-              borderRadius: '999px',
-              background: 'rgba(251, 146, 60, 0.12)',
-              color: '#fb923c',
-              border: '1px solid rgba(251, 146, 60, 0.25)',
-            }}>In Progress</span>
-          </p>
+          <p className="csf-section-label">DSA Roadmap</p>
           <DsaRoadmap />
         </div>
       </main>

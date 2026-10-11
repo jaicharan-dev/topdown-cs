@@ -83,6 +83,21 @@ const config = {
 
   themes: ['@docusaurus/theme-mermaid'],
 
+  plugins: [
+    function dsaStatsPlugin() {
+      return {
+        name: 'dsa-stats-generator',
+        loadContent() {
+          try {
+            require('./scripts/generate-dsa-stats.js');
+          } catch (e) {
+            console.error('Failed to generate DSA stats:', e);
+          }
+        },
+      };
+    },
+  ],
+
   presets: [
     [
       'classic',

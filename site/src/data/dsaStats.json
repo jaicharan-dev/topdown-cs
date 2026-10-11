@@ -1,0 +1,96 @@
+{
+  "totalProblems": 169,
+  "topics": {
+    "arrays-hashing": {
+      "folder": "1-arrays-hashing",
+      "label": "Arrays & Hashing",
+      "count": 12
+    },
+    "tries": {
+      "folder": "10-tries",
+      "label": "Tries",
+      "count": 3
+    },
+    "heaps-priority-queues": {
+      "folder": "11-heaps-priority-queues",
+      "label": "Heaps & Priority Queues",
+      "count": 7
+    },
+    "backtracking": {
+      "folder": "12-recursion-backtracking",
+      "label": "Backtracking",
+      "count": 10
+    },
+    "intervals": {
+      "folder": "13-intervals",
+      "label": "Intervals",
+      "count": 6
+    },
+    "greedy": {
+      "folder": "14-greedy",
+      "label": "Greedy",
+      "count": 8
+    },
+    "graphs": {
+      "folder": "15-graphs",
+      "label": "Graphs",
+      "count": 16
+    },
+    "1d-dp": {
+      "folder": "16-1d-dp",
+      "label": "1D Dynamic Programming",
+      "count": 12
+    },
+    "2d-dp": {
+      "folder": "17-2d-dp",
+      "label": "2D Dynamic Programming",
+      "count": 8
+    },
+    "bit-manipulation": {
+      "folder": "18-bit-manipulation",
+      "label": "Bit Manipulation",
+      "count": 6
+    },
+    "strings": {
+      "folder": "2-strings",
+      "label": "Strings",
+      "count": 5
+    },
+    "math-basics": {
+      "folder": "3-math-number-theory",
+      "label": "Math Basics",
+      "count": 5
+    },
+    "two-pointers": {
+      "folder": "4-two-pointers",
+      "label": "Two Pointers",
+      "count": 9
+    },
+    "sliding-window": {
+      "folder": "5-sliding-window",
+      "label": "Sliding Window",
+      "count": 8
+    },
+    "stacks-queues": {
+      "folder": "6-stacks",
+      "label": "Stacks & Queues",
+      "count": 10
+    },
+    "binary-search": {
+      "folder": "7-binary-search",
+      "label": "Binary Search",
+      "count": 11
+    },
+    "linked-lists": {
+      "folder": "8-linked-lists",
+      "label": "Linked Lists",
+      "count": 13
+    },
+    "trees-bst": {
+      "folder": "9-trees",
+      "label": "Trees & BST",
+      "count": 20
+    }
+  },
+  "generatedAt": "2026-10-11T08:34:18.015Z"
+}
