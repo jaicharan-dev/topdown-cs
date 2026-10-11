@@ -7,57 +7,50 @@ sidebar_position: 16
 sidebar_class_name: sidebar-medium
 ---
 
+import { HashMapStructureFigure } from '@site/src/components/Figures/HashMapInternals';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Explain how a HashMap works under the hood. Specifically, how are bucket indices calculated, why is the bit-spreading function needed, how does treeification work, and why isn't HashMap thread-safe?"
 
-### The Quick Answer
+Think of a `HashMap` as a row of lockers (the `Node<K,V>[] table`). Every key gets turned into a number, a hash, and that number decides which locker it goes in. Put the same key in again, and the math sends you to the same locker, so lookups are fast: no scanning, just straight to the right slot.
 
-"A `HashMap` is backed by an array of buckets (`Node<K,V>[] table`). When inserting a key-value pair, Java hashes the key, mixes its bits using a bit-spreading function, and computes the bucket index using `(n - 1) & hash`. Collisions are handled via **separate chaining**. In Java 8, when a bucket exceeds 8 nodes and total capacity reaches 64, the linked list converts to a **Red-Black Tree**, improving worst-case search from $O(n)$ to $O(\log n)$."
+<HashMapStructureFigure />
 
----
+### What happens on `map.put(key, value)`
 
-### Step-by-Step: What Happens on `map.put(key, value)`
+**1. Spreading the bits.** Java doesn't use the raw hash code as-is, it runs it through this first:
 
-#### 1. The Hash Perturbation Function
 ```java
 static final int hash(Object key) {
     int h;
     return (key == null) ? 0 : (h = key.hashCode()) ^ (h >>> 16);
 }
 ```
-* **The Interview Trap:** Why does Java XOR the hash code with its unsigned right shift by 16 bits?
-* **The Reason:** Table length $n$ is always a small power of 2. For an initial capacity of 16, $n - 1 = 15$ (`00001111` in binary). The index formula only considers the **lowest 4 bits**! Any set of keys with identical lower bits but differing upper bits would catastrophically collide in the same bucket. Shifting by 16 bits folds the high-order bits into the low-order bits, ensuring all bits influence bucket distribution.
 
-#### 2. The Power-of-Two Index Optimization
+Here's why that matters. The table size is always a power of two, say 16. To turn a hash into a bucket index, Java only looks at the lowest 4 bits of the hash (more on that below). If two keys differ only in their *upper* bits, they'd land in the same bucket every time, even though their full hashes are different. XOR-ing the hash with its own top half folds those upper bits down into the lower bits, so they get a say in which bucket is picked too.
+
+**2. Turning the hash into an index.**
+
 ```java
 index = (n - 1) & hash;
 ```
-* Mathematically, mapping a hash to a bucket requires modulo: `hash % n`.
-* However, integer modulo is computationally expensive at the hardware CPU level. Because the array capacity $n$ is strictly maintained as a power of two ($2^k$), `hash % n` is mathematically identical to the bitwise operation `hash & (n - 1)`, which executes in a single clock cycle.
 
-#### 3. Collision Handling & Treeification
-* **Pre-Java 8:** Collisions chained entries into a singly linked list via head-insertion.
-* **Java 8+ (Treeification):**
-  * **`TREEIFY_THRESHOLD = 8`:** If a bucket reaches 8 nodes, it converts to a Red-Black Tree.
-  * **`MIN_TREEIFY_CAPACITY = 64`:** If the table size is under 64, Java resizes the array instead of treeifying to save memory overhead.
-  * **`UNTREEIFY_THRESHOLD = 6`:** During resizing, if a tree bucket drops to 6 nodes or fewer, it converts back to a linked list.
+The textbook way to map a hash into an array slot is `hash % n`. But division is slow on real hardware. Since the table size `n` is always a power of two, `hash % n` and `hash & (n - 1)` give the exact same answer, and the bitwise version runs in a single CPU cycle instead of using division.
 
----
+**3. Handling collisions.** Two keys can hash to the same bucket. Before Java 8, that bucket just became a linked list: new entries got added to the front. Since Java 8, if a single bucket grows past 8 entries *and* the table has at least 64 buckets overall, that bucket converts into a **Red-Black Tree** instead. That turns worst-case lookup in that bucket from O(n) down to O(log n). If the bucket later shrinks back to 6 entries or fewer (usually after a resize), it converts back to a plain list; trees have more memory overhead, so Java only keeps one where it's worth it.
 
-### Load Factor & Resizing
+### Load factor and resizing
 
-* **Default Initial Capacity:** 16 buckets.
-* **Default Load Factor:** `0.75` (When $16 \times 0.75 = 12$ buckets are filled, the array doubles to 32).
-* **Why 0.75?** It represents the optimal Poisson distribution trade-off between space utilization (too many empty buckets) and time efficiency (preventing high collision density).
+The table starts at 16 buckets. Once it's 75% full (12 of 16 buckets taken), Java doubles the array to 32 and re-buckets everything. That 0.75 number is a trade-off: too low, and you waste memory on empty buckets; too high, and collisions pile up and slow every lookup down.
 
----
+### Why HashMap isn't thread-safe
 
-### Why HashMap Is Not Thread-Safe
+Two threads calling `put()` at the same time can both decide the same bucket is empty and both write there, one update silently disappears.
 
-1. **Race Conditions & Lost Updates:** Concurrent `put()` operations can simultaneously calculate the same empty bucket slot and overwrite each other's nodes.
-2. **The Java 7 Infinite Loop Bug:** Java 7 used head-insertion during resizing. Two concurrent threads rehashing the same bucket could invert the list pointers and form a circular linked list ($A \to B \to A$), trapping subsequent `get()` calls in a 100% CPU infinite loop. Java 8 switched to **tail-insertion** to preserve node order, eliminating circular loops (though concurrent corruption still occurs).
-* **The Fix:** In multi-threaded systems, always use **`ConcurrentHashMap`**, which uses non-blocking Compare-And-Swap (CAS) operations and bucket-level synchronized locks.
+It gets worse historically: in Java 7, resizing rebuilt each bucket's list by inserting at the head. If two threads resized the same bucket at once, they could end up pointing nodes at each other in a loop (`A → B → A`), and any later `get()` on that bucket would spin forever, pegging a CPU core at 100%. Java 8 fixed the looping bug by inserting at the tail during resize instead, but concurrent writes can still silently corrupt the map.
+
+**The fix:** if more than one thread touches the map, use `ConcurrentHashMap`. It uses per-bucket locking and compare-and-swap operations instead of one big lock, so concurrent reads and writes don't trample each other.
 
 ---
 

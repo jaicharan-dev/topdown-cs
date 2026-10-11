@@ -7,67 +7,35 @@ sidebar_position: 22
 sidebar_class_name: sidebar-hard
 ---
 
+import { DependencyInjectionFigure } from '@site/src/components/Figures/DependencyInjection';
+
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
 > **Interview Question:** "Everyone throws around the terms Dependency Injection, Dependency Inversion, and Inversion of Control. Are they the same thing? What are the three types of DI, and why is field injection considered an anti-pattern?"
 
-### The Quick Answer
+Picture an F1 driver who's hardcoded to build their own car: welds the chassis, bolts on the tires, before every race. If it starts raining, they're stuck: they already built dry-weather tires with their own hands, and that's all they know how to make.
 
-"**Dependency Inversion (DIP)** is the high-level SOLID principle stating that high-level modules should depend on abstractions (interfaces) rather than concrete classes. **Dependency Injection (DI)** is the design pattern used to deliver those dependencies from the outside. **Inversion of Control (IoC)** is the overarching architectural framework paradigm where the framework manages the lifecycle and flow of control."
+Now picture a driver who just says "I need a `Vehicle`." The pit crew hands them one: dry tires on a sunny day, rain tires if it's wet. The driver never touches tire manufacturing. They just race with whatever `Vehicle` shows up.
 
----
+That's the difference dependency injection makes: a class stops building its own dependencies and instead just declares what it needs, letting something outside hand it over.
 
-```mermaid
-classDiagram
-    class Database {
-        <<interface>>
-        +savePayment()
-    }
-    class MySQLDatabase {
-        +savePayment()
-    }
-    class PostgresDatabase {
-        +savePayment()
-    }
-    class PaymentProcessor {
-        -Database database
-        +PaymentProcessor(database: Database)
-        +processTransaction()
-    }
-    
-    Database <|.. MySQLDatabase
-    Database <|.. PostgresDatabase
-    PaymentProcessor o-- Database : injected
-```
+<DependencyInjectionFigure />
 
----
-
-### The Three Types of Dependency Injection
-
-Interviewers frequently ask you to evaluate the 3 mechanisms of dependency injection:
+### The three ways to inject a dependency
 
 | Injection Type | How It Works | Verdict |
 |---|---|---|
-| **1. Constructor Injection** | Dependencies are passed as parameters into the constructor. | **Best Practice.** Enforces complete object initialization, enables immutable (`final`) fields, and allows straightforward POJO unit testing without frameworks. |
-| **2. Setter Injection** | Dependencies are supplied through public setter methods. | **Use with Caution.** Suitable for optional or reconfigurable dependencies, but leaves objects vulnerable to `NullPointerException` if called before setters run. |
-| **3. Field Injection** | Annotating private fields directly with `@Autowired` via reflection. | **Anti-Pattern.** Hides dependencies, breaks plain unit testing (requires reflection or container), and masks circular dependencies until runtime. |
+| **1. Constructor Injection** | The dependency is passed in as a constructor parameter. | **Best practice.** The object can't exist in a half-built state, fields can be `final`/immutable, and you can unit test with a plain object - no framework needed. |
+| **2. Setter Injection** | The dependency is handed over through a public setter method, after construction. | **Use with caution.** Fine for optional dependencies, but if something calls a method before the setter runs, you get a `NullPointerException`. |
+| **3. Field Injection** | A private field is annotated (like `@Autowired`) and the framework fills it in via reflection. | **Anti-pattern.** The dependency is invisible from the constructor, it's hard to unit test without the framework, and circular dependencies don't surface until runtime. |
 
----
+### Three terms people mix up
 
-### The ELI5 Analogy: The Formula 1 Driver
+- **Dependency Inversion (DIP)** is the *principle*: high-level code should depend on interfaces, not concrete classes. This is the goal.
+- **Dependency Injection (DI)** is the *technique*: pass dependencies in from outside instead of constructing them internally. This is how you actually achieve DIP.
+- **Inversion of Control (IoC)** is the *framework* that does the wiring for you automatically - Spring's `ApplicationContext`, NestJS's injector - deciding what to construct, in what order, and handing it to whoever asked.
 
-* **Without DI (Using `new` inside):** Imagine an F1 driver who is hardcoded to manufacture their own car. Before racing, the driver must weld the chassis and attach slick tires. If it starts raining, the driver is helpless, permanently glued to the dry-weather tires they manufactured.
-* **With DI:** The driver simply declares: *"I need a `Vehicle` to race."* The pit crew assembles the car outside with rain tires and hands it to the driver. The driver focuses purely on racing logic without coupling to tire manufacturing.
-
----
-
-### The Distinction: DIP vs. DI vs. IoC
-
-| Concept | Nature | Role in Architecture |
-|---|---|---|
-| **Dependency Inversion (DIP)** | Architectural Principle | **The Goal:** Mandates *what* the system should look like (high-level code depends on interfaces, not implementations). |
-| **Dependency Injection (DI)** | Design Pattern | **The Mechanism:** The technique of *how* we achieve DIP (passing dependencies into a class). |
-| **Inversion of Control (IoC)** | Framework Paradigm | **The Engine:** The runtime container (e.g., Spring `ApplicationContext`, NestJS) that automatically resolves and wires dependencies together. |
+In short: DIP says what the code should look like, DI is how you write it that way, and IoC is the machinery that does it for you at scale.
 
 ---
 

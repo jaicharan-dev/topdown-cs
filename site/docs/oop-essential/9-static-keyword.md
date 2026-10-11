@@ -7,57 +7,58 @@ sidebar_position: 9
 sidebar_class_name: sidebar-medium
 ---
 
+import { SharedCopyFigure } from '@site/src/components/Figures/StaticKeyword';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What does the 'static' keyword actually mean, where are static members stored in memory, and why can't you override a static method? Also, why should you prefer static nested classes over inner classes?"
 
-### The Quick Answer
+Every normal field and method in a class belongs to one object. Each object gets its own copy. `static` breaks that rule: a static member belongs to the **class itself**, not to any one object. There's only one copy, shared by every instance, loaded once when the class is loaded.
 
-"The `static` keyword denotes that a member (variable, method, or block) belongs to the **class itself** rather than to any specific object instance. There is only a single copy shared across all instances of that class, loaded once by the JVM."
+Think of a school: each student has their own name and marks (instance data). But the school's name is one value, shared by every student - that's the static field.
 
----
+<SharedCopyFigure />
 
-### Static vs. Instance Members
+### The quick answer
 
-| Feature | Instance Member | Static Member |
+The `static` keyword means a member belongs to the class, not an object. All instances share the exact same copy. You call it through the class name (`ClassName.doSomething()`), not through an object.
+
+### Static vs. instance members
+
+| | Instance Member | Static Member |
 |---|---|---|
-| **Belongs To** | Specific object instance on the heap | The class definition |
-| **Invocation** | `object.doSomething()` | `ClassName.doSomething()` |
-| **Data Access** | Can access both instance and static fields | Can **only** access static fields (cannot use `this`) |
-| **Binding Mechanism** | Late Binding (resolved at runtime via vtable) | Early Binding (resolved at compile-time by reference) |
+| **Belongs to** | One specific object | The class itself |
+| **Called as** | `object.doSomething()` | `ClassName.doSomething()` |
+| **Can access** | Both instance and static fields | Only static fields - no `this` |
+| **Resolved** | At runtime, based on the real object | At compile-time, based on the declared type |
 
----
+### Where does `static` actually live in memory?
 
-### Where is `static` Stored in Modern Java? (Metaspace vs. Heap)
+This trips people up because the answer changed across Java versions:
+* **Java 7 and earlier:** static variables and class metadata lived in **PermGen**, a region of the JVM heap.
+* **Java 8+:** PermGen was removed. Class metadata and bytecode now live in **Metaspace**, which sits in native memory, outside the heap.
+* **The catch:** the static **variables** themselves (and the `Class` object) still live on the regular Java heap, and can be garbage collected if their class loader is unloaded.
 
-A common senior-level trap explores where static memory lives:
-* **Java 7 and earlier:** Static variables and class metadata lived in **PermGen** (Permanent Generation) inside the JVM heap.
-* **Java 8+:** PermGen was removed and replaced by **Metaspace**, which resides in **native off-heap memory**. Class metadata and method bytecodes are stored in Metaspace.
-* **The Catch:** Static **variables** themselves (and the `java.lang.Class` object) are stored in the **standard Java Heap**. They remain subject to garbage collection if their ClassLoader is unloaded.
+### Can you override a static method?
 
----
+No. This is the one answer to memorize.
 
-### Can You Override a Static Method? (Method Hiding)
+Overriding depends on the runtime looking at the real object and picking the right method - that's late binding. Static methods skip all of that: the compiler locks in which method gets called based on the *declared type* of the variable, before the program even runs. That's early binding, and it happens whether or not an object exists.
 
-The definitive answer is **NO**. You cannot override static methods in Java:
-
-* Overriding relies on **Dynamic Method Dispatch (late binding)**, where the runtime inspects the actual object on the heap to decide which implementation to run.
-* Static methods rely on **Static Binding (early binding)**. The compiler inspects the declared reference type at compile-time and hardcodes the method call.
-* If a subclass declares a static method with the exact same signature as a parent static method, it is called **Method Hiding**, not overriding:
+So if a subclass defines a static method with the same signature as the parent's, it doesn't override anything - it just **hides** it:
 
 ```java
 Parent p = new Child();
-p.printRules(); // Prints "Parent Rules" because 'p' is typed as Parent!
+p.printRules(); // Prints "Parent Rules" - because p is declared as Parent, and static calls don't look at the real object
 ```
 
----
+### Static nested class vs. inner class
 
-### The Architecture Trap: Static Nested Class vs. Inner Class
+Joshua Bloch's *Effective Java* says: "favor static member classes over non-static." Here's why that matters.
 
-Interviewers frequently ask why Joshua Bloch's *Effective Java* (Item 24) insists on: *"Favor static member classes over non-static."*
+A regular (non-static) inner class secretly keeps a hidden reference back to the outer object that created it. If that inner object outlives the outer one - say it's sitting in a background thread or an event queue - the outer object can never be garbage collected. That's a memory leak hiding in plain sight.
 
-* **Non-Static Inner Class:** Every instance of a regular inner class silently stores an **implicit reference** to its enclosing outer instance (`Outer.this`). If the inner class object persists (e.g., in a background thread or event queue), it prevents the outer class from being garbage collected, causing severe **memory leaks**.
-* **Static Nested Class:** Does **not** hold an implicit reference to the outer instance. It behaves like any top-level class, saving memory and eliminating leak risks.
+A **static** nested class holds no such reference. It behaves like any ordinary top-level class: no hidden link, no leak risk.
 
 ---
 

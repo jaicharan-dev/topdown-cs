@@ -7,75 +7,92 @@ sidebar_position: 2
 sidebar_class_name: sidebar-medium
 ---
 
+import {
+  BindingTimeFigure,
+  ReturnTypeFigure,
+  DispatchFigure,
+} from '@site/src/components/Figures/OverloadingOverriding';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
-> **Interview Question:** "Walk me through method overloading versus overriding. Explain what 'dynamic method dispatch' is, how the runtime resolves it, and what rules govern overriding."
+> **Interview Question:** "Walk me through method overloading versus overriding. What's 'dynamic method dispatch,' and how does the runtime actually resolve it?"
 
-### Overview
+### The short version
 
-Method overloading and method overriding represent the two foundational branches of polymorphism:
+"Overloading" and "overriding" both fall under polymorphism, but they get resolved at opposite times:
 
-1. **Method Overloading (Compile-Time / Static Polymorphism):** Defining multiple methods in the same class with the same name but different parameter lists (different number of arguments, different data types, or a different order of types).
-2. **Method Overriding (Run-Time / Dynamic Polymorphism):** When a subclass provides its own specific implementation of a method already defined in its superclass, sharing the same method name and parameter signature.
+1. **Overloading (compile-time):** Same method name, different parameter list, same class. The compiler picks the right version while compiling - it just looks at what you passed in.
+2. **Overriding (runtime):** A subclass replaces a method it inherited from its parent, keeping the exact same name and parameters. Which version actually runs is decided at runtime, based on the real object - not the type of the variable pointing to it.
 
-### The ELI5 Analogies
-* **Overloading (The Multi-Tool):** Imagine telling a friend to "paint." If you hand them a paint roller, they paint the wall. If you hand them a fine brush and canvas, they paint a miniature portrait. The command name is identical ("paint"), but the action taken depends directly on the inputs provided.
-* **Overriding (Branch Policy vs. Headquarters):** Corporate headquarters (Parent Class) defines a default policy `processRefund()`. Your local store branch (Child Class) has unique regional regulations, so it overrides `processRefund()` with its own implementation. When a customer initiates a refund at your branch, your local procedure executes instead of corporate's default.
+### Two quick pictures
+
+**Overloading is like a multi-tool.** You tell a friend "paint." Hand them a roller, they paint a wall. Hand them a brush and a tiny canvas, they paint a miniature portrait. Same word, different tool handed over, different result.
+
+**Overriding is like a local branch following its own version of a policy.** Head office defines a default `processRefund()`. Your local branch has its own regional rules, so it overrides `processRefund()` with its own version. When a customer asks for a refund at your branch, your local version runs - not head office's.
+
+<BindingTimeFigure />
 
 ---
 
-### Core Comparison
+### Side by side
 
 | Feature | Method Overloading | Method Overriding |
 |---|---|---|
-| **Polymorphism Type** | Compile-Time (Static Binding) | Run-Time (Dynamic Binding) |
-| **Scope** | Within the same class (or inherited) | Between parent and child classes (inheritance) |
-| **Method Signature** | Must have different parameters | Must have identical name and parameter list |
-| **Return Type** | Can be different, but **cannot be the only difference** | Must be identical or **covariant** (subtype) |
-| **Access Modifiers** | Can be modified freely | Cannot reduce visibility (e.g., `protected` cannot become `private`) |
-| **Resolution Mechanism** | Compiler binds the call directly | JVM resolves via **vtable** lookup at runtime |
+| **Polymorphism type** | Compile-time (static binding) | Runtime (dynamic binding) |
+| **Where it happens** | Same class (or inherited into it) | Between a parent and a child class |
+| **Signature** | Parameters must differ | Name and parameters must match exactly |
+| **Return type** | Can differ, but can't be the *only* thing that differs | Must match, or be a subtype (covariant) |
+| **Access modifiers** | Free to change | Can't become more restrictive than the parent's |
+| **How it's resolved** | The compiler binds the call directly | The JVM looks it up at runtime (vtable) |
 
 ---
 
-### Critical Interview Traps & Rules
+### Traps interviewers like to test
 
-#### 1. The Overloading Trap: Can return type alone overload a method?
-**Strictly NO.** Two methods with the identical name and parameter list that differ only by return type will fail to compile. The compiler cannot determine which method you intend to invoke at the call site if the return value is ignored:
+#### Can return type alone overload a method?
+No. If two methods have the same name and the same parameters but different return types, that's a compile error - not an overload:
 ```java
 // Compile Error: calculate() is already defined
 int calculate(int x) { return x * 2; }
 double calculate(int x) { return x * 2.0; }
 
-// If caller runs: calculate(5); -> Compiler has no way to choose!
+// If caller runs: calculate(5); -> compiler has no way to know which one you meant
 ```
 
-#### 2. The 3 Golden Rules of Overriding
-Interviewers routinely test these three edge-case constraints when overriding a method:
-* **Covariant Return Types:** The child method does not need an identical return type; it can return a **subtype** of the parent method's return type (e.g., if parent returns `Number`, child can return `Integer`).
-* **Access Visibility Rule:** The child method **cannot be more restrictive** than the parent method. If the parent method is `protected`, the child can mark it `protected` or `public`, but never `private` or package-private.
-* **Exception Rule:** The child method **cannot declare new or broader checked exceptions** than the parent method. It can throw fewer checked exceptions, narrower subclasses of the parent's checked exceptions, or any unchecked (`RuntimeException`) exceptions.
+<ReturnTypeFigure />
 
-#### 3. Can Static, Final, or Private methods be overridden?
-* **Static Methods:** **NO.** If a child defines a static method with the exact same signature as a parent static method, it is **Method Hiding**, not overriding. Static methods are resolved at compile-time using the declared reference type, not dynamic dispatch.
-* **Final Methods:** **NO.** The `final` keyword explicitly prevents modification and subclasses cannot override it.
-* **Private Methods:** **NO.** Private methods are not visible to subclasses, so a method with the same name in a child class is treated as a completely independent method.
+The compiler can't tell which one you meant just by looking at the call - it would have to guess based on what you do with the result, which it won't do.
+
+#### The three rules overriding has to follow
+* **Covariant return types:** the child's return type doesn't need to match exactly - it can return a *more specific* type. If the parent returns `Number`, the child can return `Integer`.
+* **Access can only get wider, never narrower:** if the parent method is `protected`, the child can make it `protected` or `public`, but never `private`.
+* **Checked exceptions can only shrink:** the child can throw fewer checked exceptions than the parent, or narrower ones, or any unchecked (`RuntimeException`) exceptions - but never new or broader checked ones.
+
+#### Can static, final, or private methods be overridden?
+No, for three different reasons:
+* **Static methods** get "hidden," not overridden. If a child defines a static method with the same signature as the parent's, Java picks which one runs based on the *declared* type of the variable, decided at compile time - not the real object.
+* **Final methods** can't be touched - that's the entire point of `final`.
+* **Private methods** aren't visible to subclasses at all. A method with the same name in a child class is just a separate, unrelated method.
 
 ---
 
-### Dynamic Method Dispatch (Under the Hood)
+### How dynamic dispatch actually works
 
-Dynamic method dispatch is the mechanism by which a call to an overridden method is resolved at run-time rather than at compile-time.
-
-Consider this classic polymorphic declaration:
 ```java
 PaymentProcessor processor = new CryptoProcessor();
 processor.processPayment();
 ```
-* **Early Binding (Overloading):** The compiler inspects the argument types at the call site and statically binds the call to a specific method address before the program runs.
-* **Late Binding (Overriding):** At compile time, the compiler only verifies that `PaymentProcessor` contains a `processPayment()` method. At runtime, the JVM uses dynamic dispatch:
-  1. The JVM inspects the object header of `processor` on the heap to determine its true runtime class (`CryptoProcessor`).
-  2. It accesses that class's **Virtual Method Table (vtable)**, an internal lookup array pointing to the memory addresses of that class's executable methods.
-  3. It executes the overridden version in `CryptoProcessor`. This enables polymorphic behavior at $O(1)$ lookup speed.
+
+With overloading, the compiler already knows which method to call before the program runs - it just reads the argument types at the call site. That's **early binding**.
+
+With overriding, it's different. At compile time, Java only checks that `PaymentProcessor` has *some* `processPayment()` method - it doesn't know yet which version will run. At runtime:
+1. The JVM checks what `processor` actually points to - a `CryptoProcessor`, not just a generic `PaymentProcessor`.
+2. It looks up `CryptoProcessor`'s method table (its vtable) to find where that class's own `processPayment()` lives.
+3. It runs that version.
+
+<DispatchFigure />
+
+That's **late binding** - the decision gets made based on the real object, not the variable's declared type.
 
 ---
 
@@ -205,8 +222,8 @@ my_processor.process_payment()
 
 ---
 
-### Crucial Nuance: The Varargs Ambiguity Trap
+### One more edge case: overloading with varargs
 
-A classic edge-case question involves overloading a method where one version takes a specific type and another takes varargs (e.g., `void print(int x)` vs `void print(int... x)`). 
+Say you overload a method where one version takes a fixed type and another takes varargs - `print(int x)` vs `print(int... x)`.
 
-When you call `print(5)`, the compiler resolves this by favoring the **most specific, fixed-arity match** first; varargs is treated as an absolute last resort. However, if you have two competing varargs overloads (such as `void print(Integer... x)` and `void print(Long... x)`), invoking `print()` with no arguments results in a compile-time ambiguity error because the compiler cannot determine which varargs array to construct.
+When you call `print(5)`, Java prefers the most specific, fixed-argument match first. Varargs is the last resort, used only when nothing else fits. But if you have two *competing* varargs overloads - say `print(Integer... x)` and `print(Long... x)` - calling `print()` with no arguments at all is ambiguous. The compiler has no way to know which empty array you meant, so it refuses to compile.

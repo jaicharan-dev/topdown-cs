@@ -7,52 +7,59 @@ sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
 
+import { DefaultCollisionFigure } from '@site/src/components/Figures/Java8Interfaces';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
-> **Interview Question:** "Since Java 8 introduced default methods, the line between interfaces and abstract classes blurred. How do they actually differ now in terms of state, multiple inheritance conflicts, and method resolution rules?"
+> **Interview Question:** "Since Java 8 let interfaces have real implementations, the line between interfaces and abstract classes got blurry. What's actually still different between them?"
 
-### The Quick Answer
+### The short version
 
-"Even though modern Java allows interfaces to have concrete implementations via `default`, `static`, and `private` methods, the core difference remains **state**. Abstract classes can maintain mutable instance state through instance fields and initialize it with constructors; hence, a class can only extend one abstract class. Interfaces remain strictly **stateless contracts**; they have no instance fields, no constructors, and a class can implement multiple interfaces."
+Interfaces can now write real code too - `default`, `static`, and `private` methods - so "interfaces are just empty contracts" isn't quite true anymore. But one thing never changed: **state.**
 
----
-
-### Modern Java Features: Interfaces (Java 8 & Java 9+)
-
-Before Java 8, interfaces could only declare abstract methods. Modern Java expanded this dramatically:
-
-1. **`default` Methods (Java 8):** Added primarily for **backward compatibility**. It allowed library maintainers (like the Java Collections Framework) to add new methods (e.g., `Collection.stream()`, `Iterable.forEach()`) to existing interfaces without breaking millions of legacy implementing classes.
-2. **`static` Methods (Java 8):** Utility methods relevant to the contract (e.g., `Comparator.comparing()`). They cannot be overridden by implementing classes and are invoked directly via `InterfaceName.methodName()`.
-3. **`private` Methods (Java 9):** Helper methods used internally within the interface to share common logic between multiple `default` methods, without exposing that helper logic to external implementers.
+An abstract class can hold mutable instance fields and set them up in a constructor, which is exactly why a class can only extend one - you can't have two sets of conflicting state. An interface is still stateless: no instance fields, no constructor, and a class can implement as many as it wants.
 
 ---
 
-### The 3 Core Differences That Still Remain
+### What Java 8 and 9 actually added to interfaces
+
+Before Java 8, an interface could only declare abstract methods - no bodies at all. That changed:
+
+1. **`default` methods (Java 8):** added mainly so library maintainers could add new methods to existing interfaces - like `Collection.stream()` - without breaking every class that already implements them.
+2. **`static` methods (Java 8):** utility methods tied to the interface itself, like `Comparator.comparing()`. Called directly as `InterfaceName.methodName()`, and implementing classes can't override them.
+3. **`private` methods (Java 9):** internal helpers that let two `default` methods share logic, without exposing that helper to anyone implementing the interface.
+
+---
+
+### What's still fundamentally different
 
 | Feature | Abstract Class | Modern Interface (Java 8 / 9+) |
 |---|---|---|
-| **Instance State** | ✅ Can have mutable instance variables. | ❌ Stateless. Only constants (`public static final`). |
-| **Constructors** | ✅ Has constructors to initialize state via `super()`. | ❌ No constructors. Cannot be instantiated. |
-| **Inheritance Limit** | ❌ Single class inheritance (`extends` only one). | ✅ Multiple inheritance of type (`implements` many). |
+| **Instance state** | ✅ Can hold mutable instance variables | ❌ Stateless - only constants (`public static final`) |
+| **Constructors** | ✅ Has one, to set up state via `super()` | ❌ None. Can't be instantiated |
+| **How many you can combine** | One (`extends` a single class) | Many (`implements` as many as you want) |
 
 ---
 
-### Conflict Resolution & Multiple Inheritance Rules
+### When default methods collide
 
-Because a class can implement multiple interfaces, `default` methods introduce the possibility of method collisions. Java resolves these with three strict compiler rules:
+Since a class can implement several interfaces, two of them might hand it the same `default` method. Java resolves this with three fixed rules.
 
-#### Rule 1: The "Class Always Wins" Rule
-If a class inherits a concrete method from a superclass and a default method from an interface with the identical signature, **the superclass implementation always wins**. The interface default method is completely ignored.
-> **Note:** This is also why an interface can never declare default implementations for `java.lang.Object` methods (`toString()`, `equals()`, `hashCode()`), because the class hierarchy always overrides interface defaults.
+#### Rule 1: a real class always wins
+If a class inherits a concrete method from its superclass, and also gets a `default` method with the same signature from an interface, the superclass version wins outright - the interface's default is ignored completely.
 
-#### Rule 2: Sub-interface Wins Over Super-interface
-If `InterfaceB` extends `InterfaceA`, and both define the same default method, the more specific sub-interface (`InterfaceB`) wins.
+> This is also why an interface can never override `Object` methods like `toString()`, `equals()`, or `hashCode()` with a default implementation - the class hierarchy always wins over an interface default.
 
-#### Rule 3: The Conflict Rule (Compiler Error)
-If a class implements two completely independent interfaces (`InterfaceA` and `InterfaceB`) that both provide the same default method, the compiler will refuse to compile:
+#### Rule 2: the more specific interface wins
+If `InterfaceB extends InterfaceA` and both define the same default method, `InterfaceB`'s version wins - the more specific interface beats the general one.
+
+#### Rule 3: two unrelated interfaces with the same default = compiler error
+If a class implements two independent interfaces that both define the same default method, Java won't guess which one you meant. It refuses to compile:
 `class inherits unrelated defaults for method() from types InterfaceA and InterfaceB`
 
-**The Fix:** The child class MUST explicitly override the colliding method. Inside the override, you can provide completely custom logic or delegate to a specific interface using the syntax:
+<DefaultCollisionFigure />
+
+**The fix:** override the method yourself in the class. Inside, you can write new logic or explicitly delegate to one of the interfaces:
 ```java
 InterfaceA.super.methodName();
 ```

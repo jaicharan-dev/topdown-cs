@@ -7,56 +7,62 @@ sidebar_position: 3
 sidebar_class_name: sidebar-medium
 ---
 
+import { InterfaceVsAbstractFigure } from '@site/src/components/Figures/InterfaceVsAbstractClass';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
-> **Interview Question:** "What's the actual difference between an abstract class and an interface? Walk me through your decision process for choosing one over the other in system design, and explain why an abstract class has a constructor if it can't be instantiated."
+> **Interview Question:** "What's the actual difference between an abstract class and an interface? How do you decide which one to use, and why does an abstract class get a constructor if you can never instantiate it directly?"
 
-### The Quick Answer
+### The short version
 
-"An **abstract class** models an **IS-A** relationship, representing core identity and shared mutable state among closely related classes. An **interface** models a **CAN-DO** capability or contract, guaranteeing that a class possesses a specific behavior regardless of its place in the class hierarchy."
+An **abstract class** answers "what *is* this thing?": it models a strict family relationship (**IS-A**) and can share real state and logic between close relatives.
+
+An **interface** answers "what can this thing *do*?": it's a capability contract (**CAN-DO**) that unrelated classes can all promise to satisfy, with no shared lineage at all.
+
+### A simple way to picture it
+
+Think of `Mammal` as an abstract class. A `Dog` is a mammal. A `Whale` is a mammal. They share real biology (warm blood, a heartbeat), so `Mammal` can hold that shared state and logic. You can never have a plain, generic "Mammal" walking around; it has to be some specific species.
+
+Now think of `Swimmer` as an interface, more like a certification than a bloodline. A `Human` can swim, a `Whale` can swim, and a `Submarine` can swim. They share zero biology or lineage, but they all satisfy one contract: they all implement `swim()`.
+
+<InterfaceVsAbstractFigure />
+
+That's the real split: an abstract class is about identity and shared code; an interface is about a promise, with nothing shared underneath it.
 
 ---
 
-### The Technical Breakdown
+### Side by side
 
 | Feature | Abstract Class | Interface |
 |---|---|---|
-| **Primary Intent** | Code reuse, shared state, and strict identity hierarchy (**IS-A**). | Behavioral contract and loose coupling (**CAN-DO**). |
-| **State & Fields** | Can have instance variables (mutable state) with any access modifier. | Strictly stateless. Fields are implicitly `public static final` (constants). |
-| **Constructors** | ✅ **Yes.** Used to initialize base state when a subclass is instantiated. | ❌ **No.** Has no instance state to initialize; cannot have constructors. |
-| **Inheritance** | Single inheritance only (`extends` one class). | Multiple inheritance of type (`implements` multiple interfaces). |
-| **Method Modifiers** | Methods can be `public`, `protected`, or `private` (concrete). Abstract methods cannot be `private`. | Methods are `public` by default. Can also be `private` (Java 9+ for helper logic). Cannot be `protected`. |
-| **Bytecode Dispatch** | Invoked via `invokevirtual` (standard vtable offset). | Invoked via `invokeinterface` (dynamic itable lookup, JIT-optimized). |
+| **What it's for** | Code reuse, shared state, strict "IS-A" hierarchy | A behavior contract, loosely coupling unrelated classes |
+| **State / fields** | Can have real instance variables with any access level | No real state - fields are just `public static final` constants |
+| **Constructors** | ✅ Yes - used to set up shared state before a subclass runs | ❌ No - there's no instance state to set up |
+| **Inheritance** | A class can only `extends` one abstract class | A class can `implements` many interfaces at once |
+| **Method access** | Methods can be `public`, `protected`, or `private`. Abstract methods can't be `private` | Methods are `public` by default (can be `private` since Java 9 for internal helpers). Never `protected` |
+| **Dispatch** | Called via `invokevirtual` (a direct vtable slot) | Called via `invokeinterface` (a dynamic lookup, JIT-optimized) |
 
 ---
 
-### The Classic Interview Trap: Why does an Abstract Class have a Constructor?
+### Why does an abstract class even have a constructor?
 
-A favorite interviewer trap is: *"If you can never call `new AbstractClass()`, why are constructors allowed (and often required) in abstract classes?"*
+A common trap question: *"If you can never write `new AbstractClass()`, why does it have - or sometimes require - a constructor?"*
 
-* **The Answer:** An abstract class defines the foundation for its subclasses. It often declares `private` or `protected` instance variables that need initialization. 
-* When a child class is instantiated via `new Child()`, the child constructor executes `super(...)` as its very first action. This calls the abstract parent's constructor, ensuring that the parent's fields are safely and correctly initialized and that any base invariants are verified before child-specific logic runs.
-
----
-
-### The ELI5 Analogy
-
-* **Abstract Class (DNA & Lineage):** Think of an abstract class as a `Mammal`. A `Dog` is a Mammal; a `Whale` is a Mammal. Because they share this strict biological lineage, `Mammal` provides shared internal state (warm blood, heart rate) and concrete shared behaviors (breathing). You cannot manifest a generic, standalone "Mammal" in the wild; it must be a concrete species.
-* **Interface (A License or Certification):** Think of an interface as a `Swimmer` certificate. A `Human` can swim, a `Whale` can swim, and an autonomous `Submarine` can swim. They share zero lineage or internal biology, but they all satisfy a contract promising they implement a `swim()` method.
+Because its subclasses still need its fields initialized. An abstract class often holds `private` or `protected` state that has to be set up correctly before anything else runs. When you call `new Child()`, the child's constructor calls `super(...)` as its very first line - that runs the parent's constructor, which sets up the parent's fields and checks any base rules, before the child adds anything of its own.
 
 ---
 
-### System Design: When to Choose Which
+### Choosing between them
 
-#### 1. Choose an Abstract Class when:
-* You want to share state (instance fields) and base initialization logic across closely related classes.
-* You need non-public members (e.g., `protected` helper methods for subclasses).
-* You want to provide a template method pattern where base algorithms call abstract extension steps.
+**Reach for an abstract class when:**
+* You want to share state and setup logic across closely related classes.
+* You need non-public helper methods for subclasses to use internally.
+* You're writing a template method - a base algorithm that calls out to steps the subclass fills in.
 
-#### 2. Choose an Interface when:
-* You want to define a behavioral contract across completely unrelated classes (e.g., `Comparable`, `Serializable`, `AutoCloseable`).
-* You need multiple inheritance of type (a class fulfilling multiple independent roles).
-* You are designing public APIs to decouple callers from concrete implementations (enabling easy mocking and unit testing).
+**Reach for an interface when:**
+* You're defining a contract across classes that have nothing else in common (`Comparable`, `Serializable`, `AutoCloseable`).
+* A class needs to satisfy more than one independent role at once.
+* You're designing a public API and want callers decoupled from the concrete implementation - easier to mock, easier to test.
 
 ---
 

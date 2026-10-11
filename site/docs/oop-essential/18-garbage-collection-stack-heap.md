@@ -7,69 +7,48 @@ sidebar_position: 18
 sidebar_class_name: sidebar-hard
 ---
 
+import { GenerationalHeapFigure } from '@site/src/components/Figures/GarbageCollection';
+
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
 > **Interview Question:** "Walk me through how Garbage Collection works in Java. What are GC Roots, how does the Generational Hypothesis divide heap memory, and how do Stack and Heap differ?"
 
-### The Quick Answer
+Every thread gets its own **stack**: a small, private workspace for whatever method it's currently running: local variables, method parameters, and pointers to objects. When a method returns, its slice of the stack just pops off. No cleanup needed, no garbage collector involved: it's automatic and instant.
 
-"The **Stack** is thread-private, short-lived memory that manages primitive variables and object reference pointers during method execution; it cleans up automatically when stack frames pop. The **Heap** is global, shared memory where all instantiated objects reside. Java’s **Garbage Collector (GC)** runs in the background, performing reachability analysis starting from **GC Roots** to reclaim unreachable heap objects, organized around the **Weak Generational Hypothesis**."
+The **heap** is different: one shared space, used by every thread, holding every object you create with `new`. Nothing on the heap cleans itself up automatically, so Java runs a background process, the **Garbage Collector (GC)**, that figures out which objects are still in use and frees the rest.
 
----
-
-### Stack vs. Heap Memory
+### Stack vs. Heap
 
 | Feature | The Stack | The Heap |
 |---|---|---|
-| **What It Stores** | Primitive variables, method call frames, reference pointers. | Actual object instances (anything created via `new`). |
-| **Scope & Concurrency** | **Thread-private.** Each thread has its own isolated stack. | **Globally shared.** All threads read and write to the same heap. |
-| **Memory Reclamation** | **Automatic & Instantaneous.** Pops with the stack frame ($O(1)$). | **Non-deterministic.** Reclaimed by GC background passes. |
-| **Failure Mode** | `StackOverflowError` (deep recursion). | `OutOfMemoryError` (heap exhaustion). |
+| **What It Stores** | Primitives, method call frames, pointers to objects. | The actual objects (anything made with `new`). |
+| **Scope & Concurrency** | Private to each thread. | Shared by every thread. |
+| **Memory Reclamation** | Automatic, instant: pops when the frame pops. | Non-deterministic: reclaimed later by the GC. |
+| **Failure Mode** | `StackOverflowError` (recursion too deep). | `OutOfMemoryError` (heap full). |
 
----
+### How the GC decides what's garbage: GC Roots
 
-### How the JVM Decides What to Collect: GC Roots
+Java doesn't just count references (that approach breaks the moment two objects point at each other in a cycle). Instead it asks: **can this object still be reached from somewhere that's definitely alive?**
 
-The JVM does not use naive reference counting (which fails on circular references). It uses **Reachability Analysis**:
-1. It identifies **GC Roots**, unquestionably alive root references:
-   * Local variables and method parameters on active thread call stacks.
-   * Active, running Java threads.
-   * Static fields belonging to loaded classes.
-   * JNI (Java Native Interface) C/C++ global and local pointers.
-2. The GC traces all pointer graphs outwards from these roots. Any object in the heap that cannot be reached from any GC root is considered **garbage**.
+Those "definitely alive" starting points are called **GC Roots**: things like local variables on a running thread's stack, active threads themselves, static fields, and a few native-code pointers. The GC walks outward from every root, following references. Anything it never reaches is garbage: nobody can get to it anymore, so it's safe to free.
 
----
+### Why the heap is split into generations
 
-### The Generational Memory Architecture
+Most objects die young: a loop variable, a temporary string, a short-lived request object. Production garbage collectors (G1, ZGC, Parallel) lean into this pattern, called the **Weak Generational Hypothesis**, by splitting the heap into generations instead of scanning the entire thing every time:
 
-Modern production garbage collectors (G1, ZGC, Parallel) organize the heap around the **Weak Generational Hypothesis**: *"The vast majority of objects die shortly after creation."*
+<GenerationalHeapFigure />
 
-```
-┌─────────────────────────────────────── Heap ───────────────────────────────────────┐
-│              Young Generation              │            Old / Tenured             │
-│  ┌──────────────────┬───────────┬──────────┐  │  ┌────────────────────────────────────┐  │
-│  │   Eden Space     │ S0 (From) │ S1 (To)  │  │  │   Long-Lived Objects               │  │
-│  │ (New Allocations)│           │          │  │  │   (Promoted after surviving)       │  │
-│  └──────────────────┴───────────┴──────────┘  │  └────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────────────────────┘
-```
+- **Young Generation:** New objects land in **Eden**. When Eden fills up, a quick **Minor GC** runs. Whatever survives moves into one of the two **Survivor spaces** (S0 and S1, alternating each cycle), and each survivor gets an age counter bumped up.
+- **Old Generation:** Once an object survives enough Minor GC cycles (15, by default in HotSpot), it gets promoted here - it's clearly a long-lived object, not worth re-checking every cycle. Cleaning the Old Generation is a **Major GC**, and it's slower: it often needs a **Stop-The-World pause**, where every application thread briefly freezes.
 
-1. **Young Generation (Minor GC):**
-   * **Eden Space:** All newly created objects start here. When Eden fills, a fast **Minor GC** triggers.
-   * **Survivor Spaces (S0 & S1):** Objects surviving Eden are copied to one of the survivor spaces, and an **age counter** is incremented. Surviving objects alternate between S0 and S1 during each Minor GC.
-2. **Old / Tenured Generation (Major / Full GC):**
-   * When an object survives a designated number of GC cycles (the **tenuring threshold**, default `15` in HotSpot), it is promoted to the Old Generation.
-   * Sweeping Old Gen triggers a **Major GC**, which often incurs longer **Stop-The-World (STW)** pauses where application threads are briefly paused.
+This split matters because Minor GCs - the common case - only need to scan the small Young Generation, not the whole heap. That keeps garbage collection cheap most of the time.
 
----
+### Does everything really go on the heap?
 
-### Crucial Nuance: Escape Analysis and Scalar Replacement
+Not always. The JIT compiler can perform **Escape Analysis**: if it can prove an object never leaves the method it was created in - never gets returned, stored somewhere external, or handed to another thread - it doesn't need heap allocation at all. It can:
 
-* **Question:** *"Are all Java objects strictly allocated on the Heap?"*
-* **Answer:** Textbook answer is yes, but the real-world JIT answer is **no**.
-* Through **Escape Analysis**, the JIT compiler analyzes the scope of an object. If the object never "escapes" the method where it is created (it is not returned, stored in an external field, or passed to other threads), the JVM may bypass the heap entirely:
-  * **Stack Allocation:** Allocates the object directly on the stack frame so it is destroyed instantly on method return without GC overhead.
-  * **Scalar Replacement:** Disassembles the object into individual primitive registers/variables.
+- **Allocate it on the stack instead**, so it disappears the instant the method returns, with zero GC involvement.
+- **Scalar-replace it** - break the object apart into its individual fields as plain local variables, skipping allocation entirely.
 
 ---
 

@@ -7,39 +7,36 @@ sidebar_position: 13
 sidebar_class_name: sidebar-medium
 ---
 
+import { DefensiveCopyFigure } from '@site/src/components/Figures/ImmutableClass';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Walk me through how you design a strictly immutable class in Java. Why is String immutable, how do you handle defensive copying properly, and how do Java 14+ Records fit in?"
 
-### The Quick Answer
+An immutable object is one that can't change after it's created. Once you build it, its state is frozen for its entire lifetime - no setter, no sneaky backdoor, can touch it.
 
-"An immutable class is one whose internal state cannot be modified after instantiation. In Java, you achieve this by marking the class `final`, all fields `private final`, providing no mutating methods, and performing **defensive copies** on all mutable references. `String` is immutable for four primary reasons: memory optimization (the String Pool), security, multithreaded safety, and hashcode caching."
+### The quick answer
 
----
+In Java, you build an immutable class by marking the class `final`, making every field `private final`, giving it no methods that mutate state, and making **defensive copies** of any mutable object it takes in or hands out. `String` itself is immutable for four reasons: it enables the String Pool (memory reuse), it's safer, it's thread-safe without any locking, and it lets the hash code be cached.
 
-### The 5 Rules for Handcrafting an Immutable Class
+### The 5 rules for building an immutable class by hand
 
-1. **Mark the class `final`:** Prevents subclasses from overriding methods or exposing mutable state.
-2. **Make all fields `private`:** Enforces encapsulation by hiding state from direct external access.
-3. **Make all fields `final`:** Guarantees single assignment and triggers the Java Memory Model's "freeze action" for safe publication across threads without synchronization.
-4. **Provide no setter methods:** Never expose methods that mutate internal state.
-5. **Enforce Defensive Copying (The Interview Trap):**
-   * **In the constructor:** Always clone incoming mutable objects (like `ArrayList`, `Date`, or custom objects) **before** storing them. *(Senior Tip: Copy before parameter validation to prevent Time-of-Check to Time-of-Use [TOCTOU] attacks).*
-   * **In getters:** Never return a direct reference to a mutable internal field. Return an unmodifiable view (e.g., `Collections.unmodifiableList()`) or `List.copyOf()` (Java 10+).
+1. **Mark the class `final`.** Stops a subclass from overriding a method and sneaking in mutable behavior.
+2. **Make every field `private`.** Nothing outside the class can reach in and touch the data directly.
+3. **Make every field `final`.** Guarantees it's assigned exactly once, and lets the Java Memory Model safely publish the object across threads without needing synchronization.
+4. **Write no setters.** If there's no method that can change state, state can't change.
+5. **Defensively copy anything mutable - this is the one people forget:**
+   * **In the constructor:** clone any mutable object passed in (a `List`, a `Date`, a custom object) *before* storing it. Copy it before you even validate it, so nobody can sneak in a change between your check and your copy (a TOCTOU attack).
+   * **In getters:** never hand back a direct reference to a mutable internal field. Return an unmodifiable view (`Collections.unmodifiableList()`) or a real copy (`List.copyOf()`, Java 10+).
 
----
+<DefensiveCopyFigure />
 
-### Modern Java: What About Records (Java 14+)?
+### What about Records (Java 14+)?
 
-Interviewers will ask: *"Why manually write immutable classes when modern Java has `record`?"*
+A `record` gives you most of this for free: an implicitly `final` class, `private final` fields, and a generated constructor, getters, `equals()`, `hashCode()`, and `toString()`.
 
-A `record` (introduced in Java 14/16) automatically provides:
-* An implicitly `final` class.
-* `private final` fields.
-* Canonical constructor, getters, `equals()`, `hashCode()`, and `toString()`.
+**The catch:** records don't defensively copy mutable fields automatically. Declare `record Portfolio(String name, List<String> stocks) {}`, and a caller can hand you an `ArrayList`, keep a reference to it, and mutate it from outside - your "immutable" record just changed underneath you. Fix it with a compact constructor:
 
-**The Record Trap:** Records **do not** automatically defensively copy mutable fields!
-If you declare `record Portfolio(String name, List<String> stocks) {}`, client code can pass an `ArrayList` and mutate it externally. You must define a **compact constructor** to enforce defensive copying:
 ```java
 public record Portfolio(String name, List<String> stocks) {
     public Portfolio {
@@ -48,21 +45,16 @@ public record Portfolio(String name, List<String> stocks) {
 }
 ```
 
----
+### Why is `String` immutable?
 
-### Why is `String` Immutable in Java?
+1. **The String Pool.** Java reuses identical string literals to save memory. If strings could change, mutating one reference would corrupt every other variable silently pointing at that same literal.
+2. **Security.** Strings often carry sensitive values - database credentials, file paths, URLs. If they were mutable, something could change a file path in the gap between a security check and the file actually being opened.
+3. **Thread safety.** An object that can't change can be shared across threads freely, with no locks needed.
+4. **Hash code caching.** `String` computes its hash code once, on the first `hashCode()` call, and reuses it forever - safe only because the characters can never change. That's what makes `HashMap` and `HashSet` lookups on strings so fast.
 
-1. **The String Pool (Heap Optimization):** Reuses identical string literals. If strings were mutable, changing a string through one reference would silently corrupt all other references pointing to that literal.
-2. **Security:** Strings hold sensitive arguments (database credentials, socket URLs, file paths). If mutable, a background thread could alter a file path between authentication check and file opening (race condition).
-3. **Thread Safety:** Immutable objects can be shared freely across concurrent threads without locks or synchronization.
-4. **HashCode Caching:** `String` caches its hash code during the first `hashCode()` call. Because its characters can never change, the hash is computed once and reused for instant $O(1)$ lookups in `HashMap` and `HashSet`.
+### One nuance: the reflection backdoor
 
----
-
-### Crucial Nuance: The Reflection Backdoor
-
-Can an immutable string ever be changed? **Yes, via reflection.**
-Using `Field.setAccessible(true)` on `java.lang.reflect.Field`, code with sufficient JVM security permissions can access the internal `byte[] value` of a `String` and alter it directly in heap memory. Immutability in Java is a language and type safety contract, not hardware-level memory protection.
+Can an immutable string ever actually change? Yes - through reflection. With `Field.setAccessible(true)` and enough JVM permissions, code can reach into `String`'s internal `byte[]` and edit it directly in heap memory. Immutability in Java is a contract enforced by the language and the type system - not a hardware-level guarantee.
 
 ---
 

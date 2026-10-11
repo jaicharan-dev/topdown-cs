@@ -7,78 +7,57 @@ sidebar_position: 21
 sidebar_class_name: sidebar-medium
 ---
 
+import { ThrowableTreeFigure } from '@site/src/components/Figures/ExceptionHierarchy';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "How do you distinguish between checked and unchecked exceptions? Why have modern languages largely abandoned checked exceptions, how does try-with-resources improve resource safety, and what is the Spring transaction rollback trap?"
 
-### The Quick Answer
+Think of it as two different kinds of risk. A **checked exception** is a risk you should have seen coming - the file might not exist, the network might drop - so the compiler won't even let you compile the code until you deal with it, either by catching it or by declaring `throws`. An **unchecked exception** is a bug - a null you forgot to check, an index you got wrong. Nothing forces you to plan for it ahead of time, because the real fix is to not write the bug in the first place.
 
-"**Checked exceptions** are subclasses of `Exception` (excluding `RuntimeException`) that the Java compiler forces you to handle at compile-time via `try-catch` or declare in the method signature via `throws`. They represent recoverable external failure scenarios (e.g., missing files, network drops). **Unchecked exceptions** are subclasses of `RuntimeException` that represent logic errors or unrecoverable bugs (e.g., `NullPointerException`, `IndexOutOfBoundsException`); the compiler does not mandate handling them."
+Here's the road trip version: a snow forecast is a checked exception. The highway patrol makes you carry chains before you drive the pass - you might not need them, but the risk was known in advance, so you're required to prepare. Running a red light is an unchecked exception. Nobody makes you carry a "ran a red light" contingency kit, because the expectation is simply: don't do that. It's a failure of your own logic, not an external risk.
 
----
-
-### Core Comparison
+### Comparing the two
 
 | Feature | Checked Exceptions | Unchecked Exceptions |
 |---|---|---|
-| **Checked When?** | **Compile-Time** (Compiler verifies handling). | **Run-Time** (Encountered during execution). |
+| **Checked When?** | At compile time - the compiler verifies you handled it. | At run time - you find out when it happens. |
 | **Class Hierarchy** | Extends `java.lang.Exception` (not `RuntimeException`). | Extends `java.lang.RuntimeException`. |
-| **Handling Rule** | **Mandatory:** Must catch or declare via `throws`. | **Optional:** Compiler does not enforce handling. |
-| **Typical Cause** | External environment conditions outside app control. | Flawed programming logic or invalid caller inputs. |
+| **Handling Rule** | Mandatory - catch it or declare `throws`. | Optional - the compiler won't stop you either way. |
+| **Typical Cause** | Something external went wrong. | A bug in your own code or bad input from a caller. |
 | **Examples** | `IOException`, `SQLException`, `FileNotFoundException`. | `NullPointerException`, `IllegalArgumentException`. |
 
----
+### What about `Error`?
 
-### The ELI5 Analogy: The Road Trip
+Java's exception tree starts at `Throwable`, which splits into two branches. `Exception` is for things your code might reasonably recover from. `Error` is different - it means something has gone catastrophically wrong at the JVM level (`OutOfMemoryError`, `StackOverflowError`), and you should never try to catch or recover from it. If you're seeing an `Error`, the platform itself is in trouble, not just your code.
 
-* **Checked Exception (The Snow Forecast):** You are driving to a mountain pass in winter. Weather forecasts predict snow. The highway patrol (the compiler) mandates you carry snow chains (`try-catch`) in your trunk before entering the pass. You might not hit snow, but you are required to anticipate the external risk.
-* **Unchecked Exception (Running a Red Light):** You get distracted and run a red light. The law did not force you to carry a contingency device for running red lights, because the expectation is simply that your driving logic should not fail. It is a bug in your execution.
+<ThrowableTreeFigure />
 
----
+### Why most modern languages dropped checked exceptions
 
-### The Interview Trap: What About `Error`?
+Java is pretty much alone among modern languages in having checked exceptions - Kotlin, C#, Python, Go, and Rust all skip them. The problem is leakage: if some low-level repository throws `SQLException`, every layer above it - every service, every controller - now has to either declare `throws SQLException` too (exposing a database detail nobody above should care about) or wrap it. In practice, most production Java codebases end up converting checked exceptions into unchecked ones on purpose:
 
-The root of Java's exception model is `java.lang.Throwable`, which splits into two main branches:
-1. **`Exception`:** Conditions that a reasonable application might want to catch and recover from.
-2. **`Error`:** Catastrophic, JVM-level conditions that the application **should never attempt to catch or recover from** (e.g., `OutOfMemoryError`, `StackOverflowError`). If an `Error` occurs, the JVM infrastructure has failed or memory is exhausted.
+```java
+try {
+    database.connect();
+} catch (SQLException e) {
+    throw new DatabaseAccessException("Failed to connect", e); // Wrapped as unchecked
+}
+```
 
----
+### Closing resources safely: `try-with-resources`
 
-### The Senior Perspective: Why Modern Languages Omitted Checked Exceptions
+Older code closed resources in a `finally` block. That's fragile - if the `try` block throws, and then the `finally` block *also* throws while closing, the second exception replaces the first, and you lose the real cause of the failure.
 
-Java is virtually the only modern language with checked exceptions. Modern languages (Kotlin, C#, Python, Go, Rust) intentionally eliminated them:
-* **Encapsulation Leakage:** If a low-level repository throws `SQLException`, every intermediate service and API controller layer must either declare `throws SQLException` (leaking implementation details) or clutter the codebase with boilerplate translation code.
-* **The Industry Consensus:** In modern production Java, teams commonly convert checked exceptions into unchecked domain exceptions:
-  ```java
-  try {
-      database.connect();
-  } catch (SQLException e) {
-      throw new DatabaseAccessException("Failed to connect", e); // Wrapped as unchecked
-  }
-  ```
+`try-with-resources` (Java 7+) fixes this for anything that implements `AutoCloseable`. It closes resources automatically, in reverse order of declaration, and if both the body and the close both fail, it keeps the original exception and attaches the close failure as a suppressed exception (`e.getSuppressed()`) instead of throwing the original away.
 
----
+### A trap worth knowing: Spring and checked exceptions
 
-### Resource Safety: `try-with-resources` (Java 7+)
+Spring's `@Transactional` only rolls back the database transaction on unchecked exceptions by default. Throw a checked exception - like `IOException` - out of a `@Transactional` method, and Spring commits the transaction anyway, as if nothing went wrong. If you want checked exceptions to trigger a rollback too, you have to say so explicitly:
 
-Historically, developers closed resources in `finally` blocks. This was hazardous because if both the `try` block and the `finally` block threw exceptions, the `finally` exception completely **swallowed and masked the root cause**.
-
-Modern Java mandates **`try-with-resources`** for anything implementing `java.lang.AutoCloseable`:
-* Automatically closes resources in reverse order of declaration.
-* If both the try block and close operation fail, the root exception is preserved, and the closing error is attached as a **suppressed exception** (`e.getSuppressed()`).
-
----
-
-### Crucial Nuance: The Spring Boot Transaction Trap
-
-In modern backend development, distinguishing between checked and unchecked exceptions is critical for database transactions:
-
-* By default, Spring's `@Transactional` **only rolls back on unchecked exceptions** (`RuntimeException` and `Error`).
-* If a method throws a **Checked Exception** (like `IOException`), Spring commits the database transaction by default!
-* **The Fix:** If you want transactions to roll back on checked exceptions, you must explicitly specify:
-  ```java
-  @Transactional(rollbackFor = Exception.class)
-  ```
+```java
+@Transactional(rollbackFor = Exception.class)
+```
 
 ---
 

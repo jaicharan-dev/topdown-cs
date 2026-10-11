@@ -7,52 +7,41 @@ sidebar_position: 14
 sidebar_class_name: sidebar-hard
 ---
 
+import { PassByValueFigure } from '@site/src/components/Figures/PassByValue';
+
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
 > **Interview Question:** "Explain the difference between pass-by-value and pass-by-reference. If passing an object into a Java method allows me to modify its fields, doesn't that mean Java is pass-by-reference? How does this differ from C++?"
 
-### The Quick Answer
+Picture handing someone a sticky note with your house's address written on it. They can drive to your house and rearrange your furniture: that address really does lead to your real house. But if they scribble a *different* address on their own copy of the sticky note, your original note, still in your pocket, is untouched. You're still pointing at your house.
 
-"Java is **strictly pass-by-value** at all times. There is no pass-by-reference in Java. When you pass a primitive, you pass a copy of the primitive's bit value. When you pass an object, you pass a **copy of the reference pointer** (memory address) by value. Because both pointers reference the same object on the heap, you can mutate the object's internal state, but you **cannot reassign the caller's variable** to point to a new object."
+That's the whole trick behind Java's object passing.
 
----
+### The quick answer
 
-### The Stack vs. Heap Memory Breakdown
+Java is **strictly pass-by-value**, always: there's no pass-by-reference anywhere in the language. Pass a primitive, and you pass a copy of its raw value. Pass an object, and you pass a copy of the *reference* (the address) by value. Since both copies point at the same object on the heap, you can change that object's fields through either copy. What you can't do is make the caller's variable point somewhere else: reassigning your local copy of the address never touches the original.
 
-To prove this to an interviewer, walk them through the memory layout:
+### Walking through memory
 
-```
-[ CALLER STACK FRAME ]                 [ HEAP ]
-   myDog ───> [ 0x1A2B ] ─────────┐
-                                  ▼
-[ CALLEE STACK FRAME ]     ┌──────────────┐
-   param ───> [ 0x1A2B ] ──>│ Dog: "Spot"  │
-                           └──────────────┘
-```
+<PassByValueFigure />
 
-1. **Step 1:** In `main()`, `myDog` sits on the stack holding reference address `0x1A2B`, which points to a `Dog` on the heap.
-2. **Step 2:** When calling `modify(myDog)`, Java pushes a new stack frame for `modify()` and **copies the address value** (`0x1A2B`) into `param`.
-3. **Step 3 (Mutating Fields):** Calling `param.name = "Max"` follows the pointer `0x1A2B` to the heap and changes the name. Because both stack frames point to `0x1A2B`, the caller sees the change.
-4. **Step 4 (Reassigning the Reference):** Calling `param = new Dog("Buster")` allocates a new object at `0x9999` and updates `param` on the callee stack. **The caller stack frame still holds `0x1A2B`**. When the method returns and its stack frame pops, `myDog` in `main()` still points to `0x1A2B` ("Max").
+1. In `main()`, `myDog` sits on the stack holding the address `0x1A2B`, which points to a `Dog` on the heap.
+2. Calling `modify(myDog)` pushes a new stack frame, and Java copies the address value `0x1A2B` into `param`. Two separate variables now hold the same address.
+3. **Mutating fields:** `param.name = "Max"` follows the address to the heap and changes the name there. Both `myDog` and `param` point at `0x1A2B`, so the caller sees the change too.
+4. **Reassigning the reference:** `param = new Dog("Buster")` creates a brand-new object at a new address and points `param` at it. This only updates `param`'s own copy: `myDog` back in the caller's frame still holds `0x1A2B`, unaffected. When `modify()` returns, that new object is simply forgotten.
 
----
+### Compare with real pass-by-reference (C++)
 
-### Contrast with True Pass-by-Reference (C++)
+* **Java:** `param = new Dog()` inside the method has zero effect on the caller's variable.
+* **C++ with `Dog&`:** the parameter becomes an *alias* for the caller's actual variable, not a copy of its address. `d = Dog("Buster")` inside the method overwrites the caller's variable directly.
 
-Candidates often fail to grasp this because they haven't seen true pass-by-reference:
-* **In Java (Pass-by-Value):** Reassigning `param = new Dog()` has zero effect on the caller's variable.
-* **In C++ (True Pass-by-Reference):** Using `void modify(Dog& d)` creates an alias for the caller's variable. Executing `d = Dog("Buster")` **actually overwrites the caller's variable in the caller frame**.
-
----
-
-### The Immutability Illusion (`String` & Wrappers)
-
-Interviewers frequently ask: *"If objects pass copies of their references, why does passing a `String` or `Integer` into a method feel like passing a primitive?"*
+### Why does passing a `String` feel like passing a primitive?
 
 ```java
 void modify(String s) { s = s + " World"; }
 ```
-* **Why it doesn't change:** `String` and boxed wrappers (like `Integer`) are **immutable**. The `+` operator or reassignment does not mutate the existing string in the heap; it creates a brand new `String` object and updates the local copy of the reference pointer. The caller's reference remains pointed to the original string.
+
+This doesn't change the caller's string, and the reason is immutability, not some special passing rule. `String` (and boxed types like `Integer`) never change in place. `s + " World"` builds a brand-new `String` object and points the *local copy* of `s` at it - exactly like reassigning `param` to a new `Dog` above. The caller's original reference never moves.
 
 ---
 

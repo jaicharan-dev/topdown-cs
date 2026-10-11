@@ -7,48 +7,40 @@ sidebar_position: 17
 sidebar_class_name: sidebar-easy
 ---
 
+import { CollisionFigure } from '@site/src/components/Figures/HashCollision';
+
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What causes hash collisions, and how do separate chaining and open addressing resolve them? What are primary clustering and the tombstone problem in open addressing?"
 
-### The Quick Answer
+A hash collision is when two different keys hash to the same array index. This isn't a bug - it's guaranteed to happen eventually. You have an unlimited number of possible keys but only a fixed number of slots in the array, so sooner or later two keys have to share a slot. That's just the pigeonhole principle: put more pigeons than holes, and some hole gets two.
 
-"A hash collision occurs when two distinct keys produce the exact same array index. By the **Pigeonhole Principle**, mapping an infinite universe of potential inputs into a finite number of array slots makes collisions mathematically inevitable. Data structures resolve them using either **Separate Chaining** (storing colliding items in linked lists or trees per bucket) or **Open Addressing** (probing for the next open slot in the array)."
+The only question is what you do when it happens. There are two main answers: **separate chaining** (let a bucket hold more than one item, usually as a small list) and **open addressing** (if your slot is taken, go find another empty one in the array).
 
----
+<CollisionFigure />
 
-### Collision Resolution Strategies: Chaining vs. Open Addressing
+### Chaining vs. open addressing
 
 | Dimension | Separate Chaining | Open Addressing |
 |---|---|---|
-| **Storage Model** | Elements stored outside the array in linked nodes or trees. | All elements stored directly inside the main array. |
-| **Max Load Factor** | Can exceed $1.0$ (buckets hold multiple elements). | Must remain strictly below $1.0$ (typically resizes at $0.5$–$0.7$). |
-| **Cache Locality** | Poor (following pointer references causes CPU cache misses). | Excellent (sequential array access maximizes CPU cache hits). |
-| **Language Usage** | **Java `HashMap`**, **C++ `std::unordered_map`**. | **Python `dict`**, **Ruby `Hash`**. |
+| **Storage Model** | Colliding items live outside the array, linked together. | Everything lives directly inside the array - no separate nodes. |
+| **Max Load Factor** | Can go above 1.0 - a bucket can hold many items. | Must stay below 1.0 (usually resizes around 0.5–0.7 full). |
+| **Cache Locality** | Weaker - following links jumps around in memory. | Strong - scanning nearby array slots is cache-friendly. |
+| **Who Uses It** | Java `HashMap`, C++ `std::unordered_map`. | Python `dict`, Ruby `Hash`. |
 
----
+### How open addressing finds the next slot
 
-### Open Addressing Probing Techniques & Pitfalls
+When your target slot is taken, you need a rule for where to look next. There are three common ones:
 
-When using open addressing, finding an alternate slot when index $h(k)$ is occupied relies on a probing sequence $h(k, i)$:
+1. **Linear probing** - just check the next slot, then the next, then the next (`+1, +2, +3...`). Simple, but occupied slots tend to clump into long runs (**primary clustering**), and any key landing in that run has to walk past the whole thing.
+2. **Quadratic probing** - jump by increasing squared steps (`+1, +4, +9...`) instead of by one. This avoids primary clustering, but keys that start at the same slot still follow the exact same path after that (**secondary clustering**).
+3. **Double hashing** - use a second, independent hash function to decide the step size. Because the step size itself varies by key, this spreads things out the most evenly, with almost no clustering.
 
-1. **Linear Probing ($h(k) + i$):**
-   * Checks sequential slots ($+1, +2, +3 \dots$).
-   * **The Flaw (Primary Clustering):** Occupied slots clump together into long contiguous blocks. Any key hashing into a cluster must traverse to the end of the cluster, severely degrading performance.
-2. **Quadratic Probing ($h(k) + c_1 i + c_2 i^2$):**
-   * Probes at quadratic intervals ($+1, +4, +9 \dots$).
-   * Solves primary clustering, but keys that hash to the exact same initial index follow the identical probe path (**Secondary Clustering**).
-3. **Double Hashing ($h_1(k) + i \cdot h_2(k)$):**
-   * Uses a second independent hash function $h_2(k)$ as the step size. Produces the most uniform distribution with virtually zero clustering.
+### Why you can't just delete by writing null
 
----
+In open addressing, deleting a key isn't as simple as clearing its slot. Say key A sits at slot 4, and key B collided with it and got probed into slot 5. Now delete A and set slot 4 back to empty. Later, you search for B: you hash to slot 4, find it empty, and conclude B was never inserted - even though it's sitting right there in slot 5. The search stopped too early.
 
-### The Interview Trap: The Tombstone Deletion Problem
-
-In open addressing, you **cannot simply write `null` to delete a key**.
-
-* **Why?** Consider key $B$ that collided with key $A$ and was placed into slot 5 via probing. If key $A$ at slot 4 is later deleted and set to `null`, a subsequent search for key $B$ will hash to slot 4, encounter `null`, conclude that key $B$ never existed, and abort early!
-* **The Fix (Tombstones):** Deleted slots are marked with a special sentinel value: **`DELETED`** (or tombstone). During searches, the algorithm continues probing past `DELETED` markers, but during insertions, it can overwrite `DELETED` slots with new data.
+The fix is a **tombstone**: instead of marking the slot truly empty, mark it `DELETED`. A search keeps probing past a `DELETED` marker (it might find what it's looking for further along), while a new insertion is free to overwrite a `DELETED` slot with fresh data.
 
 ---
 

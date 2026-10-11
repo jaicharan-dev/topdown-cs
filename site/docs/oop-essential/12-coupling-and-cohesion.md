@@ -7,56 +7,52 @@ sidebar_position: 12
 sidebar_class_name: sidebar-easy
 ---
 
+import { SpectrumsFigure, TrainWreckFigure } from '@site/src/components/Figures/CouplingCohesion';
+
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "How do you define coupling and cohesion? What are their highest and lowest forms, why is 'high cohesion, low coupling' the golden standard, and what is the Law of Demeter?"
 
-### The Quick Answer
+Think of a restaurant kitchen. A dedicated fry cook, grill master, and cashier each do one job well - that's **high cohesion**: everything inside a role is focused and related. The cashier hands the kitchen a printed ticket instead of grabbing the grill master's arm to flip a patty - that's **low (loose) coupling**: the two sides only interact through a simple, stable interface.
 
-"**Cohesion** measures how focused and closely related the responsibilities are within a single class or module (the inside view). **Coupling** measures how strictly independent modules rely on each other (the outside view). The universal software engineering ideal is **High Cohesion and Low (Loose) Coupling**, ensuring changes are localized and do not cause ripple effects across the system."
+### The quick answer
 
----
+**Cohesion** is about the inside of a class: how focused and related its responsibilities are. **Coupling** is about the outside: how much one module depends on another's internals. The goal everyone aims for is **high cohesion, low coupling** - classes that each do one clear thing, and talk to each other through narrow, stable contracts. That way a change in one place doesn't ripple everywhere.
 
-### The Spectrum: From Best to Worst
+### The spectrum of cohesion - best to worst
 
-Interviewers at top tech firms often ask candidates to rank the degrees of cohesion and coupling:
+1. **Functional (best):** everything in the class works toward one clear task - e.g., a `CryptoKeyGenerator` that only generates keys.
+2. **Sequential / communicational:** steps operate on the same data, each one's output feeding the next.
+3. **Temporal:** things are grouped only because they happen to run at the same time - e.g., an `AppInitializer` that sets up logging, the database, and the cache, just because they all happen at startup.
+4. **Coincidental (worst):** no real relationship at all - a "junk drawer" class like `CommonUtils` holding string formatting, email validation, and tax math, with nothing connecting them except that nobody knew where else to put them.
 
-#### Degrees of Cohesion (Goal: Maximize)
-1. **Functional Cohesion (Highest / Best):** All elements in the class work toward a single, well-defined task (e.g., `CryptoKeyGenerator`).
-2. **Sequential / Communicational Cohesion:** Elements operate on the same input data or output from one step feeds directly into the next.
-3. **Temporal Cohesion:** Elements are grouped merely because they execute at the same time (e.g., an `AppInitializer` initializing logs, database, and cache).
-4. **Coincidental Cohesion (Lowest / Worst):** Elements have no meaningful relationship; the class is a generic "junk drawer" (e.g., `CommonUtils` containing string formatting, email validation, and tax math).
+<SpectrumsFigure />
 
-#### Degrees of Coupling (Goal: Minimize)
-1. **Data / Message Coupling (Lowest / Best):** Modules interact strictly through simple parameters or clean interface contracts.
-2. **Control Coupling:** One module passes flags (e.g., `boolean isSpecialCase`) to explicitly control the internal logic flow of another.
-3. **Common Coupling:** Modules share and mutate the same shared global state or singleton cache.
-4. **Content Coupling (Highest / Worst):** One module directly modifies or accesses the internal variables of another module, violating encapsulation entirely.
+### The spectrum of coupling - best to worst
 
----
+1. **Data / message (best):** modules talk only through simple parameters or a clean interface.
+2. **Control:** one module passes a flag (`isSpecialCase`) that tells another module how to behave internally - which means the caller has to know about the callee's internal logic.
+3. **Common:** modules share and mutate the same global state or singleton - change it in one place, and who knows what else breaks.
+4. **Content (worst):** one module reaches in and directly pokes another module's internal variables, ignoring encapsulation entirely.
 
-### The Practical Code Smell: The Law of Demeter
+### The practical smell: the Law of Demeter
 
-The **Law of Demeter (LoD)**, or the *Principle of Least Knowledge*, is the primary guideline for preventing tight coupling:
+The Law of Demeter - also called the Principle of Least Knowledge - is the simplest rule for avoiding tight coupling: *talk only to your immediate neighbors, not to their neighbors' neighbors.*
 
-> *"Each unit should have only limited knowledge about other units: only units 'closely' related to the current unit."*
+The classic violation is the "train wreck":
 
-#### The "Train Wreck" Anti-Pattern:
 ```java
-// Severe Tight Coupling (Violates Law of Demeter):
+// Train wreck - reaches four levels deep into another object's structure
 String zip = order.getCustomer().getProfile().getAddress().getZipCode();
 ```
-* **Why it's bad:** If the `Address` structure changes, this code breaks. The caller knows intimate navigation paths four levels deep into another domain model.
-* **The Fix:** Tell, Don't Ask. Delegate the query: `order.getDeliveryZipCode();`.
 
----
+This is fragile because the caller now knows the entire internal shape of `Customer`, `Profile`, and `Address`. If any one of those changes, this line breaks. The fix is "tell, don't ask" - let the object answer the real question directly:
 
-### The Restaurant Analogy
+```java
+String zip = order.getDeliveryZipCode();
+```
 
-* **High Cohesion:** The kitchen has a dedicated Fry Cook, Grill Master, and Cashier. The Fry Cook focuses solely on frying food. If the fry recipe changes, only the Fry Cook cares.
-* **Low Cohesion:** A single employee takes orders, runs to flip burgers, fixes the plumbing, and writes marketing flyers.
-* **Loose Coupling:** The Cashier sends a printed ticket (standard interface) to the kitchen. The Cashier does not need to know what brand of spatula the Grill Master uses.
-* **Tight Coupling:** The Cashier must physically hold the Grill Master's arm to flip a patty. Any change in the grill setup grinds the cash register to a halt.
+<TrainWreckFigure />
 
 ---
 

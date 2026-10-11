@@ -7,70 +7,82 @@ sidebar_position: 11
 sidebar_class_name: sidebar-medium
 ---
 
+import { SolidOverviewFigure } from '@site/src/components/Figures/SolidPrinciples';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Can you walk me through the SOLID principles with practical examples? How is LSP formally violated in the classic Rectangle vs. Square problem, and how do you distinguish DIP from DI and IoC?"
 
-### The Quick Summary
+SOLID is five separate rules that all point at the same goal: code that's easy to change later without breaking something else. Each letter is its own idea - here's each one in plain terms, with a quick analogy and the code smell that tells you it's being broken.
 
-"SOLID is an acronym for five foundational design principles that guide maintainable, loosely coupled, and testable object-oriented software:
-* **S (SRP):** A class should have one reason to change.
-* **O (OCP):** Open for extension, closed for modification.
-* **L (LSP):** Subtypes must be substitutable for their base types.
-* **I (ISP):** Prefer small, role-specific interfaces over fat ones.
-* **D (DIP):** Depend on abstractions, not concrete implementations."
+<SolidOverviewFigure />
+
+### S - Single Responsibility: one class, one job
+
+**The idea:** a class should have one reason to change.
+
+**The smell:** a "Swiss army knife" class. If your `Invoice` class calculates totals, formats PDFs, *and* saves rows to SQL, it has three unrelated reasons to change - and a change to one risks breaking the others.
+
+**The fix:** split it along those reasons: `InvoiceCalculator`, `InvoicePdfGenerator`, `InvoiceRepository`. Each one only cares about its own job.
+
+*Analogy:* a chef who only cooks shouldn't also be the one doing the restaurant's accounting.
+
+### O - Open/Closed: add new behavior without editing old code
+
+**The idea:** you should be able to extend what a system does without touching its existing, tested code.
+
+**The smell:** every time a new case shows up, someone adds another `if/else` branch inside an existing class.
+
+**The fix:** program to an interface. Adding a `CryptoPayment` option means writing a new class that implements `PaymentGateway` - not editing `PaymentProcessor`'s internals.
+
+*Analogy:* a power strip lets you plug in a new device without rewiring the wall.
+
+### L - Liskov Substitution: a subclass must not break the parent's promises
+
+**The idea:** if `S` is a subtype of `T`, you should be able to swap any `T` for an `S` and nothing should break.
+
+**The classic trap - Rectangle and Square:** mathematically, a square is a rectangle. But model it as `Square extends Rectangle` and you're in trouble. A `Rectangle` lets you set width and height independently - set width to 5, height to 10, and the area is 50. A `Square` can't allow that: setting width to 5 must force height to 5 too, or it stops being a square. So code that expects a `Rectangle`, sets width to 5 and height to 10, and expects an area of 50 - silently gets 100 instead when handed a `Square`. The subtype broke the parent's contract.
+
+**The rule, more precisely:**
+1. A subtype can't demand stricter inputs than its parent (no strengthening preconditions).
+2. A subtype can't promise less than its parent did (no weakening postconditions).
+3. Whatever invariants the parent guaranteed must still hold.
+
+*Analogy:* if a toy claims to work with any AA battery, swapping in a brand-name AA battery shouldn't suddenly make it stop working.
+
+### I - Interface Segregation: don't force classes to implement methods they don't need
+
+**The idea:** clients shouldn't be forced to depend on methods they never use.
+
+**The smell:** a fat interface like `Worker { work(); eat(); sleep(); }`. Now write a `RobotWorker` - it has to implement `eat()` and `sleep()` with empty, meaningless bodies just to compile.
+
+**The fix:** split it into smaller, role-specific interfaces - `Workable`, `Feedable` - and only implement the ones that actually apply.
+
+*Analogy:* a job application shouldn't ask every candidate to also prove they can swim, just because some roles need it.
+
+### D - Dependency Inversion: depend on the interface, not the implementation
+
+**The idea:** high-level business logic shouldn't depend directly on low-level details like database drivers or network clients. Both should depend on an abstraction (an interface) sitting between them.
+
+*Analogy:* a wall socket is the abstraction. Your lamp doesn't care whether the power behind it comes from solar, a generator, or the grid - it just plugs into the same socket.
 
 ---
 
-### The Five Principles Explained
+### The interview trap: DIP vs. DI vs. IoC
 
-#### 1. S: Single Responsibility Principle (SRP)
-* **Definition:** A class should have one, and only one, reason to change (meaning it is responsible to only one actor or business concern).
-* **Code Smell:** A "Swiss Army Knife" class. If an `Invoice` class calculates totals, formats PDFs, and saves records to SQL, it has three separate reasons to change.
-* **The Fix:** Split it into three cohesive classes: `InvoiceCalculator`, `InvoicePdfGenerator`, and `InvoiceRepository`.
+These three get mixed up constantly. They're related, but they're not the same thing:
 
-#### 2. O: Open/Closed Principle (OCP)
-* **Definition:** Software entities should be open for extension, but closed for modification. You should be able to introduce new behavior without altering existing, tested source code.
-* **The Fix:** Program to interfaces. When adding a new `CryptoPayment` gateway, create a class implementing `PaymentGateway` rather than adding another `if/else` block inside your existing `PaymentProcessor`.
-
-#### 3. L: Liskov Substitution Principle (LSP)
-* **Definition:** If $S$ is a subtype of $T$, objects of type $T$ may be replaced with objects of type $S$ without altering any desirable properties of the program (correctness, task performed, etc.).
-* **The Classic Rectangle vs. Square Violation:**
-  * In geometry, a square is a rectangle. But in OOP, modeling `class Square extends Rectangle` violates LSP!
-  * A `Rectangle` allows independent resizing: setting width to 5 and height to 10 yields an area of 50.
-  * In `Square`, setting width to 5 must force height to 5 to remain square. If client code expecting a `Rectangle` sets width to 5 and height to 10, the area unexpectedly becomes 100 instead of 50.
-* **LSP Subtyping Rules:**
-  1. **Preconditions cannot be strengthened** in a subtype (cannot demand stricter inputs).
-  2. **Postconditions cannot be weakened** (cannot guarantee less output).
-  3. **Invariants must be preserved.**
-
-#### 4. I: Interface Segregation Principle (ISP)
-* **Definition:** Clients should not be forced to depend on methods they do not use.
-* **Code Smell:** A "fat interface" like `Worker { void work(); void eat(); void sleep(); }`. When implementing a `RobotWorker`, the developer is forced to supply empty dummy implementations for `eat()` and `sleep()`.
-* **The Fix:** Break the fat interface into smaller role interfaces: `Workable`, `Feedable`.
-
-#### 5. D: Dependency Inversion Principle (DIP)
-* **Definition:** High-level modules (business rules) should not depend on low-level modules (database drivers, network clients). Both should depend on abstractions (interfaces). Furthermore, abstractions should not depend on details; details should depend on abstractions.
-
----
-
-### The Interview Distinction: DIP vs. DI vs. IoC
-
-Candidates frequently conflate these three related terms:
-
-| Term | What It Is | Role |
+| Term | What it is | What it does |
 |---|---|---|
-| **DIP (Principle)** | High-level architectural rule | States *what* the system structure should be: depend on interfaces, not concrete classes. |
-| **DI (Pattern)** | Design pattern / technique | A mechanism to satisfy DIP: passing dependencies into an object (via constructor) rather than letting the object instantiate them. |
-| **IoC (Paradigm)** | Architectural framework concept | Inverts the control flow of a program. In a standard program, your code calls the library. In IoC (like Spring or React), the framework calls your code. |
+| **DIP** (principle) | A design rule | Says depend on interfaces, not concrete classes |
+| **DI** (pattern) | A technique | Satisfies DIP by handing a class its dependencies (usually via constructor) instead of letting it create them itself |
+| **IoC** (paradigm) | A way of structuring control flow | Flips who calls whom - normally your code calls a library; under IoC (like Spring or React), the framework calls your code |
 
----
+### Don't over-apply this on day one
 
-### Crucial Nuance: Pragmatic SOLID vs. "Ravioli Code"
+Using all five principles aggressively before you understand the problem produces what people call "ravioli code" - hundreds of tiny, over-abstracted files where you can no longer see the actual business logic for all the wrapping.
 
-Dogmatically applying all five principles on Day 1 is an antipattern. Over-abstracting every variable into single-method interfaces before requirements stabilize produces "Ravioli Code", hundreds of tiny, fragmented files that obscure business logic.
-
-Senior engineers follow Sandi Metz’s rule: *"Duplication is far cheaper than the wrong abstraction."* Build the straightforward implementation first, and introduce abstractions reactively when you encounter the "pain of change."
+Sandi Metz's rule is the right instinct: *duplication is cheaper than the wrong abstraction.* Write the straightforward version first. Introduce an abstraction when the pain of not having one actually shows up - not before.
 
 ---
 
