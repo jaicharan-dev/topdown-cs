@@ -154,33 +154,78 @@
 
 /* Sidebar link items - more padding, breathing room */
 .theme-doc-sidebar-menu .menu__link {
-  font-size: 0.84rem;
+  font-size: 0.805rem;
   font-weight: 450;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: block;
-  line-height: 1.5;
-  padding: 8px 12px;
-  border-radius: 6px;
-  transition: color 0.15s ease-out, background-color 0.15s ease-out;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  line-height: 1.38;
+  padding: 7px 11px;
+  border-radius: 8px;
+  position: relative;
+  transition: color 0.16s ease-out, background-color 0.16s ease-out;
+}
+
+/* Accent marker that slides in on the active item */
+.theme-doc-sidebar-menu .menu__link::after {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 50%;
+  width: 2px;
+  height: 0;
+  border-radius: 2px;
+  background: var(--ifm-color-primary);
+  transform: translateY(-50%);
+  transition: height 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.theme-doc-sidebar-menu .menu__link--active::after {
+  height: 58%;
 }
 
 [data-theme='dark'] .theme-doc-sidebar-menu .menu__link:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.045);
 }
 
 [data-theme='dark'] .theme-doc-sidebar-menu .menu__link--active {
-  background: rgba(96, 165, 250, 0.08);
+  background: rgba(96, 165, 250, 0.1);
   color: var(--ifm-color-primary-lighter);
+  font-weight: 550;
 }
 
 /* Sidebar category headings */
-[data-theme='dark'] .menu__list-item-collapsible .menu__link {
-  font-weight: 600;
+.menu__list-item-collapsible .menu__link,
+.theme-doc-sidebar-menu .menu__link--sublist {
+  font-weight: 700;
   text-transform: uppercase;
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
+  font-size: 0.655rem;
+  letter-spacing: 0.15em;
+  gap: 8px;
+  padding: 7px 11px;
+  color: var(--ifm-font-color-secondary);
+}
+
+/* The same gradient dash the homepage section labels use */
+.menu__list-item-collapsible .menu__link::before,
+.theme-doc-sidebar-menu .menu__link--sublist::before {
+  content: '';
+  flex: none;
+  width: 12px;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #60a5fa, #a855f7);
+  opacity: 0.8;
+}
+
+.menu__list-item-collapsible .menu__link::after,
+.theme-doc-sidebar-menu .menu__link--sublist::after {
+  display: none;
+}
+
+[data-theme='dark'] .menu__list-item-collapsible .menu__link {
   color: var(--ifm-font-color-secondary);
 }
 
@@ -197,17 +242,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 22px;
+  width: 21px;
+  height: 21px;
   line-height: 1;
   text-align: center;
-  border-radius: 6px;
-  margin-right: 10px;
-  font-weight: 600;
-  font-size: 0.7rem;
-  float: left;
-  flex-shrink: 0;
+  border-radius: 7px;
+  font-weight: 700;
+  font-size: 0.66rem;
+  flex: none;
+  align-self: flex-start;
+  margin-top: 1px;
   border: 1px solid;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.theme-doc-sidebar-menu .menu__link:hover::before {
+  transform: scale(1.07);
 }
 
 /* Easy - rich subdued dark green */
@@ -436,6 +486,26 @@ html body .theme-doc-sidebar-container {
 
 .my-custom-mini-sidebar .menu__link:hover {
   background: transparent !important;
+}
+
+.my-custom-mini-sidebar .menu__link::after {
+  display: none !important;
+}
+
+/* Mini rail: category rows stay collapsed - no wrapped label text, no
+   gradient dash (the generic mini ::before rule would inflate it to a square) */
+.my-custom-mini-sidebar .menu__list-item-collapsible .menu__link,
+.my-custom-mini-sidebar .menu__link--sublist {
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  font-size: 0 !important;
+  letter-spacing: 0 !important;
+}
+
+.my-custom-mini-sidebar .menu__list-item-collapsible .menu__link::before,
+.my-custom-mini-sidebar .menu__link--sublist::before {
+  display: none !important;
+  content: none !important;
 }
 
 .my-custom-mini-sidebar .menu__link::before {
@@ -707,20 +777,21 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
 
 /* ----- Two-Column Split Layout ----- */
 .csf-main-container {
-  max-width: 1580px;
+  width: 100%;
+  max-width: 1260px;
   margin: 0 auto;
-  padding: 0 2rem 4rem 4.5rem;
+  padding: 0 2.25rem 4rem;
   display: grid;
-  grid-template-columns: minmax(280px, 0.75fr) minmax(580px, 1.6fr);
-  gap: 5rem;
+  grid-template-columns: minmax(250px, 0.85fr) minmax(520px, 1.9fr);
+  gap: 3rem;
   align-items: start;
 }
 
 @media screen and (max-width: 1280px) {
   .csf-main-container {
-    grid-template-columns: minmax(260px, 0.7fr) minmax(520px, 1.55fr);
-    gap: 3.5rem;
-    padding: 0 1.5rem 3.5rem 3.5rem;
+    grid-template-columns: minmax(225px, 0.8fr) minmax(460px, 1.9fr);
+    gap: 2rem;
+    padding: 0 1.25rem 3.5rem;
   }
 }
 
@@ -737,27 +808,27 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
   flex-direction: column;
   min-width: 0;
   max-width: 340px;
-  margin-left: 5.5rem;
+  width: 100%;
+  justify-self: end;
 }
 
 @media screen and (max-width: 1280px) {
   .csf-column-left {
-    margin-left: 4rem;
-    max-width: 320px;
+    max-width: 300px;
   }
 }
 
 @media screen and (max-width: 1080px) {
   .csf-column-left {
     max-width: 100%;
-    margin-left: 0;
-    margin-right: 0;
+    justify-self: stretch;
   }
 }
 
 .csf-column-right {
   position: relative;
   width: 100%;
+  max-width: 840px;
   min-width: 0;
   padding-left: 1rem;
 }
@@ -775,19 +846,32 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
 }
 
 .csf-section-label {
-  font-size: 0.64rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.16em;
-  margin: 0 0 0.35rem 0.2rem;
+  margin: 0 0 0.5rem 0.1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-[data-theme='dark'] .csf-section-label { color: #52525b; }
-html:not([data-theme='dark']) .csf-section-label { color: #a1a1aa; }
+.csf-section-label::before {
+  content: '';
+  width: 14px;
+  height: 2px;
+  border-radius: 2px;
+  flex: none;
+  background: linear-gradient(90deg, #60a5fa, #a855f7);
+  opacity: 1;
+}
+
+[data-theme='dark'] .csf-section-label { color: #b4b4bd; }
+html:not([data-theme='dark']) .csf-section-label { color: #52525b; }
 
 .csf-section-divider {
   height: 1px;
-  margin: 0.65rem 0;
+  margin: 0.85rem 0 0.75rem;
   border: none;
 }
 
@@ -802,33 +886,53 @@ html:not([data-theme='dark']) .csf-section-divider {
 .csf-compact-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 7px;
+  gap: 8px;
 }
 
 @media screen and (max-width: 480px) {
   .csf-compact-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .csf-compact-card { min-height: 64px; padding: 10px 8px; gap: 4px; }
-  .csf-compact-card__icon { width: 22px; height: 22px; }
-  .csf-compact-card__title { font-size: 0.76rem; }
+  .csf-compact-card { min-height: 66px; padding: 11px 8px; gap: 6px; }
+  .csf-compact-card__icon { width: 30px; height: 30px; }
+  .csf-compact-card__icon svg { width: 17px; height: 17px; }
+  .csf-compact-card__title { font-size: 0.74rem; }
 }
 
-/* ----- Compact Cards with Neon Glow ----- */
+/* ----- Compact Cards - built to match the DSA roadmap nodes ----- */
 .csf-compact-card {
   --card-accent: #60a5fa;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
-  padding: 8px 6px;
-  min-height: 56px;
-  border-radius: 8px;
+  gap: 5px;
+  padding: 10px 10px 9px;
+  min-height: 62px;
+  border-radius: 14px;
   text-decoration: none !important;
   color: inherit !important;
-  transition: transform 0.2s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  transition: transform 0.25s ease, border-color 0.25s ease,
+    box-shadow 0.25s ease, background-color 0.25s ease;
   position: relative;
   overflow: hidden;
   cursor: pointer;
+}
+
+/* The accent tab along the top edge, same as .csf-dsa-node-tab */
+.csf-compact-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 18px;
+  right: 18px;
+  height: 3px;
+  border-radius: 0 0 1.5px 1.5px;
+  background: var(--card-accent);
+  opacity: 0.75;
+  transition: opacity 0.25s ease;
+}
+
+.csf-compact-card:not(.csf-compact-card--soon):hover::before {
+  opacity: 1;
 }
 
 /* ----- Natural Blending DSA Roadmap ----- */
@@ -841,6 +945,28 @@ html:not([data-theme='dark']) .csf-section-divider {
 .csf-dsa-svg-wrapper {
   position: relative;
   width: 100%;
+}
+
+.csf-dsa-svg-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: -6% -4%;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(45% 34% at 50% 6%, rgba(96, 165, 250, 0.07), transparent 72%),
+    radial-gradient(44% 32% at 62% 52%, rgba(245, 158, 11, 0.045), transparent 72%),
+    radial-gradient(42% 32% at 84% 90%, rgba(244, 63, 94, 0.05), transparent 72%);
+  filter: blur(10px);
+}
+
+html:not([data-theme='dark']) .csf-dsa-svg-wrapper::before {
+  opacity: 0.55;
+}
+
+.csf-dsa-svg {
+  position: relative;
+  z-index: 1;
 }
 
 .csf-dsa-svg {
@@ -860,8 +986,8 @@ html:not([data-theme='dark']) .csf-section-divider {
   }
 
   .csf-dsa-svg-wrapper {
-    min-width: 520px;
-    width: 520px;
+    min-width: 640px;
+    width: 640px;
   }
 
   .csf-dsa-svg {
@@ -869,29 +995,56 @@ html:not([data-theme='dark']) .csf-section-divider {
   }
 }
 
-/* Tree Edges */
+/* Connector wires - gradient tinted from source accent to target accent */
 .csf-dsa-edge {
   fill: none;
-  stroke-width: 2.5px;
-  transition: stroke 0.25s ease, stroke-width 0.25s ease, opacity 0.25s ease;
+  stroke-width: 2px;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transition: stroke-width 0.25s ease, opacity 0.25s ease, stroke-opacity 0.25s ease;
 }
 
 [data-theme='dark'] .csf-dsa-edge {
-  stroke: rgba(255, 255, 255, 0.08);
+  stroke-opacity: 0.3;
 }
 
 html:not([data-theme='dark']) .csf-dsa-edge {
-  stroke: rgba(0, 0, 0, 0.1);
+  stroke-opacity: 0.42;
 }
 
 .csf-dsa-edge--highlighted {
-  stroke-width: 3.5px !important;
-  filter: drop-shadow(0 0 7px rgba(56, 189, 248, 0.8));
-  opacity: 1 !important;
+  stroke-width: 3px;
+  stroke-opacity: 1;
+}
+
+[data-theme='dark'] .csf-dsa-edge--highlighted {
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.28));
+}
+
+html:not([data-theme='dark']) .csf-dsa-edge--highlighted {
+  filter: drop-shadow(0 1px 3px rgba(15, 23, 42, 0.2));
 }
 
 .csf-dsa-edge--dimmed {
-  opacity: 0.15;
+  stroke-opacity: 0.08;
+}
+
+/* Travelling pulse that rides the hovered wire */
+.csf-dsa-edge__pulse {
+  stroke-width: 3.5px;
+  stroke-opacity: 0.95;
+  stroke-dasharray: 16 260;
+  animation: csf-dsa-wire-flow 1.45s linear infinite;
+  filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.35));
+}
+
+@keyframes csf-dsa-wire-flow {
+  from { stroke-dashoffset: 276; }
+  to { stroke-dashoffset: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .csf-dsa-edge__pulse { animation: none; opacity: 0; }
 }
 
 /* Tree Topic Nodes - Matching TopDown CS Homepage Cards */
@@ -911,16 +1064,36 @@ html:not([data-theme='dark']) .csf-dsa-edge {
 }
 
 [data-theme='dark'] .csf-dsa-node-card {
-  fill: rgba(255, 255, 255, 0.035);
-  stroke: rgba(255, 255, 255, 0.09);
+  fill: color-mix(in srgb, var(--node-accent, #60a5fa) 7%, rgba(255, 255, 255, 0.035));
+  stroke: color-mix(in srgb, var(--node-accent, #60a5fa) 18%, rgba(255, 255, 255, 0.09));
   stroke-width: 1px;
+}
+
+/* Accent tab at the top edge - the incoming wire lands straight into it */
+.csf-dsa-node-tab {
+  pointer-events: none;
+  opacity: 0.75;
+  transition: opacity 0.25s ease;
+}
+
+.csf-dsa-node-group:hover .csf-dsa-node-tab,
+.csf-dsa-node-group.is-hovered .csf-dsa-node-tab {
+  opacity: 1;
+}
+
+.csf-dsa-node-group.is-dimmed {
+  opacity: 0.32;
+}
+
+.csf-dsa-node-group {
+  transition: opacity 0.25s ease;
 }
 
 html:not([data-theme='dark']) .csf-dsa-node-card {
   fill: var(--csf-surface, #ffffff);
-  stroke: var(--csf-border-subtle, rgba(0, 0, 0, 0.08));
+  stroke: color-mix(in srgb, var(--node-accent, #0284c7) 28%, rgba(0, 0, 0, 0.07));
   stroke-width: 1px;
-  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.04));
+  filter: drop-shadow(0 2px 6px rgba(15, 23, 42, 0.06));
 }
 
 .csf-dsa-node-label {
@@ -978,103 +1151,408 @@ html:not([data-theme='dark']) .csf-dsa-node-group.is-connected .csf-dsa-node-car
   stroke-width: 1.25px;
 }
 
-/* Tooltip */
-.csf-dsa-tooltip {
-  position: absolute;
-  transform: translate(-50%, -135%);
-  padding: 7px 14px;
-  border-radius: 9px;
+/* Roadmap Node Problem Count */
+.csf-dsa-node-count {
+  font-size: 11px;
+  font-weight: 600;
+  font-family: var(--ifm-font-family-base);
+  letter-spacing: -0.01em;
   pointer-events: none;
-  z-index: 100;
+  user-select: none;
+  opacity: 0.88;
+}
+
+[data-theme='dark'] .csf-dsa-node-count {
+  fill: var(--node-accent, #60a5fa);
+}
+
+html:not([data-theme='dark']) .csf-dsa-node-count {
+  fill: var(--node-accent, #0284c7);
+}
+
+/* ===================================================================
+   INLINE SVG FIGURES - plain line-art explainer diagrams inside docs
+   (.csf-fig; see src/components/Figures/*)
+
+   One ink colour, no fills, no accents. Stroke weight and opacity are the
+   only hierarchy. Keep it that way.
+   =================================================================== */
+.csf-fig {
+  margin: 1.9rem 0;
+  --fig-ink: #1c1c1e;
+  --fig-bg: var(--ifm-background-color, #ffffff);
+}
+
+[data-theme='dark'] .csf-fig {
+  --fig-ink: #e6e6e9;
+}
+
+.csf-fig__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 660px;
+  margin: 0 auto;
+  overflow: visible;
+}
+
+.csf-fig__caption {
+  max-width: 660px;
+  margin: 0.85rem auto 0;
+  font-size: 0.78rem;
+  line-height: 1.5;
+  text-align: center;
+  color: var(--ifm-color-emphasis-600);
+}
+
+/* Strokes */
+.csf-fig .fig-line {
+  fill: none;
+  stroke: var(--fig-ink);
+  stroke-width: 1.4;
+  stroke-opacity: 0.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.csf-fig .fig-head {
+  fill: none;
+  stroke: var(--fig-ink);
+  stroke-width: 1.4;
+  stroke-opacity: 0.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.csf-fig .fig-dashed {
+  stroke-dasharray: 5 5;
+  stroke-opacity: 0.55;
+}
+
+.csf-fig .fig-x,
+.csf-fig .fig-check {
+  stroke-width: 1.8;
+}
+
+/* A UML generalisation triangle is hollow, so it has to mask the line behind it */
+.csf-fig .fig-tri {
+  fill: var(--fig-bg);
+}
+
+/* Text */
+.csf-fig text {
+  font-family: var(--ifm-font-family-base);
+  font-size: 13px;
+  fill: var(--fig-ink);
+  fill-opacity: 0.85;
+}
+
+.csf-fig .fig-mono {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 12.5px;
+}
+
+.csf-fig .fig-strong {
+  font-weight: 650;
+  font-size: 13.5px;
+  fill-opacity: 1;
+}
+
+.csf-fig .fig-cap {
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  fill-opacity: 0.45;
+}
+
+/* The one tone below full ink: inherited rows, hidden steps, side notes */
+.csf-fig .fig-faint {
+  fill-opacity: 0.42;
+  stroke-opacity: 0.32;
+}
+
+@media screen and (max-width: 640px) {
+  .csf-fig {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Scaling a 640-unit drawing to phone width makes the labels unreadable,
+     so keep a legible floor and let it scroll instead. */
+  .csf-fig__svg,
+  .csf-fig__caption {
+    min-width: 520px;
+  }
+}
+
+/* ===================================================================
+   CONCEPT DIAGRAM - reusable inline diagram primitives for docs
+   (comparison boxes, locked/public field lists, small parent-child trees)
+   =================================================================== */
+.csf-cd-wrapper {
+  margin: 1.5rem 0;
+  padding: 1.25rem;
+  border-radius: 14px;
+  border: 1px solid var(--csf-border-subtle);
+  background: var(--csf-surface-raised);
+}
+
+.csf-cd-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.csf-cd-box {
+  flex: 1 1 220px;
+  border-radius: 12px;
+  border: 1px solid var(--csf-border);
+  background: var(--csf-surface);
+  padding: 0.95rem 1.1rem;
+  --cd-accent: var(--ifm-color-primary);
+}
+
+.csf-cd-box__title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cd-accent);
+  margin-bottom: 0.65rem;
+}
+
+.csf-cd-box__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+/* Arrow connector between boxes in a Row */
+.csf-cd-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 64px;
+  gap: 0.3rem;
+  padding: 0 0.25rem;
+}
+
+.csf-cd-arrow__line {
+  position: relative;
+  width: 100%;
+  height: 2px;
+  background: var(--csf-border);
+}
+
+.csf-cd-arrow__line::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  border-top: 2px solid var(--csf-border);
+  border-right: 2px solid var(--csf-border);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.csf-cd-arrow__label {
+  font-size: 0.65rem;
+  color: var(--ifm-font-color-secondary);
+  text-align: center;
   white-space: nowrap;
+}
+
+@media (max-width: 680px) {
+  .csf-cd-row {
+    flex-direction: column;
+  }
+  .csf-cd-arrow {
+    flex: 0 0 auto;
+    width: 100%;
+    padding: 0.35rem 0;
+  }
+  .csf-cd-arrow__line {
+    width: 2px;
+    height: 20px;
+    margin: 0 auto;
+  }
+  .csf-cd-arrow__line::after {
+    right: 50%;
+    top: auto;
+    bottom: 0;
+    transform: translateX(50%) rotate(135deg);
+  }
+}
+
+/* Field rows - used for locked/public member lists (encapsulation, etc.) */
+.csf-cd-field {
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  min-width: 0;
+}
+
+.csf-cd-field__main {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.csf-cd-field__icon {
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.csf-cd-field__code {
+  font-size: 0.8rem;
+  background: transparent;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  white-space: normal;
+}
+
+.csf-cd-field__hint {
+  margin-top: 0.3rem;
+  margin-left: calc(1em + 0.55rem);
+  font-size: 0.7rem;
+  color: var(--ifm-font-color-secondary);
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.csf-cd-field--locked {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.csf-cd-field--public {
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+}
+
+.csf-cd-field--neutral {
+  background: var(--csf-surface-raised);
+  border: 1px solid var(--csf-border-subtle);
+}
+
+/* Small parent -> children tree (inheritance-style diagrams) */
+.csf-cd-tree {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.csf-cd-tree > .csf-cd-box {
+  flex: none;
+  width: 100%;
+  max-width: 320px;
   text-align: center;
 }
 
-[data-theme='dark'] .csf-dsa-tooltip {
-  background: #18181b;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #fafafa;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+.csf-cd-tree__connector {
+  width: 2px;
+  height: 20px;
+  background: var(--csf-border);
 }
 
-html:not([data-theme='dark']) .csf-dsa-tooltip {
-  background: #ffffff;
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  color: #0f172a;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+.csf-cd-tree__children {
+  display: flex;
+  gap: 1.75rem;
+  width: 100%;
+  justify-content: center;
+  flex-wrap: wrap;
+  border-top: 2px solid var(--csf-border);
+  padding-top: 20px;
+  margin-top: 1px;
 }
 
-.csf-dsa-tooltip__title {
-  font-size: 13px;
-  font-weight: 700;
+.csf-cd-tree__child-wrap {
+  position: relative;
+  flex: 1 1 200px;
+  max-width: 260px;
+  display: flex;
+  justify-content: center;
 }
 
-.csf-dsa-tooltip__subtitle {
-  font-size: 11.5px;
-  opacity: 0.75;
+.csf-cd-tree__child-wrap::before {
+  content: '';
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  width: 2px;
+  height: 20px;
+  background: var(--csf-border);
 }
 
-.csf-dsa-tooltip__status {
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #38bdf8;
-  margin-top: 3px;
+.csf-cd-tree__child-wrap > .csf-cd-box {
+  width: 100%;
 }
 
 .csf-compact-card__glow {
   position: absolute;
-  top: 30%;
+  top: 34%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  width: 44px;
-  height: 44px;
+  transform: translate(-50%, -50%) scale(0.75);
+  width: 46px;
+  height: 46px;
   background: var(--card-accent);
   border-radius: 50%;
   opacity: 0;
-  filter: blur(18px);
-  transition: opacity 0.3s ease;
+  filter: blur(22px);
+  transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
   pointer-events: none;
   z-index: 0;
 }
 
 .csf-compact-card:not(.csf-compact-card--soon):hover .csf-compact-card__glow {
-  opacity: 0.15;
+  opacity: 0;
 }
 
 [data-theme='dark'] .csf-compact-card {
-  background-color: rgba(255, 255, 255, 0.03) !important;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background-color: color-mix(in srgb, var(--card-accent) 7%, rgba(255, 255, 255, 0.035)) !important;
+  border: 1px solid color-mix(in srgb, var(--card-accent) 18%, rgba(255, 255, 255, 0.09));
 }
 
 [data-theme='dark'] .csf-compact-card:not(.csf-compact-card--soon):hover {
   transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--card-accent) 50%, transparent);
+  background-color: color-mix(in srgb, var(--card-accent) 11%, rgba(255, 255, 255, 0.065)) !important;
+  border-color: color-mix(in srgb, var(--card-accent) 85%, transparent);
   box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.3),
-    0 0 0 1px color-mix(in srgb, var(--card-accent) 40%, transparent),
-    0 0 40px -12px var(--card-accent);
+    0 8px 24px rgba(0, 0, 0, 0.45),
+    0 0 16px -4px var(--card-accent);
 }
 
 html:not([data-theme='dark']) .csf-compact-card {
   background-color: var(--csf-surface) !important;
-  border: 1px solid var(--csf-border-subtle);
+  border: 1px solid color-mix(in srgb, var(--card-accent) 28%, rgba(0, 0, 0, 0.07));
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
 }
 
 html:not([data-theme='dark']) .csf-compact-card:not(.csf-compact-card--soon):hover {
   transform: translateY(-3px);
-  border-color: var(--csf-border);
-  box-shadow: 0 6px 20px rgba(50, 40, 30, 0.08);
+  border-color: var(--card-accent);
+  box-shadow:
+    0 8px 20px rgba(50, 40, 30, 0.15),
+    0 0 12px -2px color-mix(in srgb, var(--card-accent) 35%, transparent);
 }
 
 .csf-compact-card--soon {
-  opacity: 0.45;
+  opacity: 0.5;
   cursor: default;
 }
 
 .csf-compact-card--soon .csf-compact-card__icon {
-  filter: grayscale(1) brightness(0.8);
+  filter: grayscale(1) brightness(0.85);
+}
+
+.csf-compact-card--soon::before {
+  background: currentColor;
+  opacity: 0.18;
 }
 
 .csf-compact-card__badge {
@@ -1100,44 +1578,46 @@ html:not([data-theme='dark']) .csf-compact-card__badge {
 }
 
 .csf-compact-card__icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   position: relative;
-  z-index: 1;
-  color: #a1a1aa;
-  transition: color 0.3s ease;
-}
-
-[data-theme='dark'] .csf-compact-card__icon {
-  color: #71717a;
+  color: color-mix(in srgb, var(--card-accent) 70%, transparent);
+  transition: color 0.25s ease;
 }
 
 .csf-compact-card__icon svg {
-  width: 100%;
-  height: 100%;
+  width: 18px;
+  height: 18px;
   display: block;
 }
 
-/* Hover: icon lights up */
 .csf-compact-card:not(.csf-compact-card--soon):hover .csf-compact-card__icon {
   color: var(--card-accent);
 }
 
 .csf-compact-card__title {
-  font-size: 0.73rem;
-  font-weight: 600;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: -0.005em;
   line-height: 1.2;
   position: relative;
-  z-index: 1;
+  z-index: 2;
   text-align: center;
   transition: color 0.2s ease;
 }
 
-[data-theme='dark'] .csf-compact-card__title { color: #d4d4d8 !important; }
-html:not([data-theme='dark']) .csf-compact-card__title { color: #3f3f46 !important; }
+[data-theme='dark'] .csf-compact-card__title { color: #e4e4e7 !important; }
+html:not([data-theme='dark']) .csf-compact-card__title { color: #18181b !important; }
 
-.csf-compact-card:not(.csf-compact-card--soon):hover .csf-compact-card__title {
-  color: var(--card-accent) !important;
+[data-theme='dark'] .csf-compact-card:not(.csf-compact-card--soon):hover .csf-compact-card__title {
+  color: #ffffff !important;
+}
+
+html:not([data-theme='dark']) .csf-compact-card:not(.csf-compact-card--soon):hover .csf-compact-card__title {
+  color: #09090b !important;
 }
 
 /* ===================================================================
@@ -1171,6 +1651,7 @@ html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link:hover {
 }
 
 html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link--active {
+  font-weight: 550;
   background: rgba(37, 77, 119, 0.08);
   color: var(--ifm-color-primary);
 }
@@ -1302,6 +1783,10 @@ html:not([data-theme='dark']) .theme-code-block pre.prism-code {
   .csf-compact-card:hover .csf-compact-card__glow {
     opacity: 0;
   }
+  .csf-compact-card:hover::after {
+    transform: translateX(-130%);
+    opacity: 0;
+  }
   .csf-compact-card:active {
     transform: scale(0.97) !important;
     background-color: var(--docusaurus-highlighted-code-line-bg) !important;
@@ -1374,11 +1859,11 @@ html:not([data-theme='dark']) .theme-code-block pre.prism-code {
 
   /* Grid spacing */
   .csf-compact-grid {
-    gap: 10px;
+    gap: 9px;
   }
-  
+
   .csf-compact-card {
-    padding: 16px 12px;
+    padding: 12px 10px;
   }
 }
 
@@ -1596,10 +2081,10 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
 
   /* 1. Default difficulty variables - Zero glow fallback */
   .theme-doc-toc-desktop {
-    --toc-neon: transparent;
-    --toc-neon-glow: transparent;
-    --toc-neon-shadow: transparent;
-    --toc-neon-subtle: transparent;
+    --toc-neon: var(--ifm-color-primary);
+    --toc-neon-glow: rgba(96, 165, 250, 0.18);
+    --toc-neon-shadow: rgba(96, 165, 250, 0.3);
+    --toc-neon-subtle: rgba(96, 165, 250, 0.45);
   }
 
   /* 2. Difficulty Colors (Applied ONLY when data-difficulty is set) */
@@ -1650,23 +2135,37 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
   }
 
   /* 4. Disable any pseudo-element vertical line */
+  /* Accent rail along the top of the expanded panel */
   .theme-doc-toc-desktop::before {
-    display: none !important;
-    content: none !important;
+    content: '' !important;
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 18px !important;
+    right: 18px !important;
+    height: 2px !important;
+    border-radius: 0 0 2px 2px !important;
+    background: linear-gradient(90deg, transparent, var(--toc-neon), transparent) !important;
+    opacity: 0 !important;
+    transition: opacity 0.28s ease !important;
+    pointer-events: none !important;
+    z-index: 103 !important;
+  }
+
+  .theme-doc-toc-desktop:hover::before {
+    opacity: 1 !important;
   }
 
   /* 5. Before difficulty is known, NEVER show panel or glow on hover (NO WHITE FLASH) */
-  .theme-doc-toc-desktop:not([data-difficulty]):hover {
-    width: 36px !important;
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
+  /* 5. Expanded panel - shared by every page, coloured by difficulty when known */
+  .theme-doc-toc-desktop:hover {
+    width: 266px !important;
   }
 
   /* 6. Hover expanded state - Full rounded rectangle with all 4 corners and ambient neon glow */
-  .theme-doc-toc-desktop[data-difficulty]:hover {
-    width: 260px !important;
-    border-radius: 10px !important; /* All 4 corners rounded */
+  .theme-doc-toc-desktop:hover {
+    width: 266px !important;
+    border-radius: 14px !important;
     background: rgba(20, 20, 24, 0.94) !important;
     backdrop-filter: blur(14px) !important;
     -webkit-backdrop-filter: blur(14px) !important;
@@ -1680,7 +2179,7 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
       0 8px 24px rgba(0, 0, 0, 0.45) !important;
   }
 
-  html:not([data-theme='dark']) .theme-doc-toc-desktop[data-difficulty]:hover {
+  html:not([data-theme='dark']) .theme-doc-toc-desktop:hover {
     background: rgba(248, 245, 238, 0.96) !important;
     border: 1px solid var(--csf-border) !important;
     box-shadow: 
@@ -1691,7 +2190,7 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
 
   /* 7. Inner list */
   .theme-doc-toc-desktop .table-of-contents {
-    width: 260px !important;
+    width: 266px !important;
     flex-shrink: 0 !important; 
     height: auto !important;
     max-height: 100% !important;
@@ -1739,7 +2238,7 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
   .theme-doc-toc-desktop .table-of-contents li::after {
     content: "" !important;
     position: absolute !important;
-    right: 16px !important; /* 16px inward from right edge */
+    right: 17px !important;
     top: 13px !important;
     transform: translateY(-50%) !important;
     height: 2px !important;
@@ -1752,8 +2251,8 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
 
   /* Top-level: 12px x 2px */
   .theme-doc-toc-desktop .table-of-contents > li::after {
-    width: 12px !important;
-    opacity: 0.38 !important;
+    width: 13px !important;
+    opacity: 0.42 !important;
   }
 
   /* Nested: 8px x 2px, slightly dimmer */
@@ -1765,7 +2264,7 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
 
   /* Active indicators */
   .theme-doc-toc-desktop .table-of-contents > li:has(> .table-of-contents__link--active)::after {
-    width: 16px !important;
+    width: 19px !important;
     background-color: var(--toc-neon, var(--ifm-font-color-base)) !important;
     opacity: 1 !important;
     box-shadow: 0 0 6px var(--toc-neon-shadow, transparent) !important;
@@ -1815,16 +2314,16 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
 
   /* Top-level: 13px, padding-right 38px (stops 10px before the 16px-offset hyphen) */
   .theme-doc-toc-desktop .table-of-contents > li > .table-of-contents__link {
-    font-size: 13px !important;
-    padding: 4px 38px 4px 14px !important;
+    font-size: 12.5px !important;
+    padding: 5px 40px 5px 16px !important;
     font-weight: 500 !important;
   }
 
   /* Nested: 12px, padding-right 48px (10px deeper indent) */
   .theme-doc-toc-desktop .table-of-contents > li > ul .table-of-contents__link,
   .theme-doc-toc-desktop .table-of-contents ul ul .table-of-contents__link {
-    font-size: 12px !important;
-    padding: 3px 48px 3px 14px !important;
+    font-size: 11.5px !important;
+    padding: 4px 50px 4px 16px !important;
     opacity: 0.72 !important;
   }
 
@@ -1951,3 +2450,336 @@ li.tabs__item--active {
 }
 
 
+/* ===================================================================
+   LIGHT MODE REFINEMENT
+
+   Two jobs. First a real surface ladder — the page and its cards used to
+   be the same colour, so nothing had edges. Second, the paper is kept
+   only faintly warm: a strong cream cast is tiring to read against for
+   long stretches. Accents are pulled well down toward the ink, because a
+   light hue on a light page reads as washed out.
+
+   Everything here is scoped to light mode; dark mode is untouched.
+   =================================================================== */
+
+html:not([data-theme='dark']) {
+  /* Soft off-white with only a trace of warmth — easier on the eye than
+     a saturated cream, still not the glare of pure white. */
+  --ifm-background-color: #fafaf8;
+  --ifm-background-surface-color: #ffffff;
+  --csf-surface: #ffffff;
+  --csf-surface-raised: #fdfdfc;
+
+  /* Near-neutral ink. The old browns tinted every paragraph. */
+  --ifm-font-color-base: #32323a;
+  --ifm-font-color-secondary: #5a5a66;
+  --ifm-heading-color: #18181b;
+
+  --csf-border: #d8d8d4;
+  --csf-border-subtle: #e6e6e2;
+  --ifm-hr-border-color: #e4e4e0;
+  --ifm-toc-border-color: #e4e4e0;
+  --ifm-table-border-color: #e4e4e0;
+
+  /* Deep enough to hold its own against a light page. */
+  --ifm-color-primary: #1b4f85;
+  --ifm-color-primary-dark: #174472;
+  --ifm-color-primary-darker: #143a61;
+  --ifm-color-primary-darkest: #0e2944;
+  --ifm-color-primary-light: #216098;
+  --ifm-color-primary-lighter: #2a72b0;
+  --ifm-color-primary-lightest: #4590cc;
+
+  --ifm-code-background: #f0f0ee;
+  --ifm-table-stripe-background: rgba(24, 24, 27, 0.025);
+  --docusaurus-highlighted-code-line-bg: rgba(24, 24, 27, 0.055);
+
+  --csf-shadow-sm: 0 1px 2px rgba(24, 24, 27, 0.05);
+  --csf-shadow-md: 0 4px 12px -2px rgba(24, 24, 27, 0.1);
+  --csf-shadow-lg: 0 14px 32px -12px rgba(24, 24, 27, 0.2);
+
+  /* How far an accent gets pulled toward the ink before it is used on a
+     light surface. One knob for the whole theme. */
+  --csf-ink: #1c1c22;
+  --csf-accent-mix: 62%;
+}
+
+/* ---------------------------------------------------------- chrome */
+
+html:not([data-theme='dark']) .navbar {
+  background-color: rgba(250, 250, 248, 0.88);
+  backdrop-filter: saturate(140%) blur(12px);
+  -webkit-backdrop-filter: saturate(140%) blur(12px);
+  border-bottom: 1px solid var(--csf-border-subtle);
+  box-shadow: none;
+}
+
+html:not([data-theme='dark']) .footer {
+  background-color: #f3f3f1;
+  border-top: 1px solid var(--csf-border-subtle);
+}
+
+html:not([data-theme='dark']) .theme-doc-sidebar-container {
+  background: #f5f5f3;
+  border-right: 1px solid var(--csf-border-subtle) !important;
+}
+
+html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link {
+  color: #3c3c45;
+}
+
+html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link:hover {
+  background: rgba(24, 24, 27, 0.05);
+}
+
+html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link--active {
+  background: color-mix(in srgb, var(--ifm-color-primary) 11%, transparent);
+  color: var(--ifm-color-primary);
+}
+
+html:not([data-theme='dark']) .menu__list-item-collapsible .menu__link,
+html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link--sublist {
+  color: #6b6b76;
+}
+
+html:not([data-theme='dark']) .csf-section-label {
+  color: #4a4a55;
+}
+
+html:not([data-theme='dark']) .breadcrumbs__link {
+  color: #55555f;
+}
+
+html:not([data-theme='dark']) ::selection {
+  background: color-mix(in srgb, var(--ifm-color-primary) 20%, transparent);
+}
+
+/* -------------------------------------------- difficulty indicators */
+
+/* These were pale fills on a pale page. Solid chips with white text give
+   the sidebar a scannable left rail instead of a row of pastel squares. */
+html:not([data-theme='dark']) .sidebar-easy > .menu__link::before {
+  background: #1a7a4a;
+  color: #ffffff;
+  border-color: #166b41;
+}
+
+html:not([data-theme='dark']) .sidebar-medium > .menu__link::before {
+  background: #ae6a0c;
+  color: #ffffff;
+  border-color: #985c0a;
+}
+
+html:not([data-theme='dark']) .sidebar-hard > .menu__link::before {
+  background: #b0332e;
+  color: #ffffff;
+  border-color: #9a2c28;
+}
+
+html:not([data-theme='dark']) .badge--success {
+  background: #dff2e6 !important;
+  color: #11603a !important;
+  border-color: #6cbf90 !important;
+}
+
+html:not([data-theme='dark']) .badge--warning {
+  background: #fbefd8 !important;
+  color: #8a530a !important;
+  border-color: #dba843 !important;
+}
+
+html:not([data-theme='dark']) .badge--danger {
+  background: #fbe5e3 !important;
+  color: #8f2823 !important;
+  border-color: #dd8a85 !important;
+}
+
+/* ------------------------------------------------- accents on paper */
+
+/* The card accents are picked for a dark background; on a light page the
+   same hues read as pastel, so they are taken well down toward the ink. */
+html:not([data-theme='dark']) .csf-compact-card::before {
+  background: color-mix(in srgb, var(--card-accent) var(--csf-accent-mix), var(--csf-ink));
+  opacity: 1;
+}
+
+html:not([data-theme='dark']) .csf-compact-card__icon {
+  color: color-mix(in srgb, var(--card-accent) 56%, var(--csf-ink));
+}
+
+html:not([data-theme='dark'])
+  .csf-compact-card:not(.csf-compact-card--soon):hover
+  .csf-compact-card__icon {
+  color: color-mix(in srgb, var(--card-accent) 72%, var(--csf-ink));
+}
+
+html:not([data-theme='dark']) .csf-compact-card {
+  border-color: color-mix(in srgb, var(--card-accent) 22%, rgba(24, 24, 27, 0.1));
+  box-shadow: var(--csf-shadow-sm);
+}
+
+html:not([data-theme='dark'])
+  .csf-compact-card:not(.csf-compact-card--soon):hover {
+  border-color: color-mix(in srgb, var(--card-accent) 60%, var(--csf-ink));
+  box-shadow: var(--csf-shadow-md);
+}
+
+html:not([data-theme='dark']) .csf-dsa-node-tab {
+  fill: color-mix(in srgb, var(--node-accent) var(--csf-accent-mix), var(--csf-ink));
+}
+
+html:not([data-theme='dark']) .csf-dsa-node-card {
+  stroke: color-mix(in srgb, var(--node-accent) 30%, rgba(24, 24, 27, 0.12));
+}
+
+html:not([data-theme='dark']) .csf-dsa-edge {
+  stroke-opacity: 0.62;
+}
+
+html:not([data-theme='dark']) .csf-dsa-node-count {
+  fill: color-mix(in srgb, var(--node-accent) 56%, var(--csf-ink));
+}
+
+html:not([data-theme='dark']) .csf-dsa-svg-wrapper::before {
+  opacity: 0.3;
+}
+
+/* ------------------------------------------------------------ code */
+
+html:not([data-theme='dark']) .theme-code-block pre.prism-code {
+  background-color: #fbfbfa !important;
+  border: 1px solid var(--csf-border-subtle);
+  border-radius: 10px;
+  box-shadow: var(--csf-shadow-sm);
+  color: #2a2a31 !important;
+}
+
+html:not([data-theme='dark']) .theme-code-block {
+  box-shadow: none;
+}
+
+html:not([data-theme='dark']) :not(pre) > code {
+  border: 1px solid rgba(24, 24, 27, 0.09);
+  border-radius: 5px;
+  color: #3a3a44;
+}
+
+/* ------------------------------------------------- syntax on paper */
+
+html:not([data-theme='dark']) .prism-code .token.comment,
+html:not([data-theme='dark']) .prism-code .token.prolog,
+html:not([data-theme='dark']) .prism-code .token.cdata {
+  color: #8b8b96 !important;
+  font-style: italic;
+}
+
+html:not([data-theme='dark']) .prism-code .token.keyword,
+html:not([data-theme='dark']) .prism-code .token.control-flow,
+html:not([data-theme='dark']) .prism-code .token.atrule,
+html:not([data-theme='dark']) .prism-code .token.important {
+  color: #6d3f94 !important;
+}
+
+html:not([data-theme='dark']) .prism-code .token.function,
+html:not([data-theme='dark']) .prism-code .token.class-name,
+html:not([data-theme='dark']) .prism-code .token.method {
+  color: #1f5b91 !important;
+}
+
+html:not([data-theme='dark']) .prism-code .token.string,
+html:not([data-theme='dark']) .prism-code .token.char,
+html:not([data-theme='dark']) .prism-code .token.attr-value,
+html:not([data-theme='dark']) .prism-code .token.builtin {
+  color: #45691a !important;
+}
+
+html:not([data-theme='dark']) .prism-code .token.number,
+html:not([data-theme='dark']) .prism-code .token.boolean,
+html:not([data-theme='dark']) .prism-code .token.constant {
+  color: #9a5113 !important;
+}
+
+html:not([data-theme='dark']) .prism-code .token.tag,
+html:not([data-theme='dark']) .prism-code .token.selector,
+html:not([data-theme='dark']) .prism-code .token.deleted {
+  color: #8d2f25 !important;
+}
+
+html:not([data-theme='dark']) .prism-code .token.operator,
+html:not([data-theme='dark']) .prism-code .token.punctuation,
+html:not([data-theme='dark']) .prism-code .token.entity {
+  color: #5f5f6a !important;
+  background: transparent !important;
+}
+
+html:not([data-theme='dark']) .prism-code .token.property,
+html:not([data-theme='dark']) .prism-code .token.attr-name,
+html:not([data-theme='dark']) .prism-code .token.variable {
+  color: #2f6068 !important;
+}
+
+/* ------------------------------------------------- blocks on paper */
+
+html:not([data-theme='dark']) .markdown blockquote {
+  background: #ffffff;
+  border-left: 3px solid var(--ifm-color-primary);
+  border-top: 1px solid var(--csf-border-subtle);
+  border-right: 1px solid var(--csf-border-subtle);
+  border-bottom: 1px solid var(--csf-border-subtle);
+  border-radius: 0 10px 10px 0;
+  box-shadow: var(--csf-shadow-sm);
+}
+
+html:not([data-theme='dark']) .alert,
+html:not([data-theme='dark']) .theme-admonition {
+  border-radius: 10px;
+  box-shadow: var(--csf-shadow-sm);
+}
+
+html:not([data-theme='dark']) .markdown table {
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: var(--csf-shadow-sm);
+}
+
+html:not([data-theme='dark']) .markdown table thead tr {
+  background: #f2f2f0;
+}
+
+html:not([data-theme='dark']) .markdown table thead th {
+  border-bottom: 1px solid var(--csf-border);
+  color: #26262d;
+}
+
+html:not([data-theme='dark']) .csf-cd-wrapper {
+  background: #ffffff;
+  border-color: var(--csf-border-subtle);
+  box-shadow: var(--csf-shadow-sm);
+}
+
+/* ----------------------------------------------------------- misc */
+
+html:not([data-theme='dark']) .csf-section-divider {
+  background: linear-gradient(90deg, transparent, rgba(24, 24, 27, 0.13) 50%, transparent);
+}
+
+html:not([data-theme='dark']) .pagination-nav__link {
+  background: #ffffff;
+  border-color: var(--csf-border-subtle);
+  box-shadow: var(--csf-shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+html:not([data-theme='dark']) .pagination-nav__link:hover {
+  border-color: color-mix(in srgb, var(--ifm-color-primary) 45%, transparent);
+  box-shadow: var(--csf-shadow-md);
+  transform: translateY(-2px);
+}
+
+html:not([data-theme='dark']) ::-webkit-scrollbar-thumb {
+  background: #c6c6c1;
+}
+
+html:not([data-theme='dark']) ::-webkit-scrollbar-thumb:hover {
+  background: #aeaea8;
+}

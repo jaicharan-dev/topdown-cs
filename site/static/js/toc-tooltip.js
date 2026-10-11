@@ -94,8 +94,8 @@
           tooltip.classList.add('visible');
 
           const rect = link.getBoundingClientRect();
-          // Position 12px left of the floating 260px panel (at right: 20px)
-          tooltip.style.right = '292px';
+          // Position 12px left of the floating 266px panel (at right: 20px)
+          tooltip.style.right = '298px';
 
           let topPos = rect.top + rect.height / 2;
           if (topPos < 24) topPos = 24;
