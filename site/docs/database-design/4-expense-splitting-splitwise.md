@@ -10,134 +10,528 @@ sidebar_class_name: sidebar-medium
 
 ---
 
-### Phase 1: Clarifying the Requirements
+### How to read this page
 
-**Interviewer:** Let's design the database for an expense-sharing app like Splitwise. Users should be able to create groups, add expenses, and settle debts with each other. Where would you start?
+The schema at the bottom of this page is not the answer. The answer is the order the
+decisions were made in, and what each one cost.
 
-**Candidate:** Before writing down any tables, I like to make sure I truly understand how the app should behave. First, if two people just want to split a quick coffee, do they have to create a formal "group", or can they just log the expense directly?
-
-**Interviewer:** To keep our database rules simple, let's assume two friends splitting a coffee is just treated as a "group of two" under the hood. That way, every single expense is always attached to a group.
-
-**Candidate:** That makes it much easier to model! What about split types? Users can split by exact amounts, percentages, or shares. Does the database need to calculate those fractions, or does the frontend app figure that out for us?
-
-**Interviewer:** The app's frontend or API will do the math. By the time the data reaches the database, it should just be final, exact dollar amounts. 
-
-**Candidate:** Got it. Next, can multiple people pay for a single bill together? For example, if a dinner costs \$100, can Alice pay \$60 in cash while Bob puts \$40 on his credit card?
-
-**Interviewer:** Yes, definitely. People frequently co-pay for big expenses, so your design must support multiple payers on a single receipt.
-
-**Candidate:** And when someone pays another person back to settle up, do we treat that repayment as an expense, or as something entirely different?
-
-**Interviewer:** That's a great question. I'd like to hear your thoughts on how we should model that when we get to it. 
-
-**Candidate:** Sounds good. What about simplifying debts? If Alice owes Bob \$10, and Bob owes Charlie \$10, it's annoying for everyone to send money around. Should the system be smart enough to tell Alice to just pay Charlie \$10 directly?
-
-**Interviewer:** Yes, the app should absolutely support debt simplification to minimize the number of payments people have to make.
-
-**Candidate:** Lastly, how big is this app? And are people mostly checking their balances or adding new expenses?
-
-**Interviewer:** We're designing for about 50 million active users. And it's very read-heavy: people open the app to check their balances or look at past bills about ten times more often than they actually log a new expense.
+An interviewer asking you to "design the database for Splitwise" is not checking whether
+you can recite five table names. They are watching whether you start small, whether you
+can defend a column type when pushed, and whether you notice that a new requirement has
+just invalidated something you wrote five minutes ago. So this page moves one decision at
+a time. Every table and almost every column gets a short "why this and not that".
 
 ---
 
-### Phase 2: Starting with a Simple Baseline (V1)
+### Step 1 — Pin down what we are building
 
-**Candidate:** Great! Instead of trying to build the perfect final schema right away, let's start with a simple first version. We'll cover the basics: users, groups, and an expense where one person pays and everyone splits it equally.
+**Interviewer:** Design the database for an expense-sharing app like Splitwise. People
+create groups, add expenses, and settle up with each other. Where do you start?
 
-We'll start with these two tables:
+**Candidate:** Not with tables — with the handful of questions whose answers actually
+change the schema. Let me ask five.
 
-#### 1. `Users`
-- `user_id` (Primary Key, UUID)
-- `name` (VARCHAR)
-- `email` (VARCHAR, Unique)
+First: if two friends split a coffee, is that a group of two, or is there a separate
+"direct expense between two people" concept?
 
-#### 2. `Groups`
-- `group_id` (Primary Key, UUID)
-- `name` (VARCHAR)
-- `created_by` (Foreign Key `Users.user_id`)
+**Interviewer:** Treat it as a group of two. Every expense belongs to a group.
 
-**Interviewer:** How do you connect users to their groups?
+**Candidate:** That's worth a lot. The alternative — expenses that sometimes point at a
+group and sometimes at a pair of users — means a nullable `group_id`, a second pair of
+columns for the direct case, and every query having to handle both shapes forever. One
+uniform path instead.
 
-**Candidate:** Since one user can join many groups (like a House group and a Vacation group), and a group has many members, we need a bridge between them. We'll use a middle table called `Group_Members`:
+Second: who computes the split? If a bill is split 40/35/25 by percentage, does the
+database store the percentages and derive the amounts, or does it store final amounts?
 
-#### 3. `Group_Members`
-- `group_id` (Foreign Key `Groups.group_id`)
-- `user_id` (Foreign Key `Users.user_id`)
-- Composite Primary Key: `(group_id, user_id)`
+**Interviewer:** The client does the math. The database receives exact amounts.
 
-**Interviewer:** Why create a whole separate table for that? Why not just save a list of user IDs directly inside the `Groups` table?
+**Candidate:** Good — that means the database stores *facts*, not *formulas*. If we stored
+percentages, every balance query would have to recompute them, and a rounding rule change
+would silently restate history. Storing resolved amounts means a bill reads the same in
+five years as it did the day it was entered.
 
-**Candidate:** In a relational database, putting a list or array inside a single column is generally a bad idea. If you want to answer a simple question like, "Which groups does Bob belong to?", the database would have to crack open every single group row and search through the lists one by one. With a `Group_Members` table, the database can instantly find all rows belonging to Bob.
+Third: can more than one person pay for the same bill? Alice puts \$60 on her card, Bob
+adds \$40 cash?
 
-**Interviewer:** Makes perfect sense. Now, how would you store an actual expense?
+**Interviewer:** Yes, that happens constantly.
 
-**Candidate:** For our first draft, we can create an `Expenses` table that looks like a basic receipt:
+**Candidate:** I'll note that loudly, because it is the single requirement most likely to
+break a naive schema. I'm going to design the first version *without* it on purpose, so
+you can watch where it breaks.
 
-#### 4. `Expenses` (First Version)
-- `expense_id` (Primary Key, UUID)
-- `group_id` (Foreign Key `Groups.group_id`)
-- `paid_by_user_id` (Foreign Key `Users.user_id`)
-- `total_amount` (DECIMAL)
-- `description` (VARCHAR)
+Fourth: currency. One currency per group, or can a group mix them?
 
-**Interviewer:** How would this version calculate who owes what?
+**Interviewer:** A group has a default currency, but a single expense can be in another
+one — people travel.
 
-**Candidate:** If Alice pays \$100 for a group of 4 people (Alice, Bob, Charlie, David), the app looks at the `Group_Members` table, counts 4 people, divides \$100 by 4 to get \$25 each, and knows that Bob, Charlie, and David each owe Alice \$25.
+**Candidate:** So currency belongs on the expense, not just the group.
 
----
+Fifth: scale and read/write mix?
 
-### Phase 3: Challenging the Design (One Requirement at a Time)
+**Interviewer:** About 50 million active users, and it is read-heavy — people check
+balances roughly ten times for every expense they add.
 
-**Interviewer:** Okay, let's see how your V1 design holds up in the real world. Here is the first problem: What if all 4 roommates are in the group, but only Alice, Bob, and Charlie go out for pizza (\$60)? In your design, David wasn't there, but your formula divides by 4 and charges him \$15 for food he never ate. How do you fix that?
+**Candidate:** Ten-to-one read-heavy tells me where I'm allowed to spend. I can afford
+redundancy that makes reads cheap, as long as writes stay correct.
 
-**Candidate:** Ah, good catch. My first design assumed that everyone in the group is always part of every single bill. To fix this, we need to explicitly track who actually participated in each specific expense. 
-
-I'll add a new table called `Expense_Participants` linking the `expense_id` and the `user_id`. Now, when an expense is created, we only insert rows for the people who were actually there. For the pizza, we only insert Alice, Bob, and Charlie. The app divides \$60 by 3, so each of them owes \$20, and David is left alone.
-
-**Interviewer:** That works well. Now here is the second problem: What if they didn't split it equally? What if Charlie ordered an expensive steak and owes \$30, while Alice and Bob only owe \$15 each?
-
-**Candidate:** Then simply listing the participants isn't enough. We also need to record exactly how much of the bill each person consumed. I'll add an `amount_owed` column to the `Expense_Participants` table so we can store custom amounts.
-
-**Interviewer:** Good. Now here is the third problem: Remember how we said multiple people can pay? What if Alice paid \$60 in cash and Bob paid \$40 on his card for that \$100 dinner? Your `Expenses` table only has one `paid_by_user_id` column!
-
-**Candidate:** Right, a single column can only store one payer. If multiple people can pay, we have to pull the payer information out of the `Expenses` table entirely.
-
-**Interviewer:** So where does the payment information go?
-
-**Candidate:** We can put it right into our participants table! Let's rename it to `Expense_Splits`. Each row will represent one person on that bill and store two different dollar amounts:
-- `amount_paid`: how much physical cash they put down at the restaurant.
-- `amount_owed`: the value of the food or service they actually consumed.
+> **Why this step matters.** Four of those five answers eliminate a design choice before
+> it is made. Candidates who skip straight to `CREATE TABLE` end up relitigating these
+> same questions twenty minutes later, with a schema already on the whiteboard.
 
 ---
 
-### Phase 4: Understanding the Numbers
+### Step 2 — The first table: `users`
 
-**Interviewer:** I like that. Walk me through how the numbers look with that dual-column design for the dinner where Alice paid \$60, Bob paid \$40, and their personal shares were Alice \$20, Bob \$50, Charlie \$30.
+**Candidate:** I'll start with the one entity everything else points at.
 
-**Candidate:** Every participant gets exactly one row in `Expense_Splits`. Let's look at the math for each person:
+**Interviewer:** Fine. What's in it?
 
-- **Alice:** She paid \$60.00, but she only owed \$20.00. 
-  $\rightarrow$ Her net balance is **+\$40.00** (she is owed \$40).
-- **Bob:** He paid \$40.00, but he owed \$50.00. 
-  $\rightarrow$ His net balance is **-\$10.00** (he owes \$10).
-- **Charlie:** He paid \$0.00, but he owed \$30.00. 
-  $\rightarrow$ His net balance is **-\$30.00** (he owes \$30).
+**Candidate:** Let me build it a column at a time rather than hand you a finished block.
 
-Notice how intuitive the math becomes: `Net Balance = amount_paid - amount_owed`. And if you sum up everyone's net balances:
-`(+40.00) + (-10.00) + (-30.00) = 0.00`
-An expense will always balance out to exactly zero!
+#### 2a. The primary key: natural or surrogate?
 
-**Interviewer:** Why put both `amount_paid` and `amount_owed` in the same table? Why not create two separate tables: one table for who paid, and another table for who owes?
+Email is unique and already identifies a person, so it is tempting as the primary key.
+I won't use it, for three reasons:
 
-**Candidate:** Because in real life, the same person is usually doing both! Alice paid \$60, but she also ate \$20 of food. 
+- **Emails change.** If the PK changes, every foreign key referencing it has to change
+  too. You are now relying on `ON UPDATE CASCADE` rewriting rows across half the database
+  because somebody switched jobs.
+- **It is wide.** An email averages ~24 bytes against 8 for a `BIGINT`. That width is
+  copied into every foreign key column and every index that includes it.
+- **It is PII.** A natural key spreads the user's email into `expense_splits`,
+  `group_members`, and every index on them. Deleting a user properly becomes much harder.
 
-If we used two separate tables, calculating someone's balance would mean the database has to stitch (or "join") both tables together every single time. By putting both numbers on the same row, finding someone's net contribution to a bill is as simple as subtracting two columns that are sitting right next to each other. 
+So: a surrogate key, with `email` kept as a separate unique constraint.
 
-> **Note for the Reader:** In accounting and ledger design, this pattern is incredibly common. Having both the credit (cash put in) and the debit (value consumed) on the same split record keeps financial balance verification extremely simple and fast.
+#### 2b. Which surrogate? `BIGINT` vs UUID
+
+This is the question interviewers push on, so it's worth having a real answer.
+
+| | `BIGINT` identity | `UUID` v4 (random) | `UUID` v7 (time-ordered) |
+|---|---|---|---|
+| **Size** | 8 bytes | 16 bytes | 16 bytes |
+| **Insert locality** | Always appends to the right edge of the B-tree | Lands anywhere — causes page splits and random I/O | Appends, like `BIGINT` |
+| **Generated by** | Database | Anyone, before the insert | Anyone, before the insert |
+| **Leaks information** | Yes — row counts, signup order | No | Creation time only |
+
+The size difference sounds trivial until you remember it is paid in *every* index. A
+random UUID also destroys insert locality: rows arrive in random key order, so the index's
+rightmost pages are no longer the hot ones and the buffer cache stops helping you.
+
+**Decision:** `BIGINT GENERATED ALWAYS AS IDENTITY`. If we later need IDs that are safe to
+expose in URLs, I'd add a separate opaque `public_id` rather than making the primary key
+do both jobs. If this were a multi-master or offline-first system where clients must mint
+IDs before they reach the server, I'd switch to UUIDv7 — ordered, so it keeps the write
+pattern that makes `BIGINT` fast.
+
+#### 2c. `email`
+
+`VARCHAR(320)` — 64 characters for the local part plus `@` plus 255 for the domain, which
+is the limit RFC 5321 actually specifies. Picking 320 rather than a round 255 signals the
+cap is a real constraint rather than a guess.
+
+Two details that matter more than the length:
+
+- **The unique constraint lives in the database, not the application.** An app-level
+  "check if the email exists, then insert" is a race: two concurrent signups both pass the
+  check, both insert, and now the user has two accounts. Only a unique index is atomic.
+- **Uniqueness has to be case-insensitive.** `Alice@x.com` and `alice@x.com` are the same
+  mailbox. In Postgres that's either the `CITEXT` type or a unique index on
+  `lower(email)`. Without it, the constraint is there but does not do what you think.
+
+#### 2d. `display_name`
+
+`TEXT` with a length `CHECK`. In Postgres `VARCHAR(n)` and `TEXT` are stored identically
+and perform identically — the `(n)` is a constraint, nothing more. I use `VARCHAR(n)` when
+the cap is a genuine business rule and `TEXT` otherwise. (This is Postgres-specific; in
+MySQL `VARCHAR` and `TEXT` really do store differently, and `TEXT` can't be indexed without
+a prefix length.)
+
+#### 2e. `created_at`
+
+`TIMESTAMPTZ`, never `TIMESTAMP`.
+
+A bare `TIMESTAMP` in Postgres stores the wall-clock digits and throws the offset away —
+so `14:00` recorded in Berlin and `14:00` recorded in Mumbai compare as equal. `TIMESTAMPTZ`
+normalises to UTC on write and renders in the session's zone on read. For an app whose
+entire premise is people splitting costs on holiday in another country, that is not
+optional.
+
+#### 2f. `deleted_at`
+
+Soft delete, because user rows are referenced by financial history. If Bob deletes his
+account while still owing Alice \$40, hard-deleting the row either destroys the record of
+that debt or breaks the foreign key. Nulling the timestamp out means "active"; setting it
+means "hidden from the UI, still referentially intact".
+
+```sql
+CREATE TABLE users (
+    user_id       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    email         VARCHAR(320) NOT NULL,
+    display_name  TEXT         NOT NULL CHECK (length(display_name) BETWEEN 1 AND 100),
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    deleted_at    TIMESTAMPTZ
+);
+
+-- Case-insensitive uniqueness, enforced by the database rather than by the app.
+CREATE UNIQUE INDEX users_email_lower_uniq ON users (lower(email));
+```
 
 ---
 
-### Phase 5: Settlements (Paying Each Other Back)
+### Step 3 — `groups`
+
+**Candidate:** A group is just a container that expenses hang off, so it stays small.
+
+- `group_id` — same `BIGINT` identity reasoning as above.
+- `name` — `VARCHAR(100)`. Here the cap *is* a business rule: it's a label in a list view.
+- `created_by` — `BIGINT` referencing `users`. Worth keeping even though
+  `group_members` will also contain this person, because "who started this group" is an
+  audit fact that survives them leaving.
+- `default_currency` — `CHAR(3)`, an ISO 4217 code like `USD`, `INR`, `JPY`. Fixed width,
+  so `CHAR` is honest here; this is one of the few places it beats `VARCHAR`.
+- `created_at` — `TIMESTAMPTZ`.
+
+**Interviewer:** What happens to a group when the person who created it deletes their
+account?
+
+**Candidate:** Nothing — and that's deliberate. The foreign key is `ON DELETE RESTRICT`.
+Combined with the soft delete from Step 2, a user who is referenced anywhere simply cannot
+be hard-deleted. The group outlives its creator, which is what users expect: your holiday
+group doesn't evaporate because one person left the app.
+
+```sql
+CREATE TABLE groups (
+    group_id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name             VARCHAR(100) NOT NULL,
+    created_by       BIGINT       NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    default_currency CHAR(3)      NOT NULL,
+    created_at       TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+```
+
+---
+
+### Step 4 — `group_members`, and why it is its own table
+
+**Interviewer:** How do you connect users to groups? Why not just keep a list of user IDs
+in a column on `groups`?
+
+**Candidate:** Three things break if I do that.
+
+- **Lookups go the wrong way.** "Which groups is Bob in?" would mean scanning every group
+  row and searching inside its list. With a junction table it's an index seek.
+- **There is no referential integrity inside an array.** The database cannot enforce that
+  every ID in that list is a real user. Delete a user and you get a dangling ID with no
+  foreign key to catch it.
+- **There is nowhere to put per-membership facts.** When did Bob join? Is he an admin? Has
+  he left? Those are properties of the *relationship*, not of the user or the group, and a
+  bare list of IDs has no room for them.
+
+So: a junction table, which is the standard resolution of a many-to-many.
+
+#### 4a. Composite key or surrogate?
+
+The pair `(group_id, user_id)` is already unique and already immutable — exactly what a
+primary key wants to be. A surrogate `membership_id` would add 8 bytes and still require a
+unique constraint on the pair to prevent duplicate memberships. So: composite PK, no
+surrogate.
+
+#### 4b. The column order in that key is a real decision
+
+A composite index can only be used left-to-right — the *leftmost prefix* rule. An index on
+`(group_id, user_id)` can answer "give me everything with this `group_id`", but it cannot
+efficiently answer "give me everything with this `user_id`", because `user_id` values are
+scattered across the whole index.
+
+Both questions get asked constantly here:
+
+- "Who is in this group?" → needs `group_id` first.
+- "Which groups is Bob in?" → needs `user_id` first.
+
+So the primary key is `(group_id, user_id)` and I add a second index on `(user_id, group_id)`.
+That second one is a *covering* index for the membership lookup: both columns it needs are
+in the index, so the query never has to touch the table at all.
+
+#### 4c. `left_at`, for the same reason as `deleted_at`
+
+Someone who leaves a group with an unsettled balance cannot simply have their row removed —
+the debt is still real. `left_at` hides them from the member list while keeping every
+expense they were part of intact and attributable.
+
+```sql
+CREATE TABLE group_members (
+    group_id   BIGINT      NOT NULL REFERENCES groups(group_id) ON DELETE CASCADE,
+    user_id    BIGINT      NOT NULL REFERENCES users(user_id)   ON DELETE RESTRICT,
+    role       TEXT        NOT NULL DEFAULT 'member'
+                           CHECK (role IN ('member', 'admin')),
+    joined_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    left_at    TIMESTAMPTZ,
+    PRIMARY KEY (group_id, user_id)
+);
+
+CREATE INDEX group_members_by_user ON group_members (user_id, group_id);
+```
+
+Note the two different delete rules on one table. `ON DELETE CASCADE` from `groups` is
+right — if a group is genuinely deleted, its membership rows are meaningless. `ON DELETE
+RESTRICT` from `users` is right for the reason in Step 2: people who appear in financial
+history don't get erased.
+
+---
+
+### Step 5 — A deliberately naive `expenses` table
+
+**Candidate:** Now the interesting table. I'm going to write the version almost everyone
+writes first, with one payer and an equal split, and then let you break it.
+
+**Interviewer:** Go ahead.
+
+#### 5a. The money column is the one to get right
+
+Before the table — how do we store an amount?
+
+**Never `FLOAT` or `DOUBLE`.** Binary floating point cannot represent `0.1` exactly, so
+`0.1 + 0.2` evaluates to `0.30000000000000004`. In an app whose entire job is making
+columns of numbers add up to zero, a representation that cannot hold a tenth is
+disqualifying. Those errors compound over thousands of rows until a group's balances
+mysteriously fail to net out.
+
+That leaves two defensible options:
+
+| | `NUMERIC(14,2)` | Integer minor units (`BIGINT` cents) |
+|---|---|---|
+| **Exact?** | Yes — base-10, arbitrary precision | Yes — integers |
+| **Arithmetic** | Slower (software decimal) | Fastest path there is |
+| **Reads naturally** | `42.50` | `4250`, needs scaling everywhere |
+| **Multi-currency** | Scale of 2 is baked in | Exponent travels with the currency code |
+
+The multi-currency row is the one that bites. A scale of 2 quietly assumes every currency
+has two decimal places — but Japanese yen has zero and Kuwaiti dinar has three. `NUMERIC(14,2)`
+would store ¥1000 as `1000.00`, which is harmless, but it cannot represent a Kuwaiti dinar
+amount to its real precision.
+
+**Decision:** `NUMERIC(14,2)` for now, and I'll flag it. Our clarification said currency is
+per-expense, so the day we take Kuwaiti dinar seriously, the fix is to widen the scale to
+`NUMERIC(16,3)` or move to minor units plus the ISO 4217 exponent. I'd rather name the
+limitation than pretend it isn't there. The precision of 14 gives us up to about
+999 billion — far past any dinner bill, with room for currencies where a coffee costs
+50,000 units.
+
+#### 5b. The rest of the columns
+
+- `expense_id` — `BIGINT` identity.
+- `group_id` — `BIGINT` FK. Non-null, because Step 1 settled that every expense has a group.
+- `paid_by_user_id` — `BIGINT` FK. **This is the column that will not survive.**
+- `total_amount` — `NUMERIC(14,2)`, with `CHECK (total_amount > 0)`. Refunds get modelled
+  separately rather than as negative expenses, so the sign stays meaningful.
+- `currency` — `CHAR(3)`, per Step 1. Defaults from the group but is stored on the row,
+  because the group's default can change later and must not restate old expenses.
+- `description` — `VARCHAR(255)`.
+- `expense_date` — `DATE`, separate from `created_at`. People enter Saturday's dinner on
+  Monday, and the bill belongs to Saturday. `created_at TIMESTAMPTZ` records when the row
+  was written; `expense_date` records when the money was spent. Conflating them makes the
+  group's timeline wrong.
+- `created_by` — who *entered* it, which is not always who paid it.
+
+```sql
+-- Version 1. This is wrong in three ways we are about to discover.
+CREATE TABLE expenses (
+    expense_id      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    group_id        BIGINT        NOT NULL REFERENCES groups(group_id),
+    paid_by_user_id BIGINT        NOT NULL REFERENCES users(user_id),
+    total_amount    NUMERIC(14,2) NOT NULL CHECK (total_amount > 0),
+    currency        CHAR(3)       NOT NULL,
+    description     VARCHAR(255),
+    expense_date    DATE          NOT NULL,
+    created_by      BIGINT        NOT NULL REFERENCES users(user_id),
+    created_at      TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+```
+
+**Interviewer:** How does this compute who owes what?
+
+**Candidate:** It doesn't store that — it derives it. Alice pays \$100 in a group of four,
+so the app reads four members from `group_members`, divides, and says Bob, Charlie and
+David each owe Alice \$25.
+
+---
+
+### Step 6 — Break #1: not everyone is on every bill
+
+**Interviewer:** All four roommates are in the group, but only Alice, Bob and Charlie went
+out for pizza. Your schema charges David \$15 for food he never ate.
+
+**Candidate:** You've found the assumption baked into Step 5: that group membership *is* the
+participant list for every expense. It isn't. Membership is long-lived; participation is
+per-expense.
+
+The fix is to stop deriving participants and start storing them:
+
+```sql
+CREATE TABLE expense_participants (
+    expense_id BIGINT NOT NULL REFERENCES expenses(expense_id) ON DELETE CASCADE,
+    user_id    BIGINT NOT NULL REFERENCES users(user_id)       ON DELETE RESTRICT,
+    PRIMARY KEY (expense_id, user_id)
+);
+```
+
+`ON DELETE CASCADE` from `expenses` is correct here, unlike on `group_members`: a
+participant row has no meaning without its expense, and deleting an expense is a legitimate
+user action.
+
+Now the pizza inserts three rows, not four. \$60 over three participants is \$20 each, and
+David is untouched.
+
+> **The general lesson.** When a derived value stops being derivable from the data you
+> have, the answer is a new relation — not a cleverer query. Candidates often try to patch
+> this with a `participant_count` column on `expenses`, which tells you *how many* people
+> but not *which*, and breaks again the moment the split is unequal.
+
+---
+
+### Step 7 — Break #2: the shares aren't equal
+
+**Interviewer:** Charlie ordered the steak. He owes \$30 while Alice and Bob owe \$15 each.
+
+**Candidate:** Listing participants is no longer enough — I need the amount per person.
+The table grows a column:
+
+```sql
+ALTER TABLE expense_participants
+    ADD COLUMN amount_owed NUMERIC(14,2) NOT NULL CHECK (amount_owed >= 0);
+```
+
+`>= 0` rather than `> 0`, because a zero share is legitimate — someone can be on a bill
+they were comped from, and keeping the row records that they were present.
+
+Notice what just happened to Step 1's second clarification. Because the client sends
+resolved amounts, this one column absorbs *all* the split modes — equal, exact,
+percentage, by shares. They are different UIs over the same stored fact. Had we chosen to
+store percentages, we'd now need a `split_type` discriminator and a different
+interpretation of the number per mode.
+
+---
+
+### Step 8 — Break #3: more than one person paid
+
+**Interviewer:** Back to the thing you flagged in Step 1. Dinner is \$100: Alice pays \$60
+on her card, Bob pays \$40 cash. Your `expenses` table has a single `paid_by_user_id`.
+
+**Candidate:** A scalar column can hold one payer, so it has to go. Paying is not a
+property of the expense — it is a property of a *person's involvement* in the expense,
+which is exactly what `expense_participants` already models.
+
+So the fix is not a new table. It's a second amount column on the one we have, and a
+rename, because "participants" now undersells it:
+
+```sql
+ALTER TABLE expense_participants RENAME TO expense_splits;
+
+ALTER TABLE expense_splits
+    ADD COLUMN amount_paid NUMERIC(14,2) NOT NULL DEFAULT 0
+        CHECK (amount_paid >= 0);
+
+-- Two sources of truth is one too many.
+ALTER TABLE expenses DROP COLUMN paid_by_user_id;
+```
+
+Dropping `paid_by_user_id` is the part people forget. Leaving it would mean the payer is
+recorded in two places that can disagree, and sooner or later they will.
+
+Each row now carries two numbers for one person on one bill:
+
+- `amount_paid` — cash they actually put down.
+- `amount_owed` — value they actually consumed.
+
+**Interviewer:** Why both on one row? Why not a `payments` table and a `shares` table?
+
+**Candidate:** Because in practice the same person does both — Alice paid \$60 *and* ate
+\$20 of the food. Split across two tables, every balance query becomes a join plus two
+aggregates plus a full outer join to catch people who appear in one side but not the other.
+On one row it is a subtraction between adjacent columns.
+
+This is the standard shape in ledger design: keep the credit and the debit on the same
+record and the balance check stays trivial.
+
+**Interviewer:** Show me the numbers.
+
+**Candidate:** Dinner at \$100 — Alice paid \$60, Bob paid \$40; shares are Alice \$20,
+Bob \$50, Charlie \$30.
+
+| user | `amount_paid` | `amount_owed` | net = paid − owed |
+|---|---:|---:|---:|
+| Alice | 60.00 | 20.00 | **+40.00** |
+| Bob | 40.00 | 50.00 | **−10.00** |
+| Charlie | 0.00 | 30.00 | **−30.00** |
+| | **100.00** | **100.00** | **0.00** |
+
+Two invariants fall out, and both are worth enforcing rather than hoping for:
+
+1. `SUM(amount_paid) = SUM(amount_owed) = expenses.total_amount` for every expense.
+2. Therefore the net column always sums to exactly zero.
+
+A single person's balance in a group is then one aggregate over their rows —
+`SUM(amount_paid - amount_owed)` — with no joins at all.
+
+**Interviewer:** You still have `total_amount` on `expenses`, but you just said it equals
+the sum of the splits. Isn't that redundant?
+
+**Candidate:** It is, and I'm keeping it on purpose. Step 1 told us reads outnumber writes
+ten to one, and a list of a group's expenses wants the total on every row without
+aggregating the splits for each one. That's a denormalisation bought with the read/write
+ratio we were given.
+
+The price is that it can drift, so it needs defending — a constraint checked when splits
+change, or a trigger that recomputes it. I'd rather carry an enforced redundancy than pay
+an aggregate on the hottest read path. If writes were the dominant load, I'd drop the
+column and compute it.
+
+```sql
+CREATE TABLE expense_splits (
+    expense_id  BIGINT        NOT NULL REFERENCES expenses(expense_id) ON DELETE CASCADE,
+    user_id     BIGINT        NOT NULL REFERENCES users(user_id)       ON DELETE RESTRICT,
+    amount_paid NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (amount_paid >= 0),
+    amount_owed NUMERIC(14,2) NOT NULL           CHECK (amount_owed >= 0),
+    PRIMARY KEY (expense_id, user_id)
+);
+
+-- Balances are read per user, so index that direction too.
+CREATE INDEX expense_splits_by_user ON expense_splits (user_id, expense_id);
+```
+
+---
+
+### Where the schema stands after eight steps
+
+Five tables, and every one of them arrived because something specific forced it:
+
+| Table | Why it exists |
+|---|---|
+| `users` | Identity that everything else references |
+| `groups` | The container every expense belongs to (Step 1) |
+| `group_members` | Many-to-many that an array column cannot express (Step 4) |
+| `expenses` | The bill itself — amount, currency, date |
+| `expense_splits` | Who was on the bill, what they paid, what they owed (Steps 6–8) |
+
+And three columns we started with are already gone or changed: `paid_by_user_id` was
+deleted, `expense_participants` was renamed, and the participant list stopped being derived
+from group membership.
+
+That churn is the point. A candidate who writes these five tables immediately and correctly
+looks like someone who memorised the answer. A candidate who writes four, gets broken three
+times, and repairs the design each time looks like someone who can do this on a problem
+nobody has published a solution to.
+
+**Still open, in the steps that follow:** settling up (is a repayment an expense?), people
+leaving groups mid-balance, the rounding penny that won't divide by three, debt
+simplification, the indexing strategy for 50M users, and where this schema stops fitting on
+one machine.
+
+---
+
+### Step 9 — Settlements: paying each other back
 
 **Interviewer:** Now Bob owes Alice \$10. He opens Venmo, sends her \$10, and wants to record it in the app to clear his debt. How do we record that repayment in the database?
 
@@ -161,7 +555,7 @@ This keeps peer-to-peer cash repayments completely separated from real-world spe
 
 ---
 
-### Phase 6: Handling Edge Cases (Leaving Groups and Lost Pennies)
+### Step 10 — Edge cases: leaving a group, and the lost penny
 
 **Interviewer:** Let's look at some tricky real-world scenarios. What happens if Charlie moves out and wants to leave the group? Can we just run a database command like `DELETE FROM Group_Members WHERE user_id = charlie`?
 
@@ -191,7 +585,7 @@ The database never does the division; it only stores the exact, perfectly balanc
 
 ---
 
-### Phase 7: Debt Simplification & Querying Balances
+### Step 11 — Debt simplification and querying balances
 
 **Interviewer:** How does the app answer a question like, "How much does Alice owe Bob across all groups?" And how do you simplify debts, for example, if Alice owes Bob \$10, and Bob owes Charlie \$10, the app should just tell Alice to pay Charlie \$10 directly?
 
@@ -215,7 +609,7 @@ Then the backend code takes those numbers and runs a matching algorithm in memor
 
 ---
 
-### Phase 8: Performance, Normalization, and Caching
+### Step 12 — Performance, normalisation and caching
 
 **Interviewer:** Let's look at your `Expenses` table. You have a `total_amount` column. But you could also calculate that total at any time just by adding up the `amount_paid` from `Expense_Splits`. Doesn't storing `total_amount` violate database normalization rules since it's redundant data?
 
@@ -237,7 +631,7 @@ Then the backend code takes those numbers and runs a matching algorithm in memor
 
 ---
 
-### Phase 9: Indexing Strategy
+### Step 13 — Indexing strategy
 
 **Interviewer:** Let's talk about indexes. What indexes would you add to make common queries fast?
 
@@ -276,7 +670,7 @@ ON Expense_Splits (user_id);
 
 ---
 
-### Phase 10: Scaling Over Time
+### Step 14 — Scaling over time
 
 **Interviewer:** After a few years, `Expense_Splits` grows to 2 billion rows. Searching it becomes like finding a needle in a massive haystack. How do you keep the database fast?
 
@@ -286,7 +680,7 @@ ON Expense_Splits (user_id);
 
 ---
 
-### Phase 11: Final Schema Review & Mental Model
+### Step 15 — Final schema review and mental model
 
 **Interviewer:** Excellent walkthrough. Can you summarize the final schema?
 

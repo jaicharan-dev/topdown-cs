@@ -114,10 +114,10 @@ const practiceSubjects = [
   { title: 'Design Patterns', href: '/docs/design-patterns/1-singleton-pattern', Icon: IconDesignPatterns, accentColor: '#38bdf8', comingSoon: false },
   { title: 'CN Problems', href: '/docs/cn-problems/1-subnetting', Icon: IconCN, accentColor: '#2dd4bf', comingSoon: false },
   { title: 'Code Tracing', href: '/docs/code-tracing/1-code-trace-static-instance-constructor', Icon: IconCodeTracing, accentColor: '#fb7185', comingSoon: false },
+  { title: 'DB Design', href: '/docs/database-design/1-wallet-payment-system', Icon: IconDBDesign, accentColor: '#c084fc', comingSoon: false },
 ];
 
 const lockedSubjects = [
-  { title: 'DB Design', href: '#', Icon: IconDBDesign, accentColor: '#c084fc', comingSoon: true },
   { title: 'System Design', href: '#', Icon: IconSystemDesign, accentColor: '#4ade80', comingSoon: true },
 ];
 
