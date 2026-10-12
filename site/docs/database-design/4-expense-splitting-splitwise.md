@@ -1,7 +1,7 @@
 ---
 id: 4-expense-splitting-splitwise
 title: "Design Splitwise: Expense Splitting & Debt Simplification"
-description: "Design an expense splitting system like Splitwise: modeling users, groups, multi-currency splits, debt simplification algorithms, and ledger reconciliation."
+description: "A full schema-design interview for Splitwise, worked one decision at a time: why each table exists, why each column has the type it does, and how the design survives settlements, rounding, audit history, multi-currency, cached balances, indexing and sharding."
 sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
@@ -524,212 +524,745 @@ looks like someone who memorised the answer. A candidate who writes four, gets b
 times, and repairs the design each time looks like someone who can do this on a problem
 nobody has published a solution to.
 
-**Still open, in the steps that follow:** settling up (is a repayment an expense?), people
-leaving groups mid-balance, the rounding penny that won't divide by three, debt
-simplification, the indexing strategy for 50M users, and where this schema stops fitting on
-one machine.
+**Still open, in the steps that follow:** settling up, the penny that won't divide by
+three, edits and audit history, leaving a group mid-balance, making balance reads fast
+without corrupting them, debt simplification, multi-currency, which invariants the database
+can actually enforce, indexing, and where this schema stops fitting on one machine.
 
 ---
 
-### Step 9 — Settlements: paying each other back
+### Step 9 — Settlements: recording a repayment
 
-**Interviewer:** Now Bob owes Alice \$10. He opens Venmo, sends her \$10, and wants to record it in the app to clear his debt. How do we record that repayment in the database?
+**Interviewer:** Bob owes Alice \$10. He sends her \$10 outside the app and wants to record
+it. How?
 
-**Candidate:** We could just add another row to the `Expenses` table, call it "Repayment", and say Bob paid \$10 and Alice owed \$10.
+**Candidate:** The tempting answer is another `expenses` row — Bob paid \$10, Alice owed
+\$10. The arithmetic works. I'd still reject it.
 
-**Interviewer:** What's the problem with treating a repayment as a regular expense?
+**Interviewer:** Why, if the numbers come out right?
 
-**Candidate:** It completely ruins the group's spending statistics! If the roommates look at their monthly chart to see "How much did our apartment spend on groceries and utilities?", repayments aren't real spending. If you record settlements as expenses, you double-count the money. You'd make the group look like they are spending twice as much as they actually are.
+**Candidate:** Because `expenses` answers a question that isn't "did money move". It
+answers "what did this group consume". Every spending chart, every monthly summary, every
+"you spent \$1,200 on this trip" aggregate reads that table. Settlements are not
+consumption — they are the *unwinding* of consumption that was already recorded. Put them
+in the same table and a group that spends \$500 and settles up looks like it spent \$1,000.
 
-**Interviewer:** Exactly. So how would you store repayments to keep the data clean?
+There's a sharper version of the same point. An expense is a claim about **value
+consumed**; a settlement is a record of **cash transferred**. They have different
+lifecycles, different edit rules, and different auditors. Two kinds of fact, two tables.
 
-**Candidate:** I'd create a dedicated `Settlements` table:
-- `settlement_id` (Primary Key, UUID)
-- `group_id` (Foreign Key `Groups.group_id`)
-- `payer_id` (Foreign Key `Users.user_id`, Bob)
-- `payee_id` (Foreign Key `Users.user_id`, Alice)
-- `amount` (DECIMAL - \$10.00)
-- `created_at` (TIMESTAMP)
-
-This keeps peer-to-peer cash repayments completely separated from real-world spending on things like food or rent.
-
----
-
-### Step 10 — Edge cases: leaving a group, and the lost penny
-
-**Interviewer:** Let's look at some tricky real-world scenarios. What happens if Charlie moves out and wants to leave the group? Can we just run a database command like `DELETE FROM Group_Members WHERE user_id = charlie`?
-
-**Candidate:** That would cause serious issues. If the database deletes his membership record, it also has to deal with his history on old bills. Depending on how the database is configured, it might completely wipe out his past expenses, which means the old bills wouldn't add up correctly anymore. Or, the database might throw an error and refuse to delete him because old receipts still point to his ID.
-
-**Interviewer:** So how do you handle someone leaving a group without breaking history?
-
-**Candidate:** We use a "soft delete". Instead of actually erasing the row, we add a `status` column to `Group_Members` that can be set to `'active'` or `'left'`. When Charlie leaves, we just update his status to `'left'`. That way, his name and historical splits remain in the database so past records stay perfectly balanced.
-
-**Interviewer:** But what if Charlie owes \$200 to the group and tries to hit the "Leave Group" button to run away from his debt?
-
-**Candidate:** The application's code has to catch that! Before updating his status to `'left'`, the backend calculates his total net balance in that group. If his balance is not exactly \$0.00, the app blocks him and shows an error: *"You cannot leave this group until your balance is settled."*
-
-**Interviewer:** Here's another common problem: rounding. Suppose 3 friends split a \$10 lunch equally. \$10 divided by 3 is \$3.3333... How do you store that in the database?
-
-**Candidate:** We shouldn't use regular floating-point numbers (`FLOAT`). Computers struggle to represent repeating fractions perfectly. If you store \$3.33 for each person, \$3.33 $\times$ 3 equals \$9.99. A penny disappears into thin air! Over millions of transactions, those missing pennies add up to a major accounting disaster.
-
-**Interviewer:** How do you solve the missing penny problem?
-
-**Candidate:** First, we use the `DECIMAL(15, 2)` data type, which stores exact numbers down to the cent, just like a bank. Second, the app itself has to allocate the extra penny *before* saving to the database. For example:
-- Alice owes \$3.34
-- Bob owes \$3.33
-- Charlie owes \$3.33
-- Total: **\$10.00** exactly.
-
-The database never does the division; it only stores the exact, perfectly balanced numbers the app gives it.
-
----
-
-### Step 11 — Debt simplification and querying balances
-
-**Interviewer:** How does the app answer a question like, "How much does Alice owe Bob across all groups?" And how do you simplify debts, for example, if Alice owes Bob \$10, and Bob owes Charlie \$10, the app should just tell Alice to pay Charlie \$10 directly?
-
-**Candidate:** The key thing to realize is that the database doesn't actually store a record that says "Alice owes Bob \$10". Instead, for any given group, the database just tracks each person's overall position in the pool:
-- Alice is net **+\$50** (the group owes her \$50).
-- Bob is net **-\$30** (he owes the group \$30).
-- Charlie is net **-\$20** (he owes the group \$20).
-
-**Interviewer:** Okay, but how does the app figure out who should pay whom? Can we write a clever SQL query to simplify the debts?
-
-**Candidate:** I wouldn't do the debt simplification inside the database. Finding the most efficient way to clear debts between a web of people is an algorithmic graph puzzle. Writing complex, recursive loops inside SQL is slow, incredibly hard to read, and puts a heavy load on the database server.
-
-**Interviewer:** Where should that puzzle be solved instead?
-
-**Candidate:** In the backend application server! The database just runs a fast, simple query to calculate each user's net balance:
-`User Balance = SUM(amount_paid - amount_owed) + SUM(settlements_received) - SUM(settlements_paid)`
-
-Then the backend code takes those numbers and runs a matching algorithm in memory. It lines up everyone who owes money (debtors) and everyone who is owed money (creditors). It pairs the person who owes the most (Bob with -\$30) with the person who is owed the most (Alice with +\$50), tells Bob to pay Alice, and repeats until everyone is settled. It's lightning fast and keeps the database focused on what it does best: storing and summing data.
-
-> **Note for the Reader:** Debt simplification is a version of the "Minimum Cash Flow" problem. Because it requires reducing a graph of connections, running a "Greedy solver" in application memory (like in Node.js, Python, or Go) is far more scalable than attempting to write complex recursive queries in SQL.
-
----
-
-### Step 12 — Performance, normalisation and caching
-
-**Interviewer:** Let's look at your `Expenses` table. You have a `total_amount` column. But you could also calculate that total at any time just by adding up the `amount_paid` from `Expense_Splits`. Doesn't storing `total_amount` violate database normalization rules since it's redundant data?
-
-**Candidate:** Yes, technically it is redundant, which violates Third Normal Form (3NF). In a textbook, you'd remove it. But in the real world, I would intentionally keep it.
-
-**Interviewer:** Why break the rule?
-
-**Candidate:** For two very practical reasons:
-1. **Speed:** When someone opens a group, they want to see a feed of the last 50 expenses with their totals. If we didn't store `total_amount`, the database would have to stitch together and sum up hundreds of individual split rows just to display a simple list of 50 bills.
-2. **Safety Check:** The receipt total acts as a sanity check. When an expense is created, the app verifies that the individual splits add up to `total_amount` before saving. If something goes wrong, we have the original receipt total to compare against.
-
-**Interviewer:** That makes sense. Now, let's talk about our 50 million users. You mentioned the app is very read-heavy. If Alice has been using the app for 5 years and has thousands of splits, calculating her balance from scratch every time she opens the app will take a long time. How do you fix that?
-
-**Candidate:** We can cache her balance directly on the `Group_Members` table by adding a `cached_balance` column.
-
-**Interviewer:** What's the trade-off of doing that?
-
-**Candidate:** Reading her balance becomes instant: the database just looks at a single row and shows it on her screen. But writing becomes slightly slower, because every single time a new expense or settlement is added, the database has to lock her row and update that cached balance. Since users open the app to check balances far more often than they add expenses, sacrificing a tiny bit of write speed to gain lightning-fast reads is well worth it.
-
----
-
-### Step 13 — Indexing strategy
-
-**Interviewer:** Let's talk about indexes. What indexes would you add to make common queries fast?
-
-**Candidate:** First, when a user opens the app, we need to quickly load all their active groups:
 ```sql
-CREATE INDEX idx_group_members_user_active 
-ON Group_Members (user_id, status);
+CREATE TABLE settlements (
+    settlement_id   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    group_id        BIGINT        NOT NULL REFERENCES groups(group_id),
+    payer_id        BIGINT        NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    payee_id        BIGINT        NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    amount          NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+    currency        CHAR(3)       NOT NULL,
+    settled_at      TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    created_by      BIGINT        NOT NULL REFERENCES users(user_id),
+    deleted_at      TIMESTAMPTZ,
+    idempotency_key UUID          NOT NULL,
+
+    CHECK (payer_id <> payee_id)
+);
+
+CREATE UNIQUE INDEX settlements_idem ON settlements (idempotency_key);
 ```
 
-**Interviewer:** Why do we need that index? Doesn't `Group_Members` already have a primary key on `(group_id, user_id)`?
+**Interviewer:** Walk me through that `idempotency_key`.
 
-**Candidate:** A composite index on `(group_id, user_id)` is sorted by `group_id` first, and then `user_id`. 
+**Candidate:** This is the column I'd be most annoyed to have forgotten. Bob taps "Settle
+up", the request succeeds server-side, the response is lost to a flaky train tunnel, and
+his phone retries. Without a guard he has now paid Alice twice in the ledger and is \$10
+further out of pocket on paper.
 
-Think of it like a phone book sorted by Last Name, then First Name. If you only know the first name (the `user_id`), the phone book doesn't help you at all, because you would have to read every single page to find them. That's why we need a separate index that starts with `user_id`.
+So the client generates a UUID per settlement *attempt* and sends it with the request. The
+unique index means the second insert fails loudly instead of silently duplicating. The
+server catches the violation and returns the original settlement.
 
-**Interviewer:** That's a great analogy. What about loading the expense feed for a group?
+This belongs in the schema rather than in the service layer because it's the same argument
+as the email constraint in Step 2 — two concurrent retries can both pass an application-level
+"have I seen this key?" check. Only a unique index is atomic.
 
-**Candidate:** We need the latest 50 expenses for a group, sorted by newest first. I'd add this index:
-```sql
-CREATE INDEX idx_expenses_group_created 
-ON Expenses (group_id, created_at DESC);
-```
-This physically pre-sorts the expenses on disk. When the app asks for the latest 50, the database can jump straight to that group and grab the top 50 rows immediately, without having to load thousands of rows into memory just to sort them.
+**Interviewer:** Why `settled_at` separate from a created timestamp?
 
-**Interviewer:** What about finding splits for a specific user?
+**Candidate:** Same reason `expense_date` was separate in Step 5. Bob hands over cash on
+Friday and records it on Sunday. The balance timeline should follow the money, not the
+data entry.
 
-**Candidate:** We'll add an index on `Expense_Splits(user_id)`:
-```sql
-CREATE INDEX idx_expense_splits_user 
-ON Expense_Splits (user_id);
-```
-
-**Interviewer:** Isn't `user_id` a foreign key? Doesn't the database automatically index foreign keys?
-
-**Candidate:** A lot of developers assume that, but most relational databases (like PostgreSQL) actually do not! Foreign keys ensure that the user exists, but they don't automatically create an index to make searching fast. You have to create the index manually.
+> **The alternative I'd mention but not build.** You can model expenses and settlements as
+> one `ledger_entries` table in proper double-entry form: every row a signed amount against
+> a (user, group) account, every transaction summing to zero. It is more elegant and it is
+> what a real payments company would do. I'd flag it and move on, because for this product
+> it buys uniformity at the cost of making the common query — "show me this group's
+> spending" — filter out half its own table. The two-table split matches how the data is
+> actually read.
 
 ---
 
-### Step 14 — Scaling over time
+### Step 10 — The penny that will not divide
 
-**Interviewer:** After a few years, `Expense_Splits` grows to 2 billion rows. Searching it becomes like finding a needle in a massive haystack. How do you keep the database fast?
+**Interviewer:** Three friends split a \$10 lunch equally. \$10 / 3 = \$3.333…. What do you
+store?
 
-**Candidate:** We can apply two strategies to keep the active data small:
-1. **Table Partitioning:** We can partition `Expenses` and `Expense_Splits` by date (for example, breaking it into monthly or quarterly buckets). When users look at recent bills, the database only searches the newest bucket and completely ignores the older ones.
-2. **Cold Storage Archival:** Most users only care about expenses from the past few months. Expenses older than two years can be safely moved out of the main database into cheaper "cold storage" (like AWS S3 or a data warehouse). And because we keep the `cached_balance` on the `Group_Members` table, moving old bills out doesn't break anyone's current balance!
+**Candidate:** First, let me kill a misconception I nearly built into Step 5. `NUMERIC`
+being exact does **not** solve this. `NUMERIC` can represent `3.33` perfectly, and it can
+represent `10.00` perfectly — but ten divided by three has no exact representation in base
+ten either. Exactness and divisibility are different properties. No money type will save
+you here.
+
+So this is not a storage problem. It is an **allocation policy** problem, and someone has
+to decide where the stray cent goes.
+
+**Interviewer:** Where does it go?
+
+**Candidate:** Store `3.34 / 3.33 / 3.33` — never three rows of `3.33`, which loses a cent
+and quietly breaks the invariant from Step 8 that the splits sum to the total.
+
+The allocation runs in the application, before the insert, using the **largest remainder**
+method: divide down to whole cents, compute the leftover, and hand one extra cent to the
+first *N* participants in a stable order. Stable matters — if the order came from a hash
+map the same bill would allocate differently on each retry, and an edit would silently
+move a cent between two people.
+
+**Interviewer:** Which order?
+
+**Candidate:** Ascending `user_id` is defensible and deterministic. Giving the remainder to
+the payer is arguably fairer — they're already out of pocket. Either is fine as long as
+it's documented and reproducible, because the question "why do I owe a cent more than
+Bob?" does get asked.
+
+**Interviewer:** Could the database do the division instead?
+
+**Candidate:** It could, and I wouldn't let it. The moment the database derives shares,
+those shares change if the rounding rule ever changes, which restates history. Step 1
+already settled this: the client sends resolved amounts, the database stores facts. The
+penny rule is just the sharpest example of why that boundary was worth drawing.
 
 ---
 
-### Step 15 — Final schema review and mental model
+### Step 11 — Edits, deletes, and the audit trail
 
-**Interviewer:** Excellent walkthrough. Can you summarize the final schema?
+**Interviewer:** Alice realises last month's dinner was \$120, not \$100. She edits it.
+What happens?
 
-**Candidate:** Here is our complete, production-ready schema:
+**Candidate:** This is where a naive `UPDATE` does real damage. Three things have to be
+true afterwards.
 
-```text
-[ Users ]
-  - user_id       : UUID (PK)
-  - name          : VARCHAR
-  - email         : VARCHAR (Unique)
+The splits have to be rewritten, because the total changed and the old shares no longer sum
+to it. Every cached balance derived from that expense has to move by the delta. And the old
+version has to survive, because somebody may have *already settled up* against the old
+number — Bob paid Alice \$25 on the strength of a \$100 dinner, and silently restating it
+to \$120 makes his settlement look wrong without explaining why.
 
-[ Groups ]
-  - group_id      : UUID (PK)
-  - name          : VARCHAR
-  - created_by    : UUID (FK -> Users.user_id)
+So edits are versioned, not overwritten:
 
-[ Group_Members ]
-  - group_id      : UUID (Composite PK, FK -> Groups.group_id)
-  - user_id       : UUID (Composite PK, FK -> Users.user_id)
-  - status        : ENUM ('active', 'left')   -- Soft deletion
-  - cached_balance: DECIMAL(15, 2)            -- Instant balance lookups
+```sql
+ALTER TABLE expenses
+    ADD COLUMN version    INTEGER     NOT NULL DEFAULT 1,
+    ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ADD COLUMN deleted_at TIMESTAMPTZ;
 
-[ Expenses ]
-  - expense_id    : UUID (PK)
-  - group_id      : UUID (FK -> Groups.group_id)
-  - description   : VARCHAR
-  - total_amount  : DECIMAL(15, 2)            -- Receipt total
-  - created_by    : UUID (FK -> Users.user_id)
-  - created_at    : TIMESTAMP
-
-[ Expense_Splits ]
-  - split_id      : UUID (PK)
-  - expense_id    : UUID (FK -> Expenses.expense_id)
-  - user_id       : UUID (FK -> Users.user_id)
-  - amount_paid   : DECIMAL(15, 2)            -- Upfront cash put down
-  - amount_owed   : DECIMAL(15, 2)            -- Consumed share of bill
-
-[ Settlements ]
-  - settlement_id : UUID (PK)
-  - group_id      : UUID (FK -> Groups.group_id)
-  - payer_id      : UUID (FK -> Users.user_id)
-  - payee_id      : UUID (FK -> Users.user_id)
-  - amount        : DECIMAL(15, 2)            -- Peer-to-peer repayment
-  - created_at    : TIMESTAMP
+CREATE TABLE expense_revisions (
+    revision_id   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    expense_id    BIGINT      NOT NULL REFERENCES expenses(expense_id),
+    version       INTEGER     NOT NULL,
+    snapshot      JSONB       NOT NULL,   -- the expense and its splits, as they were
+    changed_by    BIGINT      NOT NULL REFERENCES users(user_id),
+    changed_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (expense_id, version)
+);
 ```
 
-#### How to Approach Any Database Design Problem:
-1. **Start simple:** Propose a basic model first. Don't try to solve every tricky edge case in the first five minutes.
-2. **Deconstruct events into splits:** An event often has two sides: who paid money in, and who took value out. Putting both in the split record makes math straightforward.
-3. **Separate payments from spending:** Never mix debt repayments with actual expenses, or your spending analytics will be corrupted.
-4. **Never hard-delete financial data:** Use soft deletes so historical balances and receipts remain safe and audit-proof.
-5. **Know when to use SQL vs code:** Use SQL for storage, data integrity, and basic math; do complex algorithms (like debt simplification) in application code.
+**Interviewer:** Why `JSONB` for the snapshot? You've been careful about types all the way
+through and now you're dumping a blob.
+
+**Candidate:** Fair challenge, and the answer is about access pattern rather than laziness.
+A revision is never queried by its internals — nobody filters revisions by `amount_owed`.
+It is read whole, to render "Alice changed the total from \$100 to \$120". A shadow table
+mirroring every column would need migrating in lockstep with `expenses` forever, and would
+still only ever be `SELECT *`-ed. If the product later wanted "show me every expense that
+was edited after being settled", I'd promote the fields that query needs into real columns
+and leave the rest in the blob.
+
+**Interviewer:** And the `version` column?
+
+**Candidate:** Optimistic concurrency. Two roommates open the same expense and both edit
+it; the second write should not silently clobber the first. The update carries the version
+it read:
+
+```sql
+UPDATE expenses
+   SET total_amount = :new_total, version = version + 1, updated_at = now()
+ WHERE expense_id = :id AND version = :version_the_client_read;
+```
+
+Zero rows affected means somebody got there first, and the client is told to reload rather
+than told nothing. Pessimistic locking would also work, but holding a row lock across a
+user's think-time is a good way to deadlock a mobile app.
+
+**Interviewer:** And deletes?
+
+**Candidate:** `deleted_at`, never `DELETE`. Same argument as Step 2, with teeth: an
+expense that has been settled against cannot vanish without making the settlement
+inexplicable. Reads filter on `deleted_at IS NULL`; balance recomputation ignores soft-deleted
+rows; the audit trail keeps both the row and the revision that killed it.
+
+---
+
+### Step 12 — Leaving a group with a balance
+
+**Interviewer:** Charlie moves out and hits "Leave group". He owes \$200.
+
+**Candidate:** The membership row already has `left_at` from Step 4, so the mechanical part
+is an `UPDATE`, not a `DELETE`, and his historical splits stay attributable.
+
+The interesting part is the rule: he should not be allowed to leave while his net balance
+in that group is non-zero. Letting him walk away converts a tracked debt into an untracked
+one.
+
+**Interviewer:** Put that rule in a `CHECK` constraint.
+
+**Candidate:** I can't, and the reason is worth stating precisely. A `CHECK` constraint in
+Postgres may only reference columns of the row being written. "Is Charlie's balance zero?"
+is an aggregate over many rows in two other tables. That is structurally outside what
+`CHECK` can express.
+
+The options are a trigger, or the application inside a transaction. I'd use the
+application, for an honest reason: this is a *product* rule, not a data-integrity rule. It
+has exceptions — an admin should be able to evict someone who has vanished, and the group
+may choose to write the debt off. Business rules with exceptions belong where exceptions
+can be expressed and tested. Rules that must never have exceptions — the splits summing to
+the total — belong in the database. I'd rather be deliberate about which is which than put
+everything in one place out of principle.
+
+**Interviewer:** Does the transaction need special isolation?
+
+**Candidate:** Yes, and this is a real race. Read Committed lets Charlie's balance check
+pass while a concurrent transaction inserts a new split that makes it non-zero — the check
+read a snapshot that no longer holds. Either take `SELECT … FOR UPDATE` on his membership
+row and have expense creation touch that row too, or run the leave at `SERIALIZABLE` and
+retry on conflict. The second is cleaner; the first is cheaper. At this volume I'd take the
+row lock.
+
+---
+
+### Step 13 — Reading balances fast, and the trap in the obvious fix
+
+**Interviewer:** Alice has five years of history. Computing her balance from scratch on
+every app open is going to hurt. Fix it.
+
+**Candidate:** Let me first say what the honest computation is, because it's the thing
+everything else has to stay consistent with:
+
+```sql
+-- Alice's net position in one group: positive means the group owes her.
+SELECT COALESCE(SUM(s.amount_paid - s.amount_owed), 0)
+     + COALESCE((SELECT SUM(amount) FROM settlements
+                  WHERE group_id = :g AND payer_id = :u AND deleted_at IS NULL), 0)
+     - COALESCE((SELECT SUM(amount) FROM settlements
+                  WHERE group_id = :g AND payee_id = :u AND deleted_at IS NULL), 0)
+  FROM expense_splits s
+  JOIN expenses e ON e.expense_id = s.expense_id
+ WHERE e.group_id = :g AND s.user_id = :u AND e.deleted_at IS NULL;
+```
+
+Paying someone *increases* your position — you've put cash in. Receiving decreases it.
+
+That query is correct and it is linear in Alice's history, which is exactly what we can't
+afford on a 10:1 read-heavy path. So we materialise it:
+
+```sql
+ALTER TABLE group_members
+    ADD COLUMN balance NUMERIC(14,2) NOT NULL DEFAULT 0;
+```
+
+**Interviewer:** Fine. How do you keep it current?
+
+**Candidate:** Here is the trap, and it's the thing I'd most want to get right. The obvious
+implementation is: read the balance, add the delta in application memory, write it back.
+That is a classic **lost update**. Two expenses land at once, both read \$50, one writes
+\$70, the other writes \$80, and the first \$20 is gone. Nothing errors. The money is just
+wrong, permanently, and nobody notices for months.
+
+The fix is to never round-trip the value — let the database do the arithmetic in one
+statement:
+
+```sql
+UPDATE group_members
+   SET balance = balance + :delta
+ WHERE group_id = :g AND user_id = :u;
+```
+
+That takes a row lock and re-reads under it, so it's safe even at Read Committed. And it
+runs in the **same transaction** as the split inserts — if the expense rolls back, so does
+every balance it touched. A cached aggregate updated outside the writing transaction is
+guaranteed to drift.
+
+**Interviewer:** What does that cost you?
+
+**Candidate:** Write contention on the member row. Every expense in a group serialises on
+the rows of its participants. For a four-person flatshare that's nothing. For a 200-person
+office lunch group it's a hot row, and the fix is to stop updating in place: append signed
+deltas to a `balance_deltas` table, which is contention-free, and roll them up
+periodically. I wouldn't build that on day one — I'd note where the ceiling is.
+
+**Interviewer:** Anything else?
+
+**Candidate:** One more, and I'd insist on it: a **reconciliation job**. Any derived
+aggregate drifts eventually — a bug, a partial failure, a manual fix in production. So a
+nightly job recomputes balances from `expense_splits` and `settlements`, compares against
+the cached column, and alerts on any mismatch rather than silently repairing it. A silent
+repair hides the bug that caused it.
+
+The cached column is an optimisation. `expense_splits` and `settlements` are the source of
+truth. Keeping that distinction clear is what makes the optimisation safe to have.
+
+---
+
+### Step 14 — Debt simplification is not a SQL problem
+
+**Interviewer:** Alice owes Bob \$10, Bob owes Charlie \$10. The app should tell Alice to
+pay Charlie directly. Where does that happen?
+
+**Candidate:** Not in the database, and the reason is structural rather than a matter of
+taste.
+
+Notice first that the schema never stores "Alice owes Bob \$10". It stores each person's
+net position in the pool: Alice −10, Bob 0, Charlie +10. The pairwise debt is already an
+inference, and that's a feature — it means the simplification has nothing to undo.
+
+From those net positions, minimising the number of transfers is a graph problem. With *n*
+people there are at most *n−1* transfers needed, and finding the true minimum is
+NP-hard — it contains subset-sum. So production systems use a greedy approximation: repeatedly
+match the largest debtor against the largest creditor, settle the smaller of the two
+amounts, and continue. That's `O(n log n)` with a pair of heaps and it produces at most
+*n−1* transfers.
+
+**Interviewer:** Why not do that in SQL?
+
+**Candidate:** Because it's iterative and stateful — each step depends on the result of the
+last. Expressing it as a recursive CTE is possible and miserable: hard to read, hard to
+test, impossible to profile, and it burns database CPU, which is the one resource in this
+architecture you cannot horizontally scale by adding another box.
+
+The division of labour I'd argue for is the one this whole design has followed: the
+database does storage, integrity, and set-oriented aggregation. The application does
+algorithms. Here the database runs one grouped aggregate to produce *n* net balances — the
+thing it is extraordinarily good at — and the app does the heap matching in microseconds.
+
+**Interviewer:** Do you store the simplified result?
+
+**Candidate:** No. It's a pure function of current balances, so storing it creates a cache
+that is stale the instant anyone adds an expense. Compute it on demand. The only thing
+worth persisting is the settlement that actually happens, which Step 9 already covers.
+
+---
+
+### Step 15 — Multi-currency, done properly
+
+**Candidate:** I want to come back to the limitation I flagged in Step 5, because I don't
+think a design for a travel-adjacent app is finished without it.
+
+**Interviewer:** Go on.
+
+**Candidate:** The bug is that `balance` is a single `NUMERIC`. You cannot net €50 against
+\$50 — the sum is meaningless. A balance is only defined **per currency**.
+
+```sql
+-- One row per (group, member, currency). Replaces the single balance column.
+CREATE TABLE member_balances (
+    group_id BIGINT        NOT NULL,
+    user_id  BIGINT        NOT NULL,
+    currency CHAR(3)       NOT NULL,
+    balance  NUMERIC(14,2) NOT NULL DEFAULT 0,
+    PRIMARY KEY (group_id, user_id, currency),
+    FOREIGN KEY (group_id, user_id) REFERENCES group_members (group_id, user_id)
+);
+```
+
+A flatshare that only ever spends in rupees has exactly one row per member and behaves
+identically to the column it replaces. A trip that touched three currencies has three.
+
+**Interviewer:** Users want one number, not three. Convert them.
+
+**Candidate:** Then the critical question is *when* you convert, and there's only one
+defensible answer.
+
+If you convert at **read** time, Bob's debt changes every time the exchange rate moves. He
+owed \$10 on Tuesday and \$10.40 on Friday without anyone spending anything. That is
+indefensible for a debt between friends.
+
+So you convert at **write** time, and you store the rate you used:
+
+```sql
+ALTER TABLE expenses
+    ADD COLUMN fx_rate_to_group_currency NUMERIC(18,8),
+    ADD COLUMN fx_rate_source            TEXT,
+    ADD COLUMN fx_rate_at                TIMESTAMPTZ;
+```
+
+The debt is fixed at the moment it was incurred, which is how people actually reason about
+it. Storing the source and timestamp alongside the rate is what makes it auditable — when
+somebody disputes a conversion a year later, "we used ECB's 14:00 fix on 3 March" is an
+answer and "about 1.09, I think" is not.
+
+Note the scale of 8 on the rate. Rates are not money; they need far more precision than two
+decimal places, and rounding the *rate* before multiplying throws away accuracy that
+rounding the *result* would have kept.
+
+**Interviewer:** You said earlier that a scale of 2 can't represent every currency.
+
+**Candidate:** Right, and this is where I'd pay that debt. Japanese yen has no minor unit;
+Kuwaiti dinar has three. The fully correct representation is integer **minor units** plus
+the ISO 4217 exponent for the currency — `¥1000` as `1000` with exponent 0, `KD 1.234` as
+`1234` with exponent 3. Everything stays an integer, nothing rounds, and the display layer
+applies the exponent.
+
+I didn't start there because `NUMERIC(14,2)` is simpler, and a V1 that only handles
+two-decimal currencies is a reasonable V1. But if the product is serious about travel, the
+migration to minor units is one I'd want to do early — it touches every money column, and
+that cost only grows.
+
+---
+
+### Step 16 — The invariants, and which ones the database can actually enforce
+
+**Interviewer:** You've asserted a lot of rules. Which does the database guarantee?
+
+**Candidate:** Worth being precise, because "the application checks it" and "the database
+guarantees it" are very different promises.
+
+| Invariant | Enforced by | Why |
+|---|---|---|
+| Email is unique, case-insensitively | Unique index | Atomic; app checks race |
+| Amounts are non-negative | `CHECK` | Single-row predicate |
+| Payer ≠ payee on a settlement | `CHECK` | Single-row predicate |
+| No duplicate membership | Composite PK | Structural |
+| A split points at a real user and expense | Foreign key | Structural |
+| Repeated settlement requests collapse | Unique index on idempotency key | Atomic |
+| **Splits sum to the expense total** | Deferred constraint trigger | Spans rows |
+| **Cached balance matches the splits** | Transaction + nightly reconciliation | Spans tables |
+| Can't leave a group while in debt | Application + row lock | Product rule with exceptions |
+
+The two in bold are the interesting ones.
+
+**Interviewer:** Why can't the sum check be a `CHECK` constraint?
+
+**Candidate:** Same reason as Step 12 — it spans rows. But there's a second problem that
+catches people who reach for a plain trigger. You insert the expense, then insert its
+splits one at a time. After the first split the sum is wrong. A row-level trigger firing
+per statement would reject a perfectly valid transaction midway through.
+
+So the check has to run at **commit**, not per statement:
+
+```sql
+CREATE CONSTRAINT TRIGGER expense_splits_balance
+    AFTER INSERT OR UPDATE OR DELETE ON expense_splits
+    DEFERRABLE INITIALLY DEFERRED
+    FOR EACH ROW EXECUTE FUNCTION assert_expense_balances();
+```
+
+`DEFERRABLE INITIALLY DEFERRED` is the whole trick. The transaction is free to be
+temporarily inconsistent; it just may not *commit* that way. The function asserts
+`SUM(amount_paid) = SUM(amount_owed) = expenses.total_amount` for the affected expense and
+raises if not.
+
+**Interviewer:** Is that worth the cost?
+
+**Candidate:** For this invariant, yes. It is the one rule that, if broken, corrupts
+everything downstream — balances, simplification, settlement amounts — and does so
+silently. I'd rather pay a commit-time check than discover six months later that 0.02% of
+expenses don't balance and have no way to know which.
+
+---
+
+### Step 17 — Indexing, derived from the queries
+
+**Interviewer:** What indexes would you add?
+
+**Candidate:** I'd rather start from the queries, because an index list without the query
+list is just guessing. There are five reads that matter:
+
+1. Open the app → my active groups.
+2. Open a group → its most recent expenses, paginated.
+3. Open a group → every member's balance.
+4. Open an expense → its splits.
+5. Group history → its settlements.
+
+**Q1 — my active groups.** Step 4 already added `(user_id, group_id)`. Make it partial,
+since nobody lists groups they've left:
+
+```sql
+CREATE INDEX group_members_active_by_user
+    ON group_members (user_id, group_id)
+    WHERE left_at IS NULL;
+```
+
+A partial index is smaller, so more of it stays cached, and it skips rows the query would
+have discarded anyway.
+
+**Q2 — the group feed.** Sorted by date, newest first:
+
+```sql
+CREATE INDEX expenses_group_feed
+    ON expenses (group_id, expense_date DESC, expense_id DESC)
+    WHERE deleted_at IS NULL;
+```
+
+`expense_id` is in there as a tiebreaker, and it is not cosmetic. Several expenses share a
+date, so `expense_date` alone is not a total order — pagination would drop or repeat rows
+at page boundaries. With the tiebreaker the order is total, which lets us use **keyset
+pagination**:
+
+```sql
+WHERE group_id = :g
+  AND (expense_date, expense_id) < (:last_date, :last_id)
+ORDER BY expense_date DESC, expense_id DESC
+LIMIT 50;
+```
+
+rather than `OFFSET 10000`, which makes the database walk and discard ten thousand rows to
+return fifty. Keyset pagination seeks straight to the position and costs the same on page
+200 as on page 1.
+
+**Q3 — balances.** With Step 15's table this is a primary-key range scan on
+`member_balances (group_id, …)`. No extra index. That's the payoff for materialising them.
+
+**Q4 — splits by expense.** Covered by the composite primary key.
+
+**Q5 — a user's splits**, needed by reconciliation and by any recompute:
+
+```sql
+CREATE INDEX expense_splits_by_user
+    ON expense_splits (user_id, expense_id)
+    INCLUDE (amount_paid, amount_owed);
+```
+
+`INCLUDE` puts the two amounts in the leaf pages without making them part of the key. The
+aggregate becomes an **index-only scan** — it never touches the heap. On a table this hot
+that is a large difference for eight bytes a row.
+
+**Interviewer:** Foreign keys are indexed automatically, so some of this is redundant.
+
+**Candidate:** They aren't, and this is a genuinely common misconception. Postgres indexes
+the *referenced* side, because it needs a unique constraint there, but creates nothing on
+the *referencing* side. `expense_splits.user_id` has no index unless I write one.
+
+It matters beyond read speed: every delete or key update on `users` has to scan every
+referencing table to check the constraint. Unindexed foreign keys turn one parent delete
+into a pile of sequential scans.
+
+**Interviewer:** Anything you'd deliberately not index?
+
+**Candidate:** `expenses.description`. Someone always wants to search it, and a B-tree
+can't serve `LIKE '%pizza%'` anyway — that needs a trigram or full-text index, which is a
+different structure with its own write cost. I'd want evidence people actually search
+before adding it.
+
+That's the general rule: every index is paid for on every write and in cache that other
+indexes then don't get. Five well-chosen indexes beat fifteen hopeful ones.
+
+---
+
+### Step 18 — When one machine is not enough
+
+**Interviewer:** `expense_splits` reaches two billion rows. What breaks and what do you do?
+
+**Candidate:** Three things, in the order they'll actually bite.
+
+**First, reads outgrow one box — and that's the easy one.** The workload is 10:1
+read-heavy, so streaming replicas absorb balance and feed reads while the primary takes
+writes. The catch is replication lag: Alice adds an expense, her next read hits a replica
+that hasn't seen it, and the expense appears to vanish. That's the read-your-own-writes
+problem, and the fix is to route a user to the primary for a few seconds after their own
+write rather than pretending the lag isn't there.
+
+**Second, the big tables get unwieldy.** Partition `expenses` and `expense_splits` by
+month on `expense_date`. Recent-activity queries touch one or two partitions and the
+planner prunes the rest. Archiving becomes `DETACH PARTITION` — a catalogue operation —
+instead of a `DELETE` of 200 million rows that bloats the table and thrashes autovacuum.
+
+I'd be honest about what partitioning does *not* fix, though: a per-user balance recompute
+still fans out across every partition, because one person's history spans years. Date
+partitioning helps the feed and the archival story, not that query. Step 13's materialised
+balance is what actually saves it.
+
+**Interviewer:** And when one primary can't take the write volume?
+
+**Candidate:** Then shard, and the shard key is the whole decision. I'd shard on
+**`group_id`**.
+
+**Interviewer:** Why not `user_id`? Users are what you have 50 million of.
+
+**Candidate:** Because of how a write is shaped. One expense touches one group and several
+users. Shard by `user_id` and a single four-person dinner writes to four shards — a
+distributed transaction, two-phase commit, and a write path that is only as available as
+the least available shard. Every expense becomes a cross-shard write.
+
+Shard by `group_id` and that same dinner is one local transaction: the expense, its splits,
+and its balance updates all live on the shard that owns the group. Expenses never span
+groups, so writes never span shards. The invariant from Step 16 stays enforceable by a
+local constraint, which it would not be across a distributed commit.
+
+**Interviewer:** What does that cost?
+
+**Candidate:** The home screen. "All my groups" is now a scatter-gather across every shard
+holding one of Alice's groups, fanned out and merged in the application. That's acceptable
+because the fan-out is bounded by her group count — tens, not thousands — and each hit is a
+primary-key lookup.
+
+I'd keep `users` and `group_members` in a small global directory so "which shards do I
+need to ask?" is one query, not a broadcast.
+
+That's the trade I'd defend: make the **write** path local and pay on a read that's bounded
+and parallelisable. Sharding by user does the opposite, and the expensive side is the one
+that has to be transactional.
+
+---
+
+### Step 19 — The final schema
+
+```sql
+CREATE TABLE users (
+    user_id      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    email        VARCHAR(320) NOT NULL,
+    display_name TEXT         NOT NULL CHECK (length(display_name) BETWEEN 1 AND 100),
+    created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    deleted_at   TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX users_email_lower_uniq ON users (lower(email));
+
+CREATE TABLE groups (
+    group_id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name             VARCHAR(100) NOT NULL,
+    created_by       BIGINT       NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    default_currency CHAR(3)      NOT NULL,
+    created_at       TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
+CREATE TABLE group_members (
+    group_id  BIGINT      NOT NULL REFERENCES groups(group_id) ON DELETE CASCADE,
+    user_id   BIGINT      NOT NULL REFERENCES users(user_id)   ON DELETE RESTRICT,
+    role      TEXT        NOT NULL DEFAULT 'member' CHECK (role IN ('member','admin')),
+    joined_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    left_at   TIMESTAMPTZ,
+    PRIMARY KEY (group_id, user_id)
+);
+CREATE INDEX group_members_active_by_user
+    ON group_members (user_id, group_id) WHERE left_at IS NULL;
+
+CREATE TABLE expenses (
+    expense_id   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    group_id     BIGINT        NOT NULL REFERENCES groups(group_id),
+    total_amount NUMERIC(14,2) NOT NULL CHECK (total_amount > 0),
+    currency     CHAR(3)       NOT NULL,
+    description  VARCHAR(255),
+    expense_date DATE          NOT NULL,
+    created_by   BIGINT        NOT NULL REFERENCES users(user_id),
+    created_at   TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    version      INTEGER       NOT NULL DEFAULT 1,
+    deleted_at   TIMESTAMPTZ,
+    fx_rate_to_group_currency NUMERIC(18,8),
+    fx_rate_source            TEXT,
+    fx_rate_at                TIMESTAMPTZ
+);
+CREATE INDEX expenses_group_feed
+    ON expenses (group_id, expense_date DESC, expense_id DESC) WHERE deleted_at IS NULL;
+
+CREATE TABLE expense_splits (
+    expense_id  BIGINT        NOT NULL REFERENCES expenses(expense_id) ON DELETE CASCADE,
+    user_id     BIGINT        NOT NULL REFERENCES users(user_id)       ON DELETE RESTRICT,
+    amount_paid NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (amount_paid >= 0),
+    amount_owed NUMERIC(14,2) NOT NULL           CHECK (amount_owed >= 0),
+    PRIMARY KEY (expense_id, user_id)
+);
+CREATE INDEX expense_splits_by_user
+    ON expense_splits (user_id, expense_id) INCLUDE (amount_paid, amount_owed);
+
+CREATE TABLE settlements (
+    settlement_id   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    group_id        BIGINT        NOT NULL REFERENCES groups(group_id),
+    payer_id        BIGINT        NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    payee_id        BIGINT        NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    amount          NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+    currency        CHAR(3)       NOT NULL,
+    settled_at      TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    created_by      BIGINT        NOT NULL REFERENCES users(user_id),
+    deleted_at      TIMESTAMPTZ,
+    idempotency_key UUID          NOT NULL,
+    CHECK (payer_id <> payee_id)
+);
+CREATE UNIQUE INDEX settlements_idem ON settlements (idempotency_key);
+CREATE INDEX settlements_by_group ON settlements (group_id, settled_at DESC)
+    WHERE deleted_at IS NULL;
+
+CREATE TABLE member_balances (
+    group_id BIGINT        NOT NULL,
+    user_id  BIGINT        NOT NULL,
+    currency CHAR(3)       NOT NULL,
+    balance  NUMERIC(14,2) NOT NULL DEFAULT 0,
+    PRIMARY KEY (group_id, user_id, currency),
+    FOREIGN KEY (group_id, user_id) REFERENCES group_members (group_id, user_id)
+);
+
+CREATE TABLE expense_revisions (
+    revision_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    expense_id  BIGINT      NOT NULL REFERENCES expenses(expense_id),
+    version     INTEGER     NOT NULL,
+    snapshot    JSONB       NOT NULL,
+    changed_by  BIGINT      NOT NULL REFERENCES users(user_id),
+    changed_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (expense_id, version)
+);
+```
+
+Seven tables. Five of them were forced by a requirement that broke an earlier draft;
+`member_balances` and `expense_revisions` exist because of read volume and audit
+respectively — both optimisations over a source of truth that still lives in
+`expense_splits` and `settlements`.
+
+#### What I'd flag as unfinished
+
+An interviewer usually asks what you'd do with more time, and having an answer ready is
+worth more than pretending the design is complete.
+
+- **Money as minor units.** `NUMERIC(14,2)` can't represent Kuwaiti dinar precisely. The
+  migration gets more expensive every month it's deferred.
+- **The hot-row ceiling on balances.** Fine at four people per group, contended at two
+  hundred. The append-and-roll-up design from Step 13 is the escape hatch.
+- **Non-group expenses.** Step 1 modelled a 1:1 split as a two-person group. If that proves
+  clumsy in the UI, it's a product change, not a schema change — which is itself a sign the
+  clarification was worth making.
+- **Deletion under GDPR.** Soft delete keeps referential integrity but does not satisfy a
+  right-to-erasure request. The usual answer is crypto-shredding or tombstoning the PII in
+  `users` while keeping the key — worth saying out loud rather than being caught by it.
+
+---
+
+### Step 20 — The mental model
+
+Strip away Splitwise and what's left is a method that transfers to any schema question:
+
+1. **Ask the questions whose answers delete work.** Four of the five clarifications in
+   Step 1 removed a design option before anyone drew a box.
+2. **Ship a deliberately wrong V1.** A schema that survives three breakages in front of the
+   interviewer demonstrates more than one that arrives perfect and unexplained.
+3. **Separate facts from derivations.** Store what happened. Derive what it means. Every
+   time we stored a derivation — participants from membership, shares from percentages — it
+   broke on the next requirement.
+4. **When a derived value stops being derivable, add a relation.** Not a cleverer query, not
+   a count column.
+5. **Defend types, not just tables.** `NUMERIC` over `FLOAT`, `TIMESTAMPTZ` over
+   `TIMESTAMP`, `BIGINT` over random `UUID`. These are the questions that separate people
+   who have run a database from people who have read about one.
+6. **Know which rules the database can actually enforce.** Single-row predicates are
+   `CHECK`s. Cross-row invariants need deferred triggers. Rules with legitimate exceptions
+   belong in the application. Say which is which and why.
+7. **Denormalise deliberately, and defend it.** `total_amount` and `member_balances` are
+   redundant on purpose, justified by a 10:1 read ratio, protected by a constraint and a
+   reconciliation job.
+8. **Let the access pattern pick the shard key.** Shard so that the transactional path is
+   local, and pay on the path that parallelises.
