@@ -15,6 +15,15 @@ sidebar_class_name: sidebar-medium
 The schema at the bottom of this page is not the answer. The answer is the order the
 decisions were made in, and what each one cost.
 
+> **If you are revising the night before**, read Steps 1, 5, 8 and 20, then the final
+> schema in Step 19. That is the spine: clarify, draft something wrong, discover the
+> dual-amount split, and the method that generalises. Everything else is depth you can add
+> once the spine is solid.
+>
+> **Say in the room** what Steps 1–8 cover — it is already a strong answer. Steps 9–18 are
+> mostly *know it exists*: material for when an interviewer pushes, not a script to recite
+> unprompted. Nobody is expected to volunteer deferred constraint triggers.
+
 An interviewer asking you to "design the database for Splitwise" is not checking whether
 you can recite five table names. They are watching whether you start small, whether you
 can defend a column type when pushed, and whether you notice that a new requirement has
@@ -56,9 +65,7 @@ adds \$40 cash?
 
 **Interviewer:** Yes, that happens constantly.
 
-**Candidate:** I'll note that loudly, because it is the single requirement most likely to
-break a naive schema. I'm going to design the first version *without* it on purpose, so
-you can watch where it breaks.
+**Candidate:** Noted — that one sounds cheap and isn't. I'll come back to it.
 
 Fourth: currency. One currency per group, or can a group mix them?
 
@@ -103,6 +110,22 @@ I won't use it, for three reasons:
   `group_members`, and every index on them. Deleting a user properly becomes much harder.
 
 So: a surrogate key, with `email` kept as a separate unique constraint.
+
+**Interviewer:** You're going to soft-delete users later. Does that unique constraint still
+behave?
+
+**Candidate:** …no, and that's a good catch. A plain unique index covers every row
+including the deleted ones, so Bob deletes his account and his address is burned —
+*nobody* can sign up with it again, including Bob. The constraint has to be partial, scoped
+to live rows:
+
+```sql
+CREATE UNIQUE INDEX users_email_lower_uniq
+    ON users (lower(email)) WHERE deleted_at IS NULL;
+```
+
+Worth noticing *why* I missed it: the uniqueness rule and the soft-delete rule were
+reasoned about separately and each is correct alone. Most schema bugs look like that.
 
 #### 2b. Which surrogate? `BIGINT` vs UUID
 
@@ -175,7 +198,9 @@ CREATE TABLE users (
 );
 
 -- Case-insensitive uniqueness, enforced by the database rather than by the app.
-CREATE UNIQUE INDEX users_email_lower_uniq ON users (lower(email));
+-- Partial: a soft-deleted account must not hold its email hostage forever.
+CREATE UNIQUE INDEX users_email_lower_uniq
+    ON users (lower(email)) WHERE deleted_at IS NULL;
 ```
 
 ---
@@ -281,10 +306,11 @@ history don't get erased.
 
 ---
 
-### Step 5 — A deliberately naive `expenses` table
+### Step 5 — The `expenses` table
 
-**Candidate:** Now the interesting table. I'm going to write the version almost everyone
-writes first, with one payer and an equal split, and then let you break it.
+**Candidate:** Now the table the app actually revolves around. One payer, split equally
+across the group — that covers the common case, and I'd rather get a working draft on the
+board than stall trying to anticipate every shape a bill can take.
 
 **Interviewer:** Go ahead.
 
@@ -416,8 +442,12 @@ interpretation of the number per mode.
 
 ### Step 8 — Break #3: more than one person paid
 
-**Interviewer:** Back to the thing you flagged in Step 1. Dinner is \$100: Alice pays \$60
-on her card, Bob pays \$40 cash. Your `expenses` table has a single `paid_by_user_id`.
+**Interviewer:** Dinner is \$100: Alice pays \$60 on her card, Bob pays \$40 cash. Your
+`expenses` table has a single `paid_by_user_id`.
+
+**Candidate:** And you told me in Step 1 that co-paying was common, so I have no excuse for
+this one — I built the table as though a bill has one payer because that is the shape a
+receipt usually has in my head.
 
 **Candidate:** A scalar column can hold one payer, so it has to go. Paying is not a
 property of the expense — it is a property of a *person's involvement* in the expense,
@@ -519,10 +549,15 @@ And three columns we started with are already gone or changed: `paid_by_user_id`
 deleted, `expense_participants` was renamed, and the participant list stopped being derived
 from group membership.
 
-That churn is the point. A candidate who writes these five tables immediately and correctly
-looks like someone who memorised the answer. A candidate who writes four, gets broken three
-times, and repairs the design each time looks like someone who can do this on a problem
-nobody has published a solution to.
+That churn is the point, and it is worth being honest about which parts of it were
+avoidable. The participant list breaking was a genuine modelling error — I conflated
+membership with participation. The single-payer column was worse: Step 1 told me co-paying
+was common and I built it in anyway.
+
+Neither is a disaster, and that is the useful thing to notice. A candidate who produces
+these five tables immediately and correctly looks like someone who has seen the answer. A
+candidate who gets caught twice, says so, and repairs the design cleanly looks like someone
+who can do this on a problem nobody has published a solution to.
 
 **Still open, in the steps that follow:** settling up, the penny that won't divide by
 three, edits and audit history, leaving a group mid-balance, making balance reads fast
@@ -665,12 +700,13 @@ ALTER TABLE expenses
     ADD COLUMN deleted_at TIMESTAMPTZ;
 
 CREATE TABLE expense_revisions (
-    revision_id   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    expense_id    BIGINT      NOT NULL REFERENCES expenses(expense_id),
-    version       INTEGER     NOT NULL,
-    snapshot      JSONB       NOT NULL,   -- the expense and its splits, as they were
-    changed_by    BIGINT      NOT NULL REFERENCES users(user_id),
-    changed_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    revision_id    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    expense_id     BIGINT        NOT NULL REFERENCES expenses(expense_id),
+    version        INTEGER       NOT NULL,
+    previous_total NUMERIC(14,2) NOT NULL,  -- queried; kept as a column
+    snapshot       JSONB         NOT NULL,  -- displayed only; the full before-image
+    changed_by     BIGINT        NOT NULL REFERENCES users(user_id),
+    changed_at     TIMESTAMPTZ   NOT NULL DEFAULT now(),
     UNIQUE (expense_id, version)
 );
 ```
@@ -678,13 +714,21 @@ CREATE TABLE expense_revisions (
 **Interviewer:** Why `JSONB` for the snapshot? You've been careful about types all the way
 through and now you're dumping a blob.
 
-**Candidate:** Fair challenge, and the answer is about access pattern rather than laziness.
-A revision is never queried by its internals — nobody filters revisions by `amount_owed`.
-It is read whole, to render "Alice changed the total from \$100 to \$120". A shadow table
-mirroring every column would need migrating in lockstep with `expenses` forever, and would
-still only ever be `SELECT *`-ed. If the product later wanted "show me every expense that
-was edited after being settled", I'd promote the fields that query needs into real columns
-and leave the rest in the blob.
+**Candidate:** Fair challenge. The rule I'd apply is: structure what you query, blob what
+you only ever display.
+
+Revisions are read whole, to render "Alice changed the total from \$100 to \$120". Nobody
+filters them by `amount_owed`. A shadow table mirroring every column would need migrating in
+lockstep with `expenses` forever and would still only ever be `SELECT *`-ed.
+
+But I'd not leave it entirely unstructured, because two queries are predictable enough to
+plan for now rather than migrate for later — "what changed about this expense" and "which
+expenses were edited after someone settled against them". So the columns those need —
+`expense_id`, `version`, `changed_by`, `changed_at`, and the previous total — are real
+columns; the full before-image stays in the blob.
+
+That is the honest version of the answer. "I'd promote fields later if needed" is what
+people say when they haven't thought about which fields.
 
 **Interviewer:** And the `version` column?
 
@@ -748,6 +792,61 @@ row lock.
 
 ---
 
+### Step 12b — Three questions I'd expect and had not answered
+
+**Interviewer:** Before we move on — can a user who is not in the group appear on an
+expense?
+
+**Candidate:** As written, yes. `expense_splits.user_id` references `users`, not
+`group_members`, so nothing stops it. Let me think about whether that's a bug.
+
+It isn't, quite. Charlie leaves the flatshare in March; his splits from January must stay
+valid, and a constraint requiring every split to match a *current* member would make them
+illegal retroactively. So the loose reference is load-bearing.
+
+What's missing is the narrower rule: at the moment an expense is *created*, every
+participant must be an active member. That's a write-time check, not a stored invariant,
+and it belongs in the application for the same reason as the leave rule in Step 12 — it
+has exceptions, like adding someone who's about to join.
+
+I'd put the rule in the service layer and say so explicitly, rather than leave the reader
+thinking the foreign key covers it.
+
+**Interviewer:** Who is allowed to read a group's expenses, or edit one they didn't create?
+
+**Candidate:** Nothing in the schema expresses that, and it's a real gap rather than a
+deferred nicety.
+
+Reads are the easy half: visibility follows membership, so "can Alice see this expense?"
+is "is there a `group_members` row for Alice and this expense's group?" — a join we already
+index. No new table.
+
+Writes need a decision I'd want from you. Splitwise lets any member edit any expense in the
+group, which is unusually permissive and works because the group is a high-trust social
+unit. The alternative is that only the creator and group admins may edit, which is what the
+`role` column in Step 4 was quietly anticipating. Either is a one-line policy in the
+service layer reading rows the schema already has — but the fact that a 50-million-user app
+has no row-level permission model at all is something I'd rather state than leave implied.
+
+**Interviewer:** Refunds. The restaurant comps the dessert and gives \$20 back.
+
+**Candidate:** Step 5 put `CHECK (total_amount > 0)` on expenses and I owe you the
+consequence of that. A refund is not an expense with a negative total — it is its own
+event, and modelling it as a negative expense would corrupt exactly the spending analytics
+that Step 9 refused to corrupt with settlements.
+
+The cheap answer is a `kind` column on `expenses` distinguishing `'expense'` from
+`'adjustment'`, with the `CHECK` relaxed to `<> 0` for adjustments only, and every spending
+aggregate filtering on `kind = 'expense'`. The splits mechanism needs no change: a \$20
+refund is an adjustment whose `amount_owed` values are negative, and the zero-sum invariant
+from Step 8 still holds.
+
+I'd call that the right shape rather than the finished design — refunds that arrive after a
+settlement raise the same restatement problem as edits in Step 11, and I'd want to work
+that through properly rather than wave at it.
+
+---
+
 ### Step 13 — Reading balances fast, and the trap in the obvious fix
 
 **Interviewer:** Alice has five years of history. Computing her balance from scratch on
@@ -757,26 +856,46 @@ every app open is going to hurt. Fix it.
 everything else has to stay consistent with:
 
 ```sql
--- Alice's net position in one group: positive means the group owes her.
-SELECT COALESCE(SUM(s.amount_paid - s.amount_owed), 0)
-     + COALESCE((SELECT SUM(amount) FROM settlements
-                  WHERE group_id = :g AND payer_id = :u AND deleted_at IS NULL), 0)
-     - COALESCE((SELECT SUM(amount) FROM settlements
-                  WHERE group_id = :g AND payee_id = :u AND deleted_at IS NULL), 0)
-  FROM expense_splits s
-  JOIN expenses e ON e.expense_id = s.expense_id
- WHERE e.group_id = :g AND s.user_id = :u AND e.deleted_at IS NULL;
+-- Alice's net position in one group, per currency.
+-- Positive means the group owes her.
+SELECT ccy, SUM(delta) AS balance
+FROM (
+    SELECT e.currency AS ccy, s.amount_paid - s.amount_owed AS delta
+      FROM expense_splits s
+      JOIN expenses e ON e.expense_id = s.expense_id
+     WHERE e.group_id = :g AND s.user_id = :u AND e.deleted_at IS NULL
+
+    UNION ALL
+    SELECT currency, amount   FROM settlements
+     WHERE group_id = :g AND payer_id = :u AND deleted_at IS NULL
+
+    UNION ALL
+    SELECT currency, -amount  FROM settlements
+     WHERE group_id = :g AND payee_id = :u AND deleted_at IS NULL
+) t
+GROUP BY ccy;
 ```
 
 Paying someone *increases* your position — you've put cash in. Receiving decreases it.
 
+Note that it groups by currency rather than returning one number. Step 1 established that a
+single expense can be in a currency other than the group's, and summing rupees into dollars
+produces a figure that is not wrong so much as meaningless. Step 15 picks this up properly;
+for now it is enough that the authoritative query never pretends otherwise.
+
 That query is correct and it is linear in Alice's history, which is exactly what we can't
-afford on a 10:1 read-heavy path. So we materialise it:
+afford on a 10:1 read-heavy path. So we materialise it.
+
+I'll put the running total on the membership row for now — one balance per member per
+group:
 
 ```sql
 ALTER TABLE group_members
     ADD COLUMN balance NUMERIC(14,2) NOT NULL DEFAULT 0;
 ```
+
+(Step 15 moves this into its own table once currency enters the picture. The mechanics
+below are what matter and they survive the move.)
 
 **Interviewer:** Fine. How do you keep it current?
 
@@ -833,19 +952,31 @@ Notice first that the schema never stores "Alice owes Bob \$10". It stores each 
 net position in the pool: Alice −10, Bob 0, Charlie +10. The pairwise debt is already an
 inference, and that's a feature — it means the simplification has nothing to undo.
 
-From those net positions, minimising the number of transfers is a graph problem. With *n*
-people there are at most *n−1* transfers needed, and finding the true minimum is
-NP-hard — it contains subset-sum. So production systems use a greedy approximation: repeatedly
-match the largest debtor against the largest creditor, settle the smaller of the two
-amounts, and continue. That's `O(n log n)` with a pair of heaps and it produces at most
-*n−1* transfers.
+From those net positions, minimising the number of transfers is a graph problem, and
+finding the true minimum is NP-hard — it contains subset-sum.
+
+The usual approach is greedy: repeatedly match the largest debtor against the largest
+creditor, settle the smaller of the two amounts, and continue. Two heaps make it
+`O(n log n)`.
+
+I want to be careful about what that buys, because it is easy to oversell. Greedy finishes
+in at most *n−1* transfers — but so does the dumbest possible scheme, where everyone settles
+against one nominated person. *n−1* is the ceiling, not the achievement. What greedy
+actually gives you is that it usually lands well under the ceiling, by zeroing out two
+people at once whenever a debt and a credit happen to match. It is an approximation that is
+good in practice and carries no guarantee of optimality.
 
 **Interviewer:** Why not do that in SQL?
 
 **Candidate:** Because it's iterative and stateful — each step depends on the result of the
 last. Expressing it as a recursive CTE is possible and miserable: hard to read, hard to
-test, impossible to profile, and it burns database CPU, which is the one resource in this
-architecture you cannot horizontally scale by adding another box.
+test, and hard to profile when it misbehaves.
+
+There's a capacity argument too, though I'd put it second and state it carefully. Step 18
+scales reads with replicas and writes by sharding, so database CPU is not unscalable. But
+it is the most *expensive* CPU in the system and the slowest to add, whereas the stateless
+app tier scales by starting another container. Spending the costly resource on a loop that
+the cheap one runs in microseconds is the wrong trade — not an impossible one.
 
 The division of labour I'd argue for is the one this whole design has followed: the
 database does storage, integrity, and set-oriented aggregation. The application does
@@ -882,8 +1013,35 @@ CREATE TABLE member_balances (
 );
 ```
 
+That foreign key is right on one machine and becomes a problem in Step 18, where
+`group_members` moves into a global directory while balances stay with their shard. I'll
+deal with it there rather than pre-emptively weakening the constraint now — on a single
+primary it is doing real work.
+
 A flatshare that only ever spends in rupees has exactly one row per member and behaves
 identically to the column it replaces. A trip that touched three currencies has three.
+
+**Interviewer:** Step 13's increment was `UPDATE … SET balance = balance + :delta`. Does
+that still work here?
+
+**Candidate:** It breaks, and it breaks quietly — which is worse than the lost update I was
+so pleased about catching. With one row per member the row always existed. Now a
+`(group, user, currency)` row only exists once that member has touched that currency, and
+an `UPDATE` matching nothing affects zero rows and **raises no error at all**. The first
+euro expense on a trip would update nobody's balance and nothing would complain.
+
+So the increment has to create-or-add atomically:
+
+```sql
+INSERT INTO member_balances (group_id, user_id, currency, balance)
+VALUES (:g, :u, :ccy, :delta)
+ON CONFLICT (group_id, user_id, currency)
+DO UPDATE SET balance = member_balances.balance + EXCLUDED.balance;
+```
+
+That is still a single statement, so it keeps the property from Step 13 that made the
+original safe. The lesson I'd take is that "zero rows updated" is a failure mode you have
+to go looking for, because the database will not tell you.
 
 **Interviewer:** Users want one number, not three. Convert them.
 
@@ -1116,9 +1274,113 @@ primary-key lookup.
 I'd keep `users` and `group_members` in a small global directory so "which shards do I
 need to ask?" is one query, not a broadcast.
 
+**Interviewer:** You put a foreign key from `member_balances` to `group_members` in Step 15.
+You've just put those two on different machines.
+
+**Candidate:** You're right, and that constraint is the first casualty of sharding. A
+foreign key cannot span shards — there is nothing for the database to check against
+locally.
+
+I'd rather be explicit about what's lost than quietly drop the line. Three options, and I
+don't love any of them equally:
+
+- **Keep `group_members` on the shard with its group and accept a replicated directory.**
+  Membership is tiny and changes rarely, so each shard holds the rows for its own groups and
+  a small global index answers "which shards hold Alice's groups". The FK stays local and
+  enforced. This is what I'd do.
+- **Drop the constraint and enforce it in the write path.** Honest, cheap, and it means the
+  guarantee is now only as good as the code — which Step 16 spent a whole table arguing
+  against.
+- **Don't shard.** Worth saying out loud: 50 million users does not automatically mean one
+  Postgres primary is insufficient. I'd want the write throughput numbers before giving up
+  foreign keys, because they are a real thing to lose.
+
+The general point is that sharding is not free and it does not only cost you joins. It
+costs you constraints, and constraints were the mechanism Step 16 relied on for the
+invariant that matters most.
+
 That's the trade I'd defend: make the **write** path local and pay on a read that's bounded
 and parallelisable. Sharding by user does the opposite, and the expensive side is the one
 that has to be transactional.
+
+---
+
+### Step 18b — The screen I designed badly
+
+**Interviewer:** Open the real Splitwise. The home screen is not a list of groups — it is a
+list of *people*, with one number each. "Bob owes you ₹420" across everything. Can your
+schema do that?
+
+**Candidate:** It can compute it, and it computes it badly. I'd rather walk into that than
+be caught by it.
+
+Every balance I have built is scoped to a group: `member_balances` is keyed on
+`(group_id, user_id, currency)`, and Step 18 shards on `group_id`. A per-*friend* total has
+to gather Alice's balance from every group she shares with Bob — which after sharding means
+fanning out across every shard holding one of her groups, then folding the results by
+counterparty in the application.
+
+So the most-viewed screen in the product is the one query my design made a scatter-gather.
+That's backwards.
+
+**Interviewer:** Where did that come from?
+
+**Candidate:** Step 1. I asked whether a two-person split was its own concept, you said
+treat it as a group of two, and I took that as settling the *data model*. It only settled
+the *write* path. Group-of-two makes writes uniform, which was the right call — but I let
+it imply that reads were group-shaped too, and the product says otherwise.
+
+That is the most expensive mistake on this whiteboard, and it is a clarifying question I
+didn't think to ask: *what does the home screen show?*
+
+**Interviewer:** Fix it.
+
+**Candidate:** The shape of the fix is a second materialised aggregate, keyed by the pair
+rather than the group:
+
+```sql
+-- Net position between two people across every group they share.
+-- Canonical ordering: low_user_id < high_user_id, so a pair has exactly one row.
+CREATE TABLE friend_balances (
+    low_user_id  BIGINT        NOT NULL REFERENCES users(user_id),
+    high_user_id BIGINT        NOT NULL REFERENCES users(user_id),
+    currency     CHAR(3)       NOT NULL,
+    balance      NUMERIC(14,2) NOT NULL DEFAULT 0,  -- sign is w.r.t. low_user_id
+    PRIMARY KEY (low_user_id, high_user_id, currency),
+    CHECK (low_user_id < high_user_id)
+);
+```
+
+The canonical ordering is the part worth pointing at. Without it the pair (Alice, Bob) and
+(Bob, Alice) are two rows that can disagree, and every read has to check both. Forcing
+`low < high` with a `CHECK` means a pair has exactly one row and the sign carries the
+direction.
+
+**Interviewer:** But a group expense isn't pairwise. Three people split a dinner — who owes
+whom?
+
+**Candidate:** That's the real cost, and it's why I wouldn't pretend this is free. A
+three-way split has no inherent pairwise structure: it produces three net positions, not
+three debts. To maintain `friend_balances` you have to *choose* a pairwise decomposition —
+typically attributing each participant's shortfall to the payers in proportion to what each
+paid.
+
+Which means `friend_balances` is not a projection of the truth, it's an *interpretation* of
+it, and two reasonable implementations could disagree. Step 13's rule — that the cache is
+an optimisation over a source of truth — gets strained here, because the thing being cached
+isn't uniquely determined by the source.
+
+I'd still build it, because the alternative is a slow home screen. But I'd want the
+decomposition rule written down, applied in exactly one place, and covered by the same
+reconciliation job, because this is the aggregate most likely to drift in a way nobody
+notices.
+
+**Interviewer:** And the sharding?
+
+**Candidate:** `friend_balances` is keyed by user pair, not group, so it doesn't belong on a
+group shard. It would live in the global tier with `users`, or be sharded on
+`low_user_id`. That's a second sharding scheme in one system, which I'd flag as real
+operational cost rather than draw a box around.
 
 ---
 
@@ -1132,7 +1394,9 @@ CREATE TABLE users (
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
     deleted_at   TIMESTAMPTZ
 );
-CREATE UNIQUE INDEX users_email_lower_uniq ON users (lower(email));
+-- Partial: a soft-deleted account must not hold its email hostage forever.
+CREATE UNIQUE INDEX users_email_lower_uniq
+    ON users (lower(email)) WHERE deleted_at IS NULL;
 
 CREATE TABLE groups (
     group_id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -1209,12 +1473,13 @@ CREATE TABLE member_balances (
 );
 
 CREATE TABLE expense_revisions (
-    revision_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    expense_id  BIGINT      NOT NULL REFERENCES expenses(expense_id),
-    version     INTEGER     NOT NULL,
-    snapshot    JSONB       NOT NULL,
-    changed_by  BIGINT      NOT NULL REFERENCES users(user_id),
-    changed_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    revision_id    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    expense_id     BIGINT        NOT NULL REFERENCES expenses(expense_id),
+    version        INTEGER       NOT NULL,
+    previous_total NUMERIC(14,2) NOT NULL,
+    snapshot       JSONB         NOT NULL,
+    changed_by     BIGINT        NOT NULL REFERENCES users(user_id),
+    changed_at     TIMESTAMPTZ   NOT NULL DEFAULT now(),
     UNIQUE (expense_id, version)
 );
 ```
@@ -1233,9 +1498,16 @@ worth more than pretending the design is complete.
   migration gets more expensive every month it's deferred.
 - **The hot-row ceiling on balances.** Fine at four people per group, contended at two
   hundred. The append-and-roll-up design from Step 13 is the escape hatch.
-- **Non-group expenses.** Step 1 modelled a 1:1 split as a two-person group. If that proves
-  clumsy in the UI, it's a product change, not a schema change — which is itself a sign the
-  clarification was worth making.
+- **`friend_balances` is an interpretation, not a projection.** Step 18b builds it anyway,
+  because the home screen needs it, but a pairwise decomposition of an n-way split is a
+  choice rather than a fact. It is the aggregate most likely to drift unnoticed.
+- **Row-level permissions.** Step 12b establishes that visibility follows membership and
+  that edit rights are a policy decision, but there is no permission model in the schema.
+  At this scale that is a gap, not a simplification.
+- **Receipts, recurring expenses, the activity feed.** All real Splitwise features, none
+  modelled. Receipts are a blob store plus a reference. Recurring expenses are a template
+  plus a scheduler, and the interesting question is whether generated instances are rows
+  or derived. The activity feed is the classic fan-out-on-write versus read trade.
 - **Deletion under GDPR.** Soft delete keeps referential integrity but does not satisfy a
   right-to-erasure request. The usual answer is crypto-shredding or tombstoning the PII in
   `users` while keeping the key — worth saying out loud rather than being caught by it.
