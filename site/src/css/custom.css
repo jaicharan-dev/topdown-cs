@@ -3150,6 +3150,163 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
 }
 
 /* ===================================================================
+   TOC RAIL AND PANEL MOTION
+
+   Three things were wrong with the collapsed rail and the way it opened.
+
+   It jumped. The panel moved from `top: 30vh` to `top: 12vh` on hover with
+   no transition on `top`, so it snapped upward before the width had finished
+   animating. Both states are now centred on `top: 50%` and the box grows
+   symmetrically, so the anchor never moves and there is nothing to jump.
+
+   Short lists opened against the top. With a fixed `top` and a tall
+   `max-height`, a six-item list sat at the top of a mostly empty box.
+   Centring fixes that for every length without special-casing.
+
+   The hyphens were three different lengths and loosely spaced, which read as
+   noise rather than as a scale. They are now one length at one rhythm, and
+   only weight distinguishes the active entry.
+   =================================================================== */
+
+@media (min-width: 997px) {
+  /* Anchor both states to the vertical centre so opening never moves it. */
+  .theme-doc-toc-desktop,
+  .theme-doc-toc-desktop:hover {
+    top: 50% !important;
+    bottom: auto !important;
+    transform: translateY(-50%) !important;
+    max-height: 72vh !important;
+    transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 0.26s ease, border-color 0.26s ease,
+      box-shadow 0.3s ease, padding 0.26s ease !important;
+  }
+
+  /* ---- collapsed: one length, one rhythm ---- */
+
+  .theme-doc-toc-desktop:not(:hover) .table-of-contents {
+    padding: 0 !important;
+  }
+
+  .theme-doc-toc-desktop:not(:hover) .table-of-contents__link {
+    padding: 0 !important;
+    height: 12px !important;
+    overflow: hidden !important;
+  }
+
+  .theme-doc-toc-desktop:not(:hover) .table-of-contents li::after,
+  .theme-doc-toc-desktop:not(:hover)
+    .table-of-contents
+    > li::after,
+  .theme-doc-toc-desktop:not(:hover)
+    .table-of-contents
+    > li > ul > li::after,
+  .theme-doc-toc-desktop:not(:hover)
+    .table-of-contents
+    ul ul li::after {
+    top: 50% !important;
+    width: 14px !important;
+    opacity: 0.38 !important;
+    box-shadow: none !important;
+  }
+
+  /* The active entry keeps the same length — only weight marks it. */
+  .theme-doc-toc-desktop:not(:hover)
+    .table-of-contents
+    > li:has(> .table-of-contents__link--active)::after,
+  .theme-doc-toc-desktop:not(:hover)
+    .table-of-contents
+    li li:has(> .table-of-contents__link--active)::after {
+    top: 50% !important;
+    width: 14px !important;
+    opacity: 1 !important;
+    background-color: var(--ifm-color-primary) !important;
+    box-shadow: none !important;
+  }
+
+  /* ---- opening ---- */
+
+  .theme-doc-toc-desktop .table-of-contents__link {
+    transition: opacity 0.22s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+      color 0.15s ease, border-color 0.15s ease !important;
+  }
+
+  .theme-doc-toc-desktop:not(:hover) .table-of-contents__link {
+    opacity: 0 !important;
+    transform: translateX(10px) !important;
+    transition-delay: 0s !important;
+  }
+
+  .theme-doc-toc-desktop:hover .table-of-contents__link {
+    opacity: 1 !important;
+    transform: translateX(0) !important;
+  }
+
+  /* A short cascade so the list reads as unfolding rather than appearing.
+     Capped at twelve; past that the delay would outlast the open. */
+  .theme-doc-toc-desktop:hover .table-of-contents > li:nth-child(1)
+    .table-of-contents__link {
+    transition-delay: 0.030s;
+  }
+  .theme-doc-toc-desktop:hover .table-of-contents > li:nth-child(2)
+    .table-of-contents__link {
+    transition-delay: 0.042s;
+  }
+  .theme-doc-toc-desktop:hover .table-of-contents > li:nth-child(3)
+    .table-of-contents__link {
+    transition-delay: 0.054s;
+  }
+  .theme-doc-toc-desktop:hover .table-of-contents > li:nth-child(4)
+    .table-of-contents__link {
+    transition-delay: 0.066s;
+  }
+  .theme-doc-toc-desktop:hover .table-of-contents > li:nth-child(5)
+    .table-of-contents__link {
+    transition-delay: 0.078s;
+  }
+  .theme-doc-toc-desktop:hover .table-of-contents > li:nth-child(6)
+    .table-of-contents__link {
+    transition-delay: 0.090s;
+  }
+  .theme-doc-toc-desktop:hover .table-of-contents > li:nth-child(7)
+    .table-of-contents__link {
+    transition-delay: 0.102s;
+  }
+  .theme-doc-toc-desktop:hover .table-of-contents > li:nth-child(8)
+    .table-of-contents__link {
+    transition-delay: 0.114s;
+  }
+  .theme-doc-toc-desktop:hover .table-of-contents > li:nth-child(9)
+    .table-of-contents__link {
+    transition-delay: 0.126s;
+  }
+  .theme-doc-toc-desktop:hover .table-of-contents > li:nth-child(10)
+    .table-of-contents__link {
+    transition-delay: 0.138s;
+  }
+  .theme-doc-toc-desktop:hover .table-of-contents > li:nth-child(11)
+    .table-of-contents__link {
+    transition-delay: 0.150s;
+  }
+  .theme-doc-toc-desktop:hover .table-of-contents > li:nth-child(12)
+    .table-of-contents__link {
+    transition-delay: 0.162s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .theme-doc-toc-desktop,
+    .theme-doc-toc-desktop:hover,
+    .theme-doc-toc-desktop .table-of-contents__link {
+      transition: none !important;
+      transition-delay: 0s !important;
+    }
+
+    .theme-doc-toc-desktop:not(:hover) .table-of-contents__link {
+      transform: none !important;
+    }
+  }
+}
+
+/* ===================================================================
    PINNED TOC ON LONG PAGES
 
    The hover rail suits six headings and not twenty-four. Pinned open when
@@ -3176,6 +3333,7 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
   .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12)):hover {
     width: 250px !important;
     top: 12vh !important;
+    transform: none !important;
     max-height: 74vh !important;
     right: 24px !important;
 
@@ -3260,6 +3418,10 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
     .table-of-contents__link {
     display: block !important;
     opacity: 1 !important;
+    transform: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    transition-delay: 0s !important;
     pointer-events: auto !important;
     text-align: left !important;
     white-space: normal !important;   /* full step names, not ellipses */
