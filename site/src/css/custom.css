@@ -3193,6 +3193,12 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
     overflow: hidden !important;
   }
 
+  /* The rail is wider than the old 36px so the marks have room to be read
+     as a scale rather than as specks. */
+  .theme-doc-toc-desktop:not(:hover) {
+    width: 56px !important;
+  }
+
   .theme-doc-toc-desktop:not(:hover) .table-of-contents li::after,
   .theme-doc-toc-desktop:not(:hover)
     .table-of-contents
@@ -3204,23 +3210,37 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
     .table-of-contents
     ul ul li::after {
     top: 50% !important;
-    width: 14px !important;
+    right: 14px !important;
+    width: 24px !important;
     opacity: 0.38 !important;
     box-shadow: none !important;
   }
 
-  /* The active entry keeps the same length — only weight marks it. */
-  .theme-doc-toc-desktop:not(:hover)
-    .table-of-contents
-    > li:has(> .table-of-contents__link--active)::after,
-  .theme-doc-toc-desktop:not(:hover)
-    .table-of-contents
-    li li:has(> .table-of-contents__link--active)::after {
+  /* Every inactive mark is the same length; the current one reaches further
+     left, so position in the page is readable at a glance.
+
+     Drawn from the active link rather than by re-styling the li's ::after.
+     The theme's own `li:has(> .--active)::after` rule wins the cascade on
+     width and opacity whatever specificity is thrown at it, so rather than
+     fight it this paints a longer accent bar on top of the grey one — same
+     geometry, higher z-index, so it covers it exactly. */
+  .theme-doc-toc-desktop:not(:hover) .table-of-contents__link--active::before {
+    content: '' !important;
+    position: absolute !important;
+    right: 14px !important;
     top: 50% !important;
-    width: 14px !important;
+    transform: translateY(-50%) !important;
+    width: 38px !important;
+    height: 2px !important;
+    border-radius: 1px !important;
+    background: var(--ifm-color-primary) !important;
     opacity: 1 !important;
-    background-color: var(--ifm-color-primary) !important;
-    box-shadow: none !important;
+    z-index: 105 !important;
+  }
+
+  /* Open, the bar goes with the rest of the rail. */
+  .theme-doc-toc-desktop:hover .table-of-contents__link--active::before {
+    content: none !important;
   }
 
   /* ---- opening ---- */
