@@ -2985,6 +2985,171 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
 
 
 /* ===================================================================
+   TOC SCROLLING — applies to every state, not just the pinned one
+
+   The hover panel had the same clipping bug the pinned one did, and at any
+   viewport below the pin breakpoint it is the only thing a reader gets. On a
+   24-heading page the list is ~693px inside a 40vh container with
+   `overflow: hidden`, so roughly half the entries were unreachable: not
+   scrolled off, cut off.
+
+   Three things conspired, and removing any two is not enough:
+     - `flex-shrink: 0` on the list, so it would not shrink
+     - `max-height: 100%`, which resolves to nothing against an auto-height
+       parent and therefore constrained nothing
+     - the flex default `min-height: auto`, which blocks shrinking below
+       content size regardless of the other two
+
+   With all three unset the list's own `overflow-y` finally engages.
+   =================================================================== */
+
+@media (min-width: 997px) {
+  .theme-doc-toc-desktop .table-of-contents {
+    flex: 1 1 auto !important;
+    flex-shrink: 1 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    height: auto !important;
+    overscroll-behavior: contain !important;
+    scrollbar-width: thin !important;
+  }
+
+  /* Collapsed, the links are invisible and unclickable, so a scrollbar in a
+     36px rail would be noise. Hidden until the panel is actually open. */
+  .theme-doc-toc-desktop:not(:hover) .table-of-contents {
+    overflow-y: hidden !important;
+  }
+
+  /* Open, it needs both the room and the scroll. The expanded bounds contain
+     the collapsed ones, so the panel never moves out from under the cursor. */
+  .theme-doc-toc-desktop:hover {
+    top: 12vh !important;
+    max-height: 76vh !important;
+  }
+
+  .theme-doc-toc-desktop:hover .table-of-contents {
+    overflow-y: auto !important;
+  }
+
+  .theme-doc-toc-desktop .table-of-contents::-webkit-scrollbar {
+    width: 4px !important;
+  }
+
+  .theme-doc-toc-desktop .table-of-contents::-webkit-scrollbar-thumb {
+    background: var(--ifm-color-emphasis-300) !important;
+    border-radius: 999px !important;
+  }
+
+  .theme-doc-toc-desktop .table-of-contents::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+}
+
+/* ===================================================================
+   TOC HOVER PANEL — appearance
+
+   The panel used to carry a neon halo coloured by the page's difficulty
+   badge, which on a Medium page meant an amber glow around a floating card.
+   Against the rest of the site that reads as a different product. Same
+   surface language as the search dropdown and the cards instead: a quiet
+   raised panel with a layered shadow.
+
+   Labels are left-aligned and wrap, matching the pinned state, so a reader
+   sees "Step 16 — The invariants, and which ones the database can actually
+   enforce" rather than "Step 16 — The invariants, and…". That also retires
+   the hover tooltip, which only existed because the labels were truncated.
+   =================================================================== */
+
+@media (min-width: 997px) {
+  html[data-theme='dark'] .theme-doc-toc-desktop:hover {
+    background: #1a1a1e !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.7),
+      0 0 0 1px rgba(255, 255, 255, 0.03) !important;
+  }
+
+  html:not([data-theme='dark']) .theme-doc-toc-desktop:hover {
+    background: var(--csf-surface, #ffffff) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: 1px solid rgba(24, 24, 27, 0.08) !important;
+    border-radius: 14px !important;
+    box-shadow: 0 20px 44px -14px rgba(24, 24, 27, 0.22),
+      0 2px 6px rgba(24, 24, 27, 0.06) !important;
+  }
+
+  /* The accent bar along the top went with the glow. */
+  .theme-doc-toc-desktop:hover::before {
+    opacity: 0 !important;
+  }
+
+  /* Open, the hyphens have no job — the labels are readable. The active
+     marker's rule carries :has(), so these have to out-specify it. */
+  .theme-doc-toc-desktop:hover .table-of-contents li::after,
+  .theme-doc-toc-desktop:hover
+    .table-of-contents
+    > li:has(> .table-of-contents__link--active)::after,
+  .theme-doc-toc-desktop:hover
+    .table-of-contents
+    li li:has(> .table-of-contents__link--active)::after,
+  .theme-doc-toc-desktop:hover .table-of-contents li:hover > ::after,
+  .theme-doc-toc-desktop:hover
+    .table-of-contents
+    li:has(> .table-of-contents__link:hover)::after {
+    opacity: 0 !important;
+  }
+
+  .theme-doc-toc-desktop:hover .table-of-contents li {
+    position: relative !important;
+  }
+
+  .theme-doc-toc-desktop:hover .table-of-contents__link {
+    text-align: left !important;
+    white-space: normal !important;
+    text-overflow: clip !important;
+    padding: 0.33rem 0.9rem 0.33rem 1rem !important;
+    font-size: 0.76rem !important;
+    line-height: 1.45 !important;
+    border-left: 2px solid transparent !important;
+    transition: color 0.15s ease, border-color 0.15s ease !important;
+  }
+
+  .theme-doc-toc-desktop:hover
+    .table-of-contents
+    > li
+    > ul
+    .table-of-contents__link {
+    padding-left: 1.8rem !important;
+    font-size: 0.72rem !important;
+  }
+
+  .theme-doc-toc-desktop:hover
+    .table-of-contents__link.table-of-contents__link--active {
+    color: var(--ifm-color-primary) !important;
+    font-weight: 600 !important;
+    border-left-color: var(--ifm-color-primary) !important;
+  }
+
+  /* Pointer feedback was also the difficulty neon; use the page's ink. */
+  .theme-doc-toc-desktop:hover .table-of-contents__link:hover {
+    color: var(--ifm-font-color-base) !important;
+  }
+
+  .theme-doc-toc-desktop:hover
+    .table-of-contents__link.table-of-contents__link--active:hover {
+    color: var(--ifm-color-primary) !important;
+  }
+
+  /* The tooltip existed to recover truncated labels; nothing truncates now. */
+  .csf-toc-tooltip {
+    display: none !important;
+  }
+}
+
+/* ===================================================================
    PINNED TOC ON LONG PAGES
 
    The hover rail suits six headings and not twenty-four. Pinned open when
