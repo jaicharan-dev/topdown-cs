@@ -131,6 +131,9 @@ reasoned about separately and each is correct alone. Most schema bugs look like 
 
 This is the question interviewers push on, so it's worth having a real answer.
 
+<details>
+<summary>The full comparison, if you want the evidence</summary>
+
 | | `BIGINT` identity | `UUID` v4 (random) | `UUID` v7 (time-ordered) |
 |---|---|---|---|
 | **Size** | 8 bytes | 16 bytes | 16 bytes |
@@ -142,11 +145,20 @@ The size difference sounds trivial until you remember it is paid in *every* inde
 random UUID also destroys insert locality: rows arrive in random key order, so the index's
 rightmost pages are no longer the hot ones and the buffer cache stops helping you.
 
-**Decision:** `BIGINT GENERATED ALWAYS AS IDENTITY`. If we later need IDs that are safe to
-expose in URLs, I'd add a separate opaque `public_id` rather than making the primary key
-do both jobs. If this were a multi-master or offline-first system where clients must mint
-IDs before they reach the server, I'd switch to UUIDv7 — ordered, so it keeps the write
-pattern that makes `BIGINT` fast.
+</details>
+
+:::decision
+
+`BIGINT GENERATED ALWAYS AS IDENTITY`, over UUIDv4 and UUIDv7.
+
+Eight bytes instead of sixteen, in every foreign key and every index — and it appends to
+the right edge of the B-tree, so the hot pages stay hot.
+
+*Would change if:* IDs become URL-visible and enumeration matters — then an opaque
+`public_id` alongside, not instead. Or clients must mint IDs offline before reaching the
+server, which is UUIDv7, ordered so it keeps the write pattern that makes `BIGINT` fast.
+
+:::
 
 #### 2c. `email`
 
@@ -177,9 +189,18 @@ a prefix length.)
 
 A bare `TIMESTAMP` in Postgres stores the wall-clock digits and throws the offset away —
 so `14:00` recorded in Berlin and `14:00` recorded in Mumbai compare as equal. `TIMESTAMPTZ`
-normalises to UTC on write and renders in the session's zone on read. For an app whose
-entire premise is people splitting costs on holiday in another country, that is not
-optional.
+normalises to UTC on write and renders in the session's zone on read.
+
+:::decision
+
+`TIMESTAMPTZ` everywhere, over `TIMESTAMP`.
+
+For an app whose premise is people splitting costs in another country, discarding the
+offset is not a simplification — it is a correctness bug waiting for the first trip abroad.
+
+*Cost:* none worth the name. The storage is identical; only the semantics differ.
+
+:::
 
 #### 2f. `deleted_at`
 
@@ -275,9 +296,21 @@ Both questions get asked constantly here:
 - "Who is in this group?" → needs `group_id` first.
 - "Which groups is Bob in?" → needs `user_id` first.
 
-So the primary key is `(group_id, user_id)` and I add a second index on `(user_id, group_id)`.
-That second one is a *covering* index for the membership lookup: both columns it needs are
-in the index, so the query never has to touch the table at all.
+:::decision
+
+Primary key `(group_id, user_id)`, plus a second index on `(user_id, group_id)`.
+
+A composite index only reads left to right, and both directions are asked constantly: "who
+is in this group" needs `group_id` first, "which groups is Bob in" needs `user_id` first.
+One index cannot serve both.
+
+The second is also *covering* — every column the membership lookup needs is in the index,
+so it never touches the table.
+
+*Cost:* a second index to maintain on every membership write. Memberships change rarely,
+so this is close to free.
+
+:::
 
 #### 4c. `left_at`, for the same reason as `deleted_at`
 
@@ -326,6 +359,9 @@ mysteriously fail to net out.
 
 That leaves two defensible options:
 
+<details>
+<summary><code>NUMERIC</code> versus integer minor units, side by side</summary>
+
 | | `NUMERIC(14,2)` | Integer minor units (`BIGINT` cents) |
 |---|---|---|
 | **Exact?** | Yes — base-10, arbitrary precision | Yes — integers |
@@ -338,12 +374,25 @@ has two decimal places — but Japanese yen has zero and Kuwaiti dinar has three
 would store ¥1000 as `1000.00`, which is harmless, but it cannot represent a Kuwaiti dinar
 amount to its real precision.
 
-**Decision:** `NUMERIC(14,2)` for now, and I'll flag it. Our clarification said currency is
-per-expense, so the day we take Kuwaiti dinar seriously, the fix is to widen the scale to
-`NUMERIC(16,3)` or move to minor units plus the ISO 4217 exponent. I'd rather name the
-limitation than pretend it isn't there. The precision of 14 gives us up to about
-999 billion — far past any dinner bill, with room for currencies where a coffee costs
-50,000 units.
+</details>
+
+:::decision
+
+`NUMERIC(14,2)`, over `FLOAT` and over integer minor units.
+
+`FLOAT` is disqualified outright: binary floating point cannot hold a tenth, and this
+application's entire job is making columns sum to zero.
+
+Minor units are more correct and I am choosing against them for now, with eyes open.
+
+*Known limitation:* a scale of 2 assumes every currency has two decimals. Japanese yen has
+zero, Kuwaiti dinar has three. The day that matters, the fix is `NUMERIC(16,3)` or minor
+units plus the ISO 4217 exponent — and Step 15 comes back to it.
+
+*Why 14:* about 999 billion, far past any dinner bill, with room for currencies where a
+coffee costs 50,000 units.
+
+:::
 
 #### 5b. The rest of the columns
 
@@ -386,6 +435,13 @@ David each owe Alice \$25.
 
 ### Step 6 — Break #1: not everyone is on every bill
 
+:::broke
+
+Group membership is not the participant list. Step 5 assumed every member of a group is on
+every bill, and the pizza three of four people ate proves otherwise.
+
+:::
+
 **Interviewer:** All four roommates are in the group, but only Alice, Bob and Charlie went
 out for pizza. Your schema charges David \$15 for food he never ate.
 
@@ -419,6 +475,13 @@ David is untouched.
 
 ### Step 7 — Break #2: the shares aren't equal
 
+:::broke
+
+Knowing *who* was on a bill is not enough. A participant list with no amounts can only
+express an equal split.
+
+:::
+
 **Interviewer:** Charlie ordered the steak. He owes \$30 while Alice and Bob owe \$15 each.
 
 **Candidate:** Listing participants is no longer enough — I need the amount per person.
@@ -441,6 +504,13 @@ interpretation of the number per mode.
 ---
 
 ### Step 8 — Break #3: more than one person paid
+
+:::broke
+
+A scalar column holds one payer. Co-paying was stated as common in Step 1 and the design
+cannot express it — so `expenses.paid_by_user_id` has to be deleted, not extended.
+
+:::
 
 **Interviewer:** Dinner is \$100: Alice pays \$60 on her card, Bob pays \$40 cash. Your
 `expenses` table has a single `paid_by_user_id`.
@@ -645,6 +715,18 @@ There's a sharper version of the same point. An expense is a claim about **value
 consumed**; a settlement is a record of **cash transferred**. They have different
 lifecycles, different edit rules, and different auditors. Two kinds of fact, two tables.
 
+:::decision
+
+A separate `settlements` table, over reusing `expenses`.
+
+The arithmetic works either way. What breaks is every spending aggregate on the product —
+a group that spends \$500 and settles up would report \$1,000.
+
+*Rejected also:* a single double-entry `ledger_entries` table. More elegant, and it makes
+the commonest query filter out half its own table.
+
+:::
+
 ```sql title="settlements" {12}
 CREATE TABLE settlements (
     settlement_id   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -776,6 +858,9 @@ through and now you're dumping a blob.
 **Candidate:** Fair challenge. The rule I'd apply is: structure what you query, blob what
 you only ever display.
 
+<details>
+<summary>Why that lands on a mixed table rather than all-columns or all-blob</summary>
+
 Revisions are read whole, to render "Alice changed the total from \$100 to \$120". Nobody
 filters them by `amount_owed`. A shadow table mirroring every column would need migrating in
 lockstep with `expenses` forever and would still only ever be `SELECT *`-ed.
@@ -788,6 +873,8 @@ columns; the full before-image stays in the blob.
 
 That is the honest version of the answer. "I'd promote fields later if needed" is what
 people say when they haven't thought about which fields.
+
+</details>
 
 **Interviewer:** And the `version` column?
 
@@ -1044,8 +1131,21 @@ nightly job recomputes balances from `expense_splits` and `settlements`, compare
 the cached column, and alerts on any mismatch rather than silently repairing it. A silent
 repair hides the bug that caused it.
 
-The cached column is an optimisation. `expense_splits` and `settlements` are the source of
-truth. Keeping that distinction clear is what makes the optimisation safe to have.
+:::decision
+
+Materialise the balance, over computing it per read.
+
+Reads outnumber writes ten to one (Step 1), and the honest computation is linear in a
+user's whole history.
+
+*Cost, and it is real:* a derived value that can drift. Paid for with three things — the
+increment happens in one statement, inside the writing transaction, and a nightly job
+recomputes from source and alerts rather than silently repairing.
+
+*The line that keeps this safe:* the cache is an optimisation. `expense_splits` and
+`settlements` are the source of truth.
+
+:::
 
 ---
 
@@ -1175,9 +1275,14 @@ it. Storing the source and timestamp alongside the rate is what makes it auditab
 somebody disputes a conversion a year later, "we used ECB's 14:00 fix on 3 March" is an
 answer and "about 1.09, I think" is not.
 
-Note the scale of 8 on the rate. Rates are not money; they need far more precision than two
-decimal places, and rounding the *rate* before multiplying throws away accuracy that
-rounding the *result* would have kept.
+<details>
+<summary>Why the rate carries a scale of 8 when money carries 2</summary>
+
+Rates are not money. They need far more precision than two decimal places, and rounding the
+*rate* before multiplying throws away accuracy that rounding the *result* would have kept —
+the error is multiplied by the amount, so it grows with the size of the expense.
+
+</details>
 
 **Interviewer:** You said earlier that a scale of 2 can't represent every currency.
 
@@ -1218,9 +1323,21 @@ The two in bold are the interesting ones.
 **Interviewer:** Why can't the sum check be a `CHECK` constraint?
 
 **Candidate:** Same reason as Step 12 — it spans rows. But there's a second problem that
-catches people who reach for a plain trigger. You insert the expense, then insert its
-splits one at a time. After the first split the sum is wrong. A row-level trigger firing
-per statement would reject a perfectly valid transaction midway through.
+catches people who reach for a plain trigger: the transaction is *legitimately* inconsistent
+partway through, so the check cannot fire per statement.
+
+<details>
+<summary>The mechanics, if you have not written one of these</summary>
+
+You insert the expense, then insert its splits one at a time. After the first split the sum
+is wrong — not because anything is broken, but because the transaction is not finished. A
+row-level trigger firing per statement would reject a perfectly valid write midway through.
+
+`DEFERRABLE INITIALLY DEFERRED` is what resolves it: the constraint is checked once, at
+`COMMIT`, after every statement in the transaction has run. The transaction is free to be
+temporarily inconsistent; it just may not *commit* that way.
+
+</details>
 
 So the check has to run at **commit**, not per statement:
 
@@ -1408,9 +1525,21 @@ The general point is that sharding is not free and it does not only cost you joi
 costs you constraints, and constraints were the mechanism Step 16 relied on for the
 invariant that matters most.
 
-That's the trade I'd defend: make the **write** path local and pay on a read that's bounded
-and parallelisable. Sharding by user does the opposite, and the expensive side is the one
-that has to be transactional.
+:::decision
+
+Shard on `group_id`, over `user_id`.
+
+One expense touches one group and several users. Sharding by user turns every four-person
+dinner into a four-shard write — two-phase commit, and availability no better than the
+worst shard. Sharding by group keeps the whole write local, so the Step 16 invariant stays
+enforceable by a local constraint.
+
+*Cost:* the "all my groups" read becomes a scatter-gather, bounded by her group count —
+tens, not thousands.
+
+*The principle:* make the transactional path local and pay on the path that parallelises.
+
+:::
 
 ---
 

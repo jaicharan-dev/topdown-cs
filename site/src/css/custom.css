@@ -2897,3 +2897,175 @@ html:not([data-theme='dark']) .csf-turn--candidate { --turn-accent: #0f766e; }
     color: inherit;
   }
 }
+
+
+/* ===================================================================
+   DECISION AND BREAK CALLOUTS
+
+   Two custom admonition types (see src/theme/Admonition/Types.js).
+
+   :::decision  a why-this-and-not-that moment
+   :::broke     the point where a requirement invalidates the design
+
+   Decisions are deliberately quiet — there are many of them and they should
+   read as part of the argument, not interrupt it. Breaks are loud, because
+   there are only a handful and they are the turning points of the page.
+   =================================================================== */
+
+.csf-admonition--decision,
+.csf-admonition--broke {
+  border-radius: 12px;
+  border-width: 1px;
+  border-style: solid;
+  border-left-width: 3px;
+}
+
+/* ---------------------------------------------------------- decision */
+
+[data-theme='dark'] .csf-admonition--decision {
+  --ifm-alert-background-color: rgba(96, 165, 250, 0.07);
+  --ifm-alert-border-color: rgba(96, 165, 250, 0.4);
+  --ifm-alert-foreground-color: #e4e4e7;
+  border-color: rgba(96, 165, 250, 0.18);
+  border-left-color: rgba(96, 165, 250, 0.55);
+}
+
+html:not([data-theme='dark']) .csf-admonition--decision {
+  --ifm-alert-background-color: rgba(27, 79, 133, 0.05);
+  --ifm-alert-border-color: rgba(27, 79, 133, 0.35);
+  --ifm-alert-foreground-color: #32323a;
+  border-color: rgba(27, 79, 133, 0.16);
+  border-left-color: rgba(27, 79, 133, 0.45);
+}
+
+/* ------------------------------------------------------------- broke */
+
+[data-theme='dark'] .csf-admonition--broke {
+  --ifm-alert-background-color: rgba(251, 146, 60, 0.08);
+  --ifm-alert-border-color: rgba(251, 146, 60, 0.45);
+  --ifm-alert-foreground-color: #e4e4e7;
+  border-color: rgba(251, 146, 60, 0.22);
+  border-left-color: rgba(251, 146, 60, 0.7);
+}
+
+html:not([data-theme='dark']) .csf-admonition--broke {
+  --ifm-alert-background-color: rgba(180, 83, 9, 0.06);
+  --ifm-alert-border-color: rgba(180, 83, 9, 0.4);
+  --ifm-alert-foreground-color: #32323a;
+  border-color: rgba(180, 83, 9, 0.18);
+  border-left-color: rgba(180, 83, 9, 0.6);
+}
+
+/* Headings: small, uppercase, quiet — the body is the content. */
+.csf-admonition--decision > div:first-child,
+.csf-admonition--broke > div:first-child {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+[data-theme='dark'] .csf-admonition--decision > div:first-child { color: #93c5fd; }
+html:not([data-theme='dark']) .csf-admonition--decision > div:first-child { color: #1b4f85; }
+[data-theme='dark'] .csf-admonition--broke > div:first-child { color: #fdba74; }
+html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: #b45309; }
+
+/* A callout inside a speaker turn should not fight the rail. */
+.csf-turn > .csf-admonition--decision,
+.csf-turn > .csf-admonition--broke {
+  margin-top: 1rem;
+  margin-bottom: 0.3rem;
+}
+
+/* The "rejected alternative" line, written as the last paragraph in italics. */
+.csf-admonition--decision em {
+  font-style: normal;
+  opacity: 0.78;
+}
+
+
+/* ===================================================================
+   PINNED TOC ON LONG PAGES
+
+   The hover-to-expand hyphen rail is right for a page with six headings
+   and wrong for one with twenty-four, where the reader needs to know how
+   far through they are without hovering.
+
+   The trigger is the page's own content — :has() checks whether the TOC
+   has a twelfth top-level entry — so no page needs to opt in and nothing
+   needs a JS pass. The TOC CSS above already relies on :has(), so this
+   adds no new browser requirement.
+
+   Only pinned where there is room for it: the panel is fixed to the right
+   edge, so below 1500px it would start crowding the article and the rail
+   behaviour is kept.
+   =================================================================== */
+
+@media (min-width: 1500px) {
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12)) {
+    width: 266px !important;
+    max-height: 68vh !important;
+    top: 15vh !important;
+    border-radius: 14px !important;
+    padding: 6px 0 !important;
+  }
+
+  [data-theme='dark']
+    .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12)) {
+    background: rgba(26, 26, 30, 0.92) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  html:not([data-theme='dark'])
+    .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12)) {
+    background: rgba(255, 255, 255, 0.94) !important;
+    backdrop-filter: blur(14px) !important;
+    -webkit-backdrop-filter: blur(14px) !important;
+    border: 1px solid rgba(24, 24, 27, 0.08) !important;
+    box-shadow: 0 16px 36px -18px rgba(24, 24, 27, 0.22) !important;
+  }
+
+  /* The labels are always readable, so the hyphen rail has no job left. */
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12))
+    .table-of-contents li::after {
+    display: none !important;
+  }
+
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12))
+    .table-of-contents__link {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    text-align: left !important;
+    white-space: normal !important;   /* full step names, not ellipses */
+    text-overflow: clip !important;
+    padding: 6px 16px 6px 18px !important;
+    line-height: 1.4 !important;
+  }
+
+  /* An accent marker on the section being read, in place of the hyphen. */
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12))
+    .table-of-contents > li {
+    position: relative;
+  }
+
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12))
+    .table-of-contents
+    > li:has(> .table-of-contents__link--active)::before {
+    content: '';
+    position: absolute;
+    left: 6px;
+    top: 0.45rem;
+    bottom: 0.45rem;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--toc-neon, var(--ifm-color-primary));
+  }
+
+  /* Already expanded, so hovering should not resize it. */
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12)):hover {
+    width: 266px !important;
+  }
+}

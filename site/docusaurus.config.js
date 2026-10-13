@@ -130,6 +130,11 @@ const config = {
           sidebarPath: './sidebars.js',
           remarkPlugins: [remarkMath, remarkInterviewTurns],
           rehypePlugins: [rehypeKatex],
+          // :::decision and :::broke are registered in src/theme/Admonition/Types.js
+          admonitions: {
+            keywords: ['decision', 'broke'],
+            extendDefaults: true,
+          },
         },
         blog: false,
         sitemap: {
