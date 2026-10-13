@@ -2087,24 +2087,18 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
     --toc-neon-subtle: rgba(96, 165, 250, 0.45);
   }
 
-  /* 2. Difficulty Colors (Applied ONLY when data-difficulty is set) */
-  .theme-doc-toc-desktop[data-difficulty="easy"] { 
-    --toc-neon: #22c55e;
-    --toc-neon-glow: rgba(34, 197, 94, 0.22);
-    --toc-neon-shadow: rgba(34, 197, 94, 0.38);
-    --toc-neon-subtle: rgba(34, 197, 94, 0.55);
-  }
-  .theme-doc-toc-desktop[data-difficulty="medium"] { 
-    --toc-neon: #f59e0b;
-    --toc-neon-glow: rgba(245, 158, 11, 0.22);
-    --toc-neon-shadow: rgba(245, 158, 11, 0.38);
-    --toc-neon-subtle: rgba(245, 158, 11, 0.55);
-  }
-  .theme-doc-toc-desktop[data-difficulty="hard"] { 
-    --toc-neon: #ef4444;
-    --toc-neon-glow: rgba(239, 68, 68, 0.22);
-    --toc-neon-shadow: rgba(239, 68, 68, 0.38);
-    --toc-neon-subtle: rgba(239, 68, 68, 0.55);
+  /* 2. One accent, every page. The TOC used to take its colour from the
+     page's difficulty badge, so the same control was green, amber or red
+     depending on the question. Position in the document has nothing to do
+     with how hard the question is, and three meanings on one control is one
+     too many — the badge already says the difficulty. Blue throughout. */
+  .theme-doc-toc-desktop[data-difficulty="easy"],
+  .theme-doc-toc-desktop[data-difficulty="medium"],
+  .theme-doc-toc-desktop[data-difficulty="hard"] {
+    --toc-neon: var(--ifm-color-primary);
+    --toc-neon-glow: rgba(96, 165, 250, 0.18);
+    --toc-neon-shadow: rgba(96, 165, 250, 0.3);
+    --toc-neon-subtle: rgba(96, 165, 250, 0.45);
   }
 
   /* 3. The main TOC container - Floating 20px from viewport right edge */
@@ -3218,14 +3212,25 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
   }
 
   /* Every inactive mark is the same length; the current one reaches further
-     left, so position in the page is readable at a glance.
+     left and glows, so position in the page is readable at a glance without
+     hovering. This is the original neon marker, kept, just no longer tinted
+     by the page's difficulty.
 
-     Drawn from the active link rather than by re-styling the li's ::after.
-     The theme's own `li:has(> .--active)::after` rule wins the cascade on
-     width and opacity whatever specificity is thrown at it, so rather than
-     fight it this paints a longer accent bar on top of the grey one — same
-     geometry, higher z-index, so it covers it exactly. */
-  .theme-doc-toc-desktop:not(:hover) .table-of-contents__link--active::before {
+     Two cascade traps here, both found the hard way:
+
+     - It cannot be drawn by re-styling the li's own ::after. The theme's
+       `li:has(> .--active)::after` rule wins on width and opacity whatever
+       specificity is thrown at it, so this paints over that dash instead,
+       from the unclaimed ::before at the same geometry and a higher z-index.
+
+     - It cannot be drawn from the active *link* either. Collapsed, the link
+       carries `opacity: 0` to hide its label, and opacity applies to an
+       element's pseudo-elements too — the bar computed correctly and
+       rendered at zero alpha. The li is the nearest ancestor that is not
+       faded, so the bar hangs off the li. */
+  .theme-doc-toc-desktop:not(:hover)
+    .table-of-contents
+    li:has(> .table-of-contents__link--active)::before {
     content: '' !important;
     position: absolute !important;
     right: 14px !important;
@@ -3234,13 +3239,19 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
     width: 44px !important;
     height: 2px !important;
     border-radius: 1px !important;
-    background: var(--ifm-color-primary) !important;
+    background: var(--toc-neon, var(--ifm-color-primary)) !important;
+    box-shadow: 0 0 6px var(--toc-neon-shadow),
+      0 0 14px var(--toc-neon-glow) !important;
     opacity: 1 !important;
+    pointer-events: none !important;
     z-index: 105 !important;
   }
 
-  /* Open, the bar goes with the rest of the rail. */
-  .theme-doc-toc-desktop:hover .table-of-contents__link--active::before {
+  /* Open, the bar goes with the rest of the rail — the label marks the
+     section there, and a glowing dash beside readable text is just noise. */
+  .theme-doc-toc-desktop:hover
+    .table-of-contents
+    li:has(> .table-of-contents__link--active)::before {
     content: none !important;
   }
 
