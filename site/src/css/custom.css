@@ -2082,9 +2082,9 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
   /* 1. Default difficulty variables - Zero glow fallback */
   .theme-doc-toc-desktop {
     --toc-neon: var(--ifm-color-primary);
-    --toc-neon-glow: rgba(96, 165, 250, 0.18);
-    --toc-neon-shadow: rgba(96, 165, 250, 0.3);
-    --toc-neon-subtle: rgba(96, 165, 250, 0.45);
+    --toc-neon-glow: rgba(96, 165, 250, 0.34);
+    --toc-neon-shadow: rgba(96, 165, 250, 0.5);
+    --toc-neon-subtle: rgba(96, 165, 250, 0.62);
   }
 
   /* 2. One accent, every page. The TOC used to take its colour from the
@@ -2096,9 +2096,9 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
   .theme-doc-toc-desktop[data-difficulty="medium"],
   .theme-doc-toc-desktop[data-difficulty="hard"] {
     --toc-neon: var(--ifm-color-primary);
-    --toc-neon-glow: rgba(96, 165, 250, 0.18);
-    --toc-neon-shadow: rgba(96, 165, 250, 0.3);
-    --toc-neon-subtle: rgba(96, 165, 250, 0.45);
+    --toc-neon-glow: rgba(96, 165, 250, 0.34);
+    --toc-neon-shadow: rgba(96, 165, 250, 0.5);
+    --toc-neon-subtle: rgba(96, 165, 250, 0.62);
   }
 
   /* 3. The main TOC container - Floating 20px from viewport right edge */
@@ -2239,7 +2239,16 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
     border-radius: 1px !important;
     pointer-events: none !important;
     background-color: var(--ifm-font-color-secondary) !important;
-    transition: width 0.2s, background-color 0.2s, opacity 0.2s, box-shadow 0.2s !important;
+
+    /* The mark travels further than it used to, so 0.2s linear now reads as
+       a snap. Width gets the longest duration and an ease-out curve so it
+       extends quickly and settles; the glow trails slightly behind it, which
+       is what makes the mark look like it lights up rather than switches
+       on. `will-change` keeps the two bars that change on every scroll stop
+       off the main thread. */
+    transition: width 0.42s cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 0.3s ease, opacity 0.28s ease,
+      box-shadow 0.46s cubic-bezier(0.22, 1, 0.36, 1) !important;
     z-index: 102 !important;
   }
 
@@ -2256,19 +2265,25 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
     opacity: 0.18 !important;
   }
 
-  /* Active indicators */
+  /* Active indicators. The collapsed rail restates these further down with
+     the lengths and the glow it wants; these are the fallback for any state
+     that reaches the rail without going through that block. */
   .theme-doc-toc-desktop .table-of-contents > li:has(> .table-of-contents__link--active)::after {
-    width: 19px !important;
+    width: 44px !important;
     background-color: var(--toc-neon, var(--ifm-font-color-base)) !important;
     opacity: 1 !important;
-    box-shadow: 0 0 6px var(--toc-neon-shadow, transparent) !important;
+    box-shadow: 0 0 3px var(--toc-neon, transparent),
+      0 0 8px var(--toc-neon-subtle, transparent),
+      0 0 18px var(--toc-neon-glow, transparent) !important;
   }
 
   .theme-doc-toc-desktop .table-of-contents li li:has(> .table-of-contents__link--active)::after {
-    width: 10px !important;
+    width: 34px !important;
     background-color: var(--toc-neon, var(--ifm-font-color-base)) !important;
-    opacity: 0.9 !important;
-    box-shadow: 0 0 5px var(--toc-neon-shadow, transparent) !important;
+    opacity: 0.92 !important;
+    box-shadow: 0 0 3px var(--toc-neon-subtle, transparent),
+      0 0 7px var(--toc-neon-glow, transparent),
+      0 0 15px var(--toc-neon-glow, transparent) !important;
   }
 
   /* Hover state on item */
@@ -2276,6 +2291,14 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
   .theme-doc-toc-desktop .table-of-contents li:has(> .table-of-contents__link:hover)::after {
     background-color: var(--toc-neon, var(--ifm-font-color-base)) !important;
     opacity: 1 !important;
+  }
+
+  /* A mark that is mid-transition should not also be fighting a reduced
+     motion preference. */
+  @media (prefers-reduced-motion: reduce) {
+    .theme-doc-toc-desktop .table-of-contents li::after {
+      transition: background-color 0.01s linear !important;
+    }
   }
 
   .theme-doc-toc-desktop .table-of-contents__link::after {
@@ -3094,6 +3117,7 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
     .table-of-contents
     li:has(> .table-of-contents__link:hover)::after {
     opacity: 0 !important;
+    box-shadow: 0 0 0 transparent !important;
   }
 
   .theme-doc-toc-desktop:hover .table-of-contents li {
@@ -3188,71 +3212,66 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
   }
 
   /* The rail is wider than the old 36px so the marks have room to be read
-     as a scale rather than as specks, and wide enough that the longer
-     active bar below still clears the container's `overflow: hidden`. */
+     as a scale rather than as specks, and wide enough that the active mark
+     and its glow both clear the container's `overflow: hidden`. The mark
+     ends 58px in and the glow carries 14px past that, so anything under
+     72px would shear the left half of the halo off. */
   .theme-doc-toc-desktop:not(:hover) {
-    width: 64px !important;
+    width: 76px !important;
   }
 
-  .theme-doc-toc-desktop:not(:hover) .table-of-contents li::after,
-  .theme-doc-toc-desktop:not(:hover)
-    .table-of-contents
-    > li::after,
-  .theme-doc-toc-desktop:not(:hover)
-    .table-of-contents
-    > li > ul > li::after,
-  .theme-doc-toc-desktop:not(:hover)
-    .table-of-contents
-    ul ul li::after {
+  /* ---- the marks ----
+
+     Every row owns a mark at all times and only its length, colour and glow
+     change, so the accent travels down the rail instead of appearing in one
+     place and vanishing from another.
+
+     That last part is what was wrong before: the mark was a `::before` that
+     only existed on the active row, switched on with `content`. `content`
+     does not interpolate, so there was nothing between the two states to
+     animate — the bar popped. Putting the mark on the `::after` that every
+     row already has gives the transition something to travel along.
+
+     `::after` also already carries the transition, declared where the rail
+     is first defined further up this file. Length leads on a fast ease-out
+     so the mark extends and settles; the glow is given a longer run so it
+     arrives just behind the length, which is what makes it read as lighting
+     up rather than switching on. */
+
+  .theme-doc-toc-desktop:not(:hover) .table-of-contents li::after {
     top: 50% !important;
     right: 14px !important;
     width: 24px !important;
     opacity: 0.38 !important;
-    box-shadow: none !important;
+    background-color: var(--ifm-font-color-secondary) !important;
+    box-shadow: 0 0 0 transparent !important;
   }
 
-  /* Every inactive mark is the same length; the current one reaches further
-     left and glows, so position in the page is readable at a glance without
-     hovering. This is the original neon marker, kept, just no longer tinted
-     by the page's difficulty.
+  /* The current section: longer, blue, lit. Three shadow layers rather than
+     one — a tight core so the bar itself looks lit, a mid halo, and a wide
+     diffuse one that only registers peripherally. A single blur at this
+     size reads as a drop shadow instead of a glow.
 
-     Two cascade traps here, both found the hard way:
-
-     - It cannot be drawn by re-styling the li's own ::after. The theme's
-       `li:has(> .--active)::after` rule wins on width and opacity whatever
-       specificity is thrown at it, so this paints over that dash instead,
-       from the unclaimed ::before at the same geometry and a higher z-index.
-
-     - It cannot be drawn from the active *link* either. Collapsed, the link
-       carries `opacity: 0` to hide its label, and opacity applies to an
-       element's pseudo-elements too — the bar computed correctly and
-       rendered at zero alpha. The li is the nearest ancestor that is not
-       faded, so the bar hangs off the li. */
+     The `:has()` carries one extra class of specificity over the rule above
+     it, which is what lets these four properties win without `!important`
+     escalation. */
   .theme-doc-toc-desktop:not(:hover)
     .table-of-contents
-    li:has(> .table-of-contents__link--active)::before {
-    content: '' !important;
-    position: absolute !important;
-    right: 14px !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
+    li:has(> .table-of-contents__link--active)::after {
     width: 44px !important;
-    height: 2px !important;
-    border-radius: 1px !important;
-    background: var(--toc-neon, var(--ifm-color-primary)) !important;
-    box-shadow: 0 0 6px var(--toc-neon-shadow),
-      0 0 14px var(--toc-neon-glow) !important;
     opacity: 1 !important;
-    pointer-events: none !important;
-    z-index: 105 !important;
+    background-color: var(--toc-neon, #60a5fa) !important;
+    box-shadow: 0 0 3px var(--toc-neon, transparent),
+      0 0 9px var(--toc-neon-subtle, transparent),
+      0 0 20px var(--toc-neon-glow, transparent) !important;
   }
 
-  /* Open, the bar goes with the rest of the rail — the label marks the
-     section there, and a glowing dash beside readable text is just noise. */
-  .theme-doc-toc-desktop:hover
+  /* Nested headings sit a step in, so their mark is a step shorter and the
+     hierarchy stays legible at a glance. */
+  .theme-doc-toc-desktop:not(:hover)
     .table-of-contents
-    li:has(> .table-of-contents__link--active)::before {
-    content: none !important;
+    ul li:has(> .table-of-contents__link--active)::after {
+    width: 34px !important;
   }
 
   /* ---- opening ---- */
