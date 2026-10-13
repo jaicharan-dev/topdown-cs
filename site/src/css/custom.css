@@ -3194,9 +3194,10 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
   }
 
   /* The rail is wider than the old 36px so the marks have room to be read
-     as a scale rather than as specks. */
+     as a scale rather than as specks, and wide enough that the longer
+     active bar below still clears the container's `overflow: hidden`. */
   .theme-doc-toc-desktop:not(:hover) {
-    width: 56px !important;
+    width: 64px !important;
   }
 
   .theme-doc-toc-desktop:not(:hover) .table-of-contents li::after,
@@ -3230,7 +3231,7 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
     right: 14px !important;
     top: 50% !important;
     transform: translateY(-50%) !important;
-    width: 38px !important;
+    width: 44px !important;
     height: 2px !important;
     border-radius: 1px !important;
     background: var(--ifm-color-primary) !important;
