@@ -2987,45 +2987,97 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
 /* ===================================================================
    PINNED TOC ON LONG PAGES
 
-   The hover-to-expand hyphen rail is right for a page with six headings
-   and wrong for one with twenty-four, where the reader needs to know how
-   far through they are without hovering.
+   The hover rail suits six headings and not twenty-four. Pinned open when
+   the page has a twelfth top-level entry, detected with :has() on the TOC's
+   own content so nothing has to opt in.
 
-   The trigger is the page's own content — :has() checks whether the TOC
-   has a twelfth top-level entry — so no page needs to opt in and nothing
-   needs a JS pass. The TOC CSS above already relies on :has(), so this
-   adds no new browser requirement.
+   Two things the first attempt got wrong, both fixed here:
 
-   Only pinned where there is room for it: the panel is fixed to the right
-   edge, so below 1500px it would start crowding the article and the rail
-   behaviour is kept.
+   - It did not scroll. The inner list carried `flex-shrink: 0` and
+     `max-height: 100%`, which resolves to nothing against an auto-height
+     parent, so the list grew past the container and `overflow: hidden`
+     silently clipped a third of it. Flex children also default to
+     `min-height: auto` and refuse to shrink below their content. Both have
+     to be unset before the list's own `overflow-y` can engage.
+
+   - It looked like a popup. A floating glass card with a neon halo is right
+     for something that appears on hover and wrong for something always on
+     screen. Pinned, it is a quiet column in the margin: no card, no blur, no
+     glow, just a divider rule and the page's own type.
    =================================================================== */
 
 @media (min-width: 1500px) {
-  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12)) {
-    width: 266px !important;
-    max-height: 68vh !important;
-    top: 15vh !important;
-    border-radius: 14px !important;
-    padding: 6px 0 !important;
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12)),
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12)):hover {
+    width: 250px !important;
+    top: 12vh !important;
+    max-height: 74vh !important;
+    right: 24px !important;
+
+    /* Part of the page, not floating above it. */
+    background: transparent !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+    border-left: 1px solid var(--csf-border-subtle) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    overflow: hidden !important;
   }
 
-  [data-theme='dark']
-    .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12)) {
-    background: rgba(26, 26, 30, 0.92) !important;
-    backdrop-filter: blur(14px) !important;
-    -webkit-backdrop-filter: blur(14px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.6) !important;
+  /* "On this page", in the same register as the homepage section labels. */
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12))::before,
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12)):hover::before {
+    content: 'ON THIS PAGE' !important;
+    position: static !important;
+    display: block !important;
+    flex: none !important;
+    width: auto !important;
+    height: auto !important;
+    padding: 0 0 0.7rem 1.1rem !important;
+    background: none !important;
+    border-radius: 0 !important;
+    opacity: 1 !important;
+    font-size: 0.64rem !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.14em !important;
+    color: var(--ifm-color-emphasis-600) !important;
   }
 
-  html:not([data-theme='dark'])
-    .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12)) {
-    background: rgba(255, 255, 255, 0.94) !important;
-    backdrop-filter: blur(14px) !important;
-    -webkit-backdrop-filter: blur(14px) !important;
-    border: 1px solid rgba(24, 24, 27, 0.08) !important;
-    box-shadow: 0 16px 36px -18px rgba(24, 24, 27, 0.22) !important;
+  /* The scroll fix: let the list shrink, then let it scroll. */
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12))
+    .table-of-contents {
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    flex-shrink: 1 !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    height: auto !important;
+    padding: 0 0 0.5rem !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    scrollbar-width: thin !important;
+  }
+
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12))
+    .table-of-contents::-webkit-scrollbar {
+    width: 4px !important;
+  }
+
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12))
+    .table-of-contents::-webkit-scrollbar-thumb {
+    background: var(--ifm-color-emphasis-300) !important;
+    border-radius: 999px !important;
+  }
+
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12))
+    .table-of-contents::-webkit-scrollbar-track {
+    background: transparent !important;
   }
 
   /* The labels are always readable, so the hyphen rail has no job left. */
@@ -3035,37 +3087,46 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
   }
 
   .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12))
+    .table-of-contents li {
+    position: relative !important;
+  }
+
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12))
     .table-of-contents__link {
+    display: block !important;
     opacity: 1 !important;
     pointer-events: auto !important;
     text-align: left !important;
     white-space: normal !important;   /* full step names, not ellipses */
     text-overflow: clip !important;
-    padding: 6px 16px 6px 18px !important;
-    line-height: 1.4 !important;
+    padding: 0.33rem 0.5rem 0.33rem 1.1rem !important;
+    font-size: 0.76rem !important;
+    line-height: 1.45 !important;
+    color: var(--ifm-color-emphasis-600) !important;
+    border-left: 2px solid transparent !important;
+    margin-left: -1px !important;
+    transition: color 0.15s ease, border-color 0.15s ease !important;
   }
 
-  /* An accent marker on the section being read, in place of the hyphen. */
   .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12))
-    .table-of-contents > li {
-    position: relative;
+    .table-of-contents__link:hover {
+    color: var(--ifm-font-color-base) !important;
   }
 
+  /* The active section gets the rail, in the page's accent rather than the
+     difficulty neon the floating panel used. */
   .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12))
-    .table-of-contents
-    > li:has(> .table-of-contents__link--active)::before {
-    content: '';
-    position: absolute;
-    left: 6px;
-    top: 0.45rem;
-    bottom: 0.45rem;
-    width: 2px;
-    border-radius: 2px;
-    background: var(--toc-neon, var(--ifm-color-primary));
+    .table-of-contents__link--active {
+    color: var(--ifm-color-primary) !important;
+    font-weight: 600 !important;
+    border-left-color: var(--ifm-color-primary) !important;
   }
 
-  /* Already expanded, so hovering should not resize it. */
-  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12)):hover {
-    width: 266px !important;
+  /* Nested headings sit in, and quieter. */
+  .theme-doc-toc-desktop:has(.table-of-contents > li:nth-child(12))
+    .table-of-contents ul .table-of-contents__link {
+    padding-left: 1.9rem !important;
+    font-size: 0.72rem !important;
+    opacity: 0.8 !important;
   }
 }
