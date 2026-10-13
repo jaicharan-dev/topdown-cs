@@ -1,6 +1,7 @@
 import {themes as prismThemes} from 'prism-react-renderer';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import remarkInterviewTurns from './src/remark/interviewTurns.mjs';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -127,7 +128,7 @@ const config = {
       ({
         docs: {
           sidebarPath: './sidebars.js',
-          remarkPlugins: [remarkMath],
+          remarkPlugins: [remarkMath, remarkInterviewTurns],
           rehypePlugins: [rehypeKatex],
         },
         blog: false,

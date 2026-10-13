@@ -119,7 +119,7 @@ including the deleted ones, so Bob deletes his account and his address is burned
 *nobody* can sign up with it again, including Bob. The constraint has to be partial, scoped
 to live rows:
 
-```sql
+```sql title="The fix: scope uniqueness to live rows"
 CREATE UNIQUE INDEX users_email_lower_uniq
     ON users (lower(email)) WHERE deleted_at IS NULL;
 ```
@@ -188,7 +188,7 @@ account while still owing Alice \$40, hard-deleting the row either destroys the 
 that debt or breaks the foreign key. Nulling the timestamp out means "active"; setting it
 means "hidden from the UI, still referentially intact".
 
-```sql
+```sql title="users"
 CREATE TABLE users (
     user_id       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     email         VARCHAR(320) NOT NULL,
@@ -226,7 +226,7 @@ Combined with the soft delete from Step 2, a user who is referenced anywhere sim
 be hard-deleted. The group outlives its creator, which is what users expect: your holiday
 group doesn't evaporate because one person left the app.
 
-```sql
+```sql title="groups"
 CREATE TABLE groups (
     group_id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     name             VARCHAR(100) NOT NULL,
@@ -285,7 +285,7 @@ Someone who leaves a group with an unsettled balance cannot simply have their ro
 the debt is still real. `left_at` hides them from the member list while keeping every
 expense they were part of intact and attributable.
 
-```sql
+```sql title="group_members"
 CREATE TABLE group_members (
     group_id   BIGINT      NOT NULL REFERENCES groups(group_id) ON DELETE CASCADE,
     user_id    BIGINT      NOT NULL REFERENCES users(user_id)   ON DELETE RESTRICT,
@@ -361,7 +361,7 @@ limitation than pretend it isn't there. The precision of 14 gives us up to about
   group's timeline wrong.
 - `created_by` — who *entered* it, which is not always who paid it.
 
-```sql
+```sql title="expenses — first cut" {4}
 -- Version 1. This is wrong in three ways we are about to discover.
 CREATE TABLE expenses (
     expense_id      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -395,7 +395,7 @@ per-expense.
 
 The fix is to stop deriving participants and start storing them:
 
-```sql
+```sql title="expense_participants — Break #1"
 CREATE TABLE expense_participants (
     expense_id BIGINT NOT NULL REFERENCES expenses(expense_id) ON DELETE CASCADE,
     user_id    BIGINT NOT NULL REFERENCES users(user_id)       ON DELETE RESTRICT,
@@ -424,7 +424,7 @@ David is untouched.
 **Candidate:** Listing participants is no longer enough — I need the amount per person.
 The table grows a column:
 
-```sql
+```sql title="Break #2: shares are not equal"
 ALTER TABLE expense_participants
     ADD COLUMN amount_owed NUMERIC(14,2) NOT NULL CHECK (amount_owed >= 0);
 ```
@@ -449,14 +449,14 @@ interpretation of the number per mode.
 this one — I built the table as though a bill has one payer because that is the shape a
 receipt usually has in my head.
 
-**Candidate:** A scalar column can hold one payer, so it has to go. Paying is not a
+A scalar column can hold one payer, so it has to go. Paying is not a
 property of the expense — it is a property of a *person's involvement* in the expense,
 which is exactly what `expense_participants` already models.
 
 So the fix is not a new table. It's a second amount column on the one we have, and a
 rename, because "participants" now undersells it:
 
-```sql
+```sql title="Break #3: more than one payer" {1,7}
 ALTER TABLE expense_participants RENAME TO expense_splits;
 
 ALTER TABLE expense_splits
@@ -518,7 +518,7 @@ change, or a trigger that recomputes it. I'd rather carry an enforced redundancy
 an aggregate on the hottest read path. If writes were the dominant load, I'd drop the
 column and compute it.
 
-```sql
+```sql title="expense_splits — after three breaks"
 CREATE TABLE expense_splits (
     expense_id  BIGINT        NOT NULL REFERENCES expenses(expense_id) ON DELETE CASCADE,
     user_id     BIGINT        NOT NULL REFERENCES users(user_id)       ON DELETE RESTRICT,
@@ -559,6 +559,65 @@ these five tables immediately and correctly looks like someone who has seen the 
 candidate who gets caught twice, says so, and repairs the design cleanly looks like someone
 who can do this on a problem nobody has published a solution to.
 
+<details>
+<summary><b>Schema checkpoint — everything as it stands after Step 8</b></summary>
+
+```sql
+CREATE TABLE users (
+    user_id       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    email         VARCHAR(320) NOT NULL,
+    display_name  TEXT         NOT NULL CHECK (length(display_name) BETWEEN 1 AND 100),
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT now(),
+    deleted_at    TIMESTAMPTZ
+);
+CREATE UNIQUE INDEX users_email_lower_uniq
+    ON users (lower(email)) WHERE deleted_at IS NULL;
+
+CREATE TABLE groups (
+    group_id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name             VARCHAR(100) NOT NULL,
+    created_by       BIGINT       NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    default_currency CHAR(3)      NOT NULL,
+    created_at       TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
+CREATE TABLE group_members (
+    group_id   BIGINT      NOT NULL REFERENCES groups(group_id) ON DELETE CASCADE,
+    user_id    BIGINT      NOT NULL REFERENCES users(user_id)   ON DELETE RESTRICT,
+    role       TEXT        NOT NULL DEFAULT 'member' CHECK (role IN ('member','admin')),
+    joined_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+    left_at    TIMESTAMPTZ,
+    PRIMARY KEY (group_id, user_id)
+);
+CREATE INDEX group_members_by_user ON group_members (user_id, group_id);
+
+CREATE TABLE expenses (
+    expense_id   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    group_id     BIGINT        NOT NULL REFERENCES groups(group_id),
+    total_amount NUMERIC(14,2) NOT NULL CHECK (total_amount > 0),
+    currency     CHAR(3)       NOT NULL,
+    description  VARCHAR(255),
+    expense_date DATE          NOT NULL,
+    created_by   BIGINT        NOT NULL REFERENCES users(user_id),
+    created_at   TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+
+CREATE TABLE expense_splits (
+    expense_id  BIGINT        NOT NULL REFERENCES expenses(expense_id) ON DELETE CASCADE,
+    user_id     BIGINT        NOT NULL REFERENCES users(user_id)       ON DELETE RESTRICT,
+    amount_paid NUMERIC(14,2) NOT NULL DEFAULT 0 CHECK (amount_paid >= 0),
+    amount_owed NUMERIC(14,2) NOT NULL           CHECK (amount_owed >= 0),
+    PRIMARY KEY (expense_id, user_id)
+);
+CREATE INDEX expense_splits_by_user ON expense_splits (user_id, expense_id);
+```
+
+Note what is *not* here yet: no settlements, no audit trail, no cached
+balances, no currency handling beyond a column. Each of those arrives because
+a later step forces it.
+
+</details>
+
 **Still open, in the steps that follow:** settling up, the penny that won't divide by
 three, edits and audit history, leaving a group mid-balance, making balance reads fast
 without corrupting them, debt simplification, multi-currency, which invariants the database
@@ -586,7 +645,7 @@ There's a sharper version of the same point. An expense is a claim about **value
 consumed**; a settlement is a record of **cash transferred**. They have different
 lifecycles, different edit rules, and different auditors. Two kinds of fact, two tables.
 
-```sql
+```sql title="settlements" {12}
 CREATE TABLE settlements (
     settlement_id   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     group_id        BIGINT        NOT NULL REFERENCES groups(group_id),
@@ -693,7 +752,7 @@ to \$120 makes his settlement look wrong without explaining why.
 
 So edits are versioned, not overwritten:
 
-```sql
+```sql title="Versioning an expense"
 ALTER TABLE expenses
     ADD COLUMN version    INTEGER     NOT NULL DEFAULT 1,
     ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -736,7 +795,7 @@ people say when they haven't thought about which fields.
 it; the second write should not silently clobber the first. The update carries the version
 it read:
 
-```sql
+```sql title="Optimistic concurrency: the guard is in the WHERE" {3}
 UPDATE expenses
    SET total_amount = :new_total, version = version + 1, updated_at = now()
  WHERE expense_id = :id AND version = :version_the_client_read;
@@ -845,6 +904,56 @@ I'd call that the right shape rather than the finished design — refunds that a
 settlement raise the same restatement problem as edits in Step 11, and I'd want to work
 that through properly rather than wave at it.
 
+<details>
+<summary><b>Schema checkpoint — what Steps 9 to 12b added</b></summary>
+
+Only the deltas; the five tables from Step 8 are unchanged except where shown.
+
+```sql
+-- Step 9: repayments are a different kind of fact from expenses.
+CREATE TABLE settlements (
+    settlement_id   BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    group_id        BIGINT        NOT NULL REFERENCES groups(group_id),
+    payer_id        BIGINT        NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    payee_id        BIGINT        NOT NULL REFERENCES users(user_id) ON DELETE RESTRICT,
+    amount          NUMERIC(14,2) NOT NULL CHECK (amount > 0),
+    currency        CHAR(3)       NOT NULL,
+    settled_at      TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    created_by      BIGINT        NOT NULL REFERENCES users(user_id),
+    deleted_at      TIMESTAMPTZ,
+    idempotency_key UUID          NOT NULL,
+    CHECK (payer_id <> payee_id)
+);
+CREATE UNIQUE INDEX settlements_idem ON settlements (idempotency_key);
+
+-- Step 11: edits are versioned, never overwritten.
+ALTER TABLE expenses
+    ADD COLUMN version    INTEGER     NOT NULL DEFAULT 1,
+    ADD COLUMN updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    ADD COLUMN deleted_at TIMESTAMPTZ;
+
+CREATE TABLE expense_revisions (
+    revision_id    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    expense_id     BIGINT        NOT NULL REFERENCES expenses(expense_id),
+    version        INTEGER       NOT NULL,
+    previous_total NUMERIC(14,2) NOT NULL,
+    snapshot       JSONB         NOT NULL,
+    changed_by     BIGINT        NOT NULL REFERENCES users(user_id),
+    changed_at     TIMESTAMPTZ   NOT NULL DEFAULT now(),
+    UNIQUE (expense_id, version)
+);
+
+-- Step 12b: refunds are adjustments, not negative expenses.
+ALTER TABLE expenses
+    ADD COLUMN kind TEXT NOT NULL DEFAULT 'expense'
+        CHECK (kind IN ('expense', 'adjustment'));
+```
+
+Everything so far is about staying *correct*. Nothing yet is about being
+*fast* — that starts in Step 13.
+
+</details>
+
 ---
 
 ### Step 13 — Reading balances fast, and the trap in the obvious fix
@@ -855,7 +964,7 @@ every app open is going to hurt. Fix it.
 **Candidate:** Let me first say what the honest computation is, because it's the thing
 everything else has to stay consistent with:
 
-```sql
+```sql title="The authoritative balance, per currency"
 -- Alice's net position in one group, per currency.
 -- Positive means the group owes her.
 SELECT ccy, SUM(delta) AS balance
@@ -889,7 +998,7 @@ afford on a 10:1 read-heavy path. So we materialise it.
 I'll put the running total on the membership row for now — one balance per member per
 group:
 
-```sql
+```sql title="Materialise it"
 ALTER TABLE group_members
     ADD COLUMN balance NUMERIC(14,2) NOT NULL DEFAULT 0;
 ```
@@ -908,7 +1017,7 @@ wrong, permanently, and nobody notices for months.
 The fix is to never round-trip the value — let the database do the arithmetic in one
 statement:
 
-```sql
+```sql title="Safe: the database does the arithmetic"
 UPDATE group_members
    SET balance = balance + :delta
  WHERE group_id = :g AND user_id = :u;
@@ -1001,7 +1110,7 @@ think a design for a travel-adjacent app is finished without it.
 **Candidate:** The bug is that `balance` is a single `NUMERIC`. You cannot net €50 against
 \$50 — the sum is meaningless. A balance is only defined **per currency**.
 
-```sql
+```sql title="member_balances — one row per currency"
 -- One row per (group, member, currency). Replaces the single balance column.
 CREATE TABLE member_balances (
     group_id BIGINT        NOT NULL,
@@ -1032,7 +1141,7 @@ euro expense on a trip would update nobody's balance and nothing would complain.
 
 So the increment has to create-or-add atomically:
 
-```sql
+```sql title="Create-or-add, atomically"
 INSERT INTO member_balances (group_id, user_id, currency, balance)
 VALUES (:g, :u, :ccy, :delta)
 ON CONFLICT (group_id, user_id, currency)
@@ -1054,7 +1163,7 @@ indefensible for a debt between friends.
 
 So you convert at **write** time, and you store the rate you used:
 
-```sql
+```sql title="Record the rate you converted at"
 ALTER TABLE expenses
     ADD COLUMN fx_rate_to_group_currency NUMERIC(18,8),
     ADD COLUMN fx_rate_source            TEXT,
@@ -1115,7 +1224,7 @@ per statement would reject a perfectly valid transaction midway through.
 
 So the check has to run at **commit**, not per statement:
 
-```sql
+```sql title="The one invariant worth a commit-time check" {3}
 CREATE CONSTRAINT TRIGGER expense_splits_balance
     AFTER INSERT OR UPDATE OR DELETE ON expense_splits
     DEFERRABLE INITIALLY DEFERRED
@@ -1152,7 +1261,7 @@ list is just guessing. There are five reads that matter:
 **Q1 — my active groups.** Step 4 already added `(user_id, group_id)`. Make it partial,
 since nobody lists groups they've left:
 
-```sql
+```sql title="Q1 — my active groups"
 CREATE INDEX group_members_active_by_user
     ON group_members (user_id, group_id)
     WHERE left_at IS NULL;
@@ -1163,7 +1272,7 @@ have discarded anyway.
 
 **Q2 — the group feed.** Sorted by date, newest first:
 
-```sql
+```sql title="Q2 — the group feed"
 CREATE INDEX expenses_group_feed
     ON expenses (group_id, expense_date DESC, expense_id DESC)
     WHERE deleted_at IS NULL;
@@ -1174,7 +1283,7 @@ date, so `expense_date` alone is not a total order — pagination would drop or 
 at page boundaries. With the tiebreaker the order is total, which lets us use **keyset
 pagination**:
 
-```sql
+```sql title="Keyset pagination, not OFFSET"
 WHERE group_id = :g
   AND (expense_date, expense_id) < (:last_date, :last_id)
 ORDER BY expense_date DESC, expense_id DESC
@@ -1192,7 +1301,7 @@ return fifty. Keyset pagination seeks straight to the position and costs the sam
 
 **Q5 — a user's splits**, needed by reconciliation and by any recompute:
 
-```sql
+```sql title="Q5 — a user's splits, index-only" {3}
 CREATE INDEX expense_splits_by_user
     ON expense_splits (user_id, expense_id)
     INCLUDE (amount_paid, amount_owed);
@@ -1338,7 +1447,7 @@ didn't think to ask: *what does the home screen show?*
 **Candidate:** The shape of the fix is a second materialised aggregate, keyed by the pair
 rather than the group:
 
-```sql
+```sql title="friend_balances" {9}
 -- Net position between two people across every group they share.
 -- Canonical ordering: low_user_id < high_user_id, so a pair has exactly one row.
 CREATE TABLE friend_balances (
@@ -1382,11 +1491,58 @@ group shard. It would live in the global tier with `users`, or be sharded on
 `low_user_id`. That's a second sharding scheme in one system, which I'd flag as real
 operational cost rather than draw a box around.
 
+<details>
+<summary><b>Schema checkpoint — what Steps 13 to 18b added</b></summary>
+
+Everything below is an optimisation over a source of truth that still lives in
+`expense_splits` and `settlements`. None of it is authoritative.
+
+```sql
+-- Step 15: a balance is only defined per currency.
+-- (Replaces the single balance column Step 13 put on group_members.)
+CREATE TABLE member_balances (
+    group_id BIGINT        NOT NULL,
+    user_id  BIGINT        NOT NULL,
+    currency CHAR(3)       NOT NULL,
+    balance  NUMERIC(14,2) NOT NULL DEFAULT 0,
+    PRIMARY KEY (group_id, user_id, currency),
+    FOREIGN KEY (group_id, user_id) REFERENCES group_members (group_id, user_id)
+);
+
+-- Step 15: the rate is fixed at the moment the debt was incurred.
+ALTER TABLE expenses
+    ADD COLUMN fx_rate_to_group_currency NUMERIC(18,8),
+    ADD COLUMN fx_rate_source            TEXT,
+    ADD COLUMN fx_rate_at                TIMESTAMPTZ;
+
+-- Step 18b: the home screen is a list of people, not groups.
+CREATE TABLE friend_balances (
+    low_user_id  BIGINT        NOT NULL REFERENCES users(user_id),
+    high_user_id BIGINT        NOT NULL REFERENCES users(user_id),
+    currency     CHAR(3)       NOT NULL,
+    balance      NUMERIC(14,2) NOT NULL DEFAULT 0,
+    PRIMARY KEY (low_user_id, high_user_id, currency),
+    CHECK (low_user_id < high_user_id)
+);
+
+-- Step 17: indexes derived from the five queries that matter.
+CREATE INDEX group_members_active_by_user
+    ON group_members (user_id, group_id) WHERE left_at IS NULL;
+CREATE INDEX expenses_group_feed
+    ON expenses (group_id, expense_date DESC, expense_id DESC) WHERE deleted_at IS NULL;
+CREATE INDEX expense_splits_by_user
+    ON expense_splits (user_id, expense_id) INCLUDE (amount_paid, amount_owed);
+CREATE INDEX settlements_by_group
+    ON settlements (group_id, settled_at DESC) WHERE deleted_at IS NULL;
+```
+
+</details>
+
 ---
 
 ### Step 19 — The final schema
 
-```sql
+```sql title="The complete schema"
 CREATE TABLE users (
     user_id      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     email        VARCHAR(320) NOT NULL,

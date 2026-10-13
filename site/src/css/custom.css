@@ -2783,3 +2783,117 @@ html:not([data-theme='dark']) ::-webkit-scrollbar-thumb {
 html:not([data-theme='dark']) ::-webkit-scrollbar-thumb:hover {
   background: #aeaea8;
 }
+
+
+/* ===================================================================
+   INTERVIEW TURNS
+
+   Dialogue pages are authored as `**Interviewer:**` paragraphs and wrapped
+   at build time by src/remark/interviewTurns.mjs. Each turn gets a rail in
+   the speaker's colour, which is what makes a three-paragraph answer read
+   as one answer instead of three loose blocks.
+
+   Colour is never the only signal: the rail's position, the chip and the
+   indent all carry it too, so the page still parses with any kind of colour
+   vision deficiency. Deliberately not red/green — that is the one pair that
+   collapses for ~8% of men.
+   =================================================================== */
+
+.csf-turn {
+  --turn-accent: var(--ifm-color-emphasis-400);
+  position: relative;
+  padding-left: 1.15rem;
+
+  /* Between turns is a bigger gap than between paragraphs inside one. */
+  margin: 1.6rem 0;
+}
+
+.csf-turn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.4em;
+  bottom: 0.15em;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--turn-accent);
+  opacity: 0.55;
+}
+
+/* The interviewer sets the frame: cool, low chroma, recedes. */
+[data-theme='dark'] .csf-turn--interviewer { --turn-accent: #8691a8; }
+html:not([data-theme='dark']) .csf-turn--interviewer { --turn-accent: #5b6782; }
+
+/* The candidate carries what you are here to learn: warmer, fully saturated. */
+[data-theme='dark'] .csf-turn--candidate { --turn-accent: #34d399; }
+html:not([data-theme='dark']) .csf-turn--candidate { --turn-accent: #0f766e; }
+
+/* Inside a turn, paragraphs sit closer together than turns do. */
+.csf-turn > * {
+  margin-top: 0.7rem;
+  margin-bottom: 0;
+}
+
+.csf-turn > *:first-child {
+  margin-top: 0;
+}
+
+/* Code, tables and callouts still need room to breathe. */
+.csf-turn > pre,
+.csf-turn > table,
+.csf-turn > blockquote,
+.csf-turn > .theme-code-block {
+  margin-top: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+/* The speaker chip */
+.csf-turn__who {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--turn-accent);
+  white-space: nowrap;
+  margin-right: 0.1rem;
+}
+
+.csf-turn__who::after {
+  content: '';
+  display: inline-block;
+  width: 0.55rem;
+}
+
+@media screen and (max-width: 640px) {
+  .csf-turn {
+    padding-left: 0.85rem;
+    margin: 1.35rem 0;
+  }
+
+  /* On a narrow column the chip reads better on its own line than wrapping
+     awkwardly into the first sentence. */
+  .csf-turn__who {
+    display: block;
+    margin-bottom: 0.15rem;
+  }
+
+  .csf-turn__who::after {
+    content: none;
+  }
+}
+
+/* Printed interview prep should not depend on hairlines surviving the
+   printer; fall back to a plain bold label. */
+@media print {
+  .csf-turn {
+    padding-left: 0;
+  }
+
+  .csf-turn::before {
+    display: none;
+  }
+
+  .csf-turn__who {
+    color: inherit;
+  }
+}
