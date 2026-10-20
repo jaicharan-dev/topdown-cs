@@ -6,6 +6,8 @@ sidebar_position: 2
 sidebar_class_name: sidebar-medium
 ---
 
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is the exact output of this code in order? Explain why a constructor can never call both `this()` and `super()`, how instance initializer blocks behave during delegation, and what happens if constructor chaining forms a cycle."
@@ -40,11 +42,11 @@ sidebar_class_name: sidebar-medium
 
 ---
 
-Constructor chaining via `this()` and `super()` is fundamental to object-oriented programming. In technical interviews, this problem is commonly extended with **instance initializer blocks** to test whether you know when the compiler injects initialization logic during constructor delegation.
+Constructor chaining decides which constructor actually runs first — and when instance initializer blocks get mixed in, most people guess wrong about exactly where they fire.
 
 ---
 
-### 1. Exact Output
+### Exact Output
 
 ```text
 1. Vehicle: Car - Sedan
@@ -55,40 +57,29 @@ Constructor chaining via `this()` and `super()` is fundamental to object-oriente
 
 ---
 
-### 2. Step-by-Step Call Stack Trace
+### Step-by-Step: How the Call Stack Builds Up
 
-```text
-CALL STACK PROGRESSION:
+Before anything prints, the stack has to grow all the way down to `Vehicle` — none of these constructors run their own body until the delegation chain bottoms out:
 
-Step 1: main() executes: new Car()
-  [Stack] -> Car()
-  
-Step 2: Line 1 of Car() is this("Sedan")
-  [Stack] -> Car() -> Car("Sedan")
+<Diagram>
+<Row>
+<Box title="Car()" accent="#60a5fa"><Field icon="📞" code={'this("Sedan")'} hint="delegates before running its own body" variant="neutral" /></Box>
+<Arrow label="pushes" />
+<Box title="Car(String)" accent="#34d399"><Field icon="📞" code={'super("Car - Sedan")'} hint="delegates before running its own body" variant="neutral" /></Box>
+<Arrow label="pushes" />
+<Box title="Vehicle(String)" accent="#f59e0b"><Field icon="▶️" code="runs first" hint="bottom of the chain — nothing left to delegate to" variant="neutral" /></Box>
+</Row>
+</Diagram>
 
-Step 3: Line 1 of Car("Sedan") is super("Car - Sedan")
-  [Stack] -> Car() -> Car("Sedan") -> Vehicle("Car - Sedan")
+Now it unwinds, each frame finishing and popping in reverse:
 
-EXECUTION & POPPING:
-
-Step 4: Vehicle("Car - Sedan") executes:
-  Prints: "1. Vehicle: Car - Sedan"
-  Pops frame -> Returns control to Car("Sedan")
-
-Step 5: Control returns to Car("Sedan"):
-  * Compiler inlines instance initializer block!
-  Prints: "2. Car instance initializer"
-  Prints: "3. Car parameterized: Sedan"
-  Pops frame -> Returns control to Car()
-
-Step 6: Control returns to Car():
-  Prints: "4. Car no-arg constructor"
-  Pops frame -> Object creation complete.
-```
+1. **`Vehicle("Car - Sedan")` runs and pops** → prints `"1. Vehicle: Car - Sedan"`, returns to `Car(String)`.
+2. **Back in `Car(String)`** — this is the constructor that called `super()`, so the compiler inlines the instance initializer right here → prints `"2. Car instance initializer"`, then `"3. Car parameterized: Sedan"`. Pops, returns to `Car()`.
+3. **Back in `Car()`** → prints `"4. Car no-arg constructor"`. Pops — object construction complete.
 
 ---
 
-### 3. The Core Concept: Why Never Both `this()` and `super()`?
+### Why You Can Never Write Both `this()` and `super()`
 
 Java Language Specification (JLS §8.8.7) dictates a strict architectural invariant:
 > *If a constructor body begins with an explicit constructor invocation, that invocation must be either an alternate constructor invocation (`this(...)`) or a superclass constructor invocation (`super(...)`), but never both.*
@@ -100,7 +91,7 @@ Java Language Specification (JLS §8.8.7) dictates a strict architectural invari
 
 ---
 
-### 4. The Staff-Level Nuance: Where Do Instance Initializers Run?
+### The Nuance: Where Exactly Do Instance Initializers Run?
 
 Notice that `Car` contains an instance initializer block:
 ```java
@@ -120,7 +111,7 @@ A common interview trap is asking: *"Since `Car()` is the constructor initially 
 
 ---
 
-### 5. Two Classic Interview Traps
+### Two Classic Traps
 
 #### Trap 1: "Cannot reference `this` before supertype constructor has been called"
 Can you write `super(this.defaultModel);` or pass an instance method to `super()`?
@@ -153,7 +144,7 @@ However, Java's compiler statically checks constructor call graphs at compile ti
 
 ---
 
-### 6. Runnable Verification Code
+### Java: Runnable Verification
 
 ```java
 /**
@@ -198,12 +189,6 @@ public class ConstructorChainingDemo {
 
 ---
 
-### 7. Concise Staff-Level Interview Answer
+### Say this in the interview
 
-> "The execution order is: `Vehicle parameterized` first, followed by `Car instance initializer`, `Car parameterized`, and finally `Car no-arg`.
->
-> When `new Car()` executes, `Car()` immediately uses `this("Sedan")` to delegate initialization to its sibling constructor, pushing it onto the call stack. `Car("Sedan")` then invokes `super("Car - Sedan")`, which constructs the parent `Vehicle` first.
->
-> A constructor can never invoke both `this()` and `super()` because Java guarantees that the superclass state is initialized exactly once per object creation. When `this()` is used, the compiler suppresses the implicit `super()` call and transfers the duty of calling `super()` to the target constructor.
->
-> Crucially, `javac` inlines instance initializer blocks and field declarations strictly into the constructor that calls `super()`, immediately after `super()` returns. Therefore, `Car`'s instance initializer block executes exactly once, inside `Car(String)`, before control returns to `Car()` to complete construction."
+*"A constructor delegates fully before running its own body — `this()` and `super()` both push a new frame and wait. You can never write both, because Java guarantees the superclass gets initialized exactly once per object; `this()` suppresses the implicit `super()` and hands that responsibility to the target constructor instead. Instance initializers only get inlined into whichever constructor actually calls `super()` — not into ones that delegate via `this()` — so they run exactly once, no matter how long the delegation chain is."*

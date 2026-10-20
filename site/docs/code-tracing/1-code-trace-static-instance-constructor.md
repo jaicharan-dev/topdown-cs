@@ -6,6 +6,8 @@ sidebar_position: 1
 sidebar_class_name: sidebar-medium
 ---
 
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Given the following Java code involving inheritance, static initializer blocks, instance initializer blocks, and constructors, what is the exact output in order? Explain why static blocks run when they do, and how the JVM compiler synthesizes `<clinit>` and `<init>` methods."
@@ -44,11 +46,11 @@ sidebar_class_name: sidebar-medium
 
 ---
 
-This question is a standard FAANG/Tier-1 screening problem. While entry-level candidates memorize that static blocks execute before constructors, staff-level interviewers evaluate whether you understand the JVM's distinct **Class Loading Phase (`<clinit>`)** versus the **Instance Creation Phase (`<init>`)** across an inheritance hierarchy.
+Most candidates know "static blocks run before constructors." The actual test here is whether you know *why* — the JVM runs two genuinely separate phases: loading the class (`<clinit>`) and creating an instance of it (`<init>`), and the rules are different for each.
 
 ---
 
-### 1. Exact Output
+### Exact Output
 
 ```text
 1. Parent Static Block
@@ -67,39 +69,31 @@ This question is a standard FAANG/Tier-1 screening problem. While entry-level ca
 
 ---
 
-### 2. Step-by-Step Top-Down Execution Trace
+### Step-by-Step Execution Trace
 
-```text
-+-------------------------------------------------------------------------------+
-| PHASE 1: CLASS LOADING & VERIFICATION (<clinit>)                              |
-| Trigger: JVM invokes Child.main() -> Loads Parent.class, then Child.class    |
-|   1. Parent Static Initializers execute -> "1. Parent Static Block"           |
-|   2. Child Static Initializers execute  -> "2. Child Static Block"            |
-+-------------------------------------------------------------------------------+
-                                    |
-                                    v
-+-------------------------------------------------------------------------------+
-| PHASE 2: ENTRY POINT EXECUTION                                                |
-|   3. main() starts -> prints "--- Main Starts ---"                           |
-+-------------------------------------------------------------------------------+
-                                    |
-                                    v
-+-------------------------------------------------------------------------------+
-| PHASE 3: FIRST OBJECT INSTANTIATION: new Child() (<init>)                     |
-|   4. Child.<init>() invokes super() -> Parent.<init>()                        |
-|   5. Parent instance blocks inline -> "3. Parent Instance Block"              |
-|   6. Parent constructor body runs  -> "4. Parent Constructor"                 |
-|   7. Child instance blocks inline  -> "5. Child Instance Block"               |
-|   8. Child constructor body runs   -> "6. Child Constructor"                  |
-+-------------------------------------------------------------------------------+
-                                    |
-                                    v
-+-------------------------------------------------------------------------------+
-| PHASE 4: SECOND OBJECT INSTANTIATION: new Child()                             |
-|   Static blocks ARE SKIPPED (Classes already loaded in JVM Metaspace).        |
-|   Repeats lines 3 through 6 for the second heap object.                       |
-+-------------------------------------------------------------------------------+
-```
+<Diagram>
+<Row>
+<Box title="Phase 1: Class Loading (<clinit>)" accent="#818cf8">
+<Field icon="1️⃣" code="Parent static block" variant="neutral" />
+<Field icon="2️⃣" code="Child static block" variant="neutral" />
+</Box>
+<Arrow label="class now loaded" />
+<Box title="Phase 2: main() runs" accent="#60a5fa">
+<Field icon="▶️" code="prints '--- Main Starts ---'" variant="neutral" />
+</Box>
+<Arrow label="new Child() #1" />
+<Box title="Phase 3: First instantiation (<init>)" accent="#34d399">
+<Field icon="3️⃣" code="Parent instance block" variant="neutral" />
+<Field icon="4️⃣" code="Parent constructor" variant="neutral" />
+<Field icon="5️⃣" code="Child instance block" variant="neutral" />
+<Field icon="6️⃣" code="Child constructor" variant="neutral" />
+</Box>
+<Arrow label="new Child() #2" />
+<Box title="Phase 4: Second instantiation" accent="#f59e0b">
+<Field icon="🔁" code="repeats steps 3–6 only" hint="static blocks are skipped — class is already loaded" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
 #### Detailed Breakdown of Critical Inflection Points:
 
@@ -117,7 +111,7 @@ This question is a standard FAANG/Tier-1 screening problem. While entry-level ca
 
 ---
 
-### 3. Bytecode Synthesis: `<clinit>` vs `<init>`
+### What javac Actually Generates: `<clinit>` vs `<init>`
 
 Understanding how `javac` transforms source code into bytecode demystifies the execution order:
 
@@ -149,7 +143,7 @@ Method Child.<init>() {
 
 ---
 
-### 4. Crucial Edge Case: Exceptions in Static Initializers
+### The Follow-Up Trap: What If a Static Block Throws?
 
 Interviewers frequently follow up with: *"What happens if a static block throws an uncaught exception?"*
 
@@ -178,7 +172,7 @@ new BrokenClass(); // CRASHES IMMEDIATELY with java.lang.NoClassDefFoundError!
 
 ---
 
-### 5. Runnable Verification Code
+### Java: Runnable Verification
 
 This standalone Java program verifies the entire execution lifecycle:
 
@@ -226,12 +220,6 @@ public class ExecutionOrderDemo {
 
 ---
 
-### 6. Concise Staff-Level Interview Answer
+### Say this in the interview
 
-> "The execution order is governed by the two distinct JVM lifecycle phases: class loading (`<clinit>`) and instance initialization (`<init>`).
->
-> When `Child.main()` is invoked, the JVM must first initialize `Child.class`. Because initialization requires superclass readiness, `Parent`'s static blocks run first, followed by `Child`'s static blocks. Only after class loading completes does `main()` execute its first line.
->
-> When `new Child()` is evaluated, control enters `Child.<init>()`, which immediately delegates to `super()` (`Parent.<init>()`). In bytecode, instance initializer blocks and field declarations are inlined directly into constructors right after the `super()` call. Thus, `Parent Instance Block` runs, followed by `Parent Constructor`. Control then returns to `Child`, executing `Child Instance Block` and finally `Child Constructor`.
->
-> On the second instantiation, static blocks do not re-run because classes are already loaded and verified in Metaspace; only the instance blocks and constructors execute."
+*"Two separate phases: class loading (`<clinit>`) runs once, superclass before subclass, entirely before `main()` starts. Instance creation (`<init>`) runs on every `new` — it calls `super()` first, which triggers the parent's instance blocks then its constructor, before coming back to run the child's instance blocks and constructor. Static blocks never run again after the first load; only `<init>` repeats on later instantiations."*
