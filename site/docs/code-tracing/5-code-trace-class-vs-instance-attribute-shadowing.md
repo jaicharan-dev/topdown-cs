@@ -6,6 +6,8 @@ sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
 
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What does each print statement output, and why? Explain how Python resolves attribute lookups through `__dict__`, why assigning to `self` creates variable shadowing, and what happens when using the in-place `+=` operator on class attributes."
@@ -31,11 +33,11 @@ sidebar_class_name: sidebar-medium
 
 ---
 
-This question is a favorite in Python system design and architecture interviews. While beginners assume variable resolution in Python works like C++ or Java static members, senior engineers understand that Python attribute access is governed by **runtime namespace dictionary searches** (`__dict__`).
+Python attributes don't work like static members in C++ or Java. Every object keeps its own small dictionary of attributes (`__dict__`), and reading or writing `obj.attr` is really just a dictionary lookup — reading checks the instance's dictionary first and falls back to the class's, but writing always goes straight into the instance's own dictionary. That asymmetry is the whole trick behind this trace.
 
 ---
 
-### 1. Exact Output
+### Exact Output
 
 ```text
 2
@@ -46,40 +48,36 @@ This question is a favorite in Python system design and architecture interviews.
 
 ---
 
-### 2. Step-by-Step Namespace Trace (`__dict__`)
+### Step-by-Step Namespace Trace (`__dict__`)
 
-To understand why this output occurs, inspect the underlying `__dict__` namespaces of the class and instances at each stage:
+After `c1 = Counter()` and `c2 = Counter()` run, `Counter.__init__` has bumped the shared class attribute twice, but neither instance has written anything of its own yet:
 
-```text
-+-----------------------------------------------------------------------------------+
-| 1. AFTER INSTANTIATION: c1 = Counter(); c2 = Counter()                            |
-|    Counter.__dict__ contains: {'count': 2, ...}                                   |
-|    c1.__dict__ is: {} (EMPTY!)                                                    |
-|    c2.__dict__ is: {} (EMPTY!)                                                    |
-+-----------------------------------------------------------------------------------+
-| 2. FIRST PRINT: print(Counter.count)                                              |
-|    Direct lookup in Counter.__dict__['count'] -> PRINTS: 2                        |
-+-----------------------------------------------------------------------------------+
-| 3. INVOCATION: c1.reset()                                                         |
-|    Executes: self.count = 0                                                       |
-|    THE TRAP: Assignment targets c1's local namespace!                             |
-|    c1.__dict__ becomes: {'count': 0}                                              |
-|    Counter.__dict__ is UNTOUCHED: {'count': 2, ...}                               |
-+-----------------------------------------------------------------------------------+
-| 4. SECOND PRINT: print(c1.count)                                                  |
-|    Lookup finds 'count' directly in c1.__dict__ -> PRINTS: 0 (Shadowed!)          |
-+-----------------------------------------------------------------------------------+
-| 5. THIRD PRINT: print(Counter.count)                                              |
-|    Direct lookup in Counter.__dict__['count'] -> PRINTS: 2                        |
-+-----------------------------------------------------------------------------------+
-| 6. FOURTH PRINT: print(c2.count)                                                  |
-|    c2.__dict__ is empty -> Falls back to Counter.__dict__ -> PRINTS: 2            |
-+-----------------------------------------------------------------------------------+
-```
+<Diagram>
+<Row>
+<Box title="Counter.__dict__" accent="#818cf8"><Field icon="🏛️" code="{'count': 2}" variant="neutral" /></Box>
+<Box title="c1.__dict__" accent="#94a3b8"><Field icon="📦" code="{}" hint="empty — nothing written yet" variant="neutral" /></Box>
+<Box title="c2.__dict__" accent="#94a3b8"><Field icon="📦" code="{}" hint="empty — nothing written yet" variant="neutral" /></Box>
+</Row>
+</Diagram>
+
+1. `print(Counter.count)` reads straight from `Counter.__dict__` → prints `2`.
+2. `c1.reset()` runs `self.count = 0`. This is a **write**, and writes always land in the instance's own dictionary — never the class's:
+
+<Diagram>
+<Row>
+<Box title="Counter.__dict__" accent="#818cf8"><Field icon="🏛️" code="{'count': 2}" hint="untouched" variant="neutral" /></Box>
+<Box title="c1.__dict__" accent="#fb7185"><Field icon="📦" code="{'count': 0}" hint="now shadows the class attribute" variant="neutral" /></Box>
+<Box title="c2.__dict__" accent="#94a3b8"><Field icon="📦" code="{}" hint="still empty" variant="neutral" /></Box>
+</Row>
+</Diagram>
+
+3. `print(c1.count)` finds `'count'` directly in `c1.__dict__` → prints `0`.
+4. `print(Counter.count)` still reads `Counter.__dict__` directly → prints `2`.
+5. `print(c2.count)` — `c2.__dict__` is empty, so the lookup falls back to `Counter.__dict__` → prints `2`.
 
 ---
 
-### 3. Python's 5-Tier Attribute Lookup Protocol
+### Python's Attribute Lookup Protocol
 
 When code evaluates an expression like `obj.attribute`, the Python interpreter searches through namespaces in a strict order:
 
@@ -95,7 +93,7 @@ When code evaluates an expression like `obj.attribute`, the Python interpreter s
 
 ---
 
-### 4. The Dangerous `+=` Shadowing Trap
+### The Dangerous `+=` Shadowing Trap
 
 A notorious bug in production Python services involves modifying class-level counters using `self`:
 
@@ -127,7 +125,7 @@ self.__class__.count = 0 # Alternative
 
 ---
 
-### 5. Mutable Class Attributes: The Silent In-Place Mutation Trap
+### Mutable Class Attributes: a Different Trap
 
 While assigning an immutable integer (`self.count = 0`) creates a shadowing variable, modifying a **mutable object** (like a `list` or `dict`) exhibits the complete opposite behavior:
 
@@ -147,7 +145,7 @@ class Service:
 
 ---
 
-### 6. Runnable Python Verification Code
+### Python: Runnable Verification
 
 ```python
 """
@@ -211,14 +209,6 @@ if __name__ == "__main__":
 
 ---
 
-### 7. Concise Staff-Level Interview Answer
+### Say this in the interview
 
-> "The output is `2`, `0`, `2`, and `2`.
->
-> In Python, class attributes live in the class's namespace (`Counter.__dict__`), while instance attributes reside in the object's instance dictionary (`self.__dict__`). 
->
-> After instantiating `c1` and `c2`, `Counter.count` equals 2, while both instance dictionaries are completely empty. When `c1.reset()` executes `self.count = 0`, Python performs an assignment targeting `c1`'s local namespace. This injects `'count': 0` into `c1.__dict__`, shadowing the class attribute for `c1` while leaving `Counter.__dict__['count']` untouched at 2.
->
-> When reading `c1.count`, Python finds the local instance attribute (0). When reading `c2.count`, because `c2.__dict__` is empty, Python falls back to the class blueprint and retrieves the shared class attribute (2). 
->
-> To modify a shared class attribute safely from an instance method, you must explicitly qualify it via `Counter.count = 0` or `type(self).count = 0` to prevent creating an unintentional shadowing attribute."
+*"The output is 2, 0, 2, 2. Class attributes live in `Counter.__dict__`; instance attributes live in `self.__dict__`. Reading falls back from the instance's dictionary to the class's if the instance doesn't have it, but writing always goes straight into the instance's own dictionary — it never touches the class. So `c1.reset()`'s `self.count = 0` creates a local `count` that shadows the class attribute for `c1` only; `Counter.count` and `c2.count` are untouched. The same asymmetry causes a real production bug: `self.count += 1` reads the class attribute, adds one, then writes that result as a new instance attribute — so the shared counter never actually increments. Mutating a class attribute safely requires naming the class explicitly, like `Counter.count = 0` or `type(self).count = 0`."*
