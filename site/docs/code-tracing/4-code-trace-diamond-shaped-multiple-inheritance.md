@@ -6,6 +6,8 @@ sidebar_position: 4
 sidebar_class_name: sidebar-hard
 ---
 
+import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
 > **Interview Question:** "What is the exact output of this Python code, in order? Explain why `super()` inside class `B` jumps 'sideways' to class `C`, manually derive the MRO using the C3 Linearization merge algorithm, and explain how to safely pass arguments in cooperative multiple inheritance."
@@ -35,13 +37,11 @@ sidebar_class_name: sidebar-hard
 
 ---
 
-The "Diamond Problem" occurs in multiple inheritance when a class inherits from two parent classes that share a common base. 
-
-In Python, `super()` does **not** mean "call my lexical parent class." It means **"call the next class in the Method Resolution Order (MRO) of the instantiated object."** Understanding this distinction, and being able to manually compute C3 Linearization, is a hallmark of a staff engineer.
+`D` inherits from both `B` and `C`, and both of those inherit from `A` — a diamond shape. The question is what order `super()` walks through it in, and the answer surprises most people: it does not mean "call my parent class." It means "call the next class in the Method Resolution Order (MRO) of the actual object," and that order can jump sideways between sibling classes.
 
 ---
 
-### 1. Exact Output
+### Exact Output
 
 ```text
 D
@@ -52,48 +52,38 @@ A
 
 ---
 
-### 2. Step-by-Step Top-Down Execution Trace
+### Step-by-Step Execution Trace
 
-```text
-DIAMOND TOPOLOGY:
-          A
-        /   \
-       B     C
-        \   /
-          D
+The class hierarchy is a diamond: `B` and `C` both inherit from `A`, and `D` inherits from both.
 
-LINEARIZED MRO SEQUENCE FOR OBJECT d:
-  [ D -> B -> C -> A -> object ]
+<Diagram>
+<Tree root={
+<Box title="A" accent="#818cf8"><Field icon="🔹" code="def __init__(self): print('A')" variant="neutral" /></Box>
+}>
+<Box title="B(A)" accent="#60a5fa"><Field icon="↳" code="print('B'); super().__init__()" variant="neutral" /></Box>
+<Box title="C(A)" accent="#60a5fa"><Field icon="↳" code="print('C'); super().__init__()" variant="neutral" /></Box>
+</Tree>
+</Diagram>
 
-EXECUTION CHRONOLOGY:
+Python resolves this into a single line, the MRO: `D → B → C → A → object`. Each `super().__init__()` call just moves one step right along that line:
 
-1. d = D()
-   -> Enters D.__init__.
-   -> Prints: "D"
-   -> Evaluates super().__init__()
+<Diagram>
+<Row>
+<Box title="D()" accent="#818cf8"><Field icon="1️⃣" code="prints 'D'" variant="neutral" /></Box>
+<Arrow label="super()" />
+<Box title="B.__init__" accent="#60a5fa"><Field icon="2️⃣" code="prints 'B'" variant="neutral" /></Box>
+<Arrow label="super() — jumps sideways, not up to A" />
+<Box title="C.__init__" accent="#fb7185"><Field icon="3️⃣" code="prints 'C'" hint="B inherits from A, but the MRO says C comes next, not A" variant="neutral" /></Box>
+<Arrow label="super()" />
+<Box title="A.__init__" accent="#34d399"><Field icon="4️⃣" code="prints 'A'" hint="no super() call here — chain ends" variant="neutral" /></Box>
+</Row>
+</Diagram>
 
-2. Next in MRO after D is B:
-   -> Enters B.__init__.
-   -> Prints: "B"
-   -> Evaluates super().__init__()
-
-3. THE TRAP (The "Sideways Jump"):
-   -> Junior engineers expect B to call A (since B inherits from A).
-   -> But the object is an instance of D!
-   -> In D's MRO [D, B, C, A], the class immediately following B is C!
-   -> Control jumps sideways to C.__init__.
-   -> Prints: "C"
-   -> Evaluates super().__init__()
-
-4. Next in MRO after C is A:
-   -> Enters A.__init__.
-   -> Prints: "A"
-   -> A.__init__ has no super() call -> Chain terminates.
-```
+The trap is step 2 to 3: `B` inherits from `A`, so it's natural to assume `B`'s `super()` calls `A`. It doesn't — the object is a `D`, and in `D`'s MRO, the class right after `B` is `C`. Control jumps sideways to `C` first, and only reaches `A` after that.
 
 ---
 
-### 3. Mathematical Derivation: The C3 Linearization Algorithm
+### Deriving the MRO: the C3 Linearization Algorithm
 
 Python 2.3+ determines MRO using the **C3 Linearization** algorithm (originally created for the Dylan language).
 
@@ -163,7 +153,7 @@ This mathematical proof demonstrates why Python **must** evaluate `D -> B -> C -
 
 ---
 
-### 4. Cooperative Multiple Inheritance with `**kwargs`
+### Cooperative Multiple Inheritance with `**kwargs`
 
 In production architectures, constructors often accept distinct arguments. If `B` takes `b_param` and `C` takes `c_param`, naive positional arguments will throw:
 `TypeError: __init__() takes 2 positional arguments but 3 were given`
@@ -200,7 +190,7 @@ d = D(d_val=10, b_val="hello", c_val=True)
 
 ---
 
-### 5. C++ Comparison: Virtual Base Classes
+### C++ Comparison: Virtual Base Classes
 
 How does C++ solve this same diamond problem?
 
@@ -216,7 +206,7 @@ With `virtual public A`, the compiler ensures only a single shared instance of `
 
 ---
 
-### 6. The Inconsistent MRO Trap
+### The Inconsistent MRO Trap
 
 What happens if an engineer introduces a circular or contradictory inheritance hierarchy?
 
@@ -235,7 +225,7 @@ TypeError: Cannot create a consistent method resolution order (MRO) for bases X,
 
 ---
 
-### 7. Runnable Python Verification Code
+### Python: Runnable Verification
 
 ```python
 """
@@ -280,12 +270,6 @@ if __name__ == "__main__":
 
 ---
 
-### 8. Concise Staff-Level Interview Answer
+### Say this in the interview
 
-> "The output is `D`, `B`, `C`, and `A`.
->
-> In Python, `super()` does not delegate to the lexical parent of the class where it is written; it delegates to the next class in the Method Resolution Order (MRO) of the instantiated object.
->
-> For instance `d = D()`, Python compiles the MRO using the C3 Linearization algorithm into `[D, B, C, A, object]`. When `D.__init__` calls `super()`, it invokes `B`. When `B.__init__` calls `super()`, the runtime inspects the MRO of object `d` and discovers that `C` immediately follows `B`. Thus, control jumps sideways to `C` before finally delegating to the common base `A`.
->
-> This design guarantees that base class `A` is initialized exactly once, completely solving the diamond inheritance problem without duplicating sub-objects. In production systems with varying parameters, classes must use cooperative `super().__init__(**kwargs)` to forward remaining keyword arguments gracefully through the linearized chain."
+*"The output is D, B, C, A. `super()` doesn't call your lexical parent class — it calls the next class in the Method Resolution Order of the actual object, which Python computes with C3 Linearization into `[D, B, C, A, object]`. That's why `B`'s `super()` jumps sideways to `C` instead of up to `A`: in `D`'s MRO, `C` comes right after `B`. This guarantees `A` is initialized exactly once, no matter how many classes sit between it and `D`. In production, that only works cleanly if every class forwards `**kwargs` through `super().__init__()` instead of hardcoding positional arguments."*
