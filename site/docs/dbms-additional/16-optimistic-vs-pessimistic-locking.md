@@ -6,60 +6,51 @@ sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is the difference between optimistic and pessimistic locking? When should you choose each in production systems, what are the roles of `SELECT FOR UPDATE`, `NOWAIT`, and `SKIP LOCKED`, and how do you handle optimistic retry storms?"
 
----
+Two people editing the same row at once can accidentally overwrite each other's work — the **lost update problem**. There are two ways to stop that: lock the row before anyone touches it, or let everyone touch it and check for conflicts right before saving.
 
-### Core Concurrency Control Paradigms
+<Diagram>
+<Row>
+<Box title="Pessimistic: lock upfront" accent="#fb7185">
+<Field icon="🔒" code="1. SELECT ... FOR UPDATE" hint="locks the row immediately" variant="neutral" />
+<Field icon="🧮" code="2. compute in application" hint="everyone else waits" variant="neutral" />
+<Field icon="✅" code="3. UPDATE, COMMIT" hint="lock released" variant="neutral" />
+</Box>
+<Box title="Optimistic: check at commit" accent="#34d399">
+<Field icon="👀" code="1. read row + version" hint="no lock taken" variant="neutral" />
+<Field icon="🧮" code="2. compute in application" hint="everyone else keeps working" variant="neutral" />
+<Field icon="🔄" code="3. UPDATE ... WHERE version = ?" hint="0 rows changed means someone beat you — retry" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-When multiple concurrent database transactions attempt to read-modify-write the same record, systems must prevent the **Lost Update Problem** (where Transaction B silently overwrites Transaction A's uncommitted work).
-
-- **Pessimistic Locking (Lock Upfront):** Assumes conflicts are **frequent and catastrophic**. It acquires exclusive database locks immediately upon reading the row, forcing concurrent transactions to wait in line.
-- **Optimistic Locking (Validate at Commit):** Assumes conflicts are **rare**. It allows concurrent transactions to read and compute without acquiring database locks, checking for conflicts via a version counter right before committing.
-
-```mermaid
-graph TD
-    subgraph "Pessimistic: Lock Upfront"
-        P1["1. Read & Lock (SELECT FOR UPDATE)"] --> P2["2. Compute in Application"]
-        P2 --> P3["3. Write & Release Lock (COMMIT)"]
-        NoteP["Other transactions BLOCKED throughout"]
-    end
-
-    subgraph "Optimistic: Validate at Commit"
-        O1["1. Read record & version = 1 (No Locks)"] --> O2["2. Compute in Application (Any duration)"]
-        O2 --> O3["3. Atomic UPDATE WHERE version = 1"]
-        O3 --> O4{"Affected Rows == 1?"}
-        O4 -- Yes --> Success["Success: version -> 2"]
-        O4 -- No --> Conflict["Conflict Detected: Rollback & Retry"]
-    end
-```
+- **Pessimistic locking** assumes conflicts are common and expensive, so it locks the row immediately and makes everyone else wait.
+- **Optimistic locking** assumes conflicts are rare, so it lets everyone read and compute freely, and only checks for a conflict right before writing.
 
 ---
 
-### Comparison: Pessimistic vs. Optimistic Locking
+### Side by side
 
-| Dimension | Pessimistic Locking | Optimistic Locking |
+| | Pessimistic | Optimistic |
 | :--- | :--- | :--- |
-| **Philosophical Assumption** | High contention; conflicts are probable. | Low contention; conflicts are rare. |
-| **Locking Mechanism** | Database-level row/table locks (`FOR UPDATE`). | Application-level `version` column check. |
-| **Deadlock Risk** | **High** (threads hold locks and wait on others). | **Zero** (no locks held during think time). |
-| **Throughput / Scalability**| Low to Moderate (blocks concurrent threads). | **Very High** (reads never block). |
-| **Failure Cost** | Transactions wait in queues, risking pool timeouts.| Aborted transactions must retry or notify users. |
-| **Ideal Workloads** | High contention, financial balances, inventory reservation. | Read-heavy workloads, CMS edits, long user sessions. |
+| **Assumes** | High contention, conflicts are likely | Low contention, conflicts are rare |
+| **How it works** | Database row/table lock (`FOR UPDATE`) | App-level `version` column check |
+| **Deadlock risk** | High — threads hold locks and wait on each other | None — no locks held while thinking |
+| **Throughput** | Low to moderate — blocks other threads | Very high — reads never block |
+| **When it fails** | Transactions queue up, risking timeouts | Aborted writes must retry or tell the user |
+| **Good for** | High contention: balances, inventory reservations | Read-heavy: CMS edits, long user sessions |
 
 ---
 
-### Pessimistic Locking Flavors: `FOR UPDATE`, `NOWAIT` & `SKIP LOCKED`
+### Pessimistic locking: `FOR UPDATE`, `NOWAIT`, `SKIP LOCKED`
 
-In PostgreSQL, MySQL (InnoDB), and Oracle, pessimistic locking is implemented via the `SELECT ... FOR UPDATE` family:
+**Plain `SELECT ... FOR UPDATE`** locks the matching rows. Anyone else trying to read with `FOR UPDATE` or write to them just blocks until you commit or roll back.
 
-#### 1. Standard `SELECT ... FOR UPDATE`
-Acquires an Exclusive Lock on matching rows. Any other transaction attempting to read with `FOR UPDATE` or mutate these rows will block until the locking transaction issues `COMMIT` or `ROLLBACK`.
 ```sql
 BEGIN;
 SELECT balance FROM Accounts WHERE user_id = 101 FOR UPDATE;
@@ -68,14 +59,10 @@ UPDATE Accounts SET balance = balance - 50 WHERE user_id = 101;
 COMMIT;
 ```
 
-#### 2. `SELECT ... FOR UPDATE NOWAIT`
-If any matching row is already locked by another transaction, the database does **not** block. It fails immediately with an error (`could not obtain lock on row`).
-- *Use Case:* High-speed interactive APIs where blocking a worker thread for 5 seconds is unacceptable.
+**`FOR UPDATE NOWAIT`** refuses to wait — if the row's already locked, it fails immediately instead of blocking. Good for interactive APIs where blocking a worker thread for seconds is unacceptable.
 
-#### 3. `SELECT ... FOR UPDATE SKIP LOCKED` (The Queue Worker Standard)
-> **Staff-Level Bar Raiser:** How do you build an ultra-high-throughput message queue or job processor in PostgreSQL without deadlocks?
+**`FOR UPDATE SKIP LOCKED`** is the trick behind high-throughput job queues: instead of waiting on a locked row, or failing, it just skips it and grabs the next free one.
 
-Instead of waiting for locked rows or failing, `SKIP LOCKED` **silently ignores rows locked by other workers** and immediately locks the next available free rows!
 ```sql
 -- 50 worker threads can run this concurrently without blocking each other!
 BEGIN;
@@ -92,9 +79,9 @@ COMMIT;
 
 ---
 
-### Optimistic Locking Mechanics & The ABA Problem
+### Optimistic locking: a `version` column, and why not to use old values instead
 
-Optimistic locking adds a dedicated `version INT` column (or monotonic timestamp) to the schema:
+Add a `version` integer to the table. Read it, do your work, then only write if the version hasn't moved:
 
 ```sql
 -- Step 1: Read without locks
@@ -107,43 +94,33 @@ SET content = 'New text...', version = version + 1
 WHERE id = 42 AND version = 5;
 ```
 
-#### The Engine's Decision:
-- If `affected_rows == 1`: Update succeeded. The record is now version 6.
-- If `affected_rows == 0`: Another transaction committed an update in the interim (version is already 6). The application rolls back and prompts the user or retries.
+If the update affects 1 row, you won. If it affects 0 rows, someone else committed first — roll back and retry (or tell the user).
 
-#### Why Not Check Old Data Values? (The ABA Trap)
-Never attempt optimistic locking with `WHERE content = 'old text'`. If User A changes content from `"A"` to `"B"`, and User B immediately changes it back from `"B"` to `"A"`, User C's stale update will succeed even though the record underwent two intermediate mutations! A strictly monotonic `version` integer completely prevents the **ABA Problem**.
+Don't try to check against the old data value instead (`WHERE content = 'old text'`). If user A changes `"A"` to `"B"`, and user B changes it right back to `"A"`, a stale write from user C would wrongly "match" and succeed even though two real changes happened in between. A monotonically increasing `version` number avoids this **ABA problem** completely — it can never go backward.
 
 ---
 
-### The Optimistic Retry Storm Vulnerability
+### The failure mode: retry storms
 
-> **Production Pitfall:** In extreme contention scenarios (e.g., a flash sale with 10,000 requests per second competing for 10 tickets), optimistic locking breaks down completely.
+Optimistic locking falls apart under extreme contention — say a flash sale, 10,000 requests fighting over 10 tickets. One wins, 9,999 fail. If all 9,999 immediately retry at once, you get a **retry storm**: the database gets hammered with waves of doomed requests, saturating connections and burning CPU for nothing.
 
-- 1 transaction succeeds; 9,999 transactions fail and abort.
-- If all 9,999 clients immediately retry, they generate an **Optimistic Retry Storm**, hammering the database with 100,000 useless queries, saturating connection pools, and thrashing CPU.
-
-#### Mitigations:
-1. **Exponential Backoff with Random Jitter:** Space out retries to desynchronize requests.
-2. **Switch to Pessimistic Locks:** For high-contention write bottlenecks, locking serialized rows upfront is far more efficient than thousands of aborts and retries.
-3. **Atomic Decrement Queries:**
+Fixes:
+1. **Exponential backoff with jitter** — space retries out randomly so they don't all collide again.
+2. **Fall back to pessimistic locking** for genuinely high-contention hotspots — queuing is cheaper than thousands of failed retries.
+3. **Push the logic into one atomic statement** where possible:
    ```sql
    UPDATE Inventory SET stock = stock - 1 WHERE item_id = 42 AND stock > 0;
    ```
 
 ---
 
-### The Interview Answer (60-90 seconds)
+### Say this in the interview
 
-> "Pessimistic locking prevents concurrent modification upfront by placing database-level exclusive row locks via `SELECT ... FOR UPDATE`, making it ideal for high-contention, high-value operations like bank withdrawals or ticket reservations. It prevents lost updates entirely, but risks deadlocks and reduces throughput.
->
-> In contrast, optimistic locking avoids locks during reading. It uses a monotonically increasing `version` column, validating that the version hasn't changed at the moment of update (`WHERE id = ? AND version = ?`). It excels in read-heavy, low-contention environments like web applications, but can cause catastrophic retry storms under extreme contention.
->
-> Furthermore, pessimistic locking offers specialized modes: `NOWAIT` to fail instantly if a lock is contested, and `SKIP LOCKED`, which is the industry standard for implementing lock-free distributed job queues in PostgreSQL."
+*"Pessimistic locking takes an exclusive row lock upfront with SELECT FOR UPDATE, so it's right for high-contention, high-stakes writes like balance transfers — it prevents lost updates completely, at the cost of blocking and some deadlock risk. Optimistic locking skips the lock and instead checks a version column right before committing, succeeding only if nothing changed underneath it — great for read-heavy, low-contention workloads, but it can cause a retry storm if contention spikes. NOWAIT fails fast instead of blocking, and SKIP LOCKED is how lock-free job queues work in Postgres."*
 
 ---
 
-### Code Demonstration: Simulating Optimistic Conflict Detection & Retry
+### Code: watching two threads conflict and retry
 
 The following Python script simulates two concurrent threads updating a shared bank account using optimistic locking, demonstrating conflict detection and automatic retry.
 

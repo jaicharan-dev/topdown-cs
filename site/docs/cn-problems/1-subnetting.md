@@ -6,15 +6,17 @@ sidebar_position: 1
 sidebar_class_name: sidebar-medium
 ---
 
+import { GanttChart } from '@site/src/components/GanttChart';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Given the IP address `192.168.10.75` with subnet mask `255.255.255.192` (`/26`), determine the network address, broadcast address, range of valid host addresses, and total usable hosts. Show both the formal binary breakdown and the rapid 'Magic Number' interview shortcut."
 
 ---
 
-### 1. Executive Summary & Parameter Breakdown
+### The setup
 
-Subnetting divides a single contiguous IP network block into smaller, isolated broadcast domains to minimize traffic congestion, enforce firewall security boundaries, and reduce address waste.
+Subnetting just means carving one big IP block into smaller, isolated chunks — smaller broadcast domains, cleaner firewall boundaries, less wasted address space.
 
 #### Problem Parameters:
 - **Given IPv4 Address:** `192.168.10.75`
@@ -25,7 +27,7 @@ Subnetting divides a single contiguous IP network block into smaller, isolated b
 
 ---
 
-### 2. Method 1: The Formal Binary Bitwise Breakdown
+### Method 1: The Formal Binary Bitwise Breakdown
 
 In academic and deep-dive technical interviews, you are expected to demonstrate how network hardware (routers and L3 switches) evaluates addresses at the bit level.
 
@@ -68,33 +70,29 @@ $$\mathbf{\text{Broadcast Address: } 192.168.10.127}$$
 
 ---
 
-### 3. Method 2: The 5-Second "Magic Number" Shortcut
+### Method 2: The 5-Second "Magic Number" Shortcut
 
-In live coding and whiteboard interviews, converting decimal numbers to binary takes too much time. Professional network engineers use the **Magic Number (Block Size)** method:
+Converting decimal to binary takes too long on a whiteboard. Network engineers skip it entirely with the **Magic Number** trick:
 
-```
-Step 1: Identify the "Interesting Octet" (the one not 255 or 0)
-        Octet 4: Mask value is 192.
+1. **Find the "interesting octet"** — the one that isn't 255 or 0. Here, that's octet 4: mask value `192`.
+2. **Magic Number = 256 − mask octet** = 256 − 192 = **64**.
+3. **List multiples of 64, starting at 0:** 0, 64, 128, 192...
+4. **Find where the IP (75) lands:** it's between 64 and 128.
 
-Step 2: Calculate Magic Number (Block Size):
-        Magic Number = 256 - Mask Octet
-        Magic Number = 256 - 192 = 64
+<GanttChart unit="" segments={[
+  { label: '192.168.10.64 – .127', start: 64, end: 128, accent: '#34d399' },
+  { label: '192.168.10.128 – .191', start: 128, end: 192, accent: '#a1a1aa' },
+]} />
 
-Step 3: List Multiples of the Magic Number starting at 0:
-        0, 64, 128, 192...
-
-Step 4: Find where the IP (75) lands:
-        75 sits between 64 and 128.
-        ├── Network Address:     192.168.10.64  (The lower boundary)
-        ├── Next Subnet:         192.168.10.128
-        ├── Broadcast Address:   192.168.10.127 (Next subnet - 1)
-        ├── First Usable Host:   192.168.10.65  (Network + 1)
-        └── Last Usable Host:    192.168.10.126 (Broadcast - 1)
-```
+The IP `.75` falls inside the first block, so:
+- **Network Address:** `192.168.10.64` (lower boundary)
+- **Broadcast Address:** `192.168.10.127` (one below the next subnet's boundary, `.128`)
+- **First Usable Host:** `192.168.10.65` (network + 1)
+- **Last Usable Host:** `192.168.10.126` (broadcast − 1)
 
 ---
 
-### 4. Fast-Reference CIDR Subnet Cheat Sheet (/24 to /30)
+### Fast-Reference CIDR Subnet Cheat Sheet (/24 to /30)
 
 | CIDR Prefix | Subnet Mask | Host Bits ($h$) | Magic Number (Block Size) | Total IPs ($2^h$) | Usable Hosts ($2^h - 2$) | Primary Use Case |
 | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
@@ -108,7 +106,7 @@ Step 4: Find where the IP (75) lands:
 
 ---
 
-### 5. Critical Interview Traps & RFC Edge Cases
+### Interview Traps & RFC Edge Cases
 
 1. **RFC 3021 (/31 Subnets for Point-to-Point Links):**
    - In traditional networking, a `/31` mask has $2^1 - 2 = 0$ usable hosts.
@@ -120,7 +118,7 @@ Step 4: Find where the IP (75) lands:
 
 ---
 
-### 6. Python Verification: Subnet Calculator
+### Python: Subnet Calculator
 
 The following executable Python script implements subnet boundary calculations using raw bitwise arithmetic and verifies them against Python's standard `ipaddress` module:
 

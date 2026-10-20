@@ -6,45 +6,28 @@ sidebar_position: 3
 sidebar_class_name: sidebar-medium
 ---
 
+import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is the Strategy pattern, why would you use it, and how does it uphold the Open/Closed and Dependency Inversion principles? Demonstrate a production payment gateway with runtime algorithm swapping in Python, and contrast Strategy with the State and Template Method patterns."
 
----
+A checkout page can pay by UPI, card, or crypto — same `checkout()` call every time, completely different logic underneath, and swappable at runtime if one fails. That's **Strategy**: pull each algorithm out into its own interchangeable object, instead of hardcoding the choice.
 
-### 1. Executive Summary & Core Intent
-
-The **Strategy Pattern** is a behavioral design pattern that defines a family of algorithms, encapsulates each algorithm into an independent class, and makes their objects interchangeable at runtime.
-
-It decouples the algorithmic execution from the context class using it, eliminating massive, error-prone `if-elif-else` control flow ladders.
-
-```
-       ┌────────────────────────┐
-       │   PaymentGateway       │  (Context)
-       ├────────────────────────┤
-       │ - strategy: Strategy   │───┐
-       │ + execute_payment()    │   │ (Delegates via composition)
-       │ + set_strategy()       │   │
-       └────────────────────────┘   │
-                                    ▼
-       ┌────────────────────────────────────────────────────────┐
-       │               PaymentStrategy (Interface)              │
-       ├────────────────────────────────────────────────────────┤
-       │ + pay(amount: float) -> PaymentResult                  │
-       └────────────────────────────▲───────────────────────────┘
-                                    │ (Polymorphic Implementations)
-             ┌──────────────────────┼──────────────────────┐
-             │                      │                      │
-┌────────────────────────┐┌────────────────────────┐┌────────────────────────┐
-│      UPIStrategy       ││   CreditCardStrategy   ││     CryptoStrategy     │
-├────────────────────────┤├────────────────────────┤├────────────────────────┤
-│ + pay(amount)          ││ + pay(amount)          ││ + pay(amount)          │
-└────────────────────────┘└────────────────────────┘└────────────────────────┘
-```
+<Diagram>
+<Tree root={
+<Box title="PaymentGateway (Context)" accent="#818cf8">
+<Field icon="🔀" code="delegates to self._strategy.pay()" hint="doesn't know or care which one" variant="neutral" />
+</Box>
+}>
+<Box title="UPIPayment" accent="#34d399"><Field icon="↳" code="pay() → routes via NPCI" variant="neutral" /></Box>
+<Box title="CreditCardPayment" accent="#34d399"><Field icon="↳" code="pay() → routes via card network" variant="neutral" /></Box>
+</Tree>
+</Diagram>
 
 ---
 
-### 2. The Anti-Pattern: Procedural Conditional Explosion
+### The Anti-Pattern: Procedural Conditional Explosion
 
 Without the Strategy pattern, payment gateways inevitably devolve into rigid code smell:
 
@@ -67,9 +50,9 @@ class NaiveCheckout:
 
 ---
 
-### 3. Production OOP Implementation: Fintech Payment Router
+### A Real Implementation: Fintech Payment Router
 
-Here is how payment aggregators (like Stripe or Razorpay) architect multi-rail payment routing with runtime fallback capabilities:
+This is roughly how payment aggregators like Stripe or Razorpay structure multi-rail routing with runtime fallback:
 
 ```python
 from abc import ABC, abstractmethod
@@ -136,11 +119,9 @@ class PaymentGateway:
 
 ---
 
-### 4. The Pythonic Nuance: First-Class Callable Strategies
+### The Pythonic Shortcut: Just Pass a Function
 
-In languages like Java or C++, you must instantiate class hierarchies to implement the Strategy pattern. 
-
-In Python, **functions are first-class citizens**. For stateless algorithms (such as discount calculations, pricing engines, or sorting algorithms), defining full classes with one method is unnecessary OOP boilerplate. You can pass plain `Callable` functions directly:
+Java or C++ forces you to build a class hierarchy for this. Python doesn't — functions are first-class values, so if a strategy has no internal state to track (a discount calculation, a pricing rule, a sort comparator), a whole class with one method is just boilerplate. Pass the function directly:
 
 ```python
 from typing import Callable
@@ -167,27 +148,20 @@ class Order:
         return self.base_price - discount
 ```
 
-- **Staff-Level Interview Point:** *"In Python, if the strategy holds no internal state, passing a callable function or lambda satisfies the Strategy Pattern with zero class overhead."*
+**The rule of thumb:** if the strategy has no internal state to hold onto, a plain function or lambda satisfies the whole pattern — no class needed.
 
 ---
 
-### 5. Architectural Comparisons: Strategy vs. State vs. Template Method
+### Strategy vs. State vs. Template Method
 
-Interviewers frequently probe whether you can distinguish Strategy from other behavioral patterns that share similar class structures:
+These three get confused constantly because the class diagrams look similar:
 
-#### 1. Strategy vs. State Pattern:
-- **Structure:** Both use a Context delegating to an interface with multiple polymorphic implementations.
-- **Key Difference in Intent:**
-  - In **Strategy**, the *client* (or configuration) chooses which algorithm to use. Strategies are independent and unaware of each other.
-  - In **State**, the *Context itself* automatically transitions between states based on internal events (e.g., an `Order` object moving from `Pending` -> `Paid` -> `Shipped`). Concrete states frequently know about each other to trigger transitions.
-
-#### 2. Strategy vs. Template Method Pattern:
-- **Strategy** relies on **Object Composition** ("has-a" relationship). The algorithm is enclosed in a separate object and can be swapped dynamically at runtime.
-- **Template Method** relies on **Class Inheritance** ("is-a" relationship). The algorithm skeleton is hardcoded in a base class, and subclasses override specific hook methods at compile time.
+- **Strategy vs. State:** both have a Context delegating to swappable implementations — but in Strategy, *the caller* picks the algorithm, and each strategy is isolated, unaware of the others. In State, the *Context itself* drives the transitions (an `Order` moving `Pending → Paid → Shipped`), and states often know about each other to trigger the next one.
+- **Strategy vs. Template Method:** Strategy uses composition — the algorithm lives in a separate, swappable object. Template Method uses inheritance — the algorithm's skeleton is baked into a base class, and subclasses only override specific steps, fixed at compile time.
 
 ---
 
-### 6. Comparative Evaluation Scorecard
+### Comparing the Three
 
 | Dimension | Strategy Pattern | State Pattern | Template Method Pattern |
 | :--- | :--- | :--- | :--- |
@@ -199,7 +173,13 @@ Interviewers frequently probe whether you can distinguish Strategy from other be
 
 ---
 
-### 7. Python Verification Script
+### Say this in the interview
+
+*"Strategy pulls an algorithm out into its own swappable object, so you can add a new one without touching existing code — that's Open/Closed in action. It's composition-based: the context holds a reference to a strategy interface and delegates to it, and the caller decides which one to use. In Python, if the strategy has no state, a plain function does the job — no class needed. The usual confusion is with State (where the context drives its own transitions) and Template Method (which uses inheritance, not composition, and fixes the algorithm at compile time)."*
+
+---
+
+### Python: Verification Script
 
 The following standalone script demonstrates runtime strategy swapping (fallback on failure) and functional callable strategies:
 

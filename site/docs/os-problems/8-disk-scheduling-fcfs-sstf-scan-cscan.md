@@ -12,9 +12,9 @@ sidebar_class_name: sidebar-medium
 
 ---
 
-## 1. Executive Summary & Problem Parameters
+### The setup
 
-On magnetic hard disk drives (HDDs), mechanical head movement (**seek time**) dominates I/O latency. Disk scheduling algorithms reorder pending read/write requests to minimize total head movement, prevent mechanical thrashing, and ensure fair latency.
+On a spinning hard disk, the read/write head is a physical arm that has to move to the right track before it can read anything — and that movement is slow compared to everything else the disk does. Disk scheduling is just: given a pile of pending requests, in what order do you visit them to move the arm as little as possible?
 
 ### Problem Specifications:
 - **Total Disk Tracks:** 200 (numbered `0` to `199`).
@@ -25,7 +25,7 @@ On magnetic hard disk drives (HDDs), mechanical head movement (**seek time**) do
 
 ---
 
-## 2. Part 1: First-Come, First-Served (FCFS)
+### Part 1: First-Come, First-Served (FCFS)
 
 FCFS services requests in their exact arrival order without reordering.
 
@@ -47,7 +47,7 @@ FCFS services requests in their exact arrival order without reordering.
 
 ---
 
-## 3. Part 2: Shortest Seek Time First (SSTF)
+### Part 2: Shortest Seek Time First (SSTF)
 
 SSTF selects the pending request closest to the current head position at each step (greedy local optimization).
 
@@ -79,7 +79,7 @@ SSTF selects the pending request closest to the current head position at each st
 
 ---
 
-## 4. Part 3: SCAN (Elevator Algorithm)
+### Part 3: SCAN (Elevator Algorithm)
 
 SCAN sweeps in one direction, servicing requests along its path until it hits the **physical edge of the disk (track 199)**. It then reverses direction and sweeps toward the opposite edge.
 
@@ -108,7 +108,7 @@ SCAN sweeps in one direction, servicing requests along its path until it hits th
 
 ---
 
-## 5. Part 4: C-SCAN (Circular SCAN)
+### Part 4: C-SCAN (Circular SCAN)
 
 C-SCAN provides uniform waiting times by treating the disk tracks as a circular ring. The head sweeps upward servicing requests until it reaches boundary `199`. It then **jumps immediately back to track 0 without servicing requests**, and sweeps upward again to complete remaining lower requests.
 
@@ -133,7 +133,7 @@ C-SCAN provides uniform waiting times by treating the disk tracks as a circular 
 
 ---
 
-## 6. Part 5: The Edge Optimization: LOOK & C-LOOK
+### Part 5: LOOK & C-LOOK — Skip the Unnecessary Trip to the Edge
 
 SCAN and C-SCAN force the disk arm to travel all the way to cylinder boundaries `0` and `199`, even when no requests exist at the extremities. **LOOK** and **C-LOOK** inspect pending requests and "look" ahead, reversing or resetting as soon as the outermost requested track is serviced.
 
@@ -153,7 +153,7 @@ SCAN and C-SCAN force the disk arm to travel all the way to cylinder boundaries 
 
 ---
 
-## 7. Comparative Scorecard & Engineering Tradeoffs
+### Comparative Scorecard
 
 | Algorithm | Total Head Movement | Starvation Risk? | Key Advantage | Key Disadvantage |
 | :--- | :---: | :---: | :--- | :--- |
@@ -166,18 +166,15 @@ SCAN and C-SCAN force the disk arm to travel all the way to cylinder boundaries 
 
 ---
 
-## 8. Modern Storage Reality: Why Disk Scheduling Is Obsolete for SSDs
+### Say this in the interview
 
-1. **No Mechanical Seek Time:** Solid State Drives (SSDs) and NVMe storage devices rely on NAND flash memory chips. There are zero moving arms, read heads, or spinning platters. Any flash block can be accessed in microseconds regardless of its logical block address (LBA).
-2. **Wear Leveling Conflicts:** An OS attempting to optimize LBA order on an SSD is fighting the internal Flash Translation Layer (FTL), which deliberately scrambles physical block allocations to prevent flash cell wear.
-3. **Modern Linux I/O Schedulers:**
-   - **`none`:** Default for modern high-performance NVMe drives. Dispatches requests directly to hardware submission queues with multi-queue support (`blk-mq`).
-   - **`mq-deadline`:** Basic FIFO-with-deadline scheduler to prevent tail latency on SATA SSDs.
-   - **`bfq` (Budget Fair Queueing):** Used only for rotational HDDs where seek optimization and bandwidth fairness matter.
+*"All of this matters for spinning hard disks, where a physical arm has to move. SSDs have no moving parts — any block is reachable in microseconds regardless of its address — so none of this seek-minimizing logic applies there. Modern Linux actually uses `none` as the I/O scheduler for NVMe SSDs (just dispatch straight to hardware), `mq-deadline` to cap tail latency on SATA SSDs, and reserves `bfq` — which does care about seek order — for actual spinning disks."*
+
+One more wrinkle: even if you tried to reorder requests by address on an SSD, you'd be fighting its own Flash Translation Layer, which deliberately scrambles physical block placement to spread out wear.
 
 ---
 
-## 9. Python Verification: Disk Scheduling Simulator
+### Python: Disk Scheduling Simulator
 
 The following executable Python script implements and tests all 6 disk scheduling algorithms (FCFS, SSTF, SCAN, C-SCAN, LOOK, C-LOOK), outputting exact sequence paths and head movements:
 

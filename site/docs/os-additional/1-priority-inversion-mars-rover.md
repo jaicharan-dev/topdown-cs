@@ -1,129 +1,115 @@
 ---
 id: 1-priority-inversion-mars-rover
 title: "Priority Inversion & Priority Inheritance: The Mars Pathfinder Bug"
-description: "Analyze the classic concurrency failure where a low-priority thread holding a lock blocks a high-priority thread, and how priority inheritance resolves it."
+description: "How a low-priority thread holding a lock can block a high-priority thread, why it rebooted the Mars Pathfinder, and how priority inheritance fixes it."
 sidebar_position: 1
 sidebar_class_name: sidebar-hard
 ---
+
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
 > **Interview Question:** "What is Priority Inversion? What causes it, why did it repeatedly reboot the Mars Pathfinder in 1997, and how does Priority Inheritance fix it?"
 
-**Priority Inversion** is a critical concurrency hazard in preemptive priority-based operating systems where a **high-priority task is indirectly preempted and delayed by a medium-priority task**, completely inverting the intended scheduling hierarchy.
-
-If left unresolved, priority inversion leads to deadline misses, system unresponsiveness, or catastrophic failure in Real-Time Operating Systems (RTOS).
+Priority inversion is what happens when a high-priority task ends up waiting on a low-priority one — and a medium-priority task that has nothing to do with either of them is the real reason it's stuck.
 
 ---
 
-### The ELI5 Analogy: The Office Projector
+### The analogy: the office projector
 
-Imagine a company with three employees:
-- **The CEO** (High-Priority Task $H$)
-- **The Manager** (Medium-Priority Task $M$)
-- **The Intern** (Low-Priority Task $L$)
+Three people, one projector:
+- **The CEO** — highest priority.
+- **The Manager** — medium priority.
+- **The Intern** — lowest priority.
 
-There is only one **Projector** (the shared Mutex) in the building:
+1. The Intern checks out the projector to rehearse a presentation.
+2. The CEO shows up needing it for an emergency pitch. The Intern has it, so the CEO waits.
+3. Right then, the Manager walks in and tells the Intern to drop everything and update some spreadsheets. The Manager doesn't need the projector at all — but outranks the Intern, so the Intern has to stop and comply.
+4. Now the CEO is waiting on the Intern, and the Intern is stuck doing the Manager's spreadsheets. The CEO — the highest-priority person in the building — is effectively waiting on the Manager, who never even asked for the projector.
 
-1. **Intern locks the projector:** The Intern ($L$) checks out the projector to practice a presentation.
-2. **CEO requests the projector:** The CEO ($H$) arrives to give an emergency investor pitch. Because the Intern currently holds the projector, the CEO must wait in the lobby (Task $H$ blocks).
-3. **Manager interrupts the Intern:** Right then, the Manager ($M$) walks into the Intern's room and orders: *"Drop everything and update these 50 spreadsheets right now."*
-4. **The Inversion:** Because the Manager outranks the Intern ($M > L$), the Intern must stop their presentation and work on spreadsheets. The Manager does not need the projector!
-5. **The Absurd Result:** The CEO is waiting for the Intern, but the Intern cannot finish because of the Manager. **The CEO is effectively stuck waiting on the Manager.**
-
-The highest-priority person in the organization is starved of execution by a medium-priority person.
+That's the inversion: the schedule is supposed to run high priority before medium before low, but a medium-priority task ends up delaying a high-priority one indirectly, through a lock.
 
 ---
 
-### Concurrency Anatomy of Priority Inversion
+### What's actually happening
 
-In a strict priority-preemptive RTOS, the scheduler guarantees that the highest-priority runnable thread always executes on the CPU:
+<Diagram>
+<Row>
+<Box title="Low-priority task" accent="#34d399">
+<Field icon="🔒" code="holds the lock" hint="in its critical section" variant="neutral" />
+</Box>
+<Arrow label="blocks" />
+<Box title="High-priority task" accent="#fb7185">
+<Field icon="⏳" code="needs that lock" hint="stuck waiting" variant="neutral" />
+</Box>
+</Row>
+<Row>
+<Box title="Medium-priority task" accent="#f59e0b">
+<Field icon="⚡" code="doesn't need the lock" hint="keeps preempting Low anyway" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant L as Task L (Low Priority)
-    participant M as Task M (Medium Priority)
-    participant H as Task H (High Priority)
-    participant Mutex as Shared Mutex X
+Step by step:
 
-    L->>Mutex: 1. Acquires Mutex X
-    Note over L: L enters critical section
-    H->>H: 2. Wakes up (preempts L because H > L)
-    H->>Mutex: 3. Attempts to acquire Mutex X (Blocked)
-    Note over H: H sleeps waiting for Mutex X
-    Note over L: OS resumes L to finish critical section
-    M->>M: 4. Task M wakes up (Preempts L because M > L)
-    Note over M: M executes arbitrary long-running code
-    Note over L: L is starved of CPU and cannot release Mutex X
-    Note over H: H remains starved waiting on Mutex X
-```
-
-1. **Task $L$** runs and acquires shared `Mutex_X`.
-2. **Task $H$** wakes up on an interrupt or timer. Because priority $H > L$, the kernel preempts $L$ and dispatches $H$.
-3. **Task $H$** attempts to acquire `Mutex_X`. Because $L$ holds it, $H$ is suspended and placed into the mutex wait queue.
-4. The kernel returns the CPU to $L$ so it can release the lock.
-5. **The Trap:** One or more independent **Medium-priority tasks ($M$)** wake up. Because $M > L$, the kernel preempts $L$ and executes $M$.
-6. **Task $M$ does not need `Mutex_X`.** It consumes CPU cycles indefinitely. Task $L$ is starved and cannot complete its critical section. Consequently, Task $H$ is starved indefinitely!
+1. **Low** grabs a shared lock (`Mutex_X`) and enters its critical section.
+2. **High** wakes up and, being highest priority, preempts Low — but then asks for `Mutex_X` and finds Low already holds it. High has to go to sleep and wait.
+3. The scheduler hands the CPU back to Low so it can finish and release the lock.
+4. Before that happens, **Medium** wakes up. Medium outranks Low, so it preempts Low again — even though Medium never touches the lock.
+5. Medium runs for as long as it wants. Low never gets the CPU back, never releases the lock, and High never gets unblocked. A task that should never have been able to delay High just did, indirectly.
 
 ---
 
-### The Real-World Incident: The Mars Pathfinder (1997)
+### The real incident: Mars Pathfinder (1997)
 
-On July 4, 1997, NASA's Mars Pathfinder landed on Mars. A few days into the mission, the spacecraft began experiencing unexplained system resets, losing valuable scientific data:
+On July 4, 1997, NASA's Pathfinder landed on Mars. A few days in, it started randomly rebooting and losing data.
 
-```
-                          Mars Pathfinder Tasks:
-┌────────────────────────────────────────────────────────────────────────┐
-│  bc_dist (High Priority)     : Mil-Std-1553 Information Bus Manager   │
-│  comm / radio (Med Priority) : Long-running communications tasks       │
-│  asi_publish (Low Priority)  : Meteorological science sensor reads     │
-└────────────────────────────────────────────────────────────────────────┘
-```
+The spacecraft ran three relevant tasks:
+- **`bc_dist`** (high priority) — managed the information bus.
+- **comm/radio tasks** (medium priority) — long-running communication jobs.
+- **`asi_publish`** (low priority) — read weather sensors.
 
-1. **`asi_publish` ($L$)** acquired a shared mutual exclusion semaphore protecting the bus memory table.
-2. An interrupt woke up **`bc_dist` ($H$)**, which scheduled bus transactions. It attempted to acquire the bus mutex and was blocked.
-3. Several medium-priority communication and processing tasks woke up. Because they outranked `asi_publish`, they preempted it and ran for prolonged durations.
-4. **The Watchdog Reset:** Pathfinder was equipped with a hardware **Watchdog Timer**. If `bc_dist` did not run within a designated time window, the watchdog assumed the CPU had locked up, reset the hardware bus, and rebooted the entire spacecraft!
-5. **The Patch from 100 Million Miles Away:** JPL engineers reproduced the failure on an identical replica in their laboratory. Using the dynamic C interpreter in Wind River's **VxWorks RTOS**, they uploaded a patch that toggled the mutex creation flag to enable **Priority Inheritance** (`semMCreate(..., SEM_INVERSION_SAFE)`), saving the mission.
+What happened:
+
+1. `asi_publish` grabbed a mutex protecting the bus memory table.
+2. `bc_dist` woke up on an interrupt, tried to grab the same mutex, and blocked.
+3. The medium-priority comm tasks woke up and, outranking `asi_publish`, kept preempting it — for longer than expected.
+4. Pathfinder had a hardware watchdog timer. If `bc_dist` didn't run within its expected window, the watchdog assumed the whole system had locked up and triggered a full reboot.
+5. Engineers back on Earth reproduced the bug on a lab copy of the rover, and uploaded a patch that turned on **priority inheritance** for that mutex (`semMCreate(..., SEM_INVERSION_SAFE)` in VxWorks) — without ever touching the hardware.
 
 ---
 
-### The Fix: Priority Inheritance vs. Priority Ceiling
+### The fix: priority inheritance vs. priority ceiling
 
-#### 1. Priority Inheritance Protocol (PIP)
-- **Mechanism:** When a high-priority task ($H$) blocks on a mutex held by a lower-priority task ($L$), the operating system **temporarily elevates the priority of task $L$ to match task $H$** for the duration of the critical section:
-  $$\text{Priority}(L) = \max(\text{Priority}(L), \text{Priority}(H))$$
-- **Result:** Medium-priority tasks ($M$) can no longer preempt $L$. Task $L$ quickly finishes its critical section, releases the lock, drops back to its base priority, and $H$ immediately acquires the lock and runs.
-- **Drawback:** Can cause **transitive inheritance chains** ($H \to M \to L$) and does not prevent deadlocks if multiple locks are acquired in arbitrary orders.
+**Priority Inheritance Protocol (PIP).** When a high-priority task blocks on a lock held by a low-priority one, the OS temporarily *lends* the high task's priority to the low task for as long as it holds the lock. Medium-priority tasks can no longer cut in front of it. Low finishes fast, releases the lock, drops back to its normal priority, and High runs immediately.
+- Downside: inheritance can chain through several locks (High → Medium → Low), and it doesn't by itself prevent deadlocks if locks are grabbed in different orders.
 
-#### 2. Priority Ceiling Protocol (PCP)
-- **Mechanism:** Every shared mutex is statically assigned a **priority ceiling** equal to the highest priority of any task that could ever lock it.
-- When a task acquires the mutex, its priority is immediately boosted to the mutex ceiling.
-- **Advantage:** Mathematically guarantees that a high-priority task is blocked by lower-priority tasks at most **once**, and **completely prevents deadlocks**.
+**Priority Ceiling Protocol (PCP).** Every lock is given a fixed "ceiling" priority upfront — the highest priority of any task that could ever take it. The moment a task grabs the lock, its priority jumps to that ceiling.
+- Advantage: a high-priority task can be blocked at most once, and deadlocks are mathematically impossible. The cost is more bookkeeping ahead of time.
 
 ---
 
-### Comparison Matrix
+### Comparison
 
-| Dimension | Standard Mutex | Priority Inheritance (PIP) | Priority Ceiling (PCP) |
+| | Plain mutex | Priority Inheritance | Priority Ceiling |
 | :--- | :--- | :--- | :--- |
-| **Priority Inversion Risk** | **Unbounded** (Can starve indefinitely) | **Bounded** to critical section duration | **Strictly bounded** (at most 1 blocking) |
-| **Deadlock Prevention** | None | None (Deadlocks still possible) | **Guaranteed Deadlock-Free** |
-| **Implementation Overhead** | Minimal ($O(1)$) | Moderate (Dynamic priority tracking) | Higher (Static ceiling calculation) |
-| **Use Cases** | General OS (Linux, Windows) | Real-time kernels (VxWorks, FreeRTOS) | Safety-critical RTOS (Avionics, Automotive) |
+| **How bad can the delay get** | Unbounded — could starve forever | Bounded to one critical section | Bounded to one blocking event, period |
+| **Deadlock risk** | Not addressed | Still possible | Impossible by construction |
+| **Overhead** | Minimal | Some — priorities change dynamically | More — ceilings computed ahead of time |
+| **Used in** | General OSes (Linux, Windows) | Real-time kernels (VxWorks, FreeRTOS) | Safety-critical RTOS (avionics, automotive) |
 
 ---
 
-### Summary
+### Say this in the interview
 
-"Priority inversion occurs when a low-priority thread holding a shared mutex is preempted by medium-priority threads, indirectly starving a high-priority thread that is blocked on the mutex. The standard solution is the Priority Inheritance Protocol, where the OS temporarily elevates the lock-holding thread's priority to match that of the highest blocked waiter, ensuring it finishes its critical section without preemption from intermediate threads."
+*"Priority inversion happens when a low-priority thread holding a lock gets preempted by medium-priority threads that don't even want the lock, which indirectly starves a high-priority thread waiting on it. The fix is priority inheritance: temporarily boost the lock-holder's priority to match the highest thread waiting on it, so nothing in between can cut in line."*
 
 ---
 
-### Python Verification: Priority Inversion & Inheritance Simulator
+### Python: simulating the bug and the fix
 
-The following executable Python script simulates a priority-based scheduler demonstrating how medium-priority tasks starve high-priority tasks under standard mutexes, and how priority inheritance resolves the inversion:
+The script below runs a tiny priority scheduler twice — once with a plain mutex (where the high-priority task gets starved by an unrelated medium-priority task), and once with priority inheritance turned on (where it doesn't):
 
 ```python
 """

@@ -6,17 +6,19 @@ sidebar_position: 5
 sidebar_class_name: sidebar-hard
 ---
 
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
 > **Interview Question:** "A sender wants to transmit the 4-bit data `1011` using Hamming code. Determine the parity bits needed, compute their values, walk through how the receiver identifies a single-bit error, and explain how enterprise ECC RAM uses SECDED to prevent miscorrection on 2-bit flips."
 
 ---
 
-Hamming codes, invented by Richard Hamming in 1950, are linear error-correcting codes capable of detecting up to two simultaneous bit errors or correcting a single-bit error without retransmission. They form the foundational architecture of server ECC (Error-Correcting Code) DRAM, RAID 2, and satellite communication telemetry.
+A checksum or CRC can tell you a bit got flipped — but not which one, so all you can do is ask for a retransmit. Hamming codes (Richard Hamming, 1950) go further: they can pinpoint *which* bit flipped and fix it on the spot, no retransmission needed. That's why they're the basis for server ECC RAM, RAID 2, and satellite telemetry.
 
 ---
 
-### 1. Parity Bit Calculation: The Hamming Bound
+### Parity Bit Calculation: The Hamming Bound
 
 To protect $m$ data bits, we insert $r$ redundant parity bits, resulting in an encoded codeword of length $n = m + r$.
 
@@ -32,7 +34,7 @@ We require **$r = 3$ parity bits**, resulting in a **Hamming $(7, 4)$** block co
 
 ---
 
-### 2. Codeword Structure & Parity Bit Mapping
+### Codeword Structure & Parity Bit Mapping
 
 Parity bits are positioned at powers of 2 (indices $1, 2, 4, 8, \dots, 2^k$) because their binary indices contain exactly one set bit (`001`, `010`, `100`). The remaining positions are filled by data bits:
 
@@ -66,7 +68,7 @@ Bit:        0   1   1   0   0   1   1
 
 ---
 
-### 3. Receiver Syndrome Decoding
+### Receiver Syndrome Decoding
 
 Suppose bit position 6 flips during transmission ($1 \to 0$):
 $$\text{Received Codeword } R = \mathbf{0110001} \quad (\text{Bit 6 corrupted})$$
@@ -86,7 +88,7 @@ The receiver instantly pinpoints **position 6** as corrupted, inverts bit 6 ($0 
 
 ---
 
-### 4. Hamming Distance Theorems & The 2-Bit Miscorrection Trap
+### Hamming Distance Theorems & The 2-Bit Miscorrection Trap
 
 Let $d_{\text{min}}$ be the minimum Hamming distance between any two valid codewords in a code:
 
@@ -99,17 +101,16 @@ For standard Hamming $(7, 4)$, $d_{\text{min}} = 3$:
 - It can correct $t = \lfloor (3 - 1) / 2 \rfloor = \mathbf{1}$ single-bit error.
 - If **two bits flip simultaneously**, the corrupted vector is now at distance 1 from a *different valid codeword*. The receiver calculates a valid, non-zero syndrome pointing to a third, uncorrupted bit, flips it, and **silently corrupts the data**!
 
-```text
-Valid Codeword A --------- (dist = 1) --------> Single Bit Flip (Corrected to A)
-      |
-      +------------------- (dist = 2) --------> 2-Bit Flip (Mistakenly corrected to B!)
-      |
-Valid Codeword B <-------- (dist = 1) ---------+
-```
+<Diagram>
+<Row>
+<Box title="1 bit flips" accent="#34d399"><Field icon="✅" code="distance 1 from A" hint="closest valid codeword is still A — corrects properly" variant="neutral" /></Box>
+<Box title="2 bits flip" accent="#fb7185"><Field icon="⚠️" code="distance 1 from A AND from B" hint="receiver can't tell which — may 'correct' to the wrong codeword" variant="neutral" /></Box>
+</Row>
+</Diagram>
 
 ---
 
-### 5. SECDED: Hamming (8, 4) in Enterprise ECC DRAM
+### SECDED: Hamming (8, 4) in Enterprise ECC DRAM
 
 To eliminate the 2-bit miscorrection trap, enterprise server ECC memory implements **SECDED (Single Error Correction, Double Error Detection)** by appending an overall parity bit $P_0$ (covering all bits $1$ through $7$). This increases the minimum distance from $d_{\text{min}} = 3$ to **$d_{\text{min}} = 4$**.
 
@@ -126,7 +127,7 @@ By checking overall parity, the hardware instantly distinguishes between a singl
 
 ---
 
-### 6. Runnable Python Implementation
+### Python: Runnable Implementation
 
 This standalone script encodes data using $(7, 4)$ Hamming Code, demonstrates syndrome correction, and simulates ECC RAM SECDED $(8, 4)$ behavior.
 
@@ -251,7 +252,7 @@ if __name__ == "__main__":
 
 ---
 
-### 7. Concise Staff-Level Interview Answer
+### Say this in the interview
 
 > "To protect the 4-bit data `1011`, we apply the Hamming bound $2^r \ge m + r + 1$. For $m = 4$, $r = 3$ satisfies $2^3 \ge 4 + 3 + 1 = 8$, forming a $(7, 4)$ code.
 >

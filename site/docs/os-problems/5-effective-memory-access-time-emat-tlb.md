@@ -6,47 +6,32 @@ sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
 
+import { Diagram, Tree, Box, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "A system uses virtual memory with paging and a Translation Lookaside Buffer (TLB). TLB access latency is 20 ns and main memory access latency is 100 ns. Calculate the Effective Memory Access Time (EMAT) for an 80% TLB hit ratio, a 95% TLB hit ratio, and for a 2-level page table system at an 80% hit ratio. How does page fault probability change this equation?"
 
 ---
 
-## 1. Executive Summary & Hardware Context
+### Why this matters
 
-In a virtual memory system, the CPU generates virtual addresses that must be translated into physical addresses before data can be fetched from RAM. 
+Page tables live in RAM too. So without help, every memory access actually costs *two* RAM trips: one to look up where the data is (the page table entry), one to fetch the data itself — 200 ns instead of 100 ns.
 
-Because page tables themselves reside in main memory:
-- **Without a TLB:** Every memory dereference requires **two RAM accesses** (one to read the Page Table Entry, one to read the actual data), doubling memory latency to 200 ns.
-- **With a TLB:** The CPU includes a fast, on-chip associative cache called the **Translation Lookaside Buffer (TLB)**. On a TLB hit, the physical frame is resolved in hardware in 20 ns, avoiding an extra trip to RAM.
+The TLB is the shortcut: a small on-chip cache that, on a hit, skips the page-table trip entirely and resolves the address in 20 ns.
 
-```
-       CPU Virtual Address (VPN | Offset)
-                     │
-                     ▼
-           ┌───────────────────┐
-           │   TLB Lookup      │ (20 ns)
-           └─────────┬─────────┘
-                     │
-          ┌──────────┴──────────┐
-          │                     │
-       TLB Hit               TLB Miss
-     (Prob: h)            (Prob: 1 - h)
-          │                     │
-          ▼                     ▼
-┌──────────────────┐  ┌─────────────────────────┐
-│ Fetch Data RAM   │  │ Page Table Walk in RAM  │ (k * 100 ns)
-│ (100 ns)         │  └────────────┬────────────┘
-└──────────────────┘               │
-                                   ▼
-                      ┌─────────────────────────┐
-                      │ Fetch Actual Data RAM   │ (100 ns)
-                      └─────────────────────────┘
-```
+<Diagram>
+<Tree root={
+<Box title="TLB Lookup" accent="#818cf8"><Field icon="🔍" code="20 ns" hint="every access starts here" variant="neutral" /></Box>
+}>
+<Box title="TLB Hit (prob h)" accent="#34d399"><Field icon="✅" code="+ 100 ns" hint="fetch data straight from RAM" variant="neutral" /></Box>
+<Box title="TLB Miss (prob 1-h)" accent="#fb7185"><Field icon="🔁" code="+ k×100 ns, then + 100 ns" hint="walk the page table(s), then fetch data" variant="neutral" /></Box>
+</Tree>
+</Diagram>
 
 ---
 
-## 2. Part 1: EMAT with Single-Level Page Table (80% Hit Ratio)
+### Part 1: EMAT with a Single-Level Page Table (80% Hit Ratio)
 
 ### Problem Parameters:
 - TLB Access Time ($t_{\text{TLB}}$): 20 ns
@@ -70,7 +55,7 @@ $$\text{EMAT} = 96\text{ ns} + 44\text{ ns} = \mathbf{140\text{ ns}}$$
 
 ---
 
-## 3. Part 2: Sensitivity Analysis with 95% Hit Ratio
+### Part 2: What Happens at a 95% Hit Ratio
 
 Now assume software exhibits better spatial and temporal locality, raising the TLB hit ratio to $h = 0.95$ ($1 - h = 0.05$).
 
@@ -85,7 +70,7 @@ $$\text{EMAT} = 114\text{ ns} + 11\text{ ns} = \mathbf{125\text{ ns}}$$
 
 ---
 
-## 4. Part 3: Multi-Level Page Table (2-Level System, 80% Hit Ratio)
+### Part 3: A 2-Level Page Table, Still at 80% Hit Ratio
 
 Modern operating systems use multi-level (hierarchical) page tables to avoid allocating megabytes of contiguous page tables for sparse address spaces. However, every additional level adds a memory access on a TLB miss.
 
@@ -108,7 +93,7 @@ $$\text{EMAT} = 96\text{ ns} + 64\text{ ns} = \mathbf{160\text{ ns}}$$
 
 ---
 
-## 5. Generalized Formula for k-Level Page Tables
+### The General Formula, for Any Number of Levels
 
 For an arbitrary $k$-level page table configuration with serial TLB lookup:
 
@@ -128,7 +113,7 @@ $$\text{EMAT} = t_{\text{TLB}} + t_{\text{mem}} + (1 - h) \cdot k \cdot t_{\text
 
 ---
 
-## 6. Advanced Interview Trap: Incorporating Page Fault Rate
+### The Trap: What If the Page Isn't Even in RAM?
 
 Interviewers frequently combine TLB access with the **Page Fault Rate ($p$)**. If the requested page is not present in physical RAM at all, a page fault interrupt is triggered, requiring disk I/O.
 
@@ -153,7 +138,7 @@ $$\text{EMAT}_{\text{total}} \approx 140\text{ ns} + 8,000\text{ ns} = \mathbf{8
 
 ---
 
-## 7. Python Verification Script
+### Python: Verify the Numbers
 
 The following standalone script calculates EMAT across variable hit ratios, page table depths, and page fault rates:
 

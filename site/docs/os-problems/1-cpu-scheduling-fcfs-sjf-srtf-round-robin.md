@@ -6,6 +6,8 @@ sidebar_position: 1
 sidebar_class_name: sidebar-medium
 ---
 
+import { GanttChart } from '@site/src/components/GanttChart';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Given four processes with varying arrival times and burst times, construct Gantt charts and compute completion time (CT), turnaround time (TAT), and waiting time (WT) for FCFS, Non-Preemptive SJF, Preemptive SRTF, and Round Robin (q = 3 ms). Why does SRTF achieve minimal average waiting time, and why is it rarely used in production kernels?"
@@ -23,11 +25,9 @@ Consider four processes arriving in the ready queue with the following character
 | **P3** | 2 ms | 9 ms |
 | **P4** | 3 ms | 5 ms |
 
-#### Standard Scheduling Formulas:
-- **Turnaround Time (TAT):** Total elapsed time from arrival to completion.
-  $$TAT = CT - AT$$
-- **Waiting Time (WT):** Total time spent waiting in the ready queue without CPU allocation.
-  $$WT = TAT - BT$$
+#### The two numbers every part of this problem comes down to:
+- **Turnaround Time:** how long a process was in the system, start to finish — `TAT = CT - AT`
+- **Waiting Time:** of that time, how much was spent just waiting for the CPU — `WT = TAT - BT`
 
 ---
 
@@ -36,10 +36,13 @@ Consider four processes arriving in the ready queue with the following character
 FCFS executes processes strictly in order of their arrival without preemption.
 
 #### Gantt Chart
-```
-[  P1 (8ms)  ][ P2 (4ms) ][    P3 (9ms)    ][  P4 (5ms)  ]
-0            8           12                21            26
-```
+
+<GanttChart segments={[
+  { label: 'P1', start: 0, end: 8, accent: '#60a5fa' },
+  { label: 'P2', start: 8, end: 12, accent: '#34d399' },
+  { label: 'P3', start: 12, end: 21, accent: '#f59e0b' },
+  { label: 'P4', start: 21, end: 26, accent: '#a78bfa' },
+]} />
 
 #### Step-by-Step Calculation Table
 
@@ -68,10 +71,13 @@ In Non-Preemptive SJF, once a process begins execution, it runs to completion. W
 - **t = 17 ms:** P4 finishes. Remaining in queue: P3 (BT = 9 ms). Runs t = 17 -> 26 ms.
 
 #### Gantt Chart
-```
-[  P1 (8ms)  ][ P2 (4ms) ][  P4 (5ms)  ][    P3 (9ms)    ]
-0            8           12            17                26
-```
+
+<GanttChart segments={[
+  { label: 'P1', start: 0, end: 8, accent: '#60a5fa' },
+  { label: 'P2', start: 8, end: 12, accent: '#34d399' },
+  { label: 'P4', start: 12, end: 17, accent: '#a78bfa' },
+  { label: 'P3', start: 17, end: 26, accent: '#f59e0b' },
+]} />
 
 #### Step-by-Step Calculation Table
 
@@ -100,10 +106,14 @@ In SRTF, if a newly arrived process has a remaining burst time strictly less tha
 - **t = 17 ms:** P1 completes. Only P3 remains (rem = 9 ms). Runs t = 17 -> 26 ms.
 
 #### Gantt Chart
-```
-[P1][ P2 (4ms) ][  P4 (5ms)  ][   P1 (7ms)   ][    P3 (9ms)    ]
-0  1           5             10              17                26
-```
+
+<GanttChart segments={[
+  { label: 'P1', start: 0, end: 1, accent: '#60a5fa' },
+  { label: 'P2', start: 1, end: 5, accent: '#34d399' },
+  { label: 'P4', start: 5, end: 10, accent: '#a78bfa' },
+  { label: 'P1', start: 10, end: 17, accent: '#60a5fa' },
+  { label: 'P3', start: 17, end: 26, accent: '#f59e0b' },
+]} />
 
 #### Step-by-Step Calculation Table
 
@@ -138,10 +148,19 @@ Processes are dispatched in a circular FIFO queue for a maximum time quantum of 
 - **t = 23 -> 26 ms:** P3 runs its remaining 3 ms and **completes at t = 26 ms!** Queue empty.
 
 #### Gantt Chart
-```
-[ P1 ][ P2 ][ P3 ][ P4 ][ P1 ][P2][ P3 ][P4][P1][ P3 ]
-0    3     6     9    12    15  16   19   21  23    26
-```
+
+<GanttChart segments={[
+  { label: 'P1', start: 0, end: 3, accent: '#60a5fa' },
+  { label: 'P2', start: 3, end: 6, accent: '#34d399' },
+  { label: 'P3', start: 6, end: 9, accent: '#f59e0b' },
+  { label: 'P4', start: 9, end: 12, accent: '#a78bfa' },
+  { label: 'P1', start: 12, end: 15, accent: '#60a5fa' },
+  { label: 'P2', start: 15, end: 16, accent: '#34d399' },
+  { label: 'P3', start: 16, end: 19, accent: '#f59e0b' },
+  { label: 'P4', start: 19, end: 21, accent: '#a78bfa' },
+  { label: 'P1', start: 21, end: 23, accent: '#60a5fa' },
+  { label: 'P3', start: 23, end: 26, accent: '#f59e0b' },
+]} />
 
 #### Step-by-Step Calculation Table
 
@@ -168,15 +187,15 @@ Processes are dispatched in a circular FIFO queue for a maximum time quantum of 
 
 ---
 
-### Why SRTF is Rejected in Production Operating Systems
+### So why don't real kernels just use SRTF?
 
-Although SRTF is mathematically proven to minimize average waiting time, modern kernels (Linux CFS, Windows NT) reject it for three critical reasons:
+SRTF wins on paper — lowest average wait time of all four, by a clear margin. But Linux and Windows don't use it, for three practical reasons:
 
-1. **The Clairvoyance Problem:** SRTF requires knowing the future burst time of every thread before it executes. General-purpose kernels cannot predict how long a process will run before blocking on user input or disk I/O.
-2. **Pathological Starvation:** If a continuous stream of short 1 ms tasks arrives, large tasks (like video encoding or scientific simulations) will never receive CPU time.
-3. **Context Switch Thrashing:** In textbook models, context switches cost 0 ms. In physical silicon, saving registers, switching page tables (`CR3`), and cold-cache misses cost 2 to 5 microseconds. Aggressive preemption under SRTF degrades aggregate throughput.
+1. **It needs to see the future.** SRTF has to know a process's burst time *before* running it. A real kernel has no way to predict whether a process will run for 2ms or 2 seconds before it blocks on I/O.
+2. **It starves big jobs.** If short tasks keep arriving, a long-running job (video encoding, a simulation) can get pushed back indefinitely — it never looks like the "shortest" option.
+3. **Switching isn't free.** The math above assumes a context switch costs 0ms. In reality it costs a few microseconds — reloading registers, swapping the page table, warming the cache back up. SRTF's constant preemption adds that cost up fast.
 
-> **Production Solution:** General-purpose kernels use **Multilevel Feedback Queues (MLFQ)** or **Completely Fair Scheduling (CFS)** with virtual runtime (`vruntime`) to approximate the benefits of SRTF dynamically without requiring future knowledge or causing starvation.
+> **What's used instead:** real kernels run **Multilevel Feedback Queues (MLFQ)** or **Completely Fair Scheduling (CFS)** — both approximate SRTF's "run the shortest job first" instinct without needing to predict the future or starving anything.
 
 ---
 

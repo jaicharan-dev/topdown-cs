@@ -1,94 +1,84 @@
 ---
 id: 25-cte-vs-subquery
 title: "Common Table Expressions (CTEs) vs. Subqueries"
-description: "Compare Common Table Expressions (WITH clauses) and Subqueries, CBO inlining, optimization fences, and writable data-modifying CTEs."
+description: "Compare CTEs (WITH clauses) and subqueries, whether CTEs get materialized or inlined, and what writable CTEs are."
 sidebar_position: 11
 sidebar_class_name: sidebar-medium
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is a Common Table Expression (CTE) in SQL, and how does it differ from a subquery? Are CTEs materialized in memory or evaluated inline, when should you deliberately force materialization, and what are writable CTEs?"
 
----
+Both a CTE and a subquery do the same basic job - give a name to a temporary result so a bigger query can use it. The difference is how you write them, and what the database does with them underneath.
 
-### Conceptual Overview: CTE vs. Subquery
+<Diagram>
+<Row>
+<Box title="Subquery: nested inside-out" accent="#f59e0b">
+<Field icon="📥" code="SELECT ... FROM (SELECT ...)" hint="you read the inner query first, then the outer one wrapped around it" variant="neutral" />
+</Box>
+<Box title="CTE: top to bottom" accent="#34d399">
+<Field icon="📜" code="WITH step1 AS (...), step2 AS (...)" hint="reads like a sequence of steps, each can reuse the last" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-Both **Common Table Expressions (CTEs)** and **Subqueries** define temporary, named intermediate results within a SQL statement. However, their structural clarity and execution planner behaviors differ fundamentally:
-
-- **Subquery (Derived Table):** Written inline within parentheses (`FROM (...) AS t`). Tends to nest "inside-out," making multi-step queries difficult to read, maintain, and reuse.
-- **Common Table Expression (CTE):** Defined upfront using the `WITH` clause. Reads sequentially top-to-bottom like modular functions in application programming, can be referenced multiple times, and supports recursion.
-
-```mermaid
-graph TD
-    subgraph "Subquery Architecture (Inside-Out Nesting)"
-        OuterQuery["Outer SELECT"] --> SubQ["Inner Subquery (Evaluated in-place)"]
-    end
-
-    subgraph "CTE Architecture (Top-Down Modular Pipeline)"
-        CTE1["WITH Step1 AS (...)"] --> CTE2["Step2 AS (SELECT FROM Step1)"]
-        CTE2 --> FinalQuery["SELECT FROM Step2"]
-    end
-```
+- **Subquery:** written inline, inside parentheses (`FROM (...) AS t`). You end up nesting things "inside-out," which gets hard to read once you have more than one or two steps.
+- **CTE:** written upfront with `WITH`, and read top to bottom like a sequence of named steps - closer to how you'd write a small function in regular code. A CTE can also be referenced more than once, and it's the only one of the two that supports recursion.
 
 ---
 
-### Comparison: CTE vs. Subquery
+### Comparison
 
-| Feature | Common Table Expression (CTE) | Subquery / Derived Table |
+| Feature | CTE | Subquery |
 | :--- | :--- | :--- |
-| **Readability** | **High:** Modular, top-to-bottom pipeline execution. | **Low:** Deeply nested, inside-out nesting. |
-| **Reusability** | **Yes:** Can be referenced multiple times in the query. | **No:** Must duplicate the identical SQL block. |
-| **Recursion** | **Yes:** Supports `WITH RECURSIVE` for tree/graph data. | **No:** Cannot self-reference. |
-| **Data Modification** | **Yes:** Supports writable CTEs (`INSERT/UPDATE/DELETE RETURNING`). | Restricted to subquery operations. |
-| **Scope** | Available across the entire query statement. | Confined strictly to its enclosing parentheses. |
+| **Readability** | High — reads top to bottom | Lower — nested inside-out |
+| **Reuse** | Can reference the same CTE more than once | Have to copy-paste the same SQL again |
+| **Recursion** | Yes, with `WITH RECURSIVE` | No — can't reference itself |
+| **Can modify data** | Yes — writable CTEs with `INSERT`/`UPDATE`/`DELETE ... RETURNING` | No |
+| **Scope** | Visible to the whole statement | Only visible inside its own parentheses |
 
 ---
 
-### Performance: Are CTEs Inlined or Materialized?
+### Does the database actually materialize a CTE, or just inline it?
 
-A major senior interview topic is understanding the query optimizer's handling of CTEs:
+This is the thing senior interviewers probe for.
 
-#### 1. Modern Databases (PostgreSQL 12+, MySQL 8.0, SQL Server):
-- By default, modern query planners **inline** non-recursive CTEs (known as **Subquery Flattening**).
-- The optimizer merges the CTE definition directly into the parent query, pushing down `WHERE` predicates and leveraging indexes on the underlying base tables.
-- Performance between an inlined CTE and a subquery is virtually identical.
+**Modern databases (PostgreSQL 12+, MySQL 8.0+, SQL Server):** by default, the planner treats a non-recursive CTE exactly like a subquery - it inlines it into the surrounding query, letting `WHERE` filters and indexes reach inside it. Performance ends up basically identical to writing a subquery.
 
-#### 2. Legacy PostgreSQL (PostgreSQL 11 and earlier):
-- In PostgreSQL 11 and older, CTEs functioned as rigid **Optimization Fences**.
-- The engine *always* calculated and materialized the CTE into a temporary memory/disk buffer upfront, **preventing predicate pushdown**! A query filtering `WHERE id = 5` outside the CTE still forced the CTE to calculate 5,000,000 rows first.
+**Old PostgreSQL (11 and earlier):** a CTE was always calculated fully and stored in a temporary buffer first, no matter what the outer query needed. A filter like `WHERE id = 5` outside the CTE couldn't reach in and limit what the CTE computed - it still processed all 5,000,000 rows up front. This is why people used to call CTEs "optimization fences."
 
 ---
 
-### When to Deliberately Force Materialization (`MATERIALIZED`)
+### When you'd want to force materialization on purpose
 
-PostgreSQL 12+ allows developers to explicitly override optimizer inlining:
+PostgreSQL 12+ lets you opt back into that old "calculate once, cache it" behavior deliberately:
+
 ```sql
 WITH CachedData AS MATERIALIZED (
-    -- Forces the engine to calculate once and cache in memory
-    SELECT department_id, AVG(salary) AS avg_sal 
-    FROM Employees 
+    -- calculated once, then reused from memory
+    SELECT department_id, AVG(salary) AS avg_sal
+    FROM Employees
     GROUP BY department_id
 )
 ```
 
-#### Why force materialization?
-1. **Multi-Referenced Expensive Subqueries:**
-   If a complex aggregation or remote foreign data query is referenced 3 times (e.g., across multiple `JOIN` or `UNION` branches), inlining causes the engine to **recompute the query 3 separate times**. Forcing `MATERIALIZED` evaluates it once.
-2. **Preventing Non-Deterministic Re-Execution:**
-   If a CTE calls volatile functions like `RANDOM()` or `NOW()`, inlining might evaluate the function multiple times per row. Materialization guarantees a single evaluation.
+Two good reasons to do this:
+1. **An expensive query used several times.** If a heavy aggregation is referenced in 3 different joins or union branches, inlining would recompute it 3 separate times. `MATERIALIZED` computes it once and reuses the result.
+2. **A query with "random" results.** If the CTE calls something like `RANDOM()` or `NOW()`, inlining could re-evaluate it more than once, giving inconsistent values. Materializing it guarantees it only runs once.
 
 ---
 
-### Staff-Level Feature: Writable (Data-Modifying) CTEs
+### Writable CTEs: changing data inside a `WITH` clause
 
-In PostgreSQL, CTEs can contain `INSERT`, `UPDATE`, or `DELETE` statements paired with a `RETURNING` clause:
+In PostgreSQL, a CTE can hold `INSERT`, `UPDATE`, or `DELETE`, paired with `RETURNING`:
 
 ```sql
--- Atomic Data Archival: Move old orders to archive in a SINGLE query!
+-- Move old orders to an archive table, in one single statement
 WITH MovedOrders AS (
     DELETE FROM ActiveOrders
     WHERE order_date < NOW() - INTERVAL '1 year'
@@ -98,26 +88,20 @@ INSERT INTO ArchivedOrders
 SELECT * FROM MovedOrders;
 ```
 
-#### Architectural Superiority:
-- **Strictly Atomic:** Eliminates the risk of an application crash occurring between a separate `INSERT` and `DELETE`.
-- **Zero Race Conditions:** Executes within a single transaction snapshot.
-- **Minimal Network Round-Trips:** Performs the entire transfer inside the database engine in one round-trip.
+Why this beats doing it as two separate statements:
+- It's one atomic operation - nothing can crash in between the delete and the insert, leaving data in a half-moved state.
+- It runs inside a single transaction snapshot, so there's no window for a race condition.
+- It's one round-trip to the database instead of two.
 
 ---
 
-### The Interview Answer (60-90 seconds)
+### Say this in the interview
 
-> "A Common Table Expression (CTE) is a temporary named result set defined using the `WITH` clause. Compared to subqueries, CTEs dramatically improve SQL readability by structuring queries as top-to-bottom pipelines, can be referenced multiple times without duplicating code, and enable recursive queries.
->
-> In modern databases like PostgreSQL 12+ and MySQL 8.0, the Cost-Based Optimizer inlines non-recursive CTEs by default, pushing down `WHERE` clauses and index scans just like derived subqueries. However, developers can explicitly specify `WITH data AS MATERIALIZED` when an expensive query is referenced multiple times across different joins or union branches to ensure it evaluates only once.
->
-> Finally, PostgreSQL supports writable CTEs using `RETURNING`. This allows operations like moving expired rows from an active table to an archive table via `WITH moved AS (DELETE ... RETURNING *) INSERT INTO archive SELECT * FROM moved`, guaranteeing atomicity in a single statement."
+*"A CTE is a named temporary result defined with `WITH`. Compared to a subquery, it's more readable - it reads top to bottom instead of nested inside-out - and it can be referenced more than once, or recursively. In modern Postgres and MySQL, the optimizer inlines a non-recursive CTE just like a subquery, so there's no performance penalty by default. You'd force `MATERIALIZED` when an expensive CTE is used multiple times in the same query, so it only gets computed once. Postgres also supports writable CTEs - an `INSERT`/`UPDATE`/`DELETE` with `RETURNING` inside the `WITH` clause - which lets you do things like archive old rows atomically in one statement."*
 
 ---
 
-### Code Demonstration: Reusable CTEs & Multi-Step Aggregations
-
-The following Python script models an e-commerce order dataset in SQLite, demonstrating how a reusable CTE cleanly eliminates redundant subquery computations.
+### Checking this yourself: a CTE referenced twice
 
 ```python
 import sqlite3
@@ -156,9 +140,9 @@ def run_cte_demo():
             SELECT AVG(total_regional_sales) AS avg_sales
             FROM RegionalSales
         )
-        SELECT 
-            r.region, 
-            r.total_regional_sales, 
+        SELECT
+            r.region,
+            r.total_regional_sales,
             ROUND(a.avg_sales, 2) AS benchmark_avg
         FROM RegionalSales r
         CROSS JOIN AverageSales a

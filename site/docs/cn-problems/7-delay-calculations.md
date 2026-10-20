@@ -6,19 +6,19 @@ sidebar_position: 7
 sidebar_class_name: sidebar-medium
 ---
 
+import { GanttChart } from '@site/src/components/GanttChart';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "A sender transmits a file of size 2 MB over a link with a bandwidth of 10 Mbps. The distance is 2000 km, and the signal propagates at $2 \times 10^8\text{ m/s}$. Calculate the transmission delay, propagation delay, total one-hop time, and analyze how packet switching with store-and-forward pipelining alters end-to-end latency."
 
 ---
 
-Network latency is frequently misunderstood as a single homogeneous metric. In reality, total packet delay is the sum of four physically distinct components, governed by fundamentally different laws of physics, hardware architectures, and traffic patterns.
-
-Understanding the difference between **transmission delay** (a bandwidth/NIC constraint) and **propagation delay** (a speed-of-light constraint) is essential for diagnosing network bottlenecks and designing global distributed systems.
+"Latency" isn't one number — it's the sum of up to four physically different delays. The two that matter most, and that people mix up constantly: **transmission delay** (how long it takes your NIC to push all the bits out — a bandwidth problem) and **propagation delay** (how long those bits take to physically travel the wire — a speed-of-light problem). They have nothing to do with each other.
 
 ---
 
-### 1. Step-by-Step Delay Calculations
+### Step-by-Step Delay Calculations
 
 #### Transmission Delay ($T_{\text{trans}}$)
 Transmission delay is the time required for the sender's network interface card (NIC) to push all bits of a packet onto the physical medium. It is completely independent of the distance between sender and receiver.
@@ -46,24 +46,16 @@ $$T_{\text{prop}} = \frac{2 \times 10^6\text{ m}}{2 \times 10^8\text{ m/s}} = 0.
 Assuming negligible processing and queuing delays:
 $$T_{\text{total}} = T_{\text{trans}} + T_{\text{prop}} = 1.6\text{ s} + 0.01\text{ s} = \mathbf{1.61\text{ seconds}}$$
 
-```text
-Sender                                                            Receiver
-  |============================= (1.6 s to push 16 Mbits)           |
-  |-----------------------------\                                   |
-  |                              \                                  |
-  |                               \ (10 ms propagation)             |
-  |                                \                                |
-  |                                 \---> First bit arrives at 10 ms |
-  |                                                                 |
-  |=============================\                                   |
-                                 \                                  |
-                                  \                                 |
-                                   \---> Last bit arrives at 1.61 s |
-```
+<GanttChart unit="s" segments={[
+  { label: 'Transmission — pushing 16 Mbits onto the wire', start: 0, end: 1.6, accent: '#60a5fa' },
+  { label: 'Propagation — last bit crossing the wire', start: 1.6, end: 1.61, accent: '#34d399' },
+]} />
+
+(The first bit actually arrives much earlier — at 10 ms, right after one propagation delay — while the sender is still pushing the rest. It's the *last* bit that needs both delays stacked, which is why total time = transmission + propagation.)
 
 ---
 
-### 2. The Complete Four-Component Nodal Delay Model
+### The Complete Four-Component Nodal Delay Model
 
 In production networks with intermediate routers, total nodal delay consists of four components:
 
@@ -87,7 +79,7 @@ $$I = \frac{L \cdot a}{R}$$
 
 ---
 
-### 3. Store-and-Forward Pipelining Gain
+### Store-and-Forward Pipelining Gain
 
 Consider transmitting the 2 MB file across a 3-hop network ($A \to R_1 \to R_2 \to B$) where each link has $R = 10\text{ Mbps}$ and $T_{\text{prop}} = 10\text{ ms}$.
 
@@ -111,7 +103,7 @@ Packetization reduces total latency from **4.83 s to 1.63 s**, a **66% reduction
 
 ---
 
-### 4. Why Upgrading Bandwidth Cannot Fix Latency (The Speed of Light Wall)
+### Why Upgrading Bandwidth Can't Fix Latency
 
 A common distributed systems pitfall is attempting to fix slow API response times by buying more bandwidth.
 
@@ -123,7 +115,7 @@ On cross-continental or trans-oceanic routes (e.g., London to Tokyo, $\approx 9,
 
 ---
 
-### 5. Runnable Python Implementation
+### Python: Runnable Implementation
 
 This standalone script simulates nodal delay components, traffic intensity curves, and multi-hop packet pipelining gains.
 
@@ -207,7 +199,7 @@ if __name__ == "__main__":
 
 ---
 
-### 6. Concise Staff-Level Interview Answer
+### Say this in the interview
 
 > "To find total one-hop latency, we compute transmission and propagation delays independently. Transmission delay is the time required to push data onto the wire: dividing the 16-megabit payload by 10 Mbps bandwidth yields $T_{\text{trans}} = 1.6\text{ seconds}$. Propagation delay is the physical transit time of electromagnetic energy: dividing 2,000 km by $2 \times 10^8\text{ m/s}$ yields $T_{\text{prop}} = 10\text{ ms}$. Summing them gives an end-to-end one-hop time of $1.61\text{ seconds}$.
 >

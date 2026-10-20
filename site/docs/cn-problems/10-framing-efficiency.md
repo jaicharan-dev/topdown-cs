@@ -12,13 +12,11 @@ sidebar_class_name: sidebar-medium
 
 ---
 
-Framing is the primary responsibility of the Data Link Layer (Layer 2). It transforms raw physical bitstreams into discrete, manageable units with delimiters, addressing, and error detection.
-
-Engineers must balance two opposing forces when sizing frames: maximizing **payload efficiency** against minimizing **retransmission penalties**, buffer pressure, and serialization delay.
+Framing is how the Data Link Layer carves a raw bitstream into discrete, addressable units. Every frame also carries overhead — headers, trailers — so there's a constant tension: bigger frames waste less of the link on overhead, but they also cost more when something goes wrong and the frame has to be retransmitted.
 
 ---
 
-### 1. Step-by-Step Framing Efficiency Calculations
+### Step-by-Step Framing Efficiency Calculations
 
 Framing efficiency is the ratio of useful user data (payload) to the total physical bits transmitted across the link:
 
@@ -44,7 +42,7 @@ For small payloads (such as SSH keystrokes, DNS queries, TCP Keep-Alives, or TCP
 
 ---
 
-### 2. Why Not Infinitely Large Frames? The Three Physical Walls
+### Why Not Infinitely Large Frames? The Three Physical Walls
 
 If framing efficiency asymptotically approaches $100\%$ as payload size increases ($\lim_{L \to \infty} \frac{L}{L+H} = 1$), why does standard Ethernet limit MTU to 1500 bytes?
 
@@ -61,7 +59,7 @@ If framing efficiency asymptotically approaches $100\%$ as payload size increase
 
 ---
 
-### 3. Mathematical Derivation of Optimal Frame Size ($L^*$)
+### Deriving the Optimal Frame Size ($L^*$)
 
 Let:
 - $H$ = Fixed frame overhead in bytes
@@ -91,7 +89,7 @@ This mathematical optimum explains why Ethernet standardized on **1,500 bytes**:
 
 ---
 
-### 4. Framing Mechanisms: Bit Stuffing vs Byte Stuffing
+### Framing Mechanisms: Bit Stuffing vs Byte Stuffing
 
 To determine where a frame begins and ends, protocols must demarcate boundaries without misinterpreting arbitrary user data as control flags.
 
@@ -116,7 +114,7 @@ Receiver Strips:    0 1 1 1 1 1   1 0 (Original pattern restored!)
 
 ---
 
-### 5. Data Center Optimization: Jumbo Frames & PMTUD
+### Data Center Optimization: Jumbo Frames & PMTUD
 
 | Feature | Standard Ethernet | Data Center Jumbo Frames |
 | :--- | :--- | :--- |
@@ -133,7 +131,7 @@ When a host transmits packets with the IP `DF` (Don't Fragment) bit set:
 
 ---
 
-### 6. Runnable Python Implementation
+### Python: Runnable Implementation
 
 This script demonstrates bit stuffing and unstuffing, calculates framing efficiency, and optimizes payload size based on bit error rates.
 
@@ -222,7 +220,7 @@ if __name__ == "__main__":
 
 ---
 
-### 7. Concise Staff-Level Interview Answer
+### Say this in the interview
 
 > "Framing efficiency is the ratio of useful payload to total frame size. For a 1,500-byte payload with 44 bytes of overhead (40-byte header, 4-byte trailer), the total size is 1,544 bytes, yielding an efficiency of $\frac{1500}{1544} \approx 97.15\%$. When the payload shrinks to 100 bytes, efficiency drops to $\frac{100}{144} \approx 69.44\%$, illustrating how fixed protocol overhead penalizes small, chatty packets.
 >

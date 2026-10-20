@@ -1,120 +1,105 @@
 ---
 id: 9-signals-in-operating-systems
 title: "Unix Signals: Asynchronous Notification, Default Actions & Handlers"
-description: "Learn how the OS delivers asynchronous software interrupts like SIGINT, SIGTERM, and SIGKILL to processes, and how signal masks and handlers operate."
+description: "How the kernel delivers signals like SIGINT, SIGTERM, and SIGKILL to a running process, and why printf() or malloc() inside a handler can deadlock it."
 sidebar_position: 9
 sidebar_class_name: sidebar-medium
 ---
+
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What are signals in Unix/Linux? How do they differ from standard IPC, how does the kernel physically dispatch a signal handler onto user space, and why is calling `printf()` or `malloc()` inside a signal handler dangerous?"
 
-A **Signal** is an asynchronous software interrupt delivered by the operating system kernel to a process to notify it that an event has occurred.
-
-Unlike standard Inter-Process Communication (IPC) channels like pipes or shared memory (which transmit structured data payloads), a signal carries almost **no data** (historically just an integer signal number). Instead, it forcibly interrupts the target process's normal instruction flow, requiring the process to react immediately.
+A signal is the kernel tapping a process on the shoulder: "something happened, deal with it now." Unlike a pipe or shared memory, it carries almost no data — historically just a number — and it interrupts whatever the process was doing instead of waiting to be read.
 
 ---
 
-### The ELI5 Analogy: The Student and the Fire Alarm
+### The analogy: the student and the fire alarm
 
-Imagine a student (a Process) taking a strict 3-hour math exam (executing instructions on the CPU):
-- **The Tap on the Shoulder (`SIGINT` / `SIGTERM`):** The teacher taps the student and says: *"Please sharpen your pencil."* The student pauses their calculation, sharpens the pencil (a custom Signal Handler), and resumes the test right where they left off.
-- **The Evacuation Alarm (`SIGKILL`):** The building's emergency fire alarm blares. The school administration (the OS Kernel) does not negotiate or ask for permission. The student is physically escorted out of the building immediately. The test is over.
-- **The Calculator Meltdown (`SIGSEGV`):** The student tries to divide by zero on their calculator and it explodes. The test cannot continue because the current step suffered a fatal hardware crash.
+A student (a process) is taking a 3-hour exam (running instructions):
 
----
-
-### Signal Generation vs. Signal Delivery
-
-A common interview trap is assuming a signal is executed the exact nanosecond it is sent:
-1. **Signal Generation:** An event triggers a signal (e.g., hardware exception, terminal `Ctrl+C`, or another process calling `kill(pid, sig)`).
-2. **Signal Pending:** The kernel marks a bit in the target process's `task_struct->pending.signal` bitmask. If the process is currently blocked or running in user mode, the signal sits in **Pending** state.
-3. **Signal Delivery:** The kernel only delivers and executes the signal **at the boundary when transitioning from Kernel Mode back to User Mode** (such as returning from a system call, timer interrupt, or page fault handler).
+- **A tap on the shoulder (`SIGINT`, `SIGTERM`):** the teacher says "sharpen your pencil." The student pauses, handles it (a signal handler), and resumes the exam exactly where they left off.
+- **The fire alarm (`SIGKILL`):** the building evacuates. No negotiating — the student is walked out immediately. The exam is over.
+- **The calculator explodes (`SIGSEGV`):** the student divides by zero and the hardware itself faults. There's no continuing from this.
 
 ---
 
-### The POSIX "Big Eight" Signals
+### A signal is sent, pending, then delivered — not instant
 
-| Signal | Number | Default Action | Catchable? | Common Trigger & Systems Role |
+It's easy to assume a signal fires the instant it's sent. It doesn't — there are three separate steps:
+
+1. **Generation** — something triggers it: a hardware exception, a `Ctrl+C` in the terminal, or another process calling `kill(pid, sig)`.
+2. **Pending** — the kernel just flips a bit in the process's pending-signal bitmask. If the process is currently running, the signal waits.
+3. **Delivery** — the kernel only actually runs the handler when the process is about to cross back from kernel mode into user mode (returning from a syscall, a timer tick, a page fault, etc).
+
+---
+
+### The signals worth knowing cold
+
+| Signal | Number | Default action | Catchable? | Typical trigger |
 | :--- | :--- | :--- | :--- | :--- |
-| **`SIGINT`** | 2 | Terminate | **Yes** | Sent by terminal driver when the user presses `Ctrl+C`. Applications catch this to prompt for exit confirmation. |
-| **`SIGQUIT`** | 3 | Terminate + Core Dump | **Yes** | Sent by terminal driver when pressing `Ctrl+\`. Dumps memory state to disk for post-mortem debugging. |
-| **`SIGKILL`** | 9 | Terminate | **NO** | The kernel's ultimate kill switch (`kill -9`). Destroys the process immediately. **Cannot be caught, blocked, or ignored.** |
-| **`SIGSEGV`** | 11 | Terminate + Core Dump | **Yes** | Segmentation fault; triggered by hardware MMU when dereferencing an invalid virtual address (e.g., null pointer). |
-| **`SIGTERM`** | 15 | Terminate | **Yes** | Standard graceful shutdown request sent by `kill pid` or systemd. Web servers catch this to finish inflight requests. |
-| **`SIGCHLD`** | 17 | Ignore | **Yes** | Sent to a parent process whenever a child process terminates or stops, prompting the parent to call `waitpid()`. |
-| **`SIGSTOP`** | 19 | Stop (Pause) | **NO** | Forcibly suspends the process. **Cannot be caught, blocked, or ignored.** |
-| **`SIGTSTP`** | 20 | Stop (Pause) | **Yes** | Terminal stop request issued by pressing `Ctrl+Z`. Software can catch this to perform custom suspension actions. |
+| **`SIGINT`** | 2 | Terminate | Yes | `Ctrl+C` in the terminal |
+| **`SIGQUIT`** | 3 | Terminate + core dump | Yes | `Ctrl+\` — dumps memory for debugging |
+| **`SIGKILL`** | 9 | Terminate | **No** | `kill -9` — the kernel's hard kill switch |
+| **`SIGSEGV`** | 11 | Terminate + core dump | Yes | Dereferencing an invalid pointer |
+| **`SIGTERM`** | 15 | Terminate | Yes | `kill pid` / systemd — the polite "please shut down" |
+| **`SIGCHLD`** | 17 | Ignore | Yes | A child process exited or stopped |
+| **`SIGSTOP`** | 19 | Pause | **No** | Forcibly suspends the process |
+| **`SIGTSTP`** | 20 | Pause | Yes | `Ctrl+Z` |
 
-> **Interview Gold:** Only two signals in the entire POSIX specification **cannot be caught, blocked, or ignored**: **`SIGKILL`** and **`SIGSTOP`**.
+Only two signals can never be caught, blocked, or ignored: **`SIGKILL`** and **`SIGSTOP`**. Everything else, a process can intercept.
 
 ---
 
-### How the Kernel Executes a Signal Handler: The Trampoline
+### How the kernel runs your handler without giving it kernel privileges
 
-A signal handler is written in user code, but the kernel executes in Ring 0. How does the kernel invoke user code without granting it kernel privileges?
+Your handler is ordinary user code, but the kernel is the one that notices the pending signal while it's in Ring 0. Here's the trick it uses to jump into your code anyway:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant User as User Application (Ring 3)
-    participant Kernel as OS Kernel (Ring 0)
-    participant Handler as User Signal Handler (Ring 3)
+<Diagram>
+<Row>
+<Box title="Kernel" accent="#818cf8"><Field icon="🧵" code="injects fake stack frame" hint="sigcontext: saved registers, RIP" variant="neutral" /></Box>
+<Arrow label="sysret" />
+<Box title="Handler (Ring 3)" accent="#60a5fa"><Field icon="▶️" code="runs your signal handler" variant="neutral" /></Box>
+<Arrow label="sigreturn()" />
+<Box title="Kernel" accent="#818cf8"><Field icon="↩️" code="restores original registers" hint="resumes app at saved RIP" variant="neutral" /></Box>
+</Row>
+</Diagram>
 
-    User->>Kernel: 1. Invokes syscall or interrupted by hardware timer
-    Note over Kernel: Kernel handles request and notices Pending Signal bit set
-    Kernel->>User: 2. Injects fake stack frame (sigcontext) onto User Stack
-    Kernel->>Handler: 3. sysret jumps to User Signal Handler (Ring 3)
-    Note over Handler: 4. Executes signal handler logic
-    Handler->>Kernel: 5. Returns to restore_rt trampoline to call sigreturn syscall
-    Kernel->>Kernel: 6. Restores original user registers from sigcontext
-    Kernel->>User: 7. Resumes original code at saved RIP
+1. **Stack frame injection:** the kernel writes a fake frame onto your own user stack, holding a `sigcontext` — your original registers, flags, and instruction pointer, as they were right before the interrupt.
+2. **Redirection:** when the kernel returns to user mode via `sysret`, it points `RIP` at your registered handler function instead of back where you were.
+3. **The trampoline:** the return address baked into that fake frame points to a tiny kernel-provided stub, `__restore_rt`.
+4. **`sigreturn()`:** when your handler finishes and returns, it lands on that stub, which calls the `sigreturn()` syscall.
+5. The kernel catches that, restores your original registers from the saved `sigcontext`, and you resume exactly where you were interrupted — as if nothing happened.
+
+---
+
+### Why `malloc()` and `printf()` inside a handler can deadlock you
+
+A classic interview trap: *"can you call `malloc()` or `printf()` inside a signal handler?"* No — and the reason is worth knowing, not just the rule.
+
+`malloc()` and `printf()` both take an internal lock to protect the heap or the output buffer. Say your main thread is already inside `malloc()`, holding that lock, when a signal arrives. The kernel runs the handler on that *same* thread — and if the handler also calls `malloc()`, it tries to grab a lock it's already holding. The thread is now waiting for itself to finish. That's a permanent deadlock.
+
+The fix: only call functions from POSIX's short list of signal-safe functions inside a handler (`write()`, `_exit()`, and a few others). The standard, safe pattern is to just set a flag and let your normal code check it:
+
+```c
+static volatile sig_atomic_t shutdown_requested = 0;
+
+void handle_sigterm(int sig) {
+    shutdown_requested = 1; // Atomic, async-safe assignment
+}
 ```
 
-1. **Stack Frame Injection:** The kernel constructs a fake stack frame on the **user's stack** containing a `struct sigcontext` (preserving the original user registers, flags, and `RIP`).
-2. **Execution Redirection:** When the kernel executes `sysret` to return to User Mode, it sets the CPU instruction pointer (`RIP`) to the address of the user's registered **signal handler function**.
-3. **The Trampoline Return:** The return address on the fake stack is pointed to a kernel-provided trampoline function (`__restore_rt`).
-4. **`sigreturn()` Syscall:** When the signal handler finishes, it returns to the trampoline, which executes the `sigreturn()` system call.
-5. The kernel catches `sigreturn()`, restores the original user registers from the saved `sigcontext`, and seamlessly resumes the main program where it was interrupted.
+---
+
+### Say this in the interview
+
+*"A signal is an asynchronous notification from the kernel, not a data channel — it's generated, marked pending in the process's bitmask, and delivered only when the kernel is about to return to user mode. The kernel runs the handler by injecting a fake stack frame with the saved registers, pointing execution at your handler, and using a sigreturn trampoline to restore the original state afterward. SIGKILL and SIGSTOP can never be caught. And signal handlers must stick to async-signal-safe functions — calling malloc() or printf() inside one risks deadlocking against a lock the same thread already holds."*
 
 ---
 
-### The Lethal Concurrency Trap: Async-Signal-Safety
-
-A favorite interview question: *"Can you call `malloc()`, `free()`, or `printf()` inside a signal handler?"*
-
-The answer is an emphatic **NO**. 
-
-#### Why `printf()` and `malloc()` Cause Deadlocks:
-- Functions like `malloc()` and `printf()` use internal non-reentrant mutual exclusion locks to protect the global heap and standard output buffers.
-- Suppose the main application thread is inside `malloc()`, having acquired the heap lock.
-- A signal arrives. The kernel halts the thread and immediately vectors execution to the signal handler on the **same thread**.
-- If the signal handler calls `malloc()`, it attempts to acquire the heap lock already held by itself!
-- **Deadlock:** The thread blocks waiting for itself to release the lock, freezing the entire process forever.
-
-#### Writing Safe Signal Handlers:
-1. **Use Async-Signal-Safe Functions Only:** The POSIX standard defines a small whitelist of reentrant functions safe for signal handlers (e.g., `write()`, `_exit()`).
-2. **The Flag Pattern:** The safest pattern is simply setting a `volatile sig_atomic_t` flag inside the handler and letting the main loop process the shutdown asynchronously:
-   ```c
-   static volatile sig_atomic_t shutdown_requested = 0;
-
-   void handle_sigterm(int sig) {
-       shutdown_requested = 1; // Atomic, async-safe assignment
-   }
-   ```
-
----
-
-### Summary
-
-"Unix signals are asynchronous software interrupts used for process control and event notification. They are recorded in the process's pending bitmask and delivered when returning from kernel space to user space. The kernel redirects execution to user handlers using a synthetic stack frame and a sigreturn trampoline. Crucially, SIGKILL and SIGSTOP cannot be caught or blocked, and signal handlers must restrict execution to async-signal-safe functions to avoid self-deadlocks on internal library locks."
-
----
-
-### Python Verification: Signal Handling & Graceful Shutdown Simulation
-
-The following executable Python script demonstrates capturing asynchronous signals (`SIGINT`, `SIGTERM`), preventing race conditions using the atomic flag pattern, and simulating a production graceful shutdown:
+### Code: catching signals and shutting down cleanly
 
 ```python
 """

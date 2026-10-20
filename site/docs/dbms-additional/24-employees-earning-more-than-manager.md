@@ -1,127 +1,116 @@
 ---
 id: 24-employees-earning-more-than-manager
 title: "SQL Self-Joins: Employees Earning More Than Managers"
-description: "Solve the classic self-join interview question: find employees who earn more than their direct managers, optimizer join strategies, and recursive tree follow-ups."
+description: "Solve the classic self-join interview question: find employees who earn more than their direct managers, how the optimizer runs the join, and recursive follow-ups."
 sidebar_position: 10
 sidebar_class_name: sidebar-medium
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
-> **Interview Question:** "Given an Employee table containing `(id, name, salary, manager_id)`, write a query to find all employees who earn more than their direct manager. How does the query optimizer execute this self-join physically, what index should you create, and how would you find employees earning more than ANY manager in their entire upstream reporting chain?"
+> **Interview Question:** "Given an Employee table containing `(id, name, salary, manager_id)`, write a query to find all employees who earn more than their direct manager. How does the query optimizer execute this self-join physically, what index should you create, and how would you find employees earning more than ANY manager in their entire upstream chain?"
 
----
-
-### Schema & The Self-Join Paradigm
-
-Hierarchical relationships within a single entity (such as employees reporting to managers, or categories having parent categories) are modeled using a unary relationship where a foreign key points back to the table's own primary key.
+### The setup
 
 Table: `Employee`
-- `id` (INT, Primary Key)
-- `name` (VARCHAR)
-- `salary` (INT)
-- `manager_id` (INT, Foreign Key referencing `Employee.id`, Nullable)
+- `id` — primary key
+- `name`
+- `salary`
+- `manager_id` — points back to another row's `id` in the same table (nullable, for whoever has no manager)
 
-A **Self-Join** treats the single physical table as two distinct logical relations in memory by assigning different table aliases: `emp` (representing the subordinate) and `mgr` (representing the manager).
+Employees reporting to managers is really the same table pointing at itself. To compare an employee to their manager, you join the table to a second copy of itself, using two aliases - `emp` for the employee, `mgr` for the manager:
 
-```mermaid
-graph LR
-    subgraph "Logical Table: emp (Subordinate)"
-        E1["Alice (id=1, mgr_id=3, sal=120k)"]
-        E2["Bob (id=2, mgr_id=3, sal=70k)"]
-    end
+<Diagram>
+<Row>
+<Box title="emp (employee)" accent="#60a5fa">
+<Field icon="🧑" code="Alice, mgr_id=3, sal=120k" variant="neutral" />
+<Field icon="🧑" code="Bob, mgr_id=3, sal=70k" variant="neutral" />
+</Box>
+<Arrow label="emp.manager_id = mgr.id" />
+<Box title="mgr (manager)" accent="#34d399">
+<Field icon="👔" code="Charlie, id=3, sal=90k" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-    subgraph "Logical Table: mgr (Manager)"
-        M1["Charlie (id=3, mgr_id=NULL, sal=90k)"]
-    end
-
-    E1 -->|emp.manager_id = mgr.id| M1
-    E2 -->|emp.manager_id = mgr.id| M1
-```
+Same physical table, read twice, under two different names - that's a **self-join**.
 
 ---
 
-### Solution 1: Explicit `INNER JOIN` (The Production Standard)
+### Solution 1: `INNER JOIN` (the one to actually use)
 
 ```sql
-SELECT 
+SELECT
     emp.name AS Employee,
     emp.salary AS EmpSalary,
     mgr.name AS Manager,
     mgr.salary AS MgrSalary
 FROM Employee emp
-INNER JOIN Employee mgr 
+INNER JOIN Employee mgr
     ON emp.manager_id = mgr.id
 WHERE emp.salary > mgr.salary;
 ```
 
-#### Execution Mechanics:
-1. `INNER JOIN Employee mgr ON emp.manager_id = mgr.id`: Matches each subordinate row with their direct manager's row.
-2. **Automatic Filtering of CEOs:** If an employee has `manager_id IS NULL` (e.g., the CEO or board chair), standard `INNER JOIN` equality fails (`NULL = mgr.id` evaluates to `UNKNOWN`), automatically discarding root nodes from the comparison without requiring an explicit `WHERE emp.manager_id IS NOT NULL`.
-3. `WHERE emp.salary > mgr.salary`: Filters for subordinates whose compensation strictly exceeds their direct superior's.
+What happens:
+1. The join matches each employee row to their manager's row.
+2. If someone has no manager (`manager_id IS NULL` — the CEO, say), the join condition `NULL = mgr.id` is never true, so that row is automatically dropped. You don't need to write a separate check for it.
+3. `WHERE emp.salary > mgr.salary` keeps only the rows where the employee out-earns their own manager.
 
 ---
 
-### Solution 2: Correlated Subquery Alternative
+### Solution 2: correlated subquery (works, but slower)
 
 ```sql
 SELECT emp.name AS Employee
 FROM Employee emp
-WHERE emp.manager_id IS NOT NULL 
+WHERE emp.manager_id IS NOT NULL
   AND emp.salary > (
-      SELECT mgr.salary 
-      FROM Employee mgr 
+      SELECT mgr.salary
+      FROM Employee mgr
       WHERE mgr.id = emp.manager_id
   );
 ```
 
-#### Why Solution 1 is Superior:
-The `INNER JOIN` allows the database Cost-Based Optimizer (CBO) to choose optimal set-based join algorithms (such as Hash Joins or Merge Joins). A correlated subquery forces many naive optimizers to execute an $O(N)$ row-by-row nested loop lookup.
+This gets the same answer, but the join version is usually better. A join lets the optimizer pick an efficient set-based strategy (hashing, merging). A correlated subquery often forces a row-by-row lookup instead — fine on a small table, slow on a large one.
 
 ---
 
-### Physical Join Strategies in the Optimizer
+### How the database actually runs the join
 
-When executing `emp.manager_id = mgr.id`, the database optimizer picks one of three physical algorithms:
+Under the hood, the optimizer picks one of three strategies for `emp.manager_id = mgr.id`:
 
-1. **Nested Loop Join:**
-   - Evaluates each row in `emp`, performing an index seek on `mgr.id`.
-   - **Optimal When:** Table is small or the outer query has a highly selective filter.
-2. **Hash Join:**
-   - Scans `Employee`, builds an in-memory hash table on `id`, and probes it using `manager_id`.
-   - **Optimal When:** Large tables without pre-sorted order. Executed in $O(N)$ linear time.
-3. **Merge Join:**
-   - If rows are already sorted on the join key (e.g., via clustered index), the engine steps through both streams in parallel.
+1. **Nested Loop:** for each row in `emp`, look up the matching `mgr.id` directly. Works well on small tables, or when the outer side is already filtered down to a few rows.
+2. **Hash Join:** scan `Employee` once, build an in-memory hash table keyed on `id`, then probe it with every `manager_id`. Scales well on large, unsorted tables.
+3. **Merge Join:** if both sides are already sorted on the join key (say, via a clustered index), step through them together like merging two sorted lists.
 
 ---
 
-### Indexing Strategy for Production Scale
+### What index to add
 
-In an enterprise database with 5,000,000 employee records:
-- `id` is already indexed as the Primary Key (Clustered Index).
-- However, scanning `emp` and filtering on `manager_id` causes full table scans if `manager_id` is unindexed.
-- **The Optimal Composite Covering Index:**
+On a table with millions of rows, scanning `emp` to filter on `manager_id` is slow without an index. The right index:
 
 ```sql
 CREATE INDEX idx_emp_mgr_salary ON Employee (manager_id, salary);
 ```
-- **Why?** It places `manager_id` first (allowing the engine to skip all `NULL`s immediately) and includes `salary` in the index leaf pages, transforming the query into a high-speed **Index-Only Scan**.
+
+`manager_id` first lets the database skip `NULL`s (people with no manager) immediately. Including `salary` means the query never has to go back to the table at all — a covering, index-only scan.
 
 ---
 
-### Bar-Raiser Follow-Up: Multi-Level Hierarchy Traversal
+### Follow-up: what about the whole chain, not just the direct manager?
 
-> **Senior Interview Follow-Up:** *"A self-join only compares an employee with their immediate direct manager (1 level up). What if you want to find employees who earn more than ANY manager in their entire chain of command up to the CEO?"*
+> **Common next question:** *"This only checks one level up. What if I want employees earning more than ANY manager above them, all the way to the CEO?"*
 
-Because the depth of management tiers is variable and unknown, a static self-join is insufficient. You must use a **Recursive CTE**:
+The chain can be any number of levels deep, so a plain join can't do it — you need a **recursive CTE** to walk up the tree level by level:
 
 ```sql
 WITH RECURSIVE ManagementChain AS (
-    -- 1. Anchor: Direct manager relationships (Level 1)
-    SELECT 
+    -- 1. Anchor: direct manager relationships (level 1)
+    SELECT
         emp.id AS emp_id,
         emp.name AS emp_name,
         emp.salary AS emp_salary,
@@ -134,8 +123,8 @@ WITH RECURSIVE ManagementChain AS (
 
     UNION ALL
 
-    -- 2. Recursive Member: Climb up the tree to the manager's manager
-    SELECT 
+    -- 2. Recursive step: climb one more level up the tree
+    SELECT
         mc.emp_id,
         mc.emp_name,
         mc.emp_salary,
@@ -151,23 +140,17 @@ FROM ManagementChain
 WHERE emp_salary > manager_salary;
 ```
 
----
-
-### The Interview Answer (60-90 seconds)
-
-> "To find employees who earn more than their direct manager, we use an inner self-join: `SELECT emp.name FROM Employee emp JOIN Employee mgr ON emp.manager_id = mgr.id WHERE emp.salary > mgr.salary`.
->
-> The self-join treats the single physical table as two distinct logical entities. Using an `INNER JOIN` automatically handles root employees with `NULL` manager IDs because equality checks against `NULL` evaluate to `UNKNOWN`.
->
-> For indexing, creating a composite index on `(manager_id, salary)` allows the query optimizer to eliminate full table scans, discard `NULL` manager IDs immediately, and satisfy the join via an Index-Only Scan.
->
-> If asked to evaluate the entire hierarchical management tree rather than just the direct manager, a static self-join cannot handle the unknown depth; we must switch to a Recursive CTE that iteratively traverses the reporting chain up to the CEO."
+(See [Recursive CTEs](/docs/dbms-additional/26-recursive-cte-use-cases) for how this iteration actually works under the hood.)
 
 ---
 
-### Code Demonstration: Direct Manager Self-Join & Multi-Level Tree Search
+### Say this in the interview
 
-The following Python script models an organizational tree in SQLite, demonstrating both the standard direct self-join and the recursive multi-level chain traversal.
+*"To find employees earning more than their direct manager, self-join Employee to itself: `FROM Employee emp JOIN Employee mgr ON emp.manager_id = mgr.id WHERE emp.salary > mgr.salary`. An inner join handles people with no manager for free, because comparing `NULL` to anything is never true. For indexing, `(manager_id, salary)` lets the engine skip NULLs and answer the query entirely from the index. If I need the whole upstream chain instead of just the direct manager, a static join can't do it since the depth is unknown — that needs a recursive CTE that walks up one level at a time."*
+
+---
+
+### Checking this yourself: direct join vs. full chain in SQLite
 
 ```python
 import sqlite3
@@ -200,7 +183,7 @@ def test_manager_queries():
 
     print("--- 1. Direct Manager Self-Join (Level 1) ---")
     cursor.execute("""
-        SELECT 
+        SELECT
             emp.name AS Employee,
             emp.salary AS EmpSalary,
             mgr.name AS Manager,
@@ -215,7 +198,7 @@ def test_manager_queries():
     print("\n--- 2. Multi-Level Recursive Chain Traversal ---")
     cursor.execute("""
         WITH RECURSIVE ManagementChain AS (
-            SELECT 
+            SELECT
                 emp.id AS emp_id,
                 emp.name AS emp_name,
                 emp.salary AS emp_salary,
@@ -228,7 +211,7 @@ def test_manager_queries():
 
             UNION ALL
 
-            SELECT 
+            SELECT
                 mc.emp_id,
                 mc.emp_name,
                 mc.emp_salary,

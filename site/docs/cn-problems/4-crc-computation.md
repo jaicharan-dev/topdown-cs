@@ -6,19 +6,31 @@ sidebar_position: 4
 sidebar_class_name: sidebar-hard
 ---
 
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
 > **Interview Question:** "A sender wants to transmit the data bits `1101011011` using CRC with the generator polynomial $x^4 + x + 1$. Determine the redundant bits, perform the binary division to compute the CRC remainder, and explain receiver validation."
 
 ---
 
-Cyclic Redundancy Check (CRC) is an error-detecting code based on polynomial division in Galois Field GF(2) arithmetic. CRC is ubiquitously implemented in hardware across Ethernet (IEEE 802.3), Wi-Fi (802.11), SATA, USB, and storage formats (gzip, PNG).
+CRC is an error-detecting code built on polynomial division — you treat the bits as a polynomial, divide by a fixed "generator" polynomial, and the remainder becomes your check value. It's built into hardware almost everywhere: Ethernet, Wi-Fi, SATA, USB, gzip, PNG.
 
-In technical interviews, CRC questions evaluate two things: whether you can accurately execute binary modulo-2 (XOR) long division without arithmetic errors, and whether you understand the mathematical properties that make CRC vastly superior to additive checksums.
+The whole round trip is simple in shape, even though the arithmetic gets fiddly:
+
+<Diagram>
+<Row>
+<Box title="Sender" accent="#60a5fa"><Field icon="➗" code="Data ÷ Generator" hint="remainder = CRC bits, appended to the data" variant="neutral" /></Box>
+<Arrow label="transmit" />
+<Box title="Receiver" accent="#34d399"><Field icon="✅" code="Codeword ÷ Generator" hint="remainder 0000 = clean; anything else = corrupted" variant="neutral" /></Box>
+</Row>
+</Diagram>
+
+In interviews, this question checks two things: can you actually execute the binary (XOR, no-carry) long division correctly, and do you understand *why* that remainder trick is so much better at catching errors than a plain checksum.
 
 ---
 
-### 1. Mathematical Foundation: Polynomials in GF(2)
+### Mathematical Foundation: Polynomials in GF(2)
 
 In modulo-2 arithmetic, coefficients exist exclusively in $\{0, 1\}$. 
 - **Addition and Subtraction are Identical:** Both operations are equivalent to bitwise **XOR** ($\oplus$).
@@ -44,7 +56,7 @@ The remainder of polynomial division by a degree-$r$ divisor has a maximum degre
 
 ---
 
-### 2. Complete Step-by-Step XOR Long Division
+### Complete Step-by-Step XOR Long Division
 
 We divide the 14-bit padded dividend `11010110110000` by the 5-bit divisor `10011`. 
 
@@ -75,21 +87,16 @@ Divisor: 10011 ) Dividend: 11010110110000 ( Quotient: 1100001010
                     1110   <-- [Final Remainder] 4 bits remaining!
 ```
 
-#### Detailed Step Tracing:
-1. **First 5 bits:** `11010` $\oplus$ `10011` = `01001`. Drop leading zero $\implies$ `1001`.
-2. **Bring down 6th bit (`1`):** Window is `10011`. 
-   `10011` $\oplus$ `10011` = `00000`.
-3. **Bring down bits until leading `1` forms 5 bits:**
-   - Bring down 7th bit (`0`): `0`
-   - Bring down 8th bit (`1`): `01`
-   - Bring down 9th bit (`1`): `011`
-   - Bring down 10th bit (`0` from padding): `0110` (only 4 bits)
-   - Bring down 11th bit (`0` from padding): Window is now `10110` (5 bits, starts with `1`).
-4. **XOR:** `10110` $\oplus$ `10011` = `00101`. Drop leading zeros $\implies$ `101`.
-5. **Bring down 12th bit (`0` from padding):** `1010` (4 bits).
-6. **Bring down 13th bit (`0` from padding):** Window is now `10100`.
-7. **XOR:** `10100` $\oplus$ `10011` = `00111`. Drop leading zeros $\implies$ `111`.
-8. **Bring down 14th bit (`0` from padding):** Remainder is `1110`. No more bits left in dividend.
+#### Walking through it, step by step:
+The rule is simple: look at the leading bit of your current 5-bit window. If it's `1`, XOR with the divisor. If it's `0`, just shift (bring the next bit in without XOR-ing). Repeat until the dividend runs out.
+
+1. **First 5 bits** `11010` — leading bit is `1`. XOR with `10011` → `01001`, keep the last 4 bits: `1001`.
+2. **Bring down the next bit** (`1`, bit 6 of the dividend): window is `10011`. Leading bit `1` → XOR with `10011` → `00000`, keep `0000`.
+3. **Bring down the next few bits** (`1`, `0`, `1`, `1` — bits 7–10, still real data) **one at a time**: each time the window's leading bit is `0`, so no XOR happens, just shift. After bringing in bit 10, then one more padding `0` (bit 11), the window becomes `10110` — leading bit is finally `1` again.
+4. **XOR:** `10110` ⊕ `10011` = `00101`, keep `0101`.
+5. **Bring down two more padding zeros** (bits 12 and 13): window becomes `10100`.
+6. **XOR:** `10100` ⊕ `10011` = `00111`, keep `0111`.
+7. **Bring down the last padding zero** (bit 14): no more bits left. The remainder settles at `1110`.
 
 The final CRC remainder $R = \mathbf{1110}$.
 
@@ -99,7 +106,7 @@ $$\text{Codeword } T = \text{Data} \parallel \text{CRC} = \mathbf{11010110111110
 
 ---
 
-### 3. Receiver Verification Mechanism
+### Receiver Verification Mechanism
 
 Let the transmitted codeword be $T(x) = D(x) \cdot x^r + R(x)$.
 
@@ -121,7 +128,7 @@ An error goes **undetected if and only if $E(x)$ is perfectly divisible by $G(x)
 
 ---
 
-### 4. Mathematical Error Detection Guarantees
+### Mathematical Error Detection Guarantees
 
 A carefully engineered generator polynomial $G(x)$ provides guaranteed detection boundaries:
 
@@ -144,7 +151,7 @@ A carefully engineered generator polynomial $G(x)$ provides guaranteed detection
 
 ---
 
-### 5. Industry Standard Polynomials
+### Industry Standard Polynomials
 
 | Standard | Degree | Divisor Polynomial | Hex Representation | Primary Use Case |
 | :--- | :--- | :--- | :--- | :--- |
@@ -155,7 +162,7 @@ A carefully engineered generator polynomial $G(x)$ provides guaranteed detection
 
 ---
 
-### 6. Runnable Python Implementation
+### Python: Runnable Implementation
 
 This production-grade script simulates bitwise modulo-2 division, computes the CRC, verifies reception, and demonstrates burst error detection.
 
@@ -260,7 +267,7 @@ if __name__ == "__main__":
 
 ---
 
-### 7. Concise Staff-Level Interview Answer
+### Say this in the interview
 
 > "To compute the CRC for data `1101011011` with polynomial $x^4 + x + 1$, we represent the generator as binary `10011`. Since the polynomial degree is $r = 4$, we append 4 zeros to the data, producing the 14-bit dividend `11010110110000`.
 >

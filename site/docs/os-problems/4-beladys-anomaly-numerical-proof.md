@@ -6,28 +6,30 @@ sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
 
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Prove Bélády's Anomaly using the reference string `(1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5)` comparing 3 frames against 4 frames under FIFO. Why do LRU and Optimal algorithms never exhibit this anomaly? Formulate your answer around Mattson's Stack Algorithm Inclusion Property."
 
 ---
 
-## 1. Executive Summary & Theoretical Context
+### The surprising result
 
-In standard operating system design, increasing the amount of physical memory (allocated page frames) is assumed to improve or at least preserve system throughput by reducing cache misses (page faults). 
+More RAM should mean fewer page faults, never more. In 1969, László Bélády showed that's not always true — under **FIFO** specifically, adding an extra frame can make things *worse*. Same reference string, two frame counts:
 
-In 1969, László Bélády demonstrated that under certain page replacement policies, most notably **FIFO (First-In, First-Out)**, allocating **more page frames can paradoxically result in more page faults**. This counterintuitive phenomenon is known as **Bélády's Anomaly**.
+<Diagram>
+<Row>
+<Box title="3 frames" accent="#34d399"><Field icon="✅" code="9 faults, 3 hits" hint="75% fault rate" variant="neutral" /></Box>
+<Box title="4 frames — more memory" accent="#fb7185"><Field icon="⚠️" code="10 faults, 2 hits" hint="83.3% fault rate — worse, despite more RAM" variant="neutral" /></Box>
+</Row>
+</Diagram>
 
-```
-Reference String: 1, 2, 3, 4, 1, 2, 5, 1, 2, 3, 4, 5  (12 Requests)
-
-3 Page Frames:  [ 9 Page Faults  |  3 Page Hits ]  -> Fault Rate: 75.0%
-4 Page Frames:  [ 10 Page Faults |  2 Page Hits ]  -> Fault Rate: 83.3%  (DEGRADATION!)
-```
+That's Bélády's Anomaly: giving FIFO more memory just handed it a worse eviction order.
 
 ---
 
-## 2. Part 1: FIFO with 3 Page Frames
+### Part 1: FIFO with 3 Frames
 
 Under FIFO, memory behaves as a strict queue. The page residing in physical memory the longest is victimized first, irrespective of its frequency or recency of access.
 
@@ -54,7 +56,7 @@ Under FIFO, memory behaves as a strict queue. The page residing in physical memo
 
 ---
 
-## 3. Part 2: FIFO with 4 Page Frames
+### Part 2: FIFO with 4 Frames
 
 Now expand physical memory to 4 frames. Intuitively, having an extra frame should allow the working set to fit better. Let us trace the identical reference string:
 
@@ -81,7 +83,7 @@ Now expand physical memory to 4 frames. Intuitively, having an extra frame shoul
 
 ---
 
-## 4. Side-by-Side Root Cause Analysis
+### Side-by-Side: where the two runs diverge
 
 ### Comparative Step Matrix
 
@@ -104,7 +106,7 @@ In the 4-frame system, page 1 was never evicted at step 4; its original arrival 
 
 ---
 
-## 5. Mathematical Proof: Mattson's Stack Algorithms
+### The proof: Mattson's Stack Algorithms
 
 To understand why LRU and Optimal are immune to Bélády's Anomaly, we look at the theoretical framework introduced by **Mattson et al. (1970)**.
 
@@ -153,7 +155,7 @@ Because page 1 was in $B(7, 3)$ but missing from $B(7, 4)$, reference $r_8 = 1$ 
 
 ---
 
-## 6. Algorithm Vulnerability Classification
+### Which algorithms are vulnerable
 
 | Algorithm | Stack Algorithm? | Satisfies Inclusion Property? | Immune to Bélády's Anomaly? | Reason / Eviction Basis |
 | :--- | :---: | :---: | :---: | :--- |
@@ -166,7 +168,7 @@ Because page 1 was in $B(7, 3)$ but missing from $B(7, 4)$, reference $r_8 = 1$ 
 
 ---
 
-## 7. Interview Traps & Core Gotchas
+### Interview traps
 
 > **Trap 1: "Does increasing frames under FIFO always increase page faults?"**  
 > **Candidate Answer:** *"No. Bélády's anomaly is an anomaly, not a rule. In most practical strings, increasing frames decreases or maintains page faults. It only increases faults for specific pathological sequences where queue ordering misaligns."*
@@ -179,7 +181,7 @@ Because page 1 was in $B(7, 3)$ but missing from $B(7, 4)$, reference $r_8 = 1$ 
 
 ---
 
-## 8. Python Simulation & Anomaly Detector
+### Python: simulate it and check the proof
 
 The following standalone script simulates FIFO and LRU page replacement policies across variable frame counts, proves the anomaly mathematically, and checks the Mattson inclusion property:
 

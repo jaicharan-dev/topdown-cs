@@ -1,104 +1,98 @@
 ---
 id: 4-context-switch-internals-overhead
 title: "Context Switch Internals: What Gets Saved & Why It's Pure Overhead"
-description: "Deep dive into the CPU registers, program counter, stack pointer, PCB updates, cache invalidation, and memory overhead during thread and process context switches."
+description: "What the CPU actually saves during a context switch, how a mode switch differs from a thread or process switch, and why it's all pure overhead."
 sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
+
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What exactly gets saved during a context switch? What is the technical difference between a mode switch, a thread switch, and a process switch, and why is context switching considered 'pure overhead'?"
 
-A **Context Switch** is the low-level operating system mechanism that stores the complete hardware execution state of an active process or thread, allowing the CPU core to be reassigned to another task and later resumed without state corruption.
-
-It is the operational engine behind preemptive multitasking and time-sharing operating systems.
+A context switch is how the OS pauses one task, saves everything about where it was, and resumes a different one later without losing any state.
 
 ---
 
-### The ELI5 Analogy: The Shared Office Desk
+### The analogy: the shared desk
 
-Imagine a single shared desk (the CPU core) used by multiple accountants (Processes):
-- You are working on Project A with a calculator, a notepad, and reference sheets spread across the desk.
-- Suddenly, the manager says: *"Switch to Project B immediately."*
-- You cannot leave your work on the desk. You must:
-  1. Note the exact page and paragraph you were reading (Program Counter).
-  2. Put your calculator numbers, active scratch notes, and papers into a manila folder (Saving CPU Registers).
-  3. File that folder into a locked cabinet drawer (Saving to the Process Control Block - PCB).
-  4. Pull out Project B's manila folder from the cabinet.
-  5. Lay out Project B's papers and reset the calculator with Project B's numbers.
-  6. Resume reading at Project B's saved line number.
+One desk, several accountants, each on a different project.
 
-**Why it is "Pure Overhead":** During the minutes spent packing, filing, and unpacking folders, **zero accounting work was accomplished**. No spreadsheets were balanced; no tax forms were completed. The system consumed energy exclusively on administrative maintenance.
+1. You're mid-way through Project A: calculator, notepad, and reference sheets all spread out.
+2. The manager says "switch to Project B, now."
+3. You can't just leave your stuff on the desk. You have to: note exactly which line you were on, bundle your calculator numbers and scratch notes into a folder, file that folder in a cabinet, then pull out Project B's folder and lay it out, and finally resume reading at Project B's saved line.
+
+While you're packing and unpacking folders, **zero accounting work happens**. That's why it's called pure overhead — the time spent switching doesn't move either project forward. It's purely administrative.
 
 ---
 
-### What Exactly Gets Saved?
+### What actually gets saved
 
-When the OS scheduler decides to swap the active task, the kernel code (such as Linux's `__switch_to()` and `switch_to()`) executes low-level assembly routines to preserve the task's **hardware execution context** into its **Process Control Block (PCB)** or **Thread Control Block (TCB)**:
+When the kernel decides to swap the running task, it copies the CPU's hardware state into that task's Process Control Block (PCB) or Thread Control Block (TCB):
 
-| Hardware Component | Specific Registers (x86-64) | Critical Role |
+| What | Register(s) on x86-64 | Why it matters |
 | :--- | :--- | :--- |
-| **Instruction Pointer (PC)** | `RIP` | Memory address of the next instruction to execute upon resumption. |
-| **Stack Pointer** | `RSP`, `RBP` | Top of the active call stack and the current base frame pointer. |
-| **CPU Flags / Status** | `RFLAGS` | Condition codes (Zero flag `ZF`, Carry flag `CF`, Sign flag `SF`, Interrupt enable `IF`). |
-| **General Purpose Registers** | `RAX`, `RBX`, `RCX`, `RDX`, `RSI`, `RDI`, `R8`–`R15` | In-flight arithmetic results, loop counters, and function argument variables. |
-| **Floating Point & SIMD** | `XMM0`–`XMM15`, `YMM`, `ZMM` | Vectorized math and multimedia registers saved via `XSAVE` / `XRSTOR` instructions. |
-| **Page Table Base Register** | `CR3` (x86) / `TTBR0` (ARM) | Pointer to the root of the process's 4-level page table hierarchy (PML4). |
-| **Kernel / OS Accounting** | Process State, `pid`, Open File Descriptors, Signals | Scheduler state, pending POSIX signals, and virtual file system mappings. |
+| **Instruction pointer** | `RIP` | Where to resume execution. |
+| **Stack pointer** | `RSP`, `RBP` | Top of the call stack and current frame. |
+| **CPU flags** | `RFLAGS` | Zero/carry/sign/interrupt-enable flags. |
+| **General-purpose registers** | `RAX`–`RDX`, `RSI`, `RDI`, `R8`–`R15` | In-flight results, loop counters, arguments. |
+| **Floating point / SIMD** | `XMM0`–`XMM15`, `YMM`, `ZMM` | Saved via `XSAVE`/`XRSTOR`. |
+| **Page table root** | `CR3` (x86) / `TTBR0` (ARM) | Points at this process's memory map. |
+| **Kernel bookkeeping** | pid, open file descriptors, pending signals | Scheduler and OS-level state. |
 
 ---
 
-### The Three-Tier Hierarchy: Mode Switch vs. Thread Switch vs. Process Switch
+### Three different things people mix up: mode switch, thread switch, process switch
 
-A frequent trap in systems interviews is confusing a **User-to-Kernel Mode Switch** with a **Context Switch**:
+<Diagram>
+<Row>
+<Box title="Mode Switch" accent="#60a5fa">
+<Field icon="⚡" code="~50-100 ns" hint="same thread, user → kernel" variant="neutral" />
+</Box>
+<Arrow />
+<Box title="Thread Switch" accent="#f59e0b">
+<Field icon="🔁" code="~1-2 µs" hint="same process, new registers/stack" variant="neutral" />
+</Box>
+<Arrow />
+<Box title="Process Switch" accent="#fb7185">
+<Field icon="🐢" code="~3-5 µs" hint="new address space, TLB flushed" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-```
-                       LATENCY & OVERHEAD SPECTRUM
-Fastest (50 - 100 ns) ───────────────────────────────────> Slowest (3 - 10 µs)
-  [ Mode Switch ]          [ Thread Switch ]            [ Process Switch ]
-  (Same Thread,            (Same Process,               (Different Process,
-   User -> Kernel)          New Registers/Stack)         New Address Space & TLB)
-```
-
-| Dimension | Mode Switch (Syscall) | Thread Context Switch | Process Context Switch |
+| | Mode switch (syscall) | Thread switch | Process switch |
 | :--- | :--- | :--- | :--- |
-| **Trigger** | `syscall`, hardware interrupt, exception | Scheduler preemption, I/O wait, `pthread_yield()` | Time quantum expiration, blocking I/O, IPC |
-| **Address Space** | **Unchanged.** User space remains mapped. | **Unchanged.** All threads share the same page table. | **Changed.** Memory maps are completely replaced. |
-| **Page Table (`CR3`)** | **Untouched** | **Untouched** | **Swapped.** `CR3` reloaded with new process root table. |
-| **TLB State** | Untouched | Retained (Warm TLB entries reused) | **Flushed** (or partitioned via PCID/ASID) |
-| **Direct Latency** | $\sim 50\text{--}100\text{ ns}$ | $\sim 1\text{--}2\ \mu\text{s}$ | $\sim 3\text{--}5\ \mu\text{s}$ |
-| **Cache Impact** | Minimal | Low (Shared heap/code cache) | **Severe.** L1/L2/L3 cache misses and cold misses. |
+| **Triggered by** | `syscall`, interrupt, exception | Scheduler preemption, I/O wait, `pthread_yield()` | Time quantum expiry, blocking I/O, IPC |
+| **Address space** | Unchanged | Unchanged — threads share the page table | Fully replaced |
+| **Page table (`CR3`)** | Untouched | Untouched | Swapped for the new process's root table |
+| **TLB** | Untouched | Stays warm | Flushed (or partitioned via PCID/ASID) |
+| **Cost** | ~50-100 ns | ~1-2 µs | ~3-5 µs |
+| **Cache impact** | Minimal | Low — heap/code cache still shared | Severe — cold misses across L1/L2/L3 |
 
 ---
 
-### Why Context Switching is "Pure Overhead"
+### Why it's "pure overhead"
 
-In computer systems, "overhead" denotes computational work performed by the platform to manage execution rather than advancing the application's business logic.
+Overhead is work the system does to manage execution, not work that advances the actual program. During a switch:
 
-During a context switch, the CPU spends thousands of cycles doing administrative housekeeping:
+**Direct cost:** the kernel runs interrupt handlers, scheduler logic (Linux's `pick_next_task()`), and the register save/restore code. None of that is application instructions — it's 100% bookkeeping.
 
-#### 1. Direct Overhead (Instruction Execution)
-- **Kernel Code Path:** Executing interrupt handlers, scheduler heuristics (e.g., Linux CFS `pick_next_task()`), pushing registers to RAM/stack, and restoring registers.
-- Zero user application instructions execute during this transition.
-
-#### 2. Indirect Overhead (The Cache Thrashing Penalty)
-The indirect costs are often an order of magnitude more expensive than the direct assembly instructions:
-- **TLB Invalidation:** The Translation Lookaside Buffer is flushed. The incoming process experiences consecutive TLB misses, forcing high-latency 4-level memory walks (200–400 ns per miss) to resolve virtual addresses.
-- **CPU Cache Pollution (L1 / L2 / L3):** The cache lines populated by Process A are displaced by Process B's working set. When Process A runs again, its cache lines are gone, triggering cold cache stalls until data is re-fetched from main memory.
-- **Branch Target Buffer (BTB) Eviction:** Hardware branch predictors lose history, causing pipeline flushes on initial conditional branches.
+**Indirect cost — usually the bigger one:**
+- **TLB flush:** address translation gets slow again. The incoming process hits a string of TLB misses, each needing an expensive multi-level page-table walk (roughly 200-400 ns).
+- **Cache pollution:** the previous process's cache lines get evicted by the new process's working set. When the old process runs again, its data isn't there anymore — cold cache stalls while it's re-fetched from RAM.
+- **Branch predictor eviction:** the CPU's branch history gets wiped too, so early branches after a switch tend to mispredict.
 
 ---
 
-### Summary
+### Say this in the interview
 
-"A context switch stores the CPU hardware execution state (program counter, stack pointer, general-purpose registers, floating-point vectors, and page table root) into the PCB/TCB. It is considered pure overhead because the CPU executes administrative kernel instructions rather than application logic, while indirectly imposing severe latency penalties through TLB flushes, CPU cache pollution, and branch predictor invalidation."
+*"A context switch saves the program counter, stack pointer, general-purpose and floating-point registers, and the page table root into the PCB or TCB. It's pure overhead because the CPU spends that time on kernel bookkeeping instead of application logic — and the real cost isn't even the save/restore itself, it's the TLB flush and cold caches that follow."*
 
 ---
 
-### Python Verification: Thread vs. Process Context Switch Benchmarking
-
-The following executable Python script benchmarks the measurable latency difference between in-process thread context switching and inter-process context switching using OS IPC pipes:
+### Python: measuring the difference
 
 ```python
 """

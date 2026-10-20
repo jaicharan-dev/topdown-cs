@@ -6,36 +6,29 @@ sidebar_position: 8
 sidebar_class_name: sidebar-medium
 ---
 
+import { Diagram, Box, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "A link has a bandwidth of 5 Mbps and a propagation delay of 20 ms. Calculate the bandwidth-delay product, the Stop-and-Wait link utilization for a 1000-bit frame, explain why Stop-and-Wait fails on Long Fat Networks (LFNs), and walk through how TCP window scaling overcomes the 64 KB limit."
 
 ---
 
-The Bandwidth-Delay Product (BDP) is one of the most critical metrics in network engineering, governing TCP socket buffer sizing, router queue provisioning, and sliding window protocol design. 
-
-Failing to account for BDP leads to catastrophic performance degradation: high-speed gigabit fiber links can be throttled to dial-up speeds simply because the protocol window is too small to keep the pipe filled.
+A protocol window that's too small for the link it's running on is the single most common way to quietly throttle a gigabit fiber link down to dial-up speeds. The Bandwidth-Delay Product (BDP) is the number that tells you how big that window needs to be.
 
 ---
 
-### 1. Bandwidth-Delay Product (BDP) Deep Dive
+### Bandwidth-Delay Product (BDP) Deep Dive
 
-The Bandwidth-Delay Product measures the volume of data that can be "in flight" inside the transmission channel at any given instant.
+Picture the link as a physical pipe. **Bandwidth** is how wide the pipe is (bits/second it can carry). **Delay** is how long the pipe is (seconds for something to travel end to end). **BDP** is just the pipe's volume — how many bits can be in flight, inside the wire, at any one instant:
 
 $$\text{BDP} = \text{Bandwidth } (R) \times \text{Delay } (T)$$
 
-If you visualize a network link as a physical water pipe:
-- **Bandwidth ($R$):** The cross-sectional width of the pipe (bits/second).
-- **Delay ($T$):** The length of the pipe (seconds).
-- **BDP:** The total physical volume of the pipe (bits or bytes).
-
-```text
-|<---------------------- Propagation Delay (20 ms) ---------------------->|
-+-------------------------------------------------------------------------+
-| >>> 100,000 bits in transit simultaneously through the physical wire >>>| ===> 5 Mbps
-+-------------------------------------------------------------------------+
-Sender                                                                 Receiver
-```
+<Diagram>
+<Box title="The pipe: 5 Mbps wide, 20 ms long" accent="#818cf8">
+<Field icon="🚰" code="100,000 bits in flight at once" hint="BDP = bandwidth × delay — the pipe's total volume" variant="neutral" />
+</Box>
+</Diagram>
 
 #### One-Way BDP vs Round-Trip BDP:
 In network literature, candidates must distinguish between two definitions:
@@ -46,7 +39,7 @@ In network literature, candidates must distinguish between two definitions:
 
 ---
 
-### 2. Stop-and-Wait ARQ Efficiency Analysis
+### Stop-and-Wait ARQ Efficiency Analysis
 
 Stop-and-Wait requires the sender to transmit one frame of size $L$ and freeze until the receiver's ACK traverses the channel back to the sender.
 
@@ -68,7 +61,7 @@ Despite paying for a 5 Mbps link, Stop-and-Wait utilizes **less than half of one
 
 ---
 
-### 3. Long Fat Networks (LFNs) & The Utilization Crisis
+### Long Fat Networks (LFNs) & The Utilization Crisis
 
 A **Long Fat Network (LFN)** is any network link with a large bandwidth-delay product (high bandwidth, high latency). Typical examples include:
 - Trans-oceanic submarine fiber cables (e.g., 100 Gbps, 80 ms RTT).
@@ -81,7 +74,7 @@ To achieve high utilization on an LFN, protocols must use **pipelining** (Slidin
 
 ---
 
-### 4. The 64 KB TCP Window Size Trap & RFC 7323 Scaling
+### The 64 KB TCP Window Size Trap & RFC 7323 Scaling
 
 In the original TCP specification (RFC 793), the `Window Size` field in the TCP header is strictly **16 bits wide**:
 
@@ -114,7 +107,7 @@ This allows TCP to fully saturate high-speed 100 Gbps and multi-gigabit satellit
 
 ---
 
-### 5. Bufferbloat: The Danger of Oversizing Buffers
+### Bufferbloat: The Danger of Oversizing Buffers
 
 While sizing TCP socket buffers to match BDP is critical for throughput, oversizing intermediate router queue buffers creates **bufferbloat**:
 - When network buffers are excessively large, TCP congestion control continues pushing packets into the queue instead of dropping them to signal congestion.
@@ -123,7 +116,7 @@ While sizing TCP socket buffers to match BDP is critical for throughput, oversiz
 
 ---
 
-### 6. Runnable Python Implementation
+### Python: Runnable Implementation
 
 This script computes one-way and RTT BDP, analyzes Stop-and-Wait efficiency, and evaluates TCP throughput limits under default 64 KB vs RFC 7323 window-scaled configurations.
 
@@ -199,7 +192,7 @@ if __name__ == "__main__":
 
 ---
 
-### 7. Concise Staff-Level Interview Answer
+### Say this in the interview
 
 > "The Bandwidth-Delay Product (BDP) represents the volume of data that can exist in transit on the link at any given moment. For a 5 Mbps link with a 20 ms propagation delay, the one-way BDP is $5\text{ Mbps} \times 0.02\text{ s} = 100,000\text{ bits}$ (12.5 KB), while the round-trip BDP required to saturate the connection is 200,000 bits (25 KB).
 >

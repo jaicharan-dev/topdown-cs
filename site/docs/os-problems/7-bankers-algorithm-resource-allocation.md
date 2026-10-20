@@ -12,9 +12,9 @@ sidebar_class_name: sidebar-hard
 
 ---
 
-## 1. Executive Summary & Problem Formulation
+### The idea
 
-The **Banker's Algorithm** (developed by Edsger Dijkstra) is a deadlock-avoidance algorithm for multi-instance resource systems. It guarantees that resource allocation never moves the system from a **Safe State** to an **Unsafe State** (a state where a deadlock cannot be mathematically avoided).
+Think of it like an actual bank: before approving a loan, the bank checks whether it could still cover everyone's maximum possible withdrawal if the worst case happened. The **Banker's Algorithm** (Dijkstra) does the same thing with OS resources — before handing any process more memory/files/locks, it checks whether the system could still finish every process safely afterward. If it can't, the request waits.
 
 ### System Matrices & Dimensions:
 - Let $n = 5$ (processes $P_0, P_1, P_2, P_3, P_4$).
@@ -23,7 +23,7 @@ The **Banker's Algorithm** (developed by Edsger Dijkstra) is a deadlock-avoidanc
 
 ---
 
-## 2. Part 1: Computing Available Vector and Need Matrix
+### Part 1: The Available Vector and Need Matrix
 
 ### 1. The Available Vector Calculation
 The **Available vector** reflects currently free, unallocated resources:
@@ -58,7 +58,7 @@ $$\text{Need}[i][j] = \text{Max}[i][j] - \text{Allocation}[i][j]$$
 
 ---
 
-## 3. Part 2: Safety Algorithm Walkthrough
+### Part 2: Running the Safety Algorithm
 
 The Safety Algorithm maintains a boolean array `Finish[n] = [False, False, False, False, False]` and a working pool `Work = Available = [3, 3, 2]`. It repeatedly searches for an index $i$ where:
 
@@ -116,7 +116,7 @@ $$\text{Finish}[i] = \text{True}$$
 
 ---
 
-## 4. Part 3: Resource-Request Algorithm Evaluation
+### Part 3: Can We Grant P1's Request?
 
 Suppose process $P_1$ submits an immediate request:
 $$\text{Request}_{P_1} = (1, 0, 2)$$
@@ -160,22 +160,20 @@ Now test whether the system remains in a safe state with $\text{Work} = (2, 3, 0
 
 ---
 
-## 5. Complexity Analysis & Production OS Critique
+### Say this in the interview
 
-### Algorithmic Complexity:
-- **Time Complexity:** $O(m \cdot n^2)$  
-  *(In the worst case, the safety check iterates through all $n$ processes $n$ times, and comparing two vectors takes $m$ operations).*
-- **Space Complexity:** $O(m \cdot n)$ to maintain the Allocation, Max, and Need matrices.
+*"This safety check costs O(m·n²) time and O(m·n) space — for each of n processes, in the worst case we scan all n processes, each comparison costing m resource-type checks."*
 
-### Why Modern Operating Systems (Linux, Windows) Do Not Use Banker's:
-1. **Unknown Maximum Demand:** Real-world processes (e.g., a web browser or database) cannot declare their peak resource allocations in advance. Memory and file handles grow dynamically based on runtime input.
-2. **Dynamic Process Churn:** In modern systems, processes constantly fork, spawn threads, and terminate. The parameter $n$ is not constant.
-3. **Severe Runtime Latency:** Running an $O(m \cdot n^2)$ safety simulation on every single dynamic system call (`malloc`, `open`, `socket`, `mmap`) would introduce an unacceptable CPU performance bottleneck.
-4. **Kernel Alternative:** Modern OS kernels use **Ostrich Algorithm** (ignore rare deadlocks), **Strict Lock Ordering** (deadlock prevention), or an **Out-Of-Memory (OOM) Killer** to terminate rogue processes when physical capacity is exhausted.
+### Why real kernels don't actually run this
+
+1. **No one declares their max upfront.** A browser or database can't tell the OS its peak memory need in advance — it just grows as it runs.
+2. **The process count isn't fixed.** Real systems constantly fork, spawn threads, and exit — `n` changes every second.
+3. **It's too slow to run on every syscall.** Re-running an O(m·n²) safety check on every `malloc`/`open`/`mmap` would tank performance.
+4. **What's used instead:** the **Ostrich Algorithm** (ignore rare deadlocks and reboot if one happens), strict lock ordering (prevent the circular wait in the first place), or just killing the offending process when memory runs out (the OOM killer).
 
 ---
 
-## 6. Python Implementation: Banker's Algorithm
+### Python: Banker's Algorithm
 
 The following executable Python script implements the complete Banker's Algorithm, running safety checks and evaluating resource requests:
 

@@ -1,95 +1,97 @@
 ---
 id: 13-starvation-deadlock-livelock
-title: "Starvation vs. Deadlock vs. Livelock: Concurrency Failure Modes"
-description: "Clarify the differences between permanent waiting due to unfair scheduling (starvation), circular resource blocking (deadlock), and active state thrashing (livelock)."
+title: "Starvation vs. Deadlock vs. Livelock"
+description: "The difference between a system that's frozen (deadlock), a system that's thrashing without progress (livelock), and one thread being unfairly ignored (starvation)."
 sidebar_position: 13
 sidebar_class_name: sidebar-medium
 ---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is the precise difference between Starvation, Deadlock, and Livelock? Compare them across process states and CPU consumption, and explain how systems recover from each."
 
-Concurrency failures in operating systems and distributed architectures are broadly categorized into three distinct failure modes: **Deadlock**, **Livelock**, and **Starvation**.
-
-Interviewers test this to see if you understand the boundary between a system that has **completely halted** (Deadlock), a system that is **actively thrashing without making progress** (Livelock), and a system that is **making aggregate progress while unfairly starving a specific task** (Starvation).
+These are three different ways concurrency can go wrong, and interviewers like separating them because they look similar but aren't: one system is frozen solid, one is busy but going nowhere, and one is working fine except for one unlucky thread.
 
 ---
 
-### The ELI5 Analogy: The Narrow Hallway
+### The analogy: a narrow hallway
 
-Imagine a narrow hallway wide enough for only one person to pass at a time:
-- **Deadlock (The Stare-down):** Alice and Bob enter from opposite sides and meet in the center. Alice says: *"I won't back up until you back up."* Bob says: *"I won't back up until you back up."* Both stand frozen, glaring at each other forever. Zero energy is spent; zero progress is made.
-- **Livelock (The Polite Dance):** Alice and Bob meet in the center. Being polite, Alice steps to her right, but Bob simultaneously steps to his left, bumping into each other again. Alice steps left; Bob steps right. Bump. They rapidly dodge side-to-side in perfect synchronization. They are sweating and burning calories, but neither can walk down the hall.
-- **Starvation (The VIP Bouncer):** The hallway is open, but a bouncer stands at the door giving priority to anyone with a VIP badge. Charlie has a regular ticket and waits in line. Every time Charlie reaches the front, a new VIP arrives and gets ushered through. The hallway is moving 100 people per minute (System progress is great!), but Charlie waits in line forever.
+Picture a hallway wide enough for only one person.
 
----
+- **Deadlock — the stare-down.** Alice and Bob meet in the middle, face to face. "I won't back up until you do." Neither moves. Forever. Zero energy spent, zero progress.
+- **Livelock — the polite dance.** They meet in the middle. Alice steps right to let Bob pass; Bob steps left at the same instant, and they collide again. Alice steps left, Bob steps right — collide again. They keep dodging in perfect sync, burning energy, never actually getting past each other.
+- **Starvation — the VIP bouncer.** The hallway is wide open and moving fine, but a bouncer always waves VIPs through first. Charlie, holding a regular ticket, keeps getting bumped. The hallway is busy and productive — just never for Charlie.
 
-### Deep Dive: The Three Failure Modes
-
-#### 1. Deadlock: Permanent Circular Wait
-A condition where every process in a set is suspended waiting for an event or resource that can only be triggered by another process in that same set.
-
-- **Process State:** `TASK_UNINTERRUPTIBLE` (Sleeping/Blocked).
-- **CPU Utilization:** **0% CPU**. The threads are removed from the scheduler's runqueue.
-- **Coffman's Four Necessary & Sufficient Conditions:**
-  1. **Mutual Exclusion:** At least one resource is held in a non-shareable mode.
-  2. **Hold and Wait:** A process holds at least one resource and is waiting to acquire another.
-  3. **No Preemption:** Resources cannot be forcibly confiscated; they can only be released voluntarily.
-  4. **Circular Wait:** A closed chain of processes exists: $P_0$ waits for $P_1$, $P_1$ waits for $P_2$, $\dots$, and $P_n$ waits for $P_0$.
-- **Resolution:** Deadlock can be mathematically prevented by breaking **any single one of the four conditions** (e.g., establishing a global lock hierarchy to eliminate circular wait).
+<Diagram>
+<Row>
+<Box title="Deadlock" accent="#fb7185"><Field icon="🔒" code="0% CPU, frozen" hint="stuck waiting on each other forever" variant="neutral" /></Box>
+<Box title="Livelock" accent="#ec4899"><Field icon="🔄" code="100% CPU, no progress" hint="keeps retrying, keeps colliding" variant="neutral" /></Box>
+<Box title="Starvation" accent="#f59e0b"><Field icon="⏳" code="system is fine, one thread isn't" hint="constantly skipped in favor of others" variant="neutral" /></Box>
+</Row>
+</Diagram>
 
 ---
 
-#### 2. Livelock: Active State Thrashing
-A condition where processes actively change their internal state in response to each other, but these state changes prevent any process from advancing forward.
+### 1. Deadlock: a permanent circular wait
 
-- **Process State:** `TASK_RUNNING` (Active / Spinning).
-- **CPU Utilization:** **100% CPU**. Hardware cores are saturated with execution cycles.
-- **Real-World Manifestation:** Two threads attempt optimistic locking:
-  ```
-  Thread A acquires Lock 1 -> Tries Lock 2 -> Fails! -> Releases Lock 1 -> Retries
-  Thread B acquires Lock 2 -> Tries Lock 1 -> Fails! -> Releases Lock 2 -> Retries
-  ```
-  If both threads retry at the exact same frequency, they enter a lockstep cycle of acquiring, colliding, releasing, and retrying indefinitely.
-- **Resolution: Randomized Exponential Backoff.** Systems resolve livelocks by breaking symmetry (e.g., in Ethernet CSMA/CD, Raft leader election, or optimistic database transaction retries) by introducing random jitter into the retry timer:
-  $$\text{Wait\_Time} = 2^{\text{retry}} \times \text{Base\_Delay} + \text{Random\_Jitter}$$
+Every thread in the group is stuck waiting on something only another thread in that same group can give it.
+
+- **Thread state:** sleeping/blocked. **CPU use: 0%** — these threads aren't even in the scheduler's runqueue.
+- It needs all four Coffman conditions at once: mutual exclusion, hold-and-wait, no preemption, and a circular chain of waits ($P_0$ waits on $P_1$, ..., $P_n$ waits on $P_0$).
+- **Fix:** break any one of those four conditions. The usual approach is a global lock ordering, which makes circular wait mathematically impossible.
+
+### 2. Livelock: busy, but going nowhere
+
+Threads keep reacting to each other and changing state, but those reactions cancel out and nobody actually advances.
+
+- **Thread state:** running/spinning. **CPU use: 100%.**
+- Classic example — two threads trying to grab two locks optimistically:
+
+```
+Thread A: grab Lock 1 → try Lock 2 → fails → release Lock 1 → retry
+Thread B: grab Lock 2 → try Lock 1 → fails → release Lock 2 → retry
+```
+
+If both retry on the same rhythm, they stay locked in this collide-and-retry cycle indefinitely.
+
+- **Fix:** randomized exponential backoff — make the retry delay random instead of fixed, so the symmetry breaks:
+  $$\text{wait} = 2^{\text{retry}} \times \text{base\_delay} + \text{random jitter}$$
+  (This is the same idea behind Ethernet's CSMA/CD and Raft leader election.)
+
+### 3. Starvation: perpetually unfair, not stuck
+
+A thread is runnable and the system as a whole is making progress — it's just that this one thread keeps getting skipped because the scheduler or lock policy keeps favoring others.
+
+- **Thread state:** ready, sitting in the queue. **CPU use:** normal overall; the starved thread just never gets picked.
+- **Cause:** unfair policies, like strict shortest-job-first or priority scheduling with no way to catch up.
+- **Fix:** aging — gradually raise a thread's effective priority the longer it waits, until it eventually becomes the highest-priority thread in the system:
+  $$\text{priority}_{\text{effective}} = \text{priority}_{\text{base}} + k \times \text{wait time}$$
 
 ---
 
-#### 3. Starvation: Perpetual Unfairness
-A condition where a runnable process is perpetually denied necessary resources (CPU time, memory, or locks) because the scheduler or locking protocol continuously favors other processes.
+### Comparison
 
-- **Process State:** `TASK_RUNNING` (Sitting in the Ready queue) or waiting on a fair lock.
-- **CPU Utilization:** **Normal / Healthy**. The system as a whole achieves high throughput.
-- **Underlying Cause:** Unfair scheduling policies (such as strict Shortest Job First or priority-preemptive scheduling without aging).
-- **Resolution: Aging.** The operating system dynamically elevates the effective priority of a process the longer it waits in the ready queue:
-  $$\text{Priority}_{\text{effective}} = \text{Priority}_{\text{base}} + k \times (\text{Wait Time})$$
-  Eventually, even the lowest-priority process becomes the highest-priority task in the system and runs.
-
----
-
-### Architectural Comparison Matrix
-
-| Dimension | Deadlock | Livelock | Starvation |
+| | Deadlock | Livelock | Starvation |
 | :--- | :--- | :--- | :--- |
-| **System Progress** | **Zero.** The affected subsystem is completely frozen. | **Zero.** Subsystem is frozen despite high activity. | **High.** Overall system throughput is healthy and productive. |
-| **CPU Utilization** | **0%** (All involved threads sleep in wait queues). | **100%** (Threads spin actively on CPU cores). | Normal (Starved thread burns 0%, active threads burn CPU). |
-| **Process State** | Blocked (`TASK_UNINTERRUPTIBLE`) | Running (`TASK_RUNNING`) | Ready (`TASK_RUNNING` in runqueue) |
-| **Root Cause** | Circular dependency on exclusive resources. | Symmetrical reactive retry behavior. | Unfair or greedy scheduling algorithms. |
-| **Remediation** | Lock ordering, abort & rollback, OOM killer. | **Randomized backoff / jitter**. | **Aging** (Priority boosting over wait time). |
+| **System progress** | Zero — frozen | Zero — busy but frozen | High — system is healthy overall |
+| **CPU use** | 0% | 100% | Normal |
+| **Thread state** | Blocked/sleeping | Running/spinning | Ready, waiting in queue |
+| **Root cause** | Circular wait on exclusive resources | Symmetric retry behavior | Unfair scheduling/locking |
+| **Fix** | Lock ordering, break a Coffman condition | Randomized backoff | Aging (priority boost over time) |
 
 ---
 
-### Summary
+### Say this in the interview
 
-"Deadlock is a permanent cessation of progress where threads sleep at 0% CPU due to circular resource dependencies, resolvable by breaking one of Coffman's four conditions. Livelock involves active state changes where threads burn 100% CPU in symmetric retry loops without making progress, resolvable via randomized exponential backoff. Starvation is an unfairness defect where the overall system makes progress, but an individual thread is perpetually neglected, resolvable through dynamic priority aging."
+*"Deadlock is a permanent freeze — threads sleep at 0% CPU, stuck in a circular wait, fixed by breaking one of Coffman's four conditions. Livelock looks active but isn't — threads burn 100% CPU in a symmetric retry loop, fixed by randomized backoff. Starvation is the odd one out — the system overall is making progress, but one thread keeps getting unfairly skipped, fixed by aging its priority up over time."*
 
 ---
 
-### Python Verification: Livelock Detection & Randomized Backoff Recovery
-
-The following executable Python script simulates two threads caught in a synchronized livelock (releasing and retrying locks in lockstep), and demonstrates how injecting randomized exponential backoff instantly breaks the livelock:
+### Python verification: livelock and randomized backoff
 
 ```python
 """

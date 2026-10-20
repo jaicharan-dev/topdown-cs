@@ -6,68 +6,62 @@ sidebar_position: 6
 sidebar_class_name: sidebar-medium
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "When would you deliberately NOT create an index on a column, even if that column frequently appears in `WHERE` clauses? Explain the Cost-Based Optimizer's selectivity threshold, write amplification, and PostgreSQL's Heap-Only Tuples (HOT)."
 
+"Just add an index" is not free advice. An index speeds up reads, but every index also has to be kept up to date on every write, and it takes up RAM in the buffer pool. Sometimes that trade is a bad one.
+
+<Diagram>
+<Row>
+<Box title="Add an index" accent="#818cf8">
+<Field icon="⚡" code="reads get faster" hint="O(log N) seek, on selective queries" variant="neutral" />
+</Box>
+<Arrow label="but costs" />
+<Box title="The trade-off" accent="#fb7185">
+<Field icon="✍️" code="writes get slower" hint="every INSERT/DELETE updates the tree" variant="neutral" />
+<Field icon="💾" code="RAM gets squeezed" hint="index pages compete for buffer pool space" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
+
 ---
 
-### The Indexing Trade-Off
+### Five cases where an index actually hurts
 
-A prevalent junior misconception is that *"adding indexes always accelerates queries"*. In high-throughput production systems, indexes are not free; they represent a fundamental engineering trade-off: **faster read queries in exchange for degraded write throughput, increased disk footprint, and buffer pool RAM contention**.
+#### 1. Low-cardinality columns
 
-```mermaid
-graph LR
-    Index["Secondary Index Added"] --> ReadGain["Read Benefit: O(log N) seeking on selective queries"]
-    Index --> WriteCost1["Write Cost: Synchronous B+ Tree updates on INSERT/DELETE"]
-    Index --> WriteCost2["Write Cost: B+ Tree page splits & WAL bloat"]
-    Index --> RAMCost["RAM Cost: Displaces hot data pages from Buffer Pool"]
-```
-
----
-
-### The 5 Scenarios Where Indexing Hurts Performance
-
-#### 1. Low Cardinality & The CBO Selectivity Tipping Point
-**Cardinality** is the number of distinct values in a column. **Selectivity** measures how uniquely a query filter isolates rows:
+**Cardinality** is how many distinct values a column has. **Selectivity** is how small a slice of the table a filter picks out:
 
 $$\text{Selectivity} = \frac{\text{Rows Returned}}{\text{Total Table Rows}}$$
 
-- **The Tipping Point:** If a query filter matches more than **15% to 20%** of the rows in a table (e.g., `is_active = TRUE` or `gender = 'F'`), the **Cost-Based Optimizer (CBO)** will **deliberately ignore the index** and execute a Full Table Scan!
-- **Why? The Cost of Random Bookmark Lookups:**
-  Reading 500,000 rows through an index requires 500,000 random I/O page dereferences to fetch data from the clustered table. In contrast, a Full Table Scan reads pages sequentially from disk, utilizing hardware read-ahead to stream data into RAM at gigabytes per second. Traversing the index is substantially slower.
+If a filter like `is_active = TRUE` matches more than roughly 15-20% of the table, the query optimizer will usually ignore the index entirely and just scan the whole table. Why? Reading through an index means jumping to a different, random disk page for every single matching row. A full scan reads pages in order, letting the disk stream data at full speed — for a big chunk of the table, that beats the index every time.
 
-#### 2. Small Tables (Under a Few Thousand Rows)
-If a table has fewer than 1,000 to 2,000 rows (e.g., lookup tables like `country_codes` or `roles`):
-- The entire table occupies just one or two 8KB/16KB disk pages in memory.
-- A sequential scan reads these pages in under 0.05 milliseconds.
-- Using an index requires reading an index page to find a pointer, then reading the data page, doubling memory page dereferences for zero gain.
+#### 2. Small tables
 
-#### 3. Write-Heavy Ingestion Pipelines
-In systems where the write-to-read ratio is extreme ($50:1$ or $100:1$, such as IoT telemetry, audit logs, or clickstreams):
-- Every `INSERT` must synchronously traverse and update every secondary B+ tree index on the table.
-- When an index leaf page is full, it triggers an expensive **B+ Tree Page Split**, allocating a new disk block, shuffling keys, and propagating updates up the tree.
-- Adding 5 unneeded indexes can degrade ingestion write throughput by **70% to 80%**.
+A lookup table like `country_codes` with a few hundred rows already fits on one or two disk pages. Scanning it takes a fraction of a millisecond. Going through an index instead means reading the index page, *then* the data page — doubling the work for nothing.
 
-#### 4. Frequently Updated Columns & PostgreSQL Heap-Only Tuples (HOT)
-When a column undergoes frequent mutations (e.g., `last_heartbeat_at`, `view_count`):
-- In PostgreSQL, **Heap-Only Tuples (HOT)** is a critical optimization: if an `UPDATE` modifies a row and the new version fits in the same disk page, PostgreSQL chains the old tuple to the new tuple **without modifying any secondary indexes**!
-- If you add an index on that updated column, **HOT is permanently disabled for those updates**. The database is forced to insert new index pointers into every single index on the table, causing severe index bloat and crushing Write-Ahead Log (WAL) throughput.
+#### 3. Write-heavy ingestion
 
-#### 5. Wide Text Columns Without Prefix Indexing
-Indexing wide string columns (e.g., `VARCHAR(1000)` comments or URLs):
-- Consumes massive page bytes, reducing B+ tree fan-out and inflating tree height.
-- Evicts active data pages from the database buffer pool cache.
-- *Best Practice:* Use prefix indexing (`CREATE INDEX idx_url ON links (url(30));`) or Full-Text search engines (GIN/GiST indexes or Elasticsearch).
+In things like IoT telemetry or audit logs, where writes vastly outnumber reads, every `INSERT` has to update every index on the table. When an index page fills up, it triggers a **page split** — a new page gets allocated and keys get shuffled around. A handful of unnecessary indexes can cut ingestion throughput by 70-80%.
+
+#### 4. Columns that get updated often, and PostgreSQL's HOT optimization
+
+PostgreSQL has a trick called **Heap-Only Tuples (HOT)**: if you update a row and the new version still fits on the same page, Postgres can just chain the old and new versions together — without touching any secondary index at all.
+
+The catch: that trick only works if the updated column has no index on it. Add an index on a frequently-updated column (like `last_heartbeat_at`), and HOT is disabled for those updates — every single index now needs a new entry on every write, which bloats the indexes and the write-ahead log.
+
+#### 5. Wide text columns
+
+Indexing a `VARCHAR(1000)` column full of free text wastes huge amounts of page space, shrinks the tree's fan-out, and evicts other useful pages from the buffer pool cache. Prefer a prefix index (`CREATE INDEX idx_url ON links (url(30))`) or a proper full-text engine (GIN/GiST, or Elasticsearch) instead.
 
 ---
 
-### The Production Alternative: Partial (Filtered) Indexes
+### The middle ground: partial indexes
 
-If a low-cardinality column has a highly skewed distribution where one specific value is exceptionally rare, use a **Partial Index** (supported natively in PostgreSQL and SQL Server):
+If one specific value is rare but important — say 0.1% of orders are `'failed'` and that's the one you query for — index just that slice:
 
 ```sql
 -- 99.9% of orders are 'processed', 0.1% are 'failed'
@@ -76,28 +70,19 @@ ON Orders (created_at)
 WHERE status = 'failed';
 ```
 
-- This index ignores the millions of `'processed'` rows and indexes only the few thousand `'failed'` rows.
-- The index consumes negligible disk/RAM, incurs zero write penalty during normal order processing, and provides lightning-fast index seeking when querying for failures!
+This index stays tiny, costs nothing on the millions of normal writes, and still gives you a fast lookup for the rare case you actually care about.
 
 ---
 
-### The Interview Answer (60-90 seconds)
+### Say this in the interview
 
-> "You should deliberately avoid creating an index in five key scenarios:
->
-> 1. **Low Cardinality Columns:** If a column has few distinct values (like boolean flags), query selectivity will exceed 15% to 20%. The Cost-Based Optimizer will ignore the index and favor a Full Table Scan because random index bookmark lookups are far slower than sequential block scans.
-> 2. **Small Tables:** Tables with fewer than a few thousand rows fit in one or two disk pages; traversing an index adds extra page reads for no benefit.
-> 3. **Write-Heavy Ingestion Tables:** In audit logs or telemetry streams, every index degrades `INSERT` throughput by requiring synchronous B+ tree updates and triggering page splits.
-> 4. **Frequently Updated Columns:** Modifying an indexed column breaks PostgreSQL's Heap-Only Tuples (HOT) optimization, causing massive write amplification and index bloat.
-> 5. **Wide Text Columns:** Indexing large strings destroys B+ tree fan-out and wastes buffer pool memory.
->
-> Where a low-cardinality status must be indexed, the senior solution is a Partial Index, indexing only the rare values while ignoring the majority."
+*"I'd skip an index in five cases: low-cardinality columns, where selectivity is too poor for the optimizer to bother using it; small tables, where a full scan is already instant; write-heavy ingestion tables, where every index slows down every insert; frequently-updated columns, where an index breaks Postgres's HOT optimization and causes write amplification; and wide text columns, which blow up page size for little benefit. Where I still need to query a rare value in a low-cardinality column, I'd reach for a partial index instead of a full one."*
 
 ---
 
-### Code Demonstration: Write Ingestion Penalty Benchmark
+### Code: measuring the write penalty
 
-The following Python script benchmarks how adding secondary indexes exponentially slows down `INSERT` operations and measures the time difference when inserting 100,000 rows into an unindexed versus multi-indexed table.
+The following Python script benchmarks how adding secondary indexes slows down `INSERT` operations, measuring the time difference when inserting 100,000 rows into an unindexed versus multi-indexed table.
 
 ```python
 import sqlite3

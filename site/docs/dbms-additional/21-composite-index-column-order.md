@@ -1,30 +1,40 @@
 ---
 id: 21-composite-index-column-order
-title: "Composite Indexes: Column Order, Leftmost Prefix & ESR Rule"
-description: "Understand the Leftmost Prefix Rule in composite B-Tree indexes, range query cliffs, the ESR rule, covering indexes, and Index Condition Pushdown."
+title: "Composite Indexes: Column Order & the Leftmost Prefix Rule"
+description: "Why column order matters in a composite index, the leftmost prefix rule, the range query cliff, and the ESR rule for ordering columns."
 sidebar_position: 7
 sidebar_class_name: sidebar-medium
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Why does column order matter in a composite index on `(department_id, salary)`? Can a query filtering only on `salary` use this index, what is the Range Query Cliff, and how does the ESR rule guide optimal column ordering?"
 
+Think of a phone book sorted by last name, then first name. Everyone named "Smith" sits together, and inside that group they're sorted by first name. But if all you know is someone's first name - "find everyone called John" - the book is useless. Johns are scattered across every last-name group.
+
+A composite index on `(department_id, salary)` is sorted the same way: by `department_id` first, and only *within* each department, by `salary`.
+
+<Diagram>
+<Row>
+<Box title="Good order: (dept_id, salary)" accent="#34d399">
+<Field icon="✅" code="WHERE dept_id = 10" hint="dept_id is leftmost — index seek works" variant="neutral" />
+</Box>
+<Box title="Bad order: (salary, dept_id)" accent="#fb7185">
+<Field icon="❌" code="WHERE dept_id = 10" hint="dept_id is 2nd — can't seek on it alone" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
+
+Put the column your queries filter on *first*. Get the order wrong, and the index is dead weight for that query.
+
 ---
 
-### How Composite B-Trees Are Sorted Internally
-
-In a composite (multi-column) B-Tree index, data is sorted **hierarchically and lexicographically** from left to right. 
-
-Creating an index on `(department_id, salary)` means:
-1. All index entries are sorted by `department_id` first.
-2. For rows that share the exact same `department_id`, entries are sorted by `salary`.
+### How the data is actually laid out
 
 ```
-Composite B-Tree Leaf Page on (department_id, salary):
+Composite index on (department_id, salary):
 +---------------+--------+
 | department_id | salary |
 +---------------+--------+
@@ -38,99 +48,102 @@ Composite B-Tree Leaf Page on (department_id, salary):
 +---------------+--------+
 ```
 
-Notice the critical structural reality of the `salary` column:
-- Across the entire index, salaries read: `40000, 55000, 90000, 30000, 65000, 45000, 120000`.
-- **Salaries are completely unsorted globally!** They are only sorted locally within each discrete department group.
+Look at the `salary` column across the whole index: `40000, 55000, 90000, 30000, 65000, 45000, 120000`. That's not sorted at all. Salary is only sorted *inside* each department. Globally, it's scrambled - exactly like the first names in the phone book.
 
 ---
 
 ### The Leftmost Prefix Rule
 
-A composite index on columns `(A, B, C)` can only be used for direct **Index Seeks** if the query's `WHERE` clause includes the leftmost column prefix:
+A composite index on `(A, B, C)` can jump straight to the right rows (an **index seek**) only if your `WHERE` clause includes the leftmost columns, in order:
 
-| Query Filter Pattern | Can It Perform an Index Seek on `(A, B, C)`? | Explanation |
+| Query filter | Can it seek on `(A, B, C)`? | Why |
 | :--- | :---: | :--- |
-| `WHERE A = 1 AND B = 2 AND C = 3` | **Yes (Full Seek)** | Matches complete composite prefix left-to-right. |
-| `WHERE A = 1 AND B = 2` | **Yes (Prefix Seek)** | Matches leading prefix `(A, B)`. |
-| `WHERE A = 1` | **Yes (Prefix Seek)** | Matches leading prefix `(A)`. |
-| `WHERE B = 2 AND C = 3` | **NO Seek** | Skips column `A`. Global data is unsorted without `A`. |
-| `WHERE C = 3` | **NO Seek** | Skips columns `A` and `B`. |
-| `WHERE A = 1 AND C = 3` | **Partial Seek** | Seeks on `A`, then filters on `C` manually. |
+| `A = 1 AND B = 2 AND C = 3` | **Yes, full seek** | Matches the whole prefix. |
+| `A = 1 AND B = 2` | **Yes, prefix seek** | Matches `(A, B)`. |
+| `A = 1` | **Yes, prefix seek** | Matches `(A)`. |
+| `B = 2 AND C = 3` | **No** | Skips `A` — without it, the data isn't sorted by `B`. |
+| `C = 3` | **No** | Skips `A` and `B`. |
+| `A = 1 AND C = 3` | **Partial** | Seeks on `A`, then scans and checks `C` by hand. |
 
 ---
 
-### The Covering Index Exception (Index-Only Scan)
+### Can you still use the index if you skip the first column?
 
-A classic interview gotcha asks: *"Can a query filtering ONLY on `salary` ever use the index on `(department_id, salary)`?"*
-
-**Answer:** **Yes, as a Covering Index (Index-Only Scan), but NOT as an Index Seek!**
+Sometimes - yes, but not the way you'd think. Interviewers like to ask: *"Can a query filtering only on `salary` ever use the index on `(department_id, salary)`?"*
 
 ```sql
-SELECT department_id, salary 
-FROM Employees 
+SELECT department_id, salary
+FROM Employees
 WHERE salary = 55000;
 ```
 
-#### What the Database Does:
-- The database cannot perform an *Index Seek* ($O(\log N)$ jump) because salaries are unsorted globally.
-- However, all columns requested in the query (`department_id` and `salary`) reside directly in the index leaf pages!
-- The query optimizer chooses an **Index Full Scan** instead of a Full Table Scan. Because the index contains no wide text columns and is significantly smaller than the clustered table heap, scanning the index sequentially is **$3\times$ to $5\times$ faster** than reading the entire table off disk.
+It can't do a seek - salary isn't globally sorted, so there's no jump-straight-there shortcut. But look closer: both columns the query asks for (`department_id`, `salary`) already live in the index itself. So the database doesn't need to touch the actual table at all - it can just scan the index top to bottom, which is a lot smaller and faster than scanning the whole table. This is called a **covering index** scan, and it's usually 3-5x faster than reading the full table, even without a true seek.
 
 ---
 
 ### The Range Query Cliff
 
-> **Staff-Level Bar Raiser:** B-Tree index seeking halts at the **very first range filter** (`<`, `>`, `BETWEEN`, `LIKE 'prefix%'`). Any columns listed after a range filter cannot be used for index seeking!
+> **Watch for this one:** an index seek stops dead at the first range filter (`<`, `>`, `BETWEEN`, `LIKE 'prefix%'`). Everything listed *after* that range filter can't be seeked on anymore.
 
-Consider an index on `(tenant_id, created_at, user_id)`:
+Take an index on `(tenant_id, created_at, user_id)`:
+
 ```sql
-SELECT * FROM Orders 
-WHERE tenant_id = 5                 -- Equality: Index Seek works
-  AND created_at >= '2026-01-01'    -- Range Filter: Index Seek works
-  AND user_id = 1042;               -- Placed AFTER range: CANNOT SEEK!
+SELECT * FROM Orders
+WHERE tenant_id = 5                 -- equality: seeks fine
+  AND created_at >= '2026-01-01'    -- range: seeks fine
+  AND user_id = 1042;               -- comes after the range: can't seek!
 ```
 
-#### Why `user_id` Cannot Seek:
-Once `created_at` branches into a range across multiple dates, the entries in the index are ordered by date. Across different dates, `user_id` values are scattered and unsorted. The database seeks down to `tenant_id = 5` and `created_at >= '2026-01-01'`, and must scan every row checking `user_id = 1042` using **Index Condition Pushdown (ICP)**.
+Once `created_at` opens up into a range, you're looking across many different dates - and within that range, `user_id` values aren't sorted anymore. So the database seeks down to `tenant_id = 5 AND created_at >= '2026-01-01'`, then has to check `user_id = 1042` row by row as it scans (this row-by-row checking is called **Index Condition Pushdown**).
 
 ---
 
-### The Golden ESR Rule for Column Ordering
+### The ESR rule: how to order your columns
 
-To design optimal composite indexes that avoid in-memory temporary filesorts, follow the **ESR Rule**:
+A simple rule of thumb for designing composite indexes, so you avoid expensive in-memory sorts:
 
-$$\mathbf{E} \longrightarrow \mathbf{S} \longrightarrow \mathbf{R}$$
+<Diagram>
+<Row>
+<Box title="E - Equality" accent="#60a5fa">
+<Field icon="🟰" code="tenant_id, status" hint="columns filtered with = or IN" variant="neutral" />
+</Box>
+<Arrow />
+<Box title="S - Sort" accent="#34d399">
+<Field icon="↕️" code="order_date" hint="columns in ORDER BY" variant="neutral" />
+</Box>
+<Arrow />
+<Box title="R - Range" accent="#f59e0b">
+<Field icon="↔️" code="created_at > ..." hint="columns filtered with <, >, BETWEEN" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-1. **E - Equality:** Place columns filtered with `=` or `IN` first (e.g., `tenant_id`, `status`).
-2. **S - Sort:** Place columns referenced in `ORDER BY` second (allows the database to stream sorted data directly off the B-Tree without an in-memory `filesort`).
-3. **R - Range:** Place columns filtered with ranges (`>`, `<`, `BETWEEN`) last.
+1. **Equality** columns first - the ones you filter with `=` or `IN`.
+2. **Sort** columns second - whatever's in your `ORDER BY`. Put these here and the database can stream pre-sorted rows straight off the index, no extra sort step needed.
+3. **Range** columns last - `>`, `<`, `BETWEEN` - because these are the ones that break the seek anyway.
 
 ```sql
 -- Query:
-SELECT * FROM Orders 
-WHERE tenant_id = 10 AND status = 'COMPLETED' 
-ORDER BY order_date DESC 
+SELECT * FROM Orders
+WHERE tenant_id = 10 AND status = 'COMPLETED'
+ORDER BY order_date DESC
 LIMIT 20;
 
--- Optimal Composite Index following ESR:
+-- Index following ESR:
 CREATE INDEX idx_orders_esr ON Orders (tenant_id, status, order_date);
 ```
 
 ---
 
-### The Interview Answer (60-90 seconds)
+### Say this in the interview
 
-> "In a composite B-Tree index like `(department_id, salary)`, column order is paramount because the index sorts entries hierarchically by the leftmost column first. Within each department, salaries are sorted, but across the entire index, salaries are globally unsorted.
->
-> Therefore, by the Leftmost Prefix Rule, a query filtering solely on `salary` cannot perform an $O(\log N)$ index seek. However, if the query only selects columns present in the index, the engine can execute an Index Full Scan, reading the compact index rather than the heap table.
->
-> When designing composite indexes, engineers must account for the Range Query Cliff: index seeking terminates at the first range or inequality filter. To maximize index efficiency and eliminate in-memory sorting, always follow the ESR rule: place Equality columns first, Sorting columns second, and Range filter columns last."
+*"A composite index on `(department_id, salary)` is sorted by `department_id` first, and only within each department by `salary` - so salary isn't globally sorted. Because of that, a query filtering only on `salary` can't do an index seek, though it might still use the index as a covering scan if it only needs columns already in the index. An index seek also stops at the first range filter - any column listed after it can't be seeked on. To design a good composite index, follow ESR: equality columns first, sort columns second, range columns last."*
 
 ---
 
-### Code Demonstration: Inspecting Query Execution Plans with Composite Indexes
+### Checking this yourself: query plans in SQLite
 
-The following Python script uses SQLite's `EXPLAIN QUERY PLAN` to prove how query plans shift from index seeks to table scans depending on the leftmost prefix.
+This script uses SQLite's `EXPLAIN QUERY PLAN` to show the plan flip from index seek to table scan depending on the leftmost prefix.
 
 ```python
 import sqlite3

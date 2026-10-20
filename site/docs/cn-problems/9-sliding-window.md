@@ -6,19 +6,19 @@ sidebar_position: 9
 sidebar_class_name: sidebar-hard
 ---
 
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
 > **Interview Question:** "Using a link with bandwidth 5 Mbps and propagation delay 20 ms, a sender uses Sliding Window ARQ with 1000-bit frames. Calculate the minimum window size for full utilization using $N = 1 + 2a$, analyze efficiency with a halved window, compare Go-Back-N vs. Selective Repeat sequence numbering constraints, and explain the sequence number ambiguity trap."
 
 ---
 
-Sliding window protocols bridge physical channel limits with software flow control. Instead of idling while waiting for individual acknowledgments, pipelining allows a transmitter to keep multiple unacknowledged frames in flight.
-
-Staff-level networking interviews frequently probe beyond the $N = 1 + 2a$ formula to evaluate your understanding of sequence number space constraints ($W_s + W_r \le 2^k$) and why protocol designs must prevent catastrophic frame misidentification.
+Stop-and-Wait wastes the link because the sender idles after every single frame. Sliding window fixes that: keep multiple unacknowledged frames in flight at once, instead of freezing after each one. The question is how many frames "in flight" is enough — and what breaks if you get the sequence numbering wrong.
 
 ---
 
-### 1. Derivation of $a$ and Minimum Window Size ($N = 1 + 2a$)
+### Derivation of $a$ and Minimum Window Size ($N = 1 + 2a$)
 
 #### Transmission Time ($T_t$):
 $$T_t = \frac{\text{Frame Size}}{\text{Bandwidth}} = \frac{1000\text{ bits}}{5 \times 10^6\text{ bps}} = 0.0002\text{ s} = \mathbf{0.2\text{ ms}}$$
@@ -41,19 +41,18 @@ $$N = 1 + 2(100) = \mathbf{201\text{ frames}}$$
 
 A sender window of **$N = 201\text{ frames}$** keeps the 5 Mbps pipe 100% saturated.
 
-```text
-Time (ms)   Sender Action                                             Receiver Action
-  0.0       Start transmitting Frame 1                                ...
-  0.2       Finish Frame 1, start Frame 2                             ...
-  ...       Continuously transmitting Frames 3 to 200                 ...
- 20.0       Frame 101 on wire                                         Frame 1 arrives, ACK 1 sent
- 40.0       Start transmitting Frame 201                              ...
- 40.2       Finish Frame 201; ACK 1 arrives! Window slides forward -> ZERO IDLE TIME!
-```
+| Time (ms) | Sender | Receiver |
+| :---: | :--- | :--- |
+| 0.0 | Start transmitting Frame 1 | — |
+| 0.2 | Finish Frame 1, start Frame 2 | — |
+| ... | Continuously transmitting Frames 3–200 | — |
+| 20.0 | Frame 101 on the wire | Frame 1 arrives, ACK 1 sent |
+| 40.0 | Start transmitting Frame 201 | — |
+| 40.2 | Finish Frame 201 — ACK 1 arrives! Window slides forward | **Zero idle time** |
 
 ---
 
-### 2. Efficiency with a Halved Window Size ($W = 100$)
+### Efficiency with a Halved Window Size ($W = 100$)
 
 When the actual sender window $W$ is less than the optimal capacity $1 + 2a$:
 $$\eta = \frac{W \cdot T_t}{T_{\text{cycle}}} = \frac{W \cdot T_t}{T_t (1 + 2a)} = \frac{W}{1 + 2a}$$
@@ -70,7 +69,7 @@ $$\eta = \frac{100}{201} \approx 0.4975 \implies \mathbf{49.75\%}$$
 
 ---
 
-### 3. Protocol Comparison: Stop-and-Wait vs GBN vs Selective Repeat
+### Protocol Comparison: Stop-and-Wait vs GBN vs Selective Repeat
 
 | Feature | Stop-and-Wait | Go-Back-N (GBN) | Selective Repeat (SR) |
 | :--- | :--- | :--- | :--- |
@@ -84,7 +83,7 @@ $$\eta = \frac{100}{201} \approx 0.4975 \implies \mathbf{49.75\%}$$
 
 ---
 
-### 4. The Sequence Number Ambiguity Trap
+### The Sequence Number Ambiguity Trap
 
 Why can a Go-Back-N protocol with $k$-bit sequence numbers have a maximum window size of only $2^k - 1$, rather than $2^k$?
 
@@ -98,16 +97,15 @@ Let sequence numbers be 2 bits wide ($k = 2$), providing 4 available numbers: $\
 6. The receiver is waiting for **frame 0** (the new, next-generation data!).
 7. The receiver accepts the old frame 0 as the brand new frame 0, storing corrupted duplicate data without triggering any warning!
 
-```text
-Sender (Ws = 4, k = 2)                            Receiver (Wr = 1)
-  |--- Frame 0, 1, 2, 3 ------------------------->| Receives all 4. Expected bit = 0
-  |                                               |
-  |<-- [ALL ACKs LOST IN TRANSIT] ----------------|
-  |                                               |
-  | (Timeout!)                                    |
-  |--- Frame 0 (Old Data) ----------------------->| Accepts Frame 0 as NEW data!
-                                                    *** SILENT DATA CORRUPTION ***
-```
+<Diagram>
+<Row>
+<Box title="Sender sends 0, 1, 2, 3" accent="#60a5fa"><Field icon="📤" code="Ws = 4, k = 2 bits" variant="neutral" /></Box>
+<Arrow label="all 4 ACKs lost" />
+<Box title="Timeout → resend Frame 0" accent="#f59e0b"><Field icon="⏱️" code="sender thinks: retry old data" variant="neutral" /></Box>
+<Arrow label="receiver already wrapped around" />
+<Box title="Accepted as NEW data!" accent="#fb7185"><Field icon="💥" code="silent data corruption" variant="neutral" /></Box>
+</Row>
+</Diagram>
 
 #### The Mathematical Fix ($W_s \le 2^k - 1$):
 With $W_s = 3$ ($2^2 - 1$):
@@ -120,7 +118,7 @@ $$W_s + W_r \le 2^k \implies \text{If } W_s = W_r, \text{ then } W_s \le 2^{k-1}
 
 ---
 
-### 5. Link Efficiency under Packet Loss ($p$)
+### Link Efficiency under Packet Loss ($p$)
 
 On clean links, GBN and SR achieve identical maximum throughput ($\eta = 1$). Over noisy or lossy links with frame drop probability $p$:
 
@@ -139,7 +137,7 @@ Standard TCP historically behaved like Go-Back-N. RFC 2018 introduced **Selectiv
 
 ---
 
-### 6. Runnable Python Implementation
+### Python: Runnable Implementation
 
 This script calculates optimal window sizing, models efficiency degradation under halved windows, and simulates Go-Back-N vs Selective Repeat behavior under packet loss.
 
@@ -217,7 +215,7 @@ if __name__ == "__main__":
 
 ---
 
-### 7. Concise Staff-Level Interview Answer
+### Say this in the interview
 
 > "To find the window size for 100% link utilization, we first compute transmission delay $T_t = \frac{1000\text{ bits}}{5\text{ Mbps}} = 0.2\text{ ms}$ and the dimensionless ratio $a = \frac{T_p}{T_t} = \frac{20\text{ ms}}{0.2\text{ ms}} = 100$.
 >

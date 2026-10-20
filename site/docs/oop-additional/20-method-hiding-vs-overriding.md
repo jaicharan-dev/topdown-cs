@@ -1,131 +1,112 @@
 ---
 id: 20-method-hiding-vs-overriding
-title: "Method Hiding vs. Method Overriding: Static vs. Instance Resolution"
-description: "Learn why static methods are hidden rather than overridden, how bytecode disassembly confirms this, and the illegal collision rules."
+title: "Method Hiding vs. Method Overriding"
+description: "Why static methods are hidden rather than overridden, what the bytecode actually does, and what happens if you mix static and instance methods across a hierarchy."
 sidebar_position: 2
 sidebar_class_name: sidebar-medium
 ---
+
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is the exact mechanical difference between method overriding and method hiding? Why can't a static method be overridden, what does the JVM bytecode reveal, and what happens if a child class tries to redefine an instance method as static?"
 
-### The Quick Answer
+### The analogy
 
-Method overriding applies to instance methods and provides runtime polymorphism via dynamic dispatch (`invokevirtual`), resolving the call based on the actual object on the heap using the Virtual Method Table (v-table). Method hiding applies to static methods and provides compile-time binding (`invokestatic`), resolving the call strictly based on the declared reference type. Attempting to override a static method with an instance method, or hide an instance method with a static method, causes an immediate compile-time error.
+- **Overriding — the local branch's policy.** Headquarters has a default refund policy. The Tokyo branch overrides it with its own version. Because you're physically standing in the Tokyo store, Tokyo's policy is what runs.
+- **Hiding — a billboard next to a billboard.** HQ puts up a billboard on the highway. The local branch puts up its own billboard right next to it — it doesn't replace HQ's, it just stands alongside it. If you're looking specifically toward HQ's sign, that's the one you see, no matter what the branch put up.
 
----
+Both look the same in code — a subclass redefines a method with the same name and signature as its parent's. But under the hood, they resolve completely differently.
 
-### The ELI5 Analogy
-
-* **Method Overriding (The Local Branch Policy):** Corporate headquarters (`Parent`) defines a default return-and-refund policy. When you visit the regional Tokyo branch (`Child`), that specific branch has overridden the policy with its own customized regional process. Because you are physically standing inside the Tokyo store (the actual heap object), the Tokyo branch policy executes.
-* **Method Hiding (The Highway Billboard):** Corporate headquarters installs a huge advertising billboard along the turnpike (`Parent.staticMethod()`). The local branch erects its own billboard right next to it (`Child.staticMethod()`). The local billboard does not tear down corporate's billboard; it merely stands alongside it. If an observer looks through binoculars calibrated strictly toward corporate headquarters (`Parent ref = new Child()`), they see corporate's billboard, not the branch's.
-
----
-
-### Conceptual Distinction
-
-Method overriding and method hiding both involve a subclass redefining a method declared in its superclass with the exact same name and parameter list. However, their execution models are polar opposites:
-
-* **Method Overriding (Instance Methods):** Delivers **runtime polymorphism**. The method executed depends on the **actual concrete object** allocated in heap memory, resolved dynamically via the Virtual Method Table (v-table).
-* **Method Hiding (Static Methods):** Delivers **compile-time binding**. The method executed depends entirely on the **declared reference variable type**. The subclass method merely *shadows* or *hides* the superclass method; it does not replace it in the class hierarchy.
+<Diagram>
+<Row>
+<Box title="Overriding (instance methods)" accent="#34d399">
+<Field icon="🔄" code="resolved at runtime" hint="depends on the actual object — real polymorphism" variant="neutral" />
+</Box>
+<Box title="Hiding (static methods)" accent="#a1a1aa">
+<Field icon="🔒" code="resolved at compile time" hint="depends on the declared reference type — no polymorphism" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
 ---
 
-### Comparison: Overriding vs. Hiding
+### Comparison
 
-| Feature | Method Overriding | Method Hiding |
+| | Method Overriding | Method Hiding |
 | :--- | :--- | :--- |
-| **Applicable Methods** | **Instance methods** (non-static, non-private, non-final). | **Static methods** (`public` or `protected`). |
-| **Binding Time** | **Runtime** (Dynamic Dispatch via V-Table). | **Compile-time** (Static Binding). |
-| **Resolution Target** | Actual heap object instance. | Declared reference variable type. |
-| **Bytecode Instruction** | `invokevirtual` / `invokeinterface`. | `invokestatic`. |
-| **`@Override` Annotation** | **Valid** (Mandatory best practice). | **Compile Error** (`Method does not override`). |
-| **Polymorphism** | True runtime polymorphism. | No polymorphism (pure shadowing). |
+| **Applies to** | Instance methods (non-static, non-private, non-final) | Static methods |
+| **Resolved when** | Runtime, via the v-table | Compile time |
+| **Decided by** | The actual heap object | The declared reference type |
+| **Bytecode** | `invokevirtual` / `invokeinterface` | `invokestatic` |
+| **`@Override`** | Valid, and you should use it | Compile error — "does not override" |
+| **Real polymorphism?** | Yes | No — it's just shadowing |
 
 ---
 
-### Under the Hood: Bytecode Disassembly Proof
-
-To see why method hiding cannot be polymorphic, examine how `javac` compiles both calls:
+### Proof: what the bytecode actually does
 
 ```java
 Parent ref = new Child();
-ref.staticMethod();   // Calls Parent.staticMethod()
-ref.instanceMethod(); // Calls Child.instanceMethod()
+ref.staticMethod();   // calls Parent.staticMethod()
+ref.instanceMethod(); // calls Child.instanceMethod()
 ```
 
-When inspected with `javap -c`, the generated JVM bytecode reveals the truth:
+Disassemble this with `javap -c` and you'll see:
 
 ```bytecode
-// 1. Static Method Invocation:
+// 1. Static method call:
 invokestatic  #4 // Method Parent.staticMethod:()V
 
-// 2. Instance Method Invocation:
-aload_1          // Pushes 'ref' (Child object) onto the operand stack
+// 2. Instance method call:
+aload_1          // pushes 'ref' (the Child object) onto the stack
 invokevirtual #5 // Method Parent.instanceMethod:()V
 ```
 
-#### The Architectural Insight:
-* In `invokestatic`, the reference variable `ref` is **completely discarded by the compiler**! The compiler substitutes the class literal `Parent.staticMethod()` directly into the constant pool. Invoking a static method on an instance variable is merely syntactic sugar that generates an IDE compiler warning.
-* In `invokevirtual`, the compiler pushes the object reference `ref` onto the stack so the JVM can inspect its runtime class header and v-table.
+For the static call, the compiler throws away the reference entirely and bakes in `Parent.staticMethod()` directly — calling a static method "on an object" is just syntax sugar. For the instance call, the compiler keeps the actual object reference around so the JVM can look up its real class at runtime.
 
 ---
 
-### The 3 Illegal Collision Rules
+### Three ways people try to mix static and instance, and why they fail
 
-Interviewers frequently probe edge cases where developers attempt to mix static and instance declarations:
-
-1. **Attempting to Override Static with Instance (Illegal):**
+1. **Instance method trying to override a static one:**
    ```java
    class Parent { static void run() {} }
    class Child extends Parent { void run() {} } // COMPILE ERROR
    ```
-   *Compiler Error:* `"This instance method cannot override the static method from Parent."`
-2. **Attempting to Hide Instance with Static (Illegal):**
+2. **Static method trying to hide an instance one:**
    ```java
    class Parent { void run() {} }
    class Child extends Parent { static void run() {} } // COMPILE ERROR
    ```
-   *Compiler Error:* `"This static method cannot hide the instance method from Parent."`
-3. **Contract Inheritance for Hidden Methods:**
-   Even though static methods are hidden, the subclass static method **must still obey visibility and exception contracts**:
-   * Cannot assign weaker access privileges (e.g., parent static method is `public`, child cannot declare it `protected` or `private`).
-   * Cannot declare broader checked exceptions than the parent static method.
+3. **A hidden static method still has to honor the contract** — the child's version can't be less visible than the parent's, and can't throw broader checked exceptions.
 
 ---
 
-### Variable Hiding (Shadowing)
+### Fields work the same way as static methods
 
-Just like static methods, **instance fields and static fields in Java are never overridden**:
+Fields are never overridden either — only hidden:
 
 ```java
 class Super { int score = 100; }
 class Sub extends Super { int score = 200; }
 
 Super ref = new Sub();
-System.out.println(ref.score); // Outputs 100!
+System.out.println(ref.score); // prints 100!
 ```
 
-Every subclass instance physically allocates space for **both** `Super.score` and `Sub.score` in heap memory. Because field lookup is statically resolved, `ref.score` accesses `Super.score`. To access `Sub.score`, the reference must be explicitly cast to `Sub`.
+Both `score` fields exist in memory at once. Since field access is resolved statically, `ref.score` reads `Super.score` because that's the declared type. To get `Sub.score`, you'd need to cast.
 
 ---
 
-### The Interview Answer (60-90 seconds)
+### Say this in the interview
 
-> "The core mechanical difference between method overriding and method hiding lies in how the JVM resolves the call.
->
-> Method overriding applies to non-static instance methods. It is resolved dynamically at runtime using the `invokevirtual` bytecode instruction, which looks up the actual object's Virtual Method Table on the heap. This enables true runtime polymorphism.
->
-> Method hiding applies to static methods. Because static methods belong to the class blueprint rather than an instance, they are resolved at compile time via `invokestatic`. When you call a static method through an object reference, the compiler strips the reference entirely and binds the call to the declared reference type.
->
-> Furthermore, the Java compiler strictly forbids mixing the two: you cannot override a static method with an instance method, nor can you hide an instance method with a static method. Finally, instance variables behave exactly like static methods: they cannot be overridden, only hidden."
+*"Overriding applies to instance methods and is resolved at runtime via the v-table — `invokevirtual`. Hiding applies to static methods and is resolved at compile time via `invokestatic`, because static methods belong to the class, not an instance. The compiler forbids mixing the two — you can't override a static method with an instance one, or vice versa. And fields behave exactly like static methods: they're always hidden, never overridden."*
 
 ---
 
-### Code Demonstration: Method Hiding vs. Overriding in Action
-
-The following Java application demonstrates how static method hiding, instance method overriding, and variable shadowing behave under polymorphic references.
+### Code: seeing it all in one place
 
 ```java
 public class HidingVsOverridingDemo {
@@ -133,26 +114,26 @@ public class HidingVsOverridingDemo {
     static class Vehicle {
         public String type = "Generic Vehicle";
 
-        // Static Method: Subject to Hiding
+        // Static method: subject to hiding
         public static void announceClass() {
             System.out.println("[Static] Vehicle: I belong to the Vehicle class.");
         }
 
-        // Instance Method: Subject to Overriding
+        // Instance method: subject to overriding
         public void startEngine() {
             System.out.println("[Instance] Vehicle: Generic engine started.");
         }
     }
 
     static class SportsCar extends Vehicle {
-        public String type = "Sports Car"; // Field Hiding
+        public String type = "Sports Car"; // field hiding
 
-        // Hiding the Parent's Static Method
+        // Hiding the parent's static method
         public static void announceClass() {
             System.out.println("[Static] SportsCar: I belong to the SportsCar class.");
         }
 
-        // Overriding the Parent's Instance Method
+        // Overriding the parent's instance method
         @Override
         public void startEngine() {
             System.out.println("[Instance] SportsCar: Twin-turbo V8 roaring to life!");
@@ -160,24 +141,23 @@ public class HidingVsOverridingDemo {
     }
 
     public static void main(String[] args) {
-        // Polymorphic reference: Reference = Vehicle, Object = SportsCar
+        // Reference = Vehicle, actual object = SportsCar
         Vehicle carRef = new SportsCar();
 
-        System.out.println("--- 1. Variable Access (Field Hiding) ---");
-        // Output: "Generic Vehicle" (Statically bound to declared type 'Vehicle')
+        System.out.println("--- 1. Field access (hiding) ---");
+        // "Generic Vehicle" — statically bound to the declared type
         System.out.println("carRef.type: " + carRef.type);
 
-        System.out.println("\n--- 2. Static Method Call (Method Hiding) ---");
-        // Output: "[Static] Vehicle..." (Statically bound to 'Vehicle', ignores object)
+        System.out.println("\n--- 2. Static method call (hiding) ---");
+        // "[Static] Vehicle..." — statically bound, ignores the real object
         carRef.announceClass();
 
-        System.out.println("\n--- 3. Direct Static Call (Best Practice) ---");
-        // Static methods should always be called directly on the class
+        System.out.println("\n--- 3. Direct static calls (best practice) ---");
         Vehicle.announceClass();
         SportsCar.announceClass();
 
-        System.out.println("\n--- 4. Instance Method Call (Method Overriding) ---");
-        // Output: "[Instance] SportsCar..." (Dynamically dispatched via V-Table)
+        System.out.println("\n--- 4. Instance method call (overriding) ---");
+        // "[Instance] SportsCar..." — dynamically dispatched via the v-table
         carRef.startEngine();
     }
 }

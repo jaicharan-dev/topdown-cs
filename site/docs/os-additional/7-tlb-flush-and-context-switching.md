@@ -1,145 +1,120 @@
 ---
 id: 7-tlb-flush-and-context-switching
 title: "Context Switching & TLB Invalidation: ASID & Performance Costs"
-description: "Understand why switching process address spaces invalidates virtual-to-physical mappings in the TLB and how Address Space Identifiers (ASID) optimize performance."
+description: "Why switching between processes invalidates the TLB's virtual-to-physical mappings, and how ASID/PCID tagging avoids the flush."
 sidebar_position: 7
 sidebar_class_name: sidebar-hard
 ---
+
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
 > **Interview Question:** "Why does a context switch between processes typically require a TLB flush? What performance impact does this have, and how do modern CPUs mitigate it using PCID/ASID?"
 
-The **Translation Lookaside Buffer (TLB)** is an on-chip, content-addressable memory (CAM) cache that stores recent translations from **Virtual Page Numbers (VPN)** to **Physical Frame Numbers (PFN)**.
-
-Because every process possesses its own private, isolated virtual address space, context switching between two processes requires invalidating or partitioning TLB entries to prevent cross-process memory corruption and security vulnerabilities.
+The TLB caches recent virtual-address-to-physical-address translations right on the CPU. Since every process has its own separate address space, switching to a different process can make those cached translations wrong — so by default, the CPU throws them all away.
 
 ---
 
-### The ELI5 Analogy: The Receptionist's Notepad
+### The analogy: the receptionist's notepad
 
-Imagine an office building (the CPU) leased by two different companies:
-- **Company A** works the morning shift.
-- **Company B** works the night shift.
+An office building is leased by two companies on different shifts. The receptionist keeps a sticky notepad (the TLB) of recent lookups:
 
-The front-desk receptionist has a quick-reference sticky notepad (the TLB):
-- During the morning shift, if a visitor asks for *"Office 101"* (Virtual Address), the receptionist glances at the notepad and directs them to **Alice's desk on Floor 4** (Physical Address).
-- At 6:00 PM, Company A leaves, and Company B takes over the building (Context Switch).
-- In Company B's floor plan, *"Office 101"* belongs to **Bob on Floor 2**.
-- **The TLB Flush:** If the receptionist does not throw away the morning notepad, a visitor asking for Bob in Office 101 will be mistakenly sent to Alice's private filing cabinets on Floor 4! To prevent this catastrophic breach, the receptionist must **shred the notepad** upon every shift change.
+- During Company A's shift, "Office 101" means Alice, on Floor 4. The receptionist writes that down.
+- At 6pm, Company A leaves and Company B moves in (a context switch). Now "Office 101" means Bob, on Floor 2.
+- If the receptionist doesn't throw out the old notepad, the next visitor asking for Bob in Office 101 gets sent to Alice's floor instead — straight into another company's private files. So the receptionist has to shred the notepad every time the shift changes.
 
 ---
 
-### The Fundamental Problem: Overlapping Virtual Addresses
+### Why this happens: the same virtual address, two different meanings
 
-In a virtual memory architecture, every process runs with the illusion that it owns the entire address space (e.g., $0\text{x}00000000$ to $0\text{x}7\text{FFFFFFFFFFF}$ on 64-bit systems):
+Every process gets the illusion that it owns the whole address space. So two completely unrelated processes can both use the exact same virtual address, pointing at completely different physical RAM:
 
 ```
-Process A Virtual Address: 0x00400000 ──(Maps to)──> Physical RAM Frame 0x1A2000
-Process B Virtual Address: 0x00400000 ──(Maps to)──> Physical RAM Frame 0x9B8000
+Process A virtual address 0x00400000  -->  physical frame 0x1A2000
+Process B virtual address 0x00400000  -->  physical frame 0x9B8000
 ```
 
-A standard, untagged TLB entry caches only:
-```
-[ Virtual Page Number (VPN) ] ───> [ Physical Frame Number (PFN) | Permissions ]
-```
+A plain TLB entry only stores `virtual page -> physical frame` — it has no idea which process that mapping belongs to. So if Process A is swapped out for Process B and the TLB isn't flushed:
 
-If Process A is preempted and the OS dispatches Process B:
-1. The kernel updates the CPU's Page Table Base Register (`CR3` on x86-64) to point to Process B's page directory.
-2. If the TLB is **not flushed**, Process B issues a memory read for its virtual address `0x00400000`.
-3. The TLB reports a **false hit** and returns physical frame `0x1A2000`.
-4. **Catastrophe:** Process B reads or overwrites Process A's private heap or code segment, destroying memory isolation.
+1. The kernel points the CPU's page-table-base register (`CR3` on x86-64) at Process B's page tables.
+2. Process B reads virtual address `0x00400000`.
+3. The stale TLB entry reports a hit and returns Process A's physical frame.
+4. Process B just read (or wrote) Process A's private memory. That's a correctness and security disaster.
 
 ---
 
-### The Classical Mechanism: Hardware TLB Invalidation
+### The classic fix: flush on every switch
 
-Historically on x86 architectures, the operating system executes:
+Historically, on x86, reloading `CR3` automatically invalidates every non-global TLB entry on that core:
+
 ```nasm
-mov cr3, rax   ; Load CR3 with the physical address of the new process page table
+mov cr3, rax   ; loading a new page table physical address...
+               ; ...automatically wipes the TLB in hardware
 ```
-In hardware microcode, writing any value to the `CR3` control register **automatically invalidates all non-global TLB entries** on that CPU core.
 
-#### The Global Page Exception (`PGE`)
-- Modern OS kernels map kernel space (e.g., higher-half addresses `0xFFFF800000000000+`) identically across all running processes.
-- Page table entries for kernel pages have the **Global Bit (`G`, bit 8)** set.
-- When `CR3` is reloaded, the CPU hardware preserves all entries marked Global, ensuring that kernel code and system call handlers remain cached in the TLB across process switches.
+One exception: kernel pages are mapped identically into every process, and are marked with the **Global bit**. Those survive a `CR3` reload, so the kernel's own code stays cached across switches.
+
+<Diagram>
+<Row>
+<Box title="TLB hit" accent="#34d399"><Field icon="⚡" code="0.5 - 1 ns" hint="cached translation, single lookup" variant="neutral" /></Box>
+<Box title="TLB miss (4-level walk)" accent="#fb7185"><Field icon="🐢" code="150 - 250 ns" hint="four sequential RAM accesses" variant="neutral" /></Box>
+</Row>
+</Diagram>
+
+### Why this makes process switches expensive
+
+Right after a switch, the new process starts with a cold TLB — almost every memory access misses, and each miss means walking the 4-level page table (PML4 → PDPT → PD → PT) in RAM:
+
+$$\text{EMAT} = \text{HitRate} \times T_{\text{TLB}} + (1 - \text{HitRate}) \times (T_{\text{TLB}} + 4 \times T_{\text{DRAM}})$$
+
+Hundreds of CPU cycles get wasted re-warming the cache before the process is running at full speed again.
+
+This is also why **thread** switches stay cheap: threads in the same process share one page table, so `CR3` never gets reloaded, and the TLB stays warm the whole time.
 
 ---
 
-### The Performance Cost: Cold Cache & TLB Miss Storms
+### The modern fix: tag entries instead of flushing them
 
-A TLB flush is the primary reason process context switching is computationally expensive:
-
-#### Effective Memory Access Time (EMAT)
-To resolve a virtual address on a 64-bit architecture without a TLB hit, the CPU hardware Memory Management Unit (MMU) must perform a **4-Level Page Table Walk** (PML4 $\to$ PDPT $\to$ Page Directory $\to$ Page Table):
-
-$$\text{EMAT} = \text{Hit Rate} \times T_{\text{TLB}} + (1 - \text{Hit Rate}) \times (T_{\text{TLB}} + 4 \times T_{\text{DRAM}})$$
+Rather than wipe the TLB on every switch, modern CPUs tag each entry with an ID for the address space it belongs to, and only match entries tagged with the currently active ID:
 
 ```
-TLB Hit:             0.5 - 1.0 ns  (Single clock cycle CAM lookup)
-TLB Miss (4 Walks):  150 - 250 ns  (Four sequential memory access penalties)
+[ Address Space Tag | Virtual Page Number ] ---> [ Physical Frame Number ]
 ```
 
-Immediately following a context switch, the new process starts with a **Cold TLB**. Almost every memory dereference triggers a TLB miss, stalling CPU execution pipelines for hundreds of cycles until the working set is re-cached.
+<Diagram>
+<Row>
+<Box title="Tagged entry: PCID 1" accent="#60a5fa"><Field icon="🏷️" code="VPN 0x4000 -> PFN 0x1A2000" hint="Process A" variant="neutral" /></Box>
+<Box title="Tagged entry: PCID 2" accent="#f59e0b"><Field icon="🏷️" code="VPN 0x4000 -> PFN 0x9B8000" hint="Process B" variant="neutral" /></Box>
+</Row>
+</Diagram>
 
----
+Both entries can sit in the TLB at the same time without colliding, because the CPU only matches the one tagged with the process currently running.
 
-### Why Threads Do NOT Invalidate the TLB
+#### x86: Process Context Identifiers (PCID)
 
-This explains why thread context switches are an order of magnitude faster than process context switches:
-- All threads within a process **share the identical virtual address space** and page table.
-- When the kernel switches between two threads of the same process, `CR3` **is never reloaded**.
-- The TLB remains warm, and thread 2 immediately benefits from the translations cached by thread 1.
-
----
-
-### The Modern Hardware Solution: Tagged TLBs (PCID & ASID)
-
-Modern architectures eliminate the need to flush the TLB on every context switch by tagging each entry with an address space identifier:
-
-```
-Tagged TLB Entry Format:
-[ Address Space Tag | Virtual Page Number (VPN) ] ───> [ Physical Frame Number (PFN) ]
-```
-
-```mermaid
-flowchart LR
-    subgraph TaggedTLB [Tagged TLB Cache]
-        E1["Tag: PCID 1 | VPN: 0x004000 -> PFN: 0x1A2000 (Process A)"]
-        E2["Tag: PCID 2 | VPN: 0x004000 -> PFN: 0x9B8000 (Process B)"]
-    end
-
-    CPU["CPU Core running Process B (Current PCID = 2)"] -->|Requests VPN 0x004000| TaggedTLB
-    TaggedTLB -->|Matches PCID 2 only| Ret["Resolves to PFN 0x9B8000 (Correct!)"]
-```
-
-#### 1. x86 Process Context Identifiers (PCID)
-- Introduced in Intel Westmere/Sandy Bridge and enabled by Linux:
-- Bits `0`–`11` of `CR3` store a 12-bit **PCID** (supporting up to 4,096 distinct address spaces simultaneously).
-- **The `NOFLUSH` Bit (Bit 63):** When reloading `CR3`, setting bit 63 instructs the CPU hardware:
+- Bits 0–11 of `CR3` hold a 12-bit PCID — up to 4,096 distinct address spaces.
+- Setting bit 63 of the new `CR3` value (the `NOFLUSH` bit) tells the CPU to switch address spaces *without* wiping the TLB:
   ```nasm
   mov rax, [new_cr3_value]
-  bts rax, 63             ; Set Bit 63: Preserve existing TLB entries!
-  mov cr3, rax            ; Switch address space WITHOUT invalidating TLB entries
+  bts rax, 63             ; keep existing TLB entries
+  mov cr3, rax            ; switch without flushing
   ```
-- Entries belonging to Process A remain safely preserved in the TLB while Process B executes. When the OS switches back to Process A, its TLB translations are still cached and ready!
+- Process A's entries just sit there while B runs. Switch back to A, and its translations are still cached.
 
-#### 2. ARM Address Space Identifiers (ASID)
-- The ARM architecture provides native 8-bit or 16-bit **ASID** registers inside `TTBR0_EL1`.
-- Translations for multiple distinct processes coexist simultaneously in the Translation Lookaside Buffer without cross-talk or eviction storms.
+#### ARM: Address Space Identifiers (ASID)
 
----
-
-### Summary
-
-"A context switch between processes requires a TLB flush because each process uses independent virtual-to-physical address mappings; failing to invalidate stale entries would allow one process to corrupt or inspect another process's physical memory. This flush imposes a high performance penalty by forcing expensive 4-level page table walks during cold-cache startup. Modern CPUs mitigate this through tagged TLBs (x86 PCID and ARM ASID), which tag cache lines with process IDs, enabling multiple address spaces to coexist in the TLB without flushes."
+ARM's `TTBR0_EL1` register carries an 8- or 16-bit ASID, letting multiple processes' translations coexist in the TLB the same way.
 
 ---
 
-### Python Verification: Tagged TLB vs. Flushed TLB Translation Simulator
+### Say this in the interview
 
-The following executable Python script simulates virtual-to-physical address translation across two processes, demonstrating the false-hit anomaly of untagged TLBs without flushes, the cold-miss penalty of full flushes, and the efficiency of PCID/ASID tagging:
+*"A context switch between processes normally flushes the TLB because the mappings are only valid for one address space — without a flush, a process could read another process's stale, incorrectly-cached physical memory. That flush is expensive: the new process starts with a cold TLB and pays for 4-level page table walks on nearly every access. Modern CPUs avoid this with tagged TLBs — x86 PCID and ARM ASID — which tag entries with a process ID so multiple address spaces' translations can live in the TLB at once, with no flush needed. Thread switches never pay this cost at all, since threads share one page table."*
+
+---
+
+### Code: simulating the stale-hit bug, the flush cost, and tagging
 
 ```python
 """

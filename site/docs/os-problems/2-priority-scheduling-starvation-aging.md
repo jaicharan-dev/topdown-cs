@@ -6,6 +6,9 @@ sidebar_position: 2
 sidebar_class_name: sidebar-medium
 ---
 
+import { GanttChart } from '@site/src/components/GanttChart';
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Given five processes with arrival times, burst times, and priority ranks, calculate execution schedules, Gantt charts, and average waiting times for both Non-Preemptive and Preemptive Priority Scheduling. Identify the starving process, and demonstrate numerically how Aging prevents indefinite postponement."
@@ -43,10 +46,14 @@ In Non-Preemptive scheduling, once a process acquires the CPU, it runs to comple
 - **t = 14 ms:** P3 finishes. Only P5 remains. Runs t = 14 -> 20 ms.
 
 #### Gantt Chart
-```
-[  P1 (4ms)  ][ P2 (3ms) ][ P4 (2ms) ][   P3 (5ms)   ][     P5 (6ms)     ]
-0            4           7           9               14                 20
-```
+
+<GanttChart segments={[
+  { label: 'P1', start: 0, end: 4, accent: '#60a5fa' },
+  { label: 'P2', start: 4, end: 7, accent: '#34d399' },
+  { label: 'P4', start: 7, end: 9, accent: '#ec4899' },
+  { label: 'P3', start: 9, end: 14, accent: '#f59e0b' },
+  { label: 'P5', start: 14, end: 20, accent: '#fb7185' },
+]} />
 
 #### Step-by-Step Calculation Table
 
@@ -84,10 +91,15 @@ Whenever a new process arrives whose priority rank is strictly higher (lower num
 - **t = 14 ms:** P1 completes. Only P5 remains. Runs t = 14 -> 20 ms.
 
 #### Gantt Chart
-```
-[P1][ P2 (3ms) ][ P4 (2ms) ][   P3 (5ms)   ][  P1 (3ms)  ][     P5 (6ms)     ]
-0  1           4           6              11            14                 20
-```
+
+<GanttChart segments={[
+  { label: 'P1', start: 0, end: 1, accent: '#60a5fa' },
+  { label: 'P2', start: 1, end: 4, accent: '#34d399' },
+  { label: 'P4', start: 4, end: 6, accent: '#ec4899' },
+  { label: 'P3', start: 6, end: 11, accent: '#f59e0b' },
+  { label: 'P1', start: 11, end: 14, accent: '#60a5fa' },
+  { label: 'P5', start: 14, end: 20, accent: '#fb7185' },
+]} />
 
 #### Step-by-Step Calculation Table
 
@@ -122,33 +134,35 @@ In both Non-Preemptive and Preemptive scheduling, **P5 (Priority 4)** is the low
 
 ---
 
-### The Mathematical Fix: Aging
+### The fix: Aging
 
-**Aging** is an operating system technique that gradually increases the priority of processes that wait in the system for extended periods.
+The fix is simple: the longer a process waits, the higher its priority climbs — until eventually it's the highest-priority process in the system and has to run.
 
-#### Formal Aging Formula:
+Say the kernel bumps a process's priority by 1 level for every 3ms it spends waiting. Here's what happens to P5 (arrives at t=5ms, starts at priority 4 — the lowest):
+
+<Diagram>
+<Row>
+<Box title="t = 5ms" accent="#fb7185"><Field icon="⏳" code="priority 4" hint="just arrived, 0ms waited" variant="neutral" /></Box>
+<Arrow label="waits 3ms" />
+<Box title="t = 8ms" accent="#f59e0b"><Field icon="⬆️" code="priority 3" variant="neutral" /></Box>
+<Arrow label="waits 3ms" />
+<Box title="t = 11ms" accent="#34d399"><Field icon="⬆️" code="priority 2" variant="neutral" /></Box>
+<Arrow label="waits 3ms" />
+<Box title="t = 14ms" accent="#60a5fa"><Field icon="🏆" code="priority 1" hint="now the highest priority in the system" variant="neutral" /></Box>
+</Row>
+</Diagram>
+
+By t=14ms, P5 can compete on equal footing with any freshly-arrived high-priority task — its wait time is now bounded instead of indefinite. The formal version of the same rule:
+
 $$\text{Priority}_{\text{effective}}(t) = \text{Priority}_{\text{initial}} - \left\lfloor \frac{t - t_{\text{arrival}}}{k} \right\rfloor$$
 
-*(Where priority rank increases as the numeric value decreases; $k$ is the aging rate constant).*
-
-#### Numerical Demonstration (k = 3 ms):
-Suppose the kernel increments priority by 1 level for every 3 ms a process spends waiting in the ready queue:
-
-```
-Process P5 (Arrival = 5 ms, Initial Priority = 4):
-├── At t = 5 ms:  Wait Time = 0 ms  -> Priority = 4
-├── At t = 8 ms:  Wait Time = 3 ms  -> Priority boosts to 3
-├── At t = 11 ms: Wait Time = 6 ms  -> Priority boosts to 2
-└── At t = 14 ms: Wait Time = 9 ms  -> Priority boosts to 1 (HIGHEST PRIORITY!)
-```
-
-At t = 14 ms, P5's effective priority elevates to 1, allowing it to compete on equal terms with freshly arriving high-priority tasks and **guaranteeing bounded waiting time**.
+where `k` is how many ms of waiting it takes to earn one priority level.
 
 ---
 
-### Summary
+### Say this in the interview
 
-Non-preemptive priority scheduling dispatches the highest-priority runnable process to completion upon CPU vacancy. Preemptive priority scheduling forcibly preempts running tasks the exact moment a higher-priority task arrives. Both variants are vulnerable to starvation for low-priority processes under sustained high-priority load. Operating systems resolve starvation through Aging, periodically incrementing a waiting task's priority over time to guarantee bounded latency and prevent indefinite postponement.
+*"Non-preemptive priority scheduling runs the highest-priority ready process to completion. Preemptive priority scheduling can interrupt a running process the instant a higher-priority one arrives. Both starve low-priority processes under sustained load — the fix is aging: gradually raise a waiting process's priority over time so its wait time stays bounded instead of indefinite."*
 
 ---
 

@@ -1,120 +1,110 @@
 ---
 id: 26-recursive-cte-use-cases
-title: "Recursive CTEs: Architecture, Tree Traversals & Roll-Up Budgets"
-description: "Master recursive SQL queries using WITH RECURSIVE, tree traversals, cycle detection, BFS vs. DFS ordering, and cumulative budget roll-ups."
+title: "Recursive CTEs: Tree Traversals & Roll-Up Budgets"
+description: "How WITH RECURSIVE actually executes, tree traversals, cycle detection, BFS vs. DFS ordering, and cumulative budget roll-ups."
 sidebar_position: 12
 sidebar_class_name: sidebar-hard
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
-> **Interview Question:** "What is a recursive CTE in SQL, and how does it execute iteratively under the hood? Write a query to traverse an organizational tree, explain how to compute a cumulative roll-up budget across an entire subordinate hierarchy, and how to guard against infinite loop cycles."
+> **Interview Question:** "What is a recursive CTE in SQL, and how does it execute under the hood? Write a query to traverse an organizational tree, explain how to compute a cumulative roll-up budget across a whole subordinate hierarchy, and how do you guard against infinite loops?"
+
+A recursive CTE is just a loop, written in SQL: start with a base case, then repeatedly feed the last batch of results back into the same query, until nothing new comes out. It's built for data where you don't know the depth up front:
+
+- **Org charts** — CEO down to individual contributors, any number of levels.
+- **Bill of materials** — Car → Engine → Piston → Ring.
+- **Category trees** — Electronics → Computers → Laptops.
+- **Graph paths** — friends-of-friends, flight layovers.
 
 ---
 
-### What is a Recursive CTE?
+### The shape every recursive CTE has
 
-A **Recursive Common Table Expression (CTE)** is an ANSI SQL construct that repeatedly evaluates an iterative loop, referencing its own intermediate output to query **hierarchical, tree-structured, or graph-structured data** of unknown depth:
-
-- **Organizational Reporting Structures:** Navigating from the CEO down to individual contributors.
-- **Bill of Materials (BOM):** Multi-tiered manufacturing part assemblies (Car $\to$ Engine $\to$ Piston $\to$ Ring).
-- **Taxonomies & Category Trees:** E-Commerce navigation (Electronics $\to$ Computers $\to$ Laptops).
-- **Graph Pathfinding:** Social networks (friends-of-friends) and flight layovers.
-
----
-
-### The 3 Structural Pillars of `WITH RECURSIVE`
-
-Every recursive CTE consists of three mandatory syntactic components combined with `UNION ALL`:
+Three pieces, joined with `UNION ALL`:
 
 ```sql
 WITH RECURSIVE HierarchyCTE AS (
-    -- 1. ANCHOR MEMBER: The base case (executes ONCE to seed the initial rows)
+    -- 1. ANCHOR: the starting point, runs once
     SELECT id, name, manager_id, 1 AS level, CAST(name AS VARCHAR(255)) AS path
     FROM Employees
-    WHERE manager_id IS NULL -- Starts at the CEO
+    WHERE manager_id IS NULL -- start at the CEO
 
     UNION ALL
 
-    -- 2. RECURSIVE MEMBER: References HierarchyCTE (iterates over newly generated rows)
+    -- 2. RECURSIVE STEP: feeds off the CTE's own last output
     SELECT e.id, e.name, e.manager_id, h.level + 1, CAST(h.path || ' -> ' || e.name AS VARCHAR(255))
     FROM Employees e
     INNER JOIN HierarchyCTE h ON e.manager_id = h.id
 )
--- 3. TERMINATION: Loop halts automatically when the recursive member yields 0 rows
+-- 3. it stops on its own once the recursive step returns 0 rows
 SELECT * FROM HierarchyCTE ORDER BY level, id;
 ```
 
 ---
 
-### Under the Hood: The Iterative Working Table Engine
+### How it actually runs, step by step
 
-In the database kernel, recursive CTEs do **not** use procedural call stacks; they are implemented via two physical data queues: **The Intermediate Result Table** and **The Working Table**.
+There's no real recursion or call stack happening inside the engine. It's a loop around one "working batch" of rows:
 
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Engine as Database Engine
-    participant Working as Working Table (Queue)
-    participant Result as Accumulated Result
+<Diagram>
+<Row>
+<Box title="1. Anchor" accent="#60a5fa">
+<Field icon="🌱" code="SELECT ... WHERE manager_id IS NULL" hint="runs once, seeds the result" variant="neutral" />
+</Box>
+<Arrow label="feed rows back in" />
+<Box title="2. Recursive step" accent="#34d399">
+<Field icon="🔁" code="JOIN HierarchyCTE" hint="joins against last batch only, repeats" variant="neutral" />
+</Box>
+<Arrow label="0 new rows" />
+<Box title="3. Stop" accent="#fb7185">
+<Field icon="🏁" code="return accumulated rows" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
-    Engine->>Working: 1. Evaluate Anchor Member (CEO: Alice)
-    Working->>Result: Insert Anchor rows
-    loop While Working Table is NOT Empty
-        Engine->>Working: 2. Join base table against Working Table rows
-        alt Recursive step produces rows?
-            Working->>Result: Append newly discovered children
-            Note over Working: Replace Working Table with new children ONLY
-        else Produces 0 rows
-            Note over Engine: 3. Termination condition reached!
-        end
-    end
-    Engine-->>Engine: 4. Return complete Accumulated Result
-```
-
-1. **Step 0 (Anchor Phase):** The engine executes the Anchor Query. The returned rows are written into both the *Accumulated Result* and the *Working Table*.
-2. **Step 1..N (Recursive Iteration):** The engine joins the base table against the *Working Table*. Any newly discovered child rows are appended to the *Accumulated Result* and replace the contents of the *Working Table*.
-3. **Termination:** The moment the recursive join produces an empty result set ($0$ rows), the iteration breaks and the accumulated rows are returned.
+1. **Anchor runs once.** Its rows go both into the final result and into a "working batch."
+2. **Loop:** join the base table against the *current working batch only* (not the whole result so far). Any new rows found get added to the final result, and become the *next* working batch.
+3. **Stop:** the moment a round of the loop produces zero new rows, it's done - there's nothing left to feed back in.
 
 ---
 
-### Traversal Ordering: Breadth-First (BFS) vs. Depth-First (DFS)
+### Ordering the output: top-down vs. branch-by-branch
 
-Depending on reporting requirements, you can format the output hierarchy:
-
-- **Breadth-First Search (BFS):** Displays all level-1 executives, followed by all level-2 directors, followed by managers:
+- **Breadth-first (level by level):** show every VP, then every director, then every manager:
   ```sql
   ORDER BY level ASC, name ASC;
   ```
-- **Depth-First Search (DFS):** Displays an executive immediately followed by their subordinates before moving to peer executives:
+- **Depth-first (branch by branch):** show a manager immediately followed by their whole sub-tree, before moving to the next peer:
   ```sql
-  -- Order by the materialized breadcrumb path string!
+  -- order by the breadcrumb path string built up during recursion
   ORDER BY path ASC;
   ```
 
 ---
 
-### Bar-Raiser Challenge: Cumulative Roll-Up Budget
+### A real use case: rolling up budgets
 
-> **Classic Senior Problem:** *"Calculate the total organizational budget for every manager, defined as their own salary PLUS the combined salaries of all employees reporting directly and indirectly under them."*
+> **Classic follow-up:** *"Find each manager's total org budget - their own salary, plus the combined salaries of everyone under them, at every level."*
 
 ```sql
 WITH RECURSIVE SubordinateTree AS (
-    -- Anchor: Every employee reports to themselves at level 0
+    -- Anchor: everyone "reports to themselves" at level 0
     SELECT id AS manager_id, id AS employee_id, salary
     FROM Employees
 
     UNION ALL
 
-    -- Recursive: Find all indirect subordinates
+    -- Recursive: pull in everyone further down the chain
     SELECT st.manager_id, e.id AS employee_id, e.salary
     FROM SubordinateTree st
     JOIN Employees e ON e.manager_id = st.employee_id
 )
-SELECT 
+SELECT
     mgr.name AS Manager,
     mgr.salary AS BaseSalary,
     SUM(st.salary) AS CumulativeBudget,
@@ -125,17 +115,19 @@ GROUP BY mgr.id, mgr.name, mgr.salary
 ORDER BY CumulativeBudget DESC;
 ```
 
+The trick here: the anchor includes every employee pointing at *themselves*, so when you sum salaries grouped by manager, each manager's own salary is already folded in.
+
 ---
 
-### The Infinite Loop Trap: Graph Cycles & Safeguards
+### Guarding against infinite loops
 
-If real-world data contains a circular reference (e.g., Alice reports to Bob, but Bob mistakenly reports to Alice), a recursive CTE will loop infinitely, exhausting database memory and CPU.
+If the data has a cycle - Alice reports to Bob, but Bob is accidentally set to report to Alice - the loop never produces zero new rows, and it'll keep running until it eats all available memory.
 
-#### Defenses:
-1. **Recursion Depth Limits:**
-   - In SQL Server: `OPTION (MAXRECURSION 100)`.
-2. **Cycle Detection Arrays (PostgreSQL & ANSI SQL):**
-   Track visited node IDs in an array; terminate branches that revisit an ancestor:
+Two ways to defend against this:
+
+1. **Set a recursion depth limit.** In SQL Server: `OPTION (MAXRECURSION 100)`.
+2. **Track visited nodes and stop if you see a repeat** (PostgreSQL and ANSI SQL):
+
 ```sql
 WITH RECURSIVE SafeHierarchy AS (
     SELECT id, name, manager_id, ARRAY[id] AS visited_path
@@ -144,27 +136,19 @@ WITH RECURSIVE SafeHierarchy AS (
     SELECT e.id, e.name, e.manager_id, visited_path || e.id
     FROM Employees e
     JOIN SafeHierarchy s ON e.manager_id = s.id
-    WHERE NOT (e.id = ANY(s.visited_path)) -- HALTS IF CYCLE DETECTED!
+    WHERE NOT (e.id = ANY(s.visited_path)) -- stop if this node was already visited
 )
 ```
 
 ---
 
-### The Interview Answer (60-90 seconds)
+### Say this in the interview
 
-> "A recursive CTE uses the `WITH RECURSIVE` syntax to query hierarchical and tree-structured data of arbitrary depth.
->
-> Under the hood, the database executes an Anchor query once to seed a working table. It then iteratively joins the base table against the working table in a loop, appending new children to the result set and swapping the working table until the join yields zero rows.
->
-> We use recursive CTEs for navigating organizational reporting lines, e-commerce taxonomy trees, and computing multi-level roll-up aggregations like total department payroll.
->
-> In production, circular references in data can trigger infinite loops. To prevent server crashes, engineers must either enforce recursion depth limits or implement cycle detection by tracking an array of visited IDs to ensure no node is visited twice."
+*"A recursive CTE uses `WITH RECURSIVE` to walk hierarchical or graph-shaped data of unknown depth. It isn't true recursion under the hood - the engine runs the anchor query once to seed a working batch, then repeatedly joins the base table against just that batch, adding new rows to the result and replacing the batch, until a round produces zero new rows. I'd use this for org charts, category trees, or cumulative roll-ups like total payroll under a manager. The real risk is a cycle in the data causing an infinite loop - so in production you either cap the recursion depth or track visited node IDs and stop once you see a repeat."*
 
 ---
 
-### Code Demonstration: Hierarchy Traversal & Roll-Up Budget Calculation
-
-The following Python script models an organizational tree in SQLite, demonstrating hierarchical breadcrumb path generation and calculating the cumulative roll-up budget for each manager.
+### Checking this yourself: tree traversal and budget roll-up in SQLite
 
 ```python
 import sqlite3
@@ -225,7 +209,7 @@ def run_recursive_demo():
             FROM SubordinateTree st
             JOIN Employees e ON e.manager_id = st.employee_id
         )
-        SELECT 
+        SELECT
             mgr.name,
             mgr.salary AS base_salary,
             SUM(st.salary) AS total_cumulative_budget,

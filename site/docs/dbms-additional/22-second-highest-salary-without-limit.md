@@ -1,7 +1,7 @@
 ---
 id: 22-second-highest-salary-without-limit
-title: "Second Highest Salary Without LIMIT or OFFSET: Solutions & Complexities"
-description: "Solve the classic SQL problem: find the second highest salary without LIMIT or OFFSET, analyzing MAX(), DENSE_RANK(), and index complexity."
+title: "Second Highest Salary Without LIMIT or OFFSET"
+description: "Solve the classic SQL problem: find the second highest salary without LIMIT or OFFSET, handling ties and empty tables correctly."
 sidebar_position: 8
 sidebar_class_name: sidebar-medium
 ---
@@ -11,46 +11,39 @@ import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
-> **Interview Question:** "Write a SQL query to find the second highest salary from an Employee table without using `LIMIT` or `OFFSET`. How do you handle duplicate ties and empty tables (returning `NULL`), and what are the performance complexities of `MAX()` vs. `DENSE_RANK()` with an index on salary?"
+> **Interview Question:** "Write a SQL query to find the second highest salary from an Employee table without using `LIMIT` or `OFFSET`. How do you handle duplicate ties and empty tables (returning `NULL`), and what are the performance differences between `MAX()` and `DENSE_RANK()` with an index on salary?"
+
+`ORDER BY salary DESC LIMIT 1 OFFSET 1` would solve this in one line - which is exactly why interviewers ban it. They want to see if you can reason about ties, empty tables, and how the database actually finds "second highest" without a shortcut.
 
 ---
 
-### The Interview Challenge
-
-Finding the second highest salary is a canonical SQL interview challenge. While dialects allow `ORDER BY salary DESC LIMIT 1 OFFSET 1`, interviewers deliberately disallow `LIMIT` and `OFFSET` to evaluate:
-1. Handling duplicate salary ties.
-2. Returning `NULL` gracefully if the table contains fewer than two distinct salaries.
-3. Understanding query performance complexities under B-Tree indexing.
-
----
-
-### Solution 1: Nested Subquery with `MAX()` (Standard ANSI SQL)
-
-The most portable and performant ANSI SQL solution uses the `MAX()` aggregate function:
+### Solution 1: `MAX()` with a subquery (the simple, portable answer)
 
 ```sql
 SELECT MAX(salary) AS SecondHighestSalary
 FROM Employee
 WHERE salary < (
-    SELECT MAX(salary) 
+    SELECT MAX(salary)
     FROM Employee
 );
 ```
 
-#### Why This Solution Is Gold in Interviews:
-- **Tolerates Duplicate Ties:** If three employees share the top salary of \$120,000, `SELECT MAX(salary)` returns \$120,000. The outer query evaluates `WHERE salary < 120000`, guaranteeing the true second highest salary is picked.
-- **Graceful `NULL` Return:** If the table has only 1 employee (or 0 employees), the subquery finds the maximum, but the outer query finds zero records matching `salary < MAX`. In SQL, **applying `MAX()` over an empty result set yields `NULL`**, cleanly satisfying specifications without requiring `COALESCE` or `IFNULL`.
+The inner query finds the highest salary. The outer query then finds the highest salary that's *strictly less* than that.
+
+Why this handles the tricky cases well:
+- **Ties at the top:** if three people share the top salary of \$120,000, the inner query still returns \$120,000 just once. The outer query asks for the max below that, so it correctly skips past all three tied rows.
+- **Not enough data:** if the table has only one employee (or none), nothing satisfies `salary < MAX`. Asking for `MAX()` of an empty result in SQL just gives you `NULL` - no `COALESCE` or `IFNULL` needed, it falls out naturally.
 
 ---
 
-### Solution 2: Window Function with `DENSE_RANK()` (Modern SQL)
+### Solution 2: `DENSE_RANK()` (the modern, window-function answer)
 
-In PostgreSQL, MySQL 8.0+, SQL Server, and Oracle, the industry-standard approach uses window ranking functions:
+Works in PostgreSQL, MySQL 8.0+, SQL Server, and Oracle:
 
 ```sql
 WITH RankedSalaries AS (
-    SELECT 
-        salary, 
+    SELECT
+        salary,
         DENSE_RANK() OVER (ORDER BY salary DESC) AS rnk
     FROM Employee
 )
@@ -59,18 +52,19 @@ FROM RankedSalaries
 WHERE rnk = 2;
 ```
 
-#### Why `DENSE_RANK()` and NOT `RANK()` or `ROW_NUMBER()`?
-- If the top salary is tied between two employees:
-  - `ROW_NUMBER()` assigns `1` and `2` arbitrarily to the identical top salaries. Filtering on `rnk = 2` incorrectly returns the *first* highest salary!
-  - `RANK()` assigns `1` to both, skipping to `3` for the next salary (`1, 1, 3`). Filtering on `rnk = 2` returns an empty set!
-  - `DENSE_RANK()` assigns `1` to both, and assigns `2` to the next distinct salary (`1, 1, 2`).
-- Wrapping the final projection in `MAX(salary)` ensures the query returns `NULL` rather than an empty row set if only one distinct salary exists.
+Why `DENSE_RANK()` specifically, and not the other two ranking functions? Picture two employees tied for the top salary:
+
+- `ROW_NUMBER()` would hand out `1` and `2` to those two tied rows arbitrarily - so `WHERE rnk = 2` could return the *highest* salary by accident.
+- `RANK()` gives both of them `1`, then jumps straight to `3` for the next salary (`1, 1, 3`) - so `WHERE rnk = 2` returns nothing.
+- `DENSE_RANK()` gives both of them `1`, and the next *distinct* salary gets `2` (`1, 1, 2`) - exactly what you want.
+
+Wrapping the result in `MAX(salary)` also gives you `NULL` instead of an empty result set when there's only one distinct salary in the table.
 
 ---
 
-### Solution 3: Generalized N-th Highest Salary (Correlated Subquery)
+### Solution 3: generalizing to the Nth highest salary
 
-To find the $N$-th highest salary for any arbitrary $N$ without window functions:
+If you need any arbitrary rank `N`, not just 2, a correlated subquery works without window functions:
 
 ```sql
 SELECT e1.salary AS NthHighestSalary
@@ -81,50 +75,43 @@ WHERE (N - 1) = (
     WHERE e2.salary > e1.salary
 );
 ```
-For $N = 2$, this query finds the salary $e_1$ where exactly **1 distinct salary** is strictly greater than it.
+
+For `N = 2`: find the salary where exactly 1 distinct salary is strictly higher than it.
 
 ---
 
-### Performance & Complexity Analysis with B-Tree Indexing
+### How fast is each one, with an index on `salary`?
 
-| Metric | Solution 1: `MAX()` Subquery | Solution 2: `DENSE_RANK()` | Solution 3: Correlated Subquery |
+| | Solution 1: `MAX()` subquery | Solution 2: `DENSE_RANK()` | Solution 3: correlated subquery |
 | :--- | :--- | :--- | :--- |
-| **Time Complexity (Unindexed)** | $O(N)$ (Two table scans) | $O(N \log N)$ (Sort all rows) | $O(N^2)$ (Quadratic nested loops) |
-| **Time Complexity (Indexed)** | **$O(1)$ (Two B-Tree seeks!)** | $O(N)$ (Stream through index) | $O(N \log N)$ |
-| **Memory Footprint** | Negligible (Streams scalars) | Higher (Buffers window partitions) | Negligible |
-| **Portability** | 100% ANSI SQL compatible | Requires SQL:2003 window support | 100% ANSI SQL compatible |
+| **No index** | Scans the table twice | Sorts every row | Nested loop over every pair of rows - slowest by far |
+| **With a B-Tree index on salary** | **Two quick index jumps - fastest** | Streams through the index in order | Still does a sort per row |
+| **Memory use** | Minimal | Higher — has to buffer the window | Minimal |
+| **Portability** | Works everywhere, plain ANSI SQL | Needs window-function support (SQL:2003+) | Works everywhere, plain ANSI SQL |
 
-> **Staff-Level Bar Raiser:** With a B-Tree index on `salary`, Solution 1 executes in **$O(1)$ time**! The database engine jumps directly to the rightmost leaf of the B+ Tree to find the maximum salary, and then performs a second $O(1)$ index seek to find the first entry strictly less than it.
+With an index on `salary`, Solution 1 is the clear winner: the database can jump straight to the highest value in the B-Tree, then jump again to the first value just below it - two quick lookups, no scanning required.
 
 ---
 
-### Edge-Case Behavior Matrix
+### Edge cases, side by side
 
-| Edge-Case Scenario | Table State | Expected Return | Solution 1 Result | Solution 2 Result |
+| Scenario | Table | Expected | Solution 1 | Solution 2 |
 | :--- | :--- | :---: | :---: | :---: |
-| **Distinct Salaries** | `[100, 90, 80]` | `90` | `90` | `90` |
-| **Tied Top Salaries** | `[100, 100, 90]` | `90` | `90` | `90` |
-| **Single Employee** | `[100]` | `NULL` | `NULL` | `NULL` (via `MAX`) |
-| **All Salaries Identical**| `[100, 100, 100]` | `NULL` | `NULL` | `NULL` (via `MAX`) |
-| **Empty Table** | `[]` | `NULL` | `NULL` | `NULL` |
+| Distinct salaries | `[100, 90, 80]` | `90` | `90` | `90` |
+| Tied top salaries | `[100, 100, 90]` | `90` | `90` | `90` |
+| Single employee | `[100]` | `NULL` | `NULL` | `NULL` |
+| All salaries identical | `[100, 100, 100]` | `NULL` | `NULL` | `NULL` |
+| Empty table | `[]` | `NULL` | `NULL` | `NULL` |
 
 ---
 
-### The Interview Answer (60-90 seconds)
+### Say this in the interview
 
-> "To find the second highest salary without `LIMIT` or `OFFSET`, the canonical ANSI SQL solution is `SELECT MAX(salary) FROM Employee WHERE salary < (SELECT MAX(salary) FROM Employee)`.
->
-> This solution handles ties cleanly: if the top salary is tied across multiple rows, the subquery returns that top value, and the outer query seeks the maximum strictly below it. Furthermore, if the table has only one employee or is completely empty, evaluating `MAX()` over zero matching rows evaluates to `NULL`, cleanly satisfying edge-case contracts.
->
-> In modern SQL engines, this can also be solved using `DENSE_RANK() OVER (ORDER BY salary DESC)` inside a CTE, filtering where `rnk = 2`. `DENSE_RANK()` is mandatory over `RANK()` or `ROW_NUMBER()` because it assigns identical ranks to duplicate salaries without creating gaps in the ranking sequence.
->
-> In terms of execution complexity, if the `salary` column is indexed with a B+ Tree, the `MAX()` subquery executes in $O(1)$ time via two rightmost leaf index seeks, vastly outperforming window functions."
+*"Without `LIMIT`/`OFFSET`, the cleanest answer is `SELECT MAX(salary) FROM Employee WHERE salary < (SELECT MAX(salary) FROM Employee)`. It handles ties automatically, since `MAX()` collapses duplicates into one value, and it returns `NULL` naturally when there's no valid second value - because `MAX()` over zero rows is `NULL` in SQL. The modern alternative is `DENSE_RANK() OVER (ORDER BY salary DESC)` inside a CTE, filtered to `rnk = 2` - and it has to be `DENSE_RANK()`, not `RANK()` or `ROW_NUMBER()`, because only `DENSE_RANK()` gives tied values the same rank without leaving gaps. With an index on salary, the `MAX()` subquery is also the fastest option — just two index lookups."*
 
 ---
 
-### Code Demonstration: Verifying All Solutions Across Edge Cases
-
-The following Python script tests Solution 1 and Solution 2 in SQLite across duplicate top salaries, single-row tables, and empty tables.
+### Checking this yourself: edge cases in SQLite
 
 ```python
 import sqlite3

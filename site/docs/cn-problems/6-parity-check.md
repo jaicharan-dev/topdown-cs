@@ -12,13 +12,11 @@ sidebar_class_name: sidebar-easy
 
 ---
 
-A parity bit is the simplest form of error-detecting code. While computationally negligible (requiring a single XOR tree in hardware), single-dimensional parity provides weak error guarantees over physical channels prone to electromagnetic noise and burst interference.
-
-Understanding why 1D parity fails, and how 2D matrix parity upgrades detection to single-bit correction, is a foundational computer networking interview topic.
+A parity bit is the cheapest error check there is — one XOR across the whole byte. Cheap also means weak: it catches a lot less than it looks like it should, and the reason why is the whole point of this question.
 
 ---
 
-### 1. Single Even Parity Computation & Verification
+### Single Even Parity: Computation & Verification
 
 In an **even parity** scheme, the sender appends a bit such that the total count of `1`s across the data and the parity bit is an even number.
 
@@ -39,7 +37,7 @@ Because the modulo-2 sum is zero (even), the frame passes verification.
 
 ---
 
-### 2. Mathematical Proof: The 2-Bit Error Blindspot
+### Why a 2-Bit Error Slips Through
 
 1D parity evaluates only the **aggregate population count modulo 2**, completely ignoring positional information.
 
@@ -61,7 +59,7 @@ In every single case, $\Delta N \equiv 0 \pmod 2$. The total number of `1`s rema
 
 ---
 
-### 3. Two-Dimensional (2D) Parity: Matrix LRC + VRC
+### Two-Dimensional (2D) Parity: Matrix LRC + VRC
 
 To overcome the 1D limitation without the algebraic complexity of CRC, networks historically used **2D Parity** (also known as Longitudinal Redundancy Check [LRC] combined with Vertical Redundancy Check [VRC]).
 
@@ -70,15 +68,13 @@ Data is organized into a 2D matrix of $M$ rows and $N$ columns. Parity is comput
 - **Column Parity (LRC):** Appended as an entire extra byte at the bottom.
 - **Corner Bit:** Parity of the parities.
 
-```text
-               Col 1  Col 2  Col 3  Col 4  Col 5  Col 6  Col 7 | Row Parity
-Row 1:           1      0      0      1      1      0      1   |     1
-Row 2:           0      1      1      0      1      0      0   |     1
-Row 3:           1      1      0      1      0      1      1   |     1
-Row 4:           0      0      1      1      1      1      0   |     0
-----------------------------------------------------------------+-----------
-Col Parity(LRC): 0      0      0      1      1      0      0   |     1 (Corner)
-```
+| | Col 1 | Col 2 | Col 3 | Col 4 | Col 5 | Col 6 | Col 7 | Row Parity |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **Row 1** | 1 | 0 | 0 | 1 | 1 | 0 | 1 | **0** |
+| **Row 2** | 0 | 1 | 1 | 0 | 1 | 0 | 0 | **1** |
+| **Row 3** | 1 | 1 | 0 | 1 | 0 | 1 | 1 | **1** |
+| **Row 4** | 0 | 0 | 1 | 1 | 1 | 1 | 0 | **0** |
+| **Col Parity (LRC)** | 0 | 0 | 0 | 1 | 1 | 0 | 0 | **0** (corner) |
 
 #### How 2D Parity Solves the Blindspot:
 1. **Single-Bit Error Correction:**
@@ -94,7 +90,7 @@ Col Parity(LRC): 0      0      0      1      1      0      0   |     1 (Corner)
 
 ---
 
-### 4. Comparison of Error Detection & Correction Mechanisms
+### Comparing the Error Detection Schemes
 
 | Technique | Overhead (Bits) | Detection Capability | Correction Capability | Implementation Complexity | Primary Protocol / Layer |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -106,7 +102,7 @@ Col Parity(LRC): 0      0      0      1      1      0      0   |     1 (Corner)
 
 ---
 
-### 5. Runnable Python Implementation
+### Python: Runnable Implementation
 
 This script demonstrates 1D parity generation and verification, simulates the undetected 2-bit error, and showcases 2D matrix parity single-bit error localization and correction.
 
@@ -214,7 +210,7 @@ if __name__ == "__main__":
 
 ---
 
-### 6. Concise Staff-Level Interview Answer
+### Say this in the interview
 
 > "For the 7-bit string `1001101`, there are exactly four 1s. Because 4 is already even, the sender sets the even parity bit to `0`, transmitting the 8-bit frame `10011010`. The receiver sums the 8 bits and computes $4 \bmod 2 = 0$, confirming the frame is valid.
 >

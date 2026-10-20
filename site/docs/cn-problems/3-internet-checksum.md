@@ -6,33 +6,23 @@ sidebar_position: 3
 sidebar_class_name: sidebar-medium
 ---
 
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "A sender transmits two 8-bit data words using the Internet Checksum method: `10101001` and `11001010`. Compute the checksum with end-around carry, demonstrate receiver-side verification, explain why compensating bit flips evade detection, and contrast with CRC-32."
 
 ---
 
-### 1. Executive Summary & RFC 1071 Context
+### The idea
 
-The **Internet Checksum** (defined in **RFC 1071**) is an error-detection code utilized across the core TCP/IP protocol suite (IPv4 header checksum, TCP checksum, and UDP checksum).
+The **Internet Checksum** (RFC 1071) is the error-check used everywhere in TCP/IP — the IPv4 header, TCP, and UDP checksums are all this same algorithm. The whole point of its design: it's just 16-bit integer addition, something a CPU's ALU does natively, so routers can check packets at wire speed instead of burning cycles on something fancier.
 
-```
-   ┌─────────────────────────────────────────────────────────────┐
-   │                   Internet Checksum Core Intent             │
-   ├─────────────────────────────────────────────────────────────┤
-   │ Designed for Software Processing Speed:                     │
-   │ Built around simple 16-bit integer addition directly        │
-   │ executed by standard CPU Arithmetic Logic Units (ALUs).     │
-   │ Trades mathematical error resilience for wire-speed routing.│
-   └─────────────────────────────────────────────────────────────┘
-```
-
-#### One's Complement Arithmetic:
-In standard Two's complement systems, arithmetic addition discards the overflow carry bit. In **One's complement arithmetic**, any carry-out bit generated beyond the word size must be **wrapped around and added to the least significant bit (LSB)**. This is known as the **End-Around Carry**.
+The one twist versus normal addition: in **one's complement arithmetic**, you don't throw away the overflow bit when a sum doesn't fit in the word size. Instead you wrap it around and add it back onto the least-significant bit — the **end-around carry**.
 
 ---
 
-### 2. Step-by-Step Checksum Computation (Sender Side)
+### Computing the Checksum (Sender Side)
 
 #### Input Data Words (8-bit demonstration):
 - **Word 1:** `1010 1001` (169 in decimal)
@@ -75,7 +65,7 @@ The sender appends this checksum word and transmits all three 8-bit words across
 
 ---
 
-### 3. Receiver-Side Verification Protocol
+### Receiver-Side Verification
 
 The beauty of the 1's complement checksum lies in its receiver-side simplicity. The receiver does not need to subtract or recalculate from scratch; it simply **sums all received data words PLUS the checksum word**.
 
@@ -97,17 +87,18 @@ $$\sim(11111111_2) = \mathbf{00000000_2} \quad (\text{All Zeros})$$
 
 ---
 
-### 4. Vulnerabilities & Architectural Limitations
+### Vulnerabilities & Architectural Limitations
 
 While the Internet Checksum is exceptionally fast to compute in software, it is **mathematically weak** compared to polynomial codes like CRC:
 
-```
-        Vulnerability 1: Compensating Bit Flips
-        Word 1:  ... 0 ...  ──[ Flips to 1 (+1) ]──► ... 1 ...
-        Word 2:  ... 1 ...  ──[ Flips to 0 (-1) ]──► ... 0 ...
-        ───────────────────────────────────────────────────────
-        Column Sum Remains Identical! Checksum Still Passes!
-```
+<Diagram>
+<Row>
+<Box title="Word 1, bit 3" accent="#fb7185"><Field icon="0️⃣➡️1️⃣" code="flips 0 → 1" hint="column sum +1" variant="neutral" /></Box>
+<Box title="Word 2, bit 3" accent="#fb7185"><Field icon="1️⃣➡️0️⃣" code="flips 1 → 0" hint="column sum −1" variant="neutral" /></Box>
+</Row>
+</Diagram>
+
+Net change to the column sum: zero. The checksum comes out identical — corruption, undetected.
 
 1. **Compensating Bit Flips:** If bit position 3 flips from `0` to `1` in Word 1, and bit position 3 simultaneously flips from `1` to `0` in Word 2, the arithmetic column sum does not change. The checksum validates as completely clean, failing to detect corruption.
 2. **Byte Order / Permutation Blindness:** Addition is commutative ($A + B = B + A$). If an intervening network switch swaps Word 1 and Word 2, the checksum remains 100% identical.
@@ -115,7 +106,7 @@ While the Internet Checksum is exceptionally fast to compute in software, it is 
 
 ---
 
-### 5. Checksum vs. Cyclic Redundancy Check (CRC-32)
+### Checksum vs. Cyclic Redundancy Check (CRC-32)
 
 | Dimension | Internet Checksum (RFC 1071) | Cyclic Redundancy Check (CRC-32) |
 | :--- | :--- | :--- |
@@ -129,7 +120,7 @@ While the Internet Checksum is exceptionally fast to compute in software, it is 
 
 ---
 
-### 6. Python Verification Script
+### Python: Verification Script
 
 The following standalone script implements 1's complement checksum computation with end-around carry, tests receiver verification, and demonstrates the compensating bit-flip exploit:
 

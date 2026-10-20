@@ -13,30 +13,17 @@ import TabItem from '@theme/TabItem';
 
 > **Interview Question:** "How do you decide between `Comparable` and `Comparator`? What is the strict return contract, what catastrophic bug occurs when subtracting integers inside `compare()`, and how does `compareTo()` interact with `TreeSet` and `equals()`?"
 
-### The Quick Answer
+Both exist to answer the same question — "which of these two things comes first?" — just from different places:
 
-`Comparable<T>` defines a single, internal natural ordering implemented directly by the domain class via `compareTo(T other)` (`java.lang`), whereas `Comparator<T>` defines multiple, external, interchangeable sorting strategies via `compare(T o1, T o2)` (`java.util`) without modifying the target class. When implementing either interface, never subtract integer fields (`a - b`) because numeric underflow/overflow will invert signs and corrupt sort order; always use `Integer.compare(a, b)`. Furthermore, comparisons should remain consistent with `equals()`, because sorted collections like `TreeSet` and `TreeMap` use `compareTo() == 0` (not `equals()`) to determine duplicate identity, silently dropping unequal items if their comparison keys collide.
+- **`Comparable`** is written *inside* the class. It gives the class exactly one "natural" way to be sorted — think `String`'s alphabetical order, or `Integer`'s numeric order.
+- **`Comparator`** is written *outside* the class, as its own little object. You can write as many of these as you want: sort employees by salary, or by hire date, or by department — without ever touching the `Employee` class itself.
 
----
+### Core distinction
 
-### Core Conceptual Distinction
+- **`Comparable<T>`** — `java.lang`, one method: `compareTo(T other)`. Built into the class. Exactly one ordering allowed.
+- **`Comparator<T>`** — `java.util`, one method: `compare(T o1, T o2)`. Lives outside the class, as a lambda, a separate class, or an anonymous one. As many orderings as you want.
 
-In Java, ordering collections of custom objects requires defining sorting criteria:
-
-- **`Comparable<T>` (Natural Order):**
-  - Package: `java.lang.Comparable`.
-  - Implemented **internally** by the domain class itself.
-  - Imposes a single, canonical "natural ordering" (e.g., `String` alphabetical order, `Integer` numerical order).
-  - Single abstract method: `int compareTo(T other)`.
-- **`Comparator<T>` (Custom Strategy):**
-  - Package: `java.util.Comparator`.
-  - Implemented **externally** via separate classes, anonymous inner classes, or lambda expressions.
-  - Enables multiple, interchangeable sorting strategies (e.g., sorting by salary, sorting by hire date, sorting by department).
-  - Single abstract method: `int compare(T o1, T o2)`.
-
----
-
-### Comparison: Comparable vs. Comparator
+### Comparison
 
 | Feature | `Comparable<T>` | `Comparator<T>` |
 | :--- | :--- | :--- |
@@ -49,67 +36,61 @@ In Java, ordering collections of custom objects requires defining sorting criter
 
 ---
 
-### The Formal Return Contract
+### The return contract
 
-Both `compareTo()` and `compare()` return a signed 32-bit integer representing relative ordering:
+Both `compareTo()` and `compare()` return a signed integer:
 
-- **Negative Integer (`< 0`):** First object is strictly **less than** the second object (`o1` precedes `o2`).
-- **Zero (`0`):** Both objects are considered **equal in ordering** (`o1` and `o2` have identical rank).
-- **Positive Integer (`> 0`):** First object is strictly **greater than** the second object (`o1` succeeds `o2`).
+- **Negative** → the first object comes **before** the second.
+- **Zero** → they're considered **equal in order**.
+- **Positive** → the first object comes **after** the second.
 
 ---
 
-### The Fatal Integer Subtraction Overflow Bug
+### The bug that quietly corrupts your sort order
 
-> **Classic Senior Trap:** Many developers write concise comparisons by simply subtracting two integer fields:
+A lot of people write comparisons as a one-liner subtraction, because it looks clean:
 
 ```java
 public int compare(Employee a, Employee b) {
-    return a.getSalary() - b.getSalary(); // FATAL BUG!
+    return a.getSalary() - b.getSalary(); // looks fine. isn't.
 }
 ```
 
-#### Why It Fails Catastrophically
-If `a.getSalary() = -2_000_000_000` (or `Integer.MIN_VALUE`) and `b.getSalary() = 2_000_000_000`:
+The problem is integer overflow. If `a.getSalary()` is a huge negative number and `b.getSalary()` is a huge positive number, the subtraction can wrap around past the limits of a 32-bit int and flip the sign — so the method reports that the negative number is *larger* than the positive one. Your sort order silently corrupts, with no exception thrown anywhere.
 
 ```text
-a - b = (-2,000,000,000) - (2,000,000,000) = -4,000,000,000 (mathematically)
+a = -2,000,000,000
+b =  2,000,000,000
+a - b should be -4,000,000,000, but that overflows a 32-bit int
+and wraps around to +294,967,296 — a positive number!
 ```
 
-Because 32-bit signed integers overflow in Java, `-4,000,000,000` wraps around to `+294,967,296` (a positive integer)!
-The comparator incorrectly reports that `-2,000,000,000` is **greater than** `+2,000,000,000`, completely corrupting the sorted order.
+The fix is to never subtract manually. Use the built-in helpers, which are immune to overflow:
 
-#### The Safe Pattern
-Always use static type comparison helpers:
 ```java
-// SAFE: Immune to integer overflow
 return Integer.compare(a.getSalary(), b.getSalary());
 return Double.compare(a.getRating(), b.getRating());
 ```
 
 ---
 
-### Consistency with `equals()` & The `TreeSet` Silent Drop Trap
+### The other trap: `TreeSet` doesn't use `equals()`
 
-The Java documentation states: **"It is strongly recommended (though not strictly required) that natural orderings be consistent with equals."**
+The docs recommend — though don't require — that your ordering agree with `equals()`:
 
 ```text
-(x.compareTo(y) == 0) <=> x.equals(y)
+(x.compareTo(y) == 0) should match x.equals(y)
 ```
 
-#### The Trap with `TreeSet` and `TreeMap`
-Navigable and sorted collections like `TreeSet` and `TreeMap` determine element equality using `compareTo()` or `compare()`, **completely ignoring `equals()`**!
+Here's why that matters. `TreeSet` and `TreeMap` decide whether two elements are "the same" using `compareTo()`/`compare()` — **not** `equals()`. So if your comparator only looks at salary, and two different employees (different IDs, different names) both earn \$100,000:
 
-If you add two distinct `Employee` objects with different IDs and names, but your comparator only checks salary, and both employees earn $100,000:
-1. `emp1.equals(emp2)` returns `false`.
-2. `comparator.compare(emp1, emp2)` returns `0`.
-3. **`treeSet.add(emp2)` will silently drop `emp2`!** The set considers `emp2` a duplicate of `emp1` and refuses to insert it!
+1. `emp1.equals(emp2)` → `false` — they're clearly different people.
+2. `comparator.compare(emp1, emp2)` → `0` — same salary, so "equal" by this ordering.
+3. `treeSet.add(emp2)` **silently fails.** The set thinks `emp2` is a duplicate of `emp1` and just drops it — no exception, no warning.
 
 ---
 
-### Modern Java 8+ Fluent Comparator Chaining
-
-Modern Java provides functional builder methods on `Comparator`:
+### Modern comparator chaining (Java 8+)
 
 ```java
 Comparator<Employee> staffComparator = Comparator
@@ -120,21 +101,13 @@ Comparator<Employee> staffComparator = Comparator
 
 ---
 
-### The Interview Answer (60-90 seconds)
+### Say this in the interview
 
-> "`Comparable` defines the natural, internal ordering of a class by implementing `java.lang.Comparable` and overriding `compareTo(T other)`. It allows a class to have exactly one default sorting sequence.
->
-> `Comparator` defines external, customizable sorting strategies by implementing `java.util.Comparator` and overriding `compare(T o1, T o2)`. It adheres to the Open-Closed Principle because it allows infinite sorting sequences without modifying the domain class.
->
-> When implementing comparison methods, a critical bug to avoid is subtracting integer fields (`a - b`), because negative numbers can cause integer overflow and reverse the sort order; `Integer.compare(a, b)` must always be used instead.
->
-> Finally, comparison logic should always be consistent with `equals()`. Sorted collections like `TreeSet` and `TreeMap` use `compareTo() == 0` rather than `equals()` to check for duplicates; if two unequal objects return 0 in comparison, `TreeSet` will silently drop the second object."
+*"`Comparable` is implemented inside the class via `compareTo()` and gives it exactly one natural ordering. `Comparator` is implemented outside the class via `compare()` and lets you define as many sorting strategies as you want, without touching the class itself. A classic bug is subtracting two ints directly in `compare()` — that can overflow and flip the sign, so always use `Integer.compare()` instead. And comparisons should stay consistent with `equals()`, because `TreeSet` and `TreeMap` use `compareTo() == 0` to detect duplicates — if two unequal objects compare as equal, the second one gets silently dropped."*
 
 ---
 
-### Code Demonstration: Subtraction Overflow Bug & `TreeSet` Consistency Trap
-
-The following Java program proves the subtraction overflow bug, demonstrates modern comparator chaining, and shows how an inconsistent comparator silently drops elements in a `TreeSet`.
+### Code: the overflow bug, chaining, and the `TreeSet` drop trap
 
 <Tabs>
 <TabItem value="java" label="ComparableComparatorDemo.java" default>

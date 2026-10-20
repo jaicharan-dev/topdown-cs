@@ -1,124 +1,99 @@
 ---
 id: 15-multilevel-feedback-queue-mlfq
-title: "Multilevel Feedback Queue (MLFQ): Adaptive Priority & Anti-Starvation"
-description: "Explore the premier general-purpose CPU scheduling algorithm: dynamic priority demotion, I/O burst detection, and periodic priority boosts."
+title: "Multilevel Feedback Queue (MLFQ) Scheduling"
+description: "How MLFQ approximates Shortest Job First without knowing burst times in advance, and how it prevents starvation and gaming."
 sidebar_position: 15
 sidebar_class_name: sidebar-hard
 ---
+
+import Tabs from '@theme/Tabs';
+import TabItem from '@theme/TabItem';
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
 > **Interview Question:** "What is Multilevel Feedback Queue (MLFQ) scheduling? How does it approximate Shortest Job First (SJF) without prior knowledge of burst times, how does it prevent starvation, and how does it prevent rogue processes from gaming the scheduler?"
 
-The **Multilevel Feedback Queue (MLFQ)** is widely regarded as one of the most celebrated achievements in systems scheduling. 
-
-It solves the fundamental paradox of general-purpose operating systems: **Shortest Job First (SJF)** is mathematically optimal for minimizing turnaround time, but requires knowing the future execution time of every process, an impossible requirement for general-purpose computing.
-
-MLFQ dynamically **learns from past process behavior** to predict future execution patterns, optimizing simultaneously for **low turnaround time** (for long batch jobs) and **low response time** (for interactive user applications).
+Shortest Job First is the best possible scheduling algorithm for turnaround time — but it needs to know how long each job will run before it runs it, which is impossible in general. MLFQ's trick is to stop trying to predict the future and instead learn from how a job has behaved so far.
 
 ---
 
-### The ELI5 Analogy: The IT Help Desk
+### The analogy: an IT help desk with three tiers
 
-Imagine an IT Help Desk operating three distinct triage tiers:
-- **Tier 1 (Express Counter):** Max **5 minutes** per ticket.
-- **Tier 2 (Standard Desk):** Max **20 minutes** per ticket.
-- **Tier 3 (Deep Diagnostics):** Unlimited time per ticket.
+- **Tier 1 (express counter):** max 5 minutes per ticket.
+- **Tier 2 (standard desk):** max 20 minutes per ticket.
+- **Tier 3 (deep diagnostics):** unlimited time.
 
-#### The Learning Strategy:
-1. When an employee walks in with a ticket, the help desk has no idea whether it is a 30-second password reset or an 8-hour motherboard rebuild.
-2. By default, **everyone is placed into Tier 1**.
-3. If their problem is resolved in under 5 minutes, they leave immediately (**Fast Turnaround**).
-4. If their 5 minutes expire and the problem persists, the technician says: *"This is a complex job."* They are demoted to Tier 2.
-5. If Tier 2's 20 minutes expire, they sink to Tier 3, where long-running repairs execute without blocking quick tickets.
+Nobody knows up front if a ticket is a 30-second password reset or an 8-hour motherboard rebuild, so everyone starts at Tier 1. If it's solved within 5 minutes, great — fast turnaround. If not, the technician says "this is complex" and bumps it to Tier 2. If Tier 2's 20 minutes run out too, it sinks to Tier 3, where long jobs run without blocking quick ones.
 
-#### The Anti-Starvation Boost:
-If 500 people flood the office with 1-minute password resets, Tier 3 will never be touched (Starvation). To prevent this, every Monday morning, management closes all counters, rounds up every customer in Tier 2 and Tier 3, and **boosts everyone back to Tier 1** for re-evaluation.
+The catch: if 500 people flood in with 1-minute password resets, Tier 3 never gets touched again — the jobs there starve. The fix is a periodic reset: every so often, everyone gets boosted back to Tier 1 for re-evaluation.
+
+<Diagram>
+<Row>
+<Box title="Queue 0 — highest priority" accent="#34d399"><Field icon="⚡" code="short time slice" hint="new/interactive jobs start here" variant="neutral" /></Box>
+<Arrow label="uses full slice → demoted" />
+<Box title="Queue 1" accent="#f59e0b"><Field icon="⏳" code="longer time slice" variant="neutral" /></Box>
+<Arrow label="uses full slice → demoted" />
+<Box title="Queue 2 — lowest priority" accent="#fb7185"><Field icon="🐢" code="longest time slice" hint="CPU-bound jobs end up here" variant="neutral" /></Box>
+</Row>
+</Diagram>
 
 ---
 
-### The Five Canonical Rules of MLFQ
+### The five rules
 
-An MLFQ consists of multiple discrete queues, each assigned a distinct priority level. Higher queues have smaller time quanta; lower queues have larger time quanta:
-
-```
-[ Queue 2: Highest Priority ]  ── Quantum:  10 ms  (Interactive I/O Tasks)
-             │ (Demotion)
-[ Queue 1: Medium Priority  ]  ── Quantum:  40 ms  (Moderate Tasks)
-             │ (Demotion)
-[ Queue 0: Lowest Priority  ]  ── Quantum: 100 ms  (CPU-bound Batch Compute)
-```
-
-The scheduling engine operates under **Five Definitive Rules**:
-
-| Rule | Formal Definition | Systems Purpose |
+| Rule | What it says | Why |
 | :--- | :--- | :--- |
-| **Rule 1** | If $\text{Priority}(A) > \text{Priority}(B)$, **Process A runs** (Process B waits). | Enforces strict priority hierarchy. |
-| **Rule 2** | If $\text{Priority}(A) == \text{Priority}(B)$, **A and B run in Round Robin (RR)** using the queue's time slice. | Ensures fairness among equal-priority tasks. |
-| **Rule 3** | When a job enters the system, it is placed at the **highest-priority queue**. | Optimistic assumption: assumes every new job is short/interactive. |
-| **Rule 4** | Once a job exhausts its **cumulative time allotment** at a given level, its priority is reduced (demoted by one queue). | Demotes CPU-heavy batch workloads out of the way. |
-| **Rule 5** | After a designated time period $S$, **move all jobs in the system back to the topmost queue** (Priority Boost). | Prevents starvation and adapts to dynamic behavior changes. |
+| **1** | Higher-priority job always runs before a lower-priority one. | Strict priority order. |
+| **2** | Equal-priority jobs share the CPU round-robin. | Fairness among peers. |
+| **3** | A new job always starts at the highest-priority queue. | Assume it's short/interactive until proven otherwise. |
+| **4** | Once a job uses up its full time allotment at a level, demote it one queue. | Pushes CPU-heavy jobs out of the way. |
+| **5** | Periodically, move every job back to the top queue (a "boost"). | Prevents starvation, lets jobs change behavior. |
 
 ---
 
-### How MLFQ Discovers Process Characteristics Automatically
+### How MLFQ figures out what kind of job it's running
 
-1. **Interactive / I/O-Bound Jobs (e.g., Text Editors, Web Browsers):**
-   - An interactive application runs for 1 ms to handle a keypress and then blocks waiting for user input (`read()` system call).
-   - Because it voluntarily relinquishes the CPU long before its top-tier quantum (10 ms) expires, it **never exhausts its allotment**.
-   - It remains permanently in the highest-priority queue, guaranteeing near-zero user interface latency.
-2. **CPU-Bound Batch Jobs (e.g., Video Rendering, Data Crunching):**
-   - A video transcoder continuously executes arithmetic instructions.
-   - It consumes its entire 10 ms quantum in Queue 2 and is demoted to Queue 1.
-   - It consumes its entire 40 ms quantum in Queue 1 and sinks to Queue 0.
-   - In Queue 0, it receives large 100 ms time slices to minimize context switch overhead, running efficiently whenever interactive apps are idle.
+- **Interactive jobs** (text editors, browsers) run for a millisecond to handle a keypress, then block waiting on input. They never use up their quantum, so they just stay at the top queue forever — which is exactly what you want for low-latency UI response.
+- **CPU-bound jobs** (video encoding, number crunching) keep computing. They burn through Queue 0's quantum, get demoted to Queue 1, burn through that too, and sink to Queue 2, where they get bigger time slices (so they're not constantly interrupted) and run whenever nothing interactive needs the CPU.
 
 ---
 
-### The "Gaming the Scheduler" Attack & Defense
+### The gaming attack, and the fix
 
-In early, naive implementations of MLFQ, Rule 4 was formulated as:
-> *"If a process yields the CPU before its quantum expires, its quantum counter is reset."*
+An early, naive version of Rule 4 said: "if a process yields before its quantum is up, reset its quantum." That's exploitable — a process can run for 9.9 ms out of a 10 ms slice, issue a throwaway I/O call just before the deadline, and get placed right back at the top with a fresh quantum, over and over:
 
-#### The Vulnerability:
-A malicious program (or clever crypto miner) could easily monopolize 99% of the CPU:
 ```c
 while (1) {
-    do_heavy_computation(9.9); // Run for 9.9 ms out of a 10 ms slice
-    issue_dummy_disk_read();   // Yield CPU at 9.9 ms!
+    do_heavy_computation(9.9); // just under the 10ms limit
+    issue_dummy_disk_read();   // yield right before the quantum expires
 }
 ```
-Because the process yielded before the 10 ms limit, the naive scheduler placed it back at the front of Queue 2 with a brand new 10 ms quantum, allowing it to hijack the highest priority indefinitely!
 
-#### The Defense: Cumulative CPU Time Accounting
-Modern MLFQ engines rewrite Rule 4 to track **cumulative CPU usage**:
-- The scheduler tracks total CPU time consumed by the process at the current priority level.
-- Regardless of how many times the process yields for I/O, once the sum of its micro-bursts reaches the quantum threshold, **it is forcibly demoted**.
+The fix is to track **cumulative** CPU time at a level instead of resetting on every yield. No matter how many times the process yields, once its total time at that level crosses the threshold, it gets demoted.
 
 ---
 
-### MLFQ vs. Modern Linux CFS (Completely Fair Scheduler)
+### MLFQ vs. Linux's CFS
 
-While MLFQ remains the foundational blueprint for multi-queue systems (such as Windows NT/11 and macOS), Linux evolved a different paradigm:
+Linux doesn't actually use MLFQ — it uses the Completely Fair Scheduler, built on a different idea entirely.
 
-| Dimension | Multilevel Feedback Queue (MLFQ) | Linux Completely Fair Scheduler (CFS) |
+| | MLFQ | Linux CFS |
 | :--- | :--- | :--- |
-| **Primary Data Structure** | Multiple discrete FIFO/RR queues | Single **Red-Black Tree** ordered by `vruntime` |
-| **Priority Assignment** | Discrete dynamic priority levels ($0$ to $N$) | Granular "nice" values ($-20$ to $+19$) mapping to weights |
-| **Time Quantum** | Fixed discrete per queue (e.g., 10ms, 40ms, 100ms) | Dynamic: Target latency divided proportionally by process weights |
-| **Complexity** | $O(1)$ queue pop; periodic $O(N)$ priority boost | $O(\log N)$ tree insert; $O(1)$ leftmost node retrieval |
+| **Structure** | Several fixed queues | One red-black tree ordered by `vruntime` |
+| **Priority** | Discrete queue levels | Continuous "nice" values (-20 to +19) |
+| **Time slice** | Fixed per queue (10ms, 40ms, 100ms...) | Dynamic, split proportionally by weight |
+| **Cost** | O(1) pop, periodic O(N) boost | O(log N) insert, O(1) to grab the next task |
 
 ---
 
-### Summary
+### Say this in the interview
 
-"Multilevel Feedback Queue (MLFQ) dynamically approximates Shortest Job First by placing new jobs in the highest-priority queue and demoting tasks that exhaust their time slices to lower queues with larger quanta. Interactive I/O tasks remain at the top due to early yields, preserving low response times, while batch jobs sink to the bottom. To prevent starvation and handle processes that transition from batch to interactive, a periodic priority boost resets all tasks to the top queue. Cumulative accounting prevents malicious processes from gaming the scheduler by yielding right before quantum expiration."
+*"MLFQ approximates Shortest Job First without knowing burst times ahead of time: every job starts at the highest-priority queue, and jobs that use their full time slice get demoted to a lower queue with a bigger slice. Interactive jobs stay at the top because they yield early; CPU-bound jobs sink to the bottom. A periodic priority boost resets everyone to the top queue to prevent starvation, and cumulative time accounting (instead of resetting on every yield) stops processes from gaming the scheduler by yielding right before their quantum runs out."*
 
 ---
 
-### Python Verification: Multi-Queue MLFQ Simulator
-
-The following executable Python script implements a complete 3-level MLFQ scheduler, demonstrating interactive task prioritization, CPU-bound task demotion, cumulative accounting against gaming, and periodic priority boosting:
+### Python verification: a 3-level MLFQ simulator
 
 ```python
 """

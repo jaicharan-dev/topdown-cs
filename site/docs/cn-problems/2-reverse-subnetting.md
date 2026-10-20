@@ -6,29 +6,24 @@ sidebar_position: 2
 sidebar_class_name: sidebar-medium
 ---
 
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "A company is allocated the private network block `172.16.0.0/16` and must divide it to accommodate 6 departments, where the largest department requires up to 1,000 hosts. (1) Determine the optimal fixed subnet mask (FLSM), (2) calculate total subnets generated and evaluate address space waste, and (3) design an efficient Variable-Length Subnet Mask (VLSM) allocation for varied department sizes."
 
 ---
 
-### 1. Executive Summary & The Reverse Engineering Principle
+### The idea
 
-In **forward subnetting**, you are handed an IP address and a mask to deduce network boundaries. In **reverse subnetting**, you are handed operational constraints (number of hosts and departments) and must architect the network prefix.
+Forward subnetting hands you an IP and a mask, and you work out the boundaries. Reverse subnetting flips it: you're handed *requirements* — how many hosts, how many departments — and you have to design the mask yourself.
 
-```
-                    Reverse Subnetting Hierarchy
-                                 │
-           ┌─────────────────────┴─────────────────────┐
-           │                                           │
-           ▼                                           ▼
-  Fixed-Length (FLSM)                         Variable-Length (VLSM)
-  ───────────────────                         ──────────────────────
-  All subnets share the                       Each department receives a
-  identical mask (/22). Simple                custom mask sized to its exact
-  routing, but massive internal               host requirements. Maximizes
-  waste for smaller departments.              IP address conservation.
-```
+<Diagram>
+<Row>
+<Box title="Fixed-Length (FLSM)" accent="#60a5fa"><Field icon="📏" code="one mask for every subnet" hint="simple routing, but wastes space on smaller departments" variant="neutral" /></Box>
+<Box title="Variable-Length (VLSM)" accent="#34d399"><Field icon="✂️" code="a custom mask per department" hint="sized exactly to need — maximizes address conservation" variant="neutral" /></Box>
+</Row>
+</Diagram>
 
 #### The Golden Rule: Host-First Optimization
 Always size for the **host requirement first**, not the subnet count. 
@@ -36,7 +31,7 @@ If you arbitrarily size by subnet count, you may accidentally restrict host capa
 
 ---
 
-### 2. Part 1: FLSM Mathematical Derivation
+### Part 1: FLSM Mathematical Derivation
 
 #### Step 1: Calculate Minimum Host Bits ($h$)
 The largest department requires 1,000 usable hosts. We apply the host capacity formula:
@@ -69,7 +64,7 @@ $$\text{Total Subnets Created} = 2^b = 2^6 = \mathbf{64\text{ Subnets}}$$
 
 ---
 
-### 3. Part 2: Address Space Waste Analysis
+### Part 2: Address Space Waste Analysis
 
 Under Fixed-Length Subnet Masking (FLSM), every subnet is forced into a `/22` block (1,024 total addresses, 1,022 usable):
 
@@ -86,7 +81,7 @@ Under Fixed-Length Subnet Masking (FLSM), every subnet is forced into a `/22` bl
 
 ---
 
-### 4. Part 3: Enterprise VLSM Case Study
+### Part 3: Enterprise VLSM Case Study
 
 To eliminate internal waste across departments of differing sizes, enterprise architects use **Variable-Length Subnet Masking (VLSM)**.
 
@@ -119,31 +114,28 @@ To eliminate internal waste across departments of differing sizes, enterprise ar
 
 ---
 
-### 5. Hierarchical Subnet Division Tree
+### How the Block Gets Carved Up, Step by Step
 
-```
-172.16.0.0/16  (65,536 Total IPs)
-│
-├── 172.16.0.0/22  ──► Allocated to Dept A (1,000 Hosts) [172.16.0.0 - 172.16.3.255]
-│
-├── 172.16.4.0/22 (Carved up via VLSM):
-│   ├── 172.16.4.0/23  ──► Allocated to Dept B (500 Hosts)  [172.16.4.0 - 172.16.5.255]
-│   └── 172.16.6.0/23 (Sub-divided further):
-│       ├── 172.16.6.0/24  ──► Allocated to Dept C (200 Hosts) [172.16.6.0 - 172.16.6.255]
-│       └── 172.16.7.0/24 (Sub-divided further):
-│           ├── 172.16.7.0/25   ──► Allocated to Dept D (100 Hosts) [172.16.7.0 - 172.16.7.127]
-│           └── 172.16.7.128/25 (Sub-divided further):
-│               ├── 172.16.7.128/26  ──► Allocated to Dept E (50 Hosts) [172.16.7.128 - 172.16.7.191]
-│               └── 172.16.7.192/26 (Sub-divided further):
-│                   ├── 172.16.7.192/27  ──► Allocated to Dept F (20 Hosts) [172.16.7.192 - 172.16.7.223]
-│                   └── 172.16.7.224/27  ──► Free Unassigned Reserve
-│
-└── 172.16.8.0/21 through 172.16.248.0/21 ──► Completely Free Contiguous Space
-```
+Each department's block is cut from what's left over after the previous one — that's why they get progressively smaller mask splits:
+
+- **`172.16.0.0/16`** — 65,536 total IPs
+  - **`172.16.0.0/22`** → Dept A, 1,000 hosts (`172.16.0.0 – 172.16.3.255`)
+  - **`172.16.4.0/22`**, carved further via VLSM:
+    - **`172.16.4.0/23`** → Dept B, 500 hosts (`172.16.4.0 – 172.16.5.255`)
+    - **`172.16.6.0/23`**, carved further:
+      - **`172.16.6.0/24`** → Dept C, 200 hosts (`172.16.6.0 – 172.16.6.255`)
+      - **`172.16.7.0/24`**, carved further:
+        - **`172.16.7.0/25`** → Dept D, 100 hosts (`172.16.7.0 – 172.16.7.127`)
+        - **`172.16.7.128/25`**, carved further:
+          - **`172.16.7.128/26`** → Dept E, 50 hosts (`172.16.7.128 – 172.16.7.191`)
+          - **`172.16.7.192/26`**, carved further:
+            - **`172.16.7.192/27`** → Dept F, 20 hosts (`172.16.7.192 – 172.16.7.223`)
+            - **`172.16.7.224/27`** → free, unassigned reserve
+  - **`172.16.8.0/21` through `172.16.248.0/21`** → completely free, contiguous space for future growth
 
 ---
 
-### 6. Comparative Evaluation: FLSM vs. VLSM
+### Comparative Evaluation: FLSM vs. VLSM
 
 | Metric | Fixed-Length Subnet Masking (FLSM) | Variable-Length Subnet Masking (VLSM) |
 | :--- | :--- | :--- |
@@ -154,7 +146,7 @@ To eliminate internal waste across departments of differing sizes, enterprise ar
 
 ---
 
-### 7. Python Verification: VLSM Allocation Engine
+### Python: VLSM Allocation Engine
 
 The following standalone script verifies host bit calculations, generates the non-overlapping VLSM plan, and validates capacity:
 

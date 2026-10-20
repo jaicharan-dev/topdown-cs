@@ -6,111 +6,97 @@ sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+import { Diagram, Row, Box, Field, Tree } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Why do relational database storage engines (like MySQL InnoDB and PostgreSQL) use B+ Trees instead of standard B-Trees? Prove mathematically why B+ Trees have higher fan-out, and explain how leaf node linked lists optimize range scans."
 
+Both are self-balancing, multi-way trees built for disk. Almost every relational engine — MySQL InnoDB, Postgres, SQLite, Oracle — picks the B+ Tree over the plain B-Tree, and it comes down to one design choice: where the actual row data is allowed to live.
+
+<Diagram>
+<Row>
+<Tree root={
+<Box title="B-Tree root" accent="#fb7185">
+<Field icon="🗂️" code="key 50 + row data" hint="data stored at every level" variant="neutral" />
+</Box>
+}>
+<Box title="key 20 + row data" accent="#fb7185">
+<Field icon="📄" code="data lives here too" variant="neutral" />
+</Box>
+<Box title="key 80 + row data" accent="#fb7185">
+<Field icon="📄" code="data lives here too" variant="neutral" />
+</Box>
+</Tree>
+<Tree root={
+<Box title="B+ Tree root" accent="#818cf8">
+<Field icon="🗂️" code="keys: 50, 100" hint="pure routing, no row data" variant="neutral" />
+</Box>
+}>
+<Box title="Leaf: 10-40" accent="#34d399">
+<Field icon="📄" code="full rows" hint="linked to the next leaf" variant="neutral" />
+</Box>
+<Box title="Leaf: 50-90" accent="#34d399">
+<Field icon="📄" code="full rows" hint="linked both ways" variant="neutral" />
+</Box>
+</Tree>
+</Row>
+</Diagram>
+
+In a B-Tree, every node — even the internal ones — carries real row data. In a B+ Tree, internal nodes carry only keys and pointers; the actual rows live only in the leaves, which are linked together in a chain.
+
 ---
 
-### High-Level Comparison: B-Tree vs. B+ Tree
+### Side by side
 
-Both B-Trees and B+ Trees are self-balancing, multi-way search trees optimized for block storage devices (HDDs and SSDs). However, almost every major relational database engine (MySQL InnoDB, Postgres, SQLite, SQL Server, Oracle) selects the **B+ Tree** variant:
-
-| Architectural Dimension | Standard B-Tree | B+ Tree |
+| | B-Tree | B+ Tree |
 | :--- | :--- | :--- |
-| **Data Storage Location** | Keys AND row data/pointers stored in **all nodes** (root, internal, and leaves). | Row data/pointers stored **exclusively in Leaf Nodes**; internal nodes store only routing keys. |
-| **Internal Node Fan-Out** | **Low:** Data payloads consume page bytes, leaving fewer slots for child pointers. | **Extremely High:** Internal nodes store only tiny `(key, pointer)` pairs. |
-| **Tree Height** | Taller for large datasets ($4\text{--}6$ levels). | **Shorter and flatter** ($3\text{--}4$ levels for billions of rows). |
-| **Leaf Node Connections**| Leaf nodes are completely independent. | All leaf nodes are connected via a **Doubly-Linked List**. |
-| **Range Queries** | Requires expensive **in-order tree traversals** (jumping up and down levels). | Fast **sequential scan** across the leaf-level linked list. |
-| **Search Latency** | Variable: $O(1)$ if found at root, $O(\log N)$ at leaf. | **Deterministic & Uniform:** Every lookup takes identical path length. |
-
-```mermaid
-graph TD
-    subgraph "Standard B-Tree (Data Scattered Everywhere)"
-        R1["[Key 50 + Data]"] --> C1["[Key 20 + Data]"]
-        R1 --> C2["[Key 80 + Data]"]
-    end
-
-    subgraph "B+ Tree (Pure Routing Upstairs, Contiguous Data Downstairs)"
-        B_Root["[Key 50 | Key 100] (Routing Only)"] --> B_Int1["[Key 20 | Key 40]"]
-        B_Root --> B_Int2["[Key 70 | Key 90]"]
-        B_Int1 --> L1["[Leaf: 10, 20]"]
-        B_Int1 --> L2["[Leaf: 30, 40]"]
-        B_Int2 --> L3["[Leaf: 60, 70]"]
-        B_Int2 --> L4["[Leaf: 80, 90]"]
-        L1 <==>|Doubly-Linked List| L2
-        L2 <==>|Doubly-Linked List| L3
-        L3 <==>|Doubly-Linked List| L4
-    end
-```
+| **Where data lives** | Keys and row data, in every node | Row data only in leaves; internal nodes hold just keys and pointers |
+| **Fan-out** | Low — data eats into the space for child pointers | Very high — internal nodes are tiny |
+| **Tree height** | Taller (4-6 levels for large datasets) | Flatter (3-4 levels even at billions of rows) |
+| **Leaf connections** | None — leaves are independent | Doubly-linked list across all leaves |
+| **Range queries** | Expensive — jump up and down the tree repeatedly | Cheap — walk sideways along the leaves |
+| **Search latency** | Uneven — a key near the root is faster to find | Uniform — every lookup walks root to leaf |
 
 ---
 
-### Mathematical Proof: Fan-Out & Capacity Calculation
+### The fan-out math
 
-> **Staff-Level Bar Raiser:** Prove with concrete numbers why B+ Trees minimize disk I/O.
+Say each page is 16KB (InnoDB's default), a key is 8 bytes, a child pointer is 6 bytes, and a row record is 100 bytes.
 
-Suppose a database uses a standard **16KB page size** ($16{,}384\text{ bytes}$, default in MySQL InnoDB):
-- Key size: 8 bytes (`BIGINT`).
-- Child page pointer: 6 bytes.
-- Row data / tuple pointer: 100 bytes.
+**B-Tree:** each internal entry stores the key, the pointer, *and* the row — $8 + 6 + 100 = 114$ bytes per entry.
+$$\text{Fan-out} \approx \frac{16{,}384}{114} \approx 143 \text{ children per node}$$
+A 3-level tree then indexes about $143^3 \approx 2.9$ million rows.
 
-#### 1. Standard B-Tree Fan-Out
-In a standard B-Tree, every entry in an internal node stores the key, the child pointer, and the actual row data:
-$$\text{Entry Size} = 8 + 6 + 100 = 114\text{ bytes}$$
-$$\text{Fan-Out } B_{\text{B-Tree}} \approx \frac{16{,}384}{114} \approx 143\text{ child pointers}$$
+**B+ Tree:** internal entries store only the key and pointer — $8 + 6 = 14$ bytes.
+$$\text{Fan-out} \approx \frac{16{,}384}{14} \approx 1{,}170 \text{ children per node}$$
+With leaf pages holding ~160 rows each ($16{,}384 / 100$), a 3-level tree indexes:
+$$1{,}170 \times 1{,}170 \times 160 \approx 219 \text{ million rows}$$
+and a 4-level tree stretches to roughly **256 billion rows**.
 
-A 3-level B-Tree can index at most:
-$$143^3 \approx 2{,}924{,}207 \approx \mathbf{2.9\text{ million rows}}$$
-
-#### 2. B+ Tree Fan-Out
-In a B+ Tree, internal nodes store **only keys and child pointers** ($8 + 6 = 14\text{ bytes}$):
-$$\text{Fan-Out } B_{\text{B+ Tree}} \approx \frac{16{,}384}{14} \approx \mathbf{1{,}170\text{ child pointers!}}$$
-
-Assume leaf pages store the 100-byte row records ($\approx 16{,}384 / 100 \approx 160\text{ rows per leaf page}$):
-A 3-level B+ Tree can index:
-$$1{,}170 \times 1{,}170 \times 160 \approx \mathbf{219{,}024{,}000\text{ rows (219 million rows!)}}$$
-
-A 4-level B+ Tree can index:
-$$1{,}170 \times 1{,}170 \times 1{,}170 \times 160 \approx \mathbf{256\text{ billion rows!}}$$
-
-#### Why This Matters for Performance:
-In production, the root page and level-1 intermediate pages are permanently cached in the database **Buffer Pool (RAM)**. Because a B+ Tree is only 3 levels deep for 200+ million records, **a point lookup requires at most 1 physical disk read**!
+That's the whole reason B+ Trees stay shallow: packing more into each internal node means fewer levels, and since the root and upper levels usually stay cached in RAM (the buffer pool), a point lookup on a 200-million-row table can cost as little as **one physical disk read**.
 
 ---
 
-### Range Queries: $O(\log N + K)$ vs. In-Order Traversal
+### Why range scans are the other big win
 
-Relational queries are overwhelmingly range-based:
+Most real queries are ranges, not single points:
 ```sql
 SELECT * FROM Orders WHERE order_date BETWEEN '2026-01-01' AND '2026-01-31';
 ```
 
-- **In a Standard B-Tree:** The engine must perform a recursive **in-order tree traversal**. It must jump up to parent pages, down to left children, and up to right children, causing dozens of random page I/Os across the disk.
-- **In a B+ Tree:**
-  1. The engine performs a single binary search ($O(\log N)$) down to the leaf node holding `'2026-01-01'`.
-  2. It then simply **walks along the horizontal doubly-linked list** at the leaf level ($O(K)$) until it hits `'2026-01-31'`.
-  3. Adjacent leaf pages are physically stored contiguously on disk, allowing storage controllers to trigger **hardware read-ahead**, converting random seeks into high-throughput sequential reads.
+- **B-Tree:** has to do an in-order traversal — bouncing up to parents, down to children, up again — lots of scattered page reads.
+- **B+ Tree:** one binary search down to the leaf holding `'2026-01-01'`, then just **walk sideways** along the linked list of leaves until you pass `'2026-01-31'`. Since those leaf pages are stored contiguously on disk, this turns into a fast sequential read instead of a pile of random seeks.
 
 ---
 
-### The Interview Answer (60-90 seconds)
+### Say this in the interview
 
-> "Databases choose B+ Trees over standard B-Trees for two primary reasons: higher fan-out and optimal range scan performance.
->
-> First, standard B-Trees store row data inside internal nodes, consuming page space and limiting fan-out to roughly 100. In contrast, B+ Trees store data exclusively in leaf nodes. Internal nodes hold only routing keys and child pointers, boosting fan-out to over 1,100 per 16KB page. A 3-level B+ Tree can index over 200 million records, meaning any record can be found in at most 3 hops, with upper levels cached in RAM.
->
-> Second, B+ Trees link all leaf nodes in a horizontal doubly-linked list. A range query performs a single binary search to find the start key, and then sequentially traverses the linked list, turning random disk seeks into blistering sequential I/O.
->
-> While a standard B-Tree can theoretically return a key in $O(1)$ if it sits at the root, relational databases prioritize predictable latency and massive range scan throughput over occasional root-level hits."
+*"B+ Trees beat plain B-Trees for two reasons. First, fan-out: because B-Tree internal nodes carry row data, each one can only fit about 100 children in a 16KB page; B+ Tree internal nodes carry only keys and pointers, so they fit over 1,000 — which keeps the tree only 3-4 levels deep even at hundreds of millions of rows, with the top levels cached in RAM. Second, range scans: B+ Tree leaves are linked together, so a range query does one lookup to find the start and then walks sideways — sequential I/O instead of the random jumping a B-Tree traversal needs."*
 
 ---
 
-### Code Demonstration: Simulating B-Tree vs. B+ Tree Range Scans
+### Code: counting node visits for the same range scan
 
 The following Python script simulates range retrieval in a B-Tree (recursive in-order traversal requiring multiple parent-child node hops) versus a B+ Tree (horizontal leaf traversal), measuring the total number of node visits.
 

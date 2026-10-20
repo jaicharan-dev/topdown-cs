@@ -6,34 +6,35 @@ sidebar_position: 6
 sidebar_class_name: sidebar-medium
 ---
 
+import { GanttChart } from '@site/src/components/GanttChart';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "A system has a 32-bit virtual address space, a 28-bit physical address space, a 4 KB page size, and a 4-byte Page Table Entry (PTE). Calculate: (1) page offset bits, (2) virtual pages and physical frames, (3) single-level page table size, and (4) explain the bit breakdown and memory savings of a 2-level hierarchical page table."
 
 ---
 
-## 1. Executive Summary & Address Bitfield Architecture
+### Why this matters
 
-Virtual memory decouples an application's logical address space from physical RAM chips. The Memory Management Unit (MMU) uses page tables to translate the virtual page number (VPN) into a physical frame number (PFN) while keeping the byte offset identical.
+Virtual memory decouples what an application sees from the actual RAM chips. The MMU translates a virtual page number (VPN) into a physical frame number (PFN) — but the byte offset inside the page stays identical on both sides.
 
-```
-32-Bit Virtual Address Space (4 GB):
-┌──────────────────────────────────────┬─────────────────────────┐
-│     Virtual Page Number (VPN)        │    Page Offset (d)      │
-│               20 Bits                │         12 Bits         │
-└──────────────────────────────────────┴─────────────────────────┘
-                   │
-                   ▼ (MMU Page Table Translation)
-28-Bit Physical Address Space (256 MB):
-┌───────────────────────────────┬────────────────────────────────┐
-│   Physical Frame Number (PFN) │        Page Offset (d)         │
-│            16 Bits            │            12 Bits             │
-└───────────────────────────────┴────────────────────────────────┘
-```
+**32-bit virtual address (4 GB):**
+
+<GanttChart unit=" bits" segments={[
+  { label: 'Virtual Page Number (VPN)', start: 0, end: 20, accent: '#818cf8' },
+  { label: 'Page Offset', start: 20, end: 32, accent: '#a1a1aa' },
+]} />
+
+**28-bit physical address (256 MB), after MMU translation:**
+
+<GanttChart unit=" bits" segments={[
+  { label: 'Physical Frame Number (PFN)', start: 0, end: 16, accent: '#34d399' },
+  { label: 'Page Offset', start: 16, end: 28, accent: '#a1a1aa' },
+]} />
 
 ---
 
-## 2. Part 1: Calculating the Page Offset Bits
+### Part 1: The Page Offset Bits
 
 The page offset uniquely identifies a specific byte within a page. Because a virtual page and a physical page frame are identical in size, the offset field is identical in both addresses.
 
@@ -45,7 +46,7 @@ $$\text{Offset Bits} = \log_2(4096) = \mathbf{12\text{ Bits}}$$
 
 ---
 
-## 3. Part 2: Virtual Pages vs. Physical Frames
+### Part 2: Virtual Pages vs. Physical Frames
 
 ### 1. Virtual Address Space Breakdown:
 - Total Virtual Address: 32 bits
@@ -75,7 +76,7 @@ $$\text{Offset Bits} = \log_2(4096) = \mathbf{12\text{ Bits}}$$
 
 ---
 
-## 4. Part 3: Single-Level Page Table Size & Inefficiency
+### Part 3: Single-Level Page Table Size — and Why It Fails
 
 A flat (single-level) page table requires one entry (PTE) for every single page in the virtual address space, regardless of whether that page is allocated or empty.
 
@@ -91,17 +92,15 @@ $$\text{Page Table Size} = 2^{20}\text{ entries} \times 4\text{ Bytes} = 4,194,3
 
 ---
 
-## 5. Part 4: Two-Level Hierarchical Page Table
+### Part 4: The Two-Level Hierarchical Fix
 
 To eliminate contiguous allocation and avoid storing empty entries, operating systems convert the flat array into a tree structure.
 
-```
-32-Bit Logical Address (Two-Level):
-┌─────────────────────────┬─────────────────────────┬─────────────────────────┐
-│  Outer Directory (P1)   │    Page Table (P2)      │     Page Offset (d)     │
-│         10 Bits         │         10 Bits         │         12 Bits         │
-└─────────────────────────┴─────────────────────────┴─────────────────────────┘
-```
+<GanttChart unit=" bits" segments={[
+  { label: 'Outer Directory (P1)', start: 0, end: 10, accent: '#818cf8' },
+  { label: 'Page Table (P2)', start: 10, end: 20, accent: '#60a5fa' },
+  { label: 'Page Offset', start: 20, end: 32, accent: '#a1a1aa' },
+]} />
 
 ### Derivation: Why Exactly 10 Bits for P1 and 10 Bits for P2?
 The design requirement of hierarchical paging is that **each page table itself must fit perfectly inside a single physical page frame (4 KB)**:
@@ -115,7 +114,7 @@ $$\text{Entries per 4 KB frame} = \frac{\text{Page Size}}{\text{PTE Size}} = \fr
 
 ---
 
-## 6. Part 5: Numerical Proof of Multi-Level Memory Savings
+### Part 5: Proving the Memory Savings, With Real Numbers
 
 Consider a typical 32-bit user process that uses only **12 MB** of total virtual address space (e.g., 4 MB code, 4 MB heap, 4 MB stack), leaving the remaining 4,084 MB untouched:
 
@@ -141,7 +140,7 @@ The remaining 1,021 pointers in the Outer Page Directory sit as `NULL`. The OS n
 
 ---
 
-## 7. Alternative Architectures: Inverted Page Tables & x86-64
+### Other Architectures: Inverted Page Tables & x86-64
 
 | Architecture | Sizing Basis | Key Advantage | Key Disadvantage |
 | :--- | :--- | :--- | :--- |
@@ -153,7 +152,7 @@ The remaining 1,021 pointers in the Outer Page Directory sit as `NULL`. The OS n
 
 ---
 
-## 8. Python Verification: Address Translator & Sizer
+### Python: Address Translator & Sizer
 
 The following executable Python script implements the bit-masking arithmetic to translate virtual addresses to physical addresses and compares single-level vs. two-level memory overhead:
 

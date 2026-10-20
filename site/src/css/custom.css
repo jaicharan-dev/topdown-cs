@@ -3508,3 +3508,95 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
     opacity: 0.8 !important;
   }
 }
+
+/* ===================================================================
+   GANTT CHART - proportional timeline for scheduling/disk-arm problems
+   (docs/os-problems, docs/cn-problems etc.) - segment widths are
+   actually proportional to duration, unlike hand-spaced ASCII art.
+   =================================================================== */
+.csf-gantt-wrapper {
+  margin: 1.5rem 0;
+  padding: 1.1rem;
+  border-radius: 14px;
+  border: 1px solid var(--csf-border-subtle);
+  background: var(--csf-surface-raised);
+}
+
+.csf-gantt-scroll {
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.csf-gantt-track {
+  display: flex;
+  width: 100%;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--csf-border);
+}
+
+.csf-gantt-segment {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0.6rem 0.3rem;
+  min-width: 34px;
+  border-right: 1px solid var(--csf-border-subtle);
+  border-top: 3px solid var(--gantt-accent, var(--ifm-color-primary));
+  background: color-mix(in srgb, var(--gantt-accent, var(--ifm-color-primary)) 12%, var(--csf-surface));
+}
+
+.csf-gantt-segment:last-child {
+  border-right: none;
+}
+
+.csf-gantt-segment__label {
+  font-family: var(--ifm-font-family-monospace);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--ifm-font-color-base);
+  white-space: nowrap;
+}
+
+.csf-gantt-segment__duration {
+  font-size: 0.64rem;
+  color: var(--ifm-font-color-secondary);
+  white-space: nowrap;
+}
+
+.csf-gantt-ticks {
+  position: relative;
+  height: 1.4rem;
+  margin-top: 2px;
+}
+
+.csf-gantt-tick {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  font-size: 0.68rem;
+  color: var(--ifm-font-color-secondary);
+  font-family: var(--ifm-font-family-monospace);
+}
+
+.csf-gantt-tick--start {
+  transform: translateX(0);
+}
+
+.csf-gantt-tick--end {
+  transform: translateX(-100%);
+}
+
+.csf-gantt-tick::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  width: 1px;
+  height: 5px;
+  background: var(--csf-border);
+}

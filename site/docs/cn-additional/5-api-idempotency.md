@@ -6,143 +6,159 @@ sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
 
+import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is API idempotency, and why is it critical for financial transactions? How do production idempotency keys handle concurrent in-flight retries, and what must the server do if a client reuses an idempotency key with a mutated payload?"
 
-In API design and distributed systems, an operation is **Idempotent** if making multiple identical requests has the exact same side-effect on the system's persistent state as making a single request:
+Imagine calling a restaurant to order food, and the call drops right after you finish talking. Did they get your order or not? You call back and repeat it — if the kitchen already started cooking, you don't want a second plate showing up. An API needs the same guarantee: calling it once, or calling it five times because the network glitched, should leave things in exactly the same state.
+
+That's **idempotency**: making the same request multiple times has the same effect as making it once.
 
 $$f(f(x)) = f(x)$$
 
-While read operations are naturally idempotent, write mutations (such as processing credit card charges, booking flights, or transferring money) are non-idempotent by default. 
+Reads are naturally idempotent — reading a value twice doesn't change it. Writes aren't, by default. Charging a card, booking a flight, transferring money — do each of those twice and you get two charges, two bookings, two transfers, unless the API is specifically built to prevent it.
 
-Because computer networks are inherently unreliable (experiencing packet drops, connection resets, and client timeouts), APIs must enforce **application-level idempotency** to prevent catastrophic duplicate transactions upon automatic network retries.
-
----
-
-### The Two-Generals Network Failure Window
-
-When a client submits an HTTP request to an API, execution spans three distinct phases:
-
-```
-[ Phase 1: Client to Server ] ──> [ Phase 2: Server Execution ] ──> [ Phase 3: Server to Client ]
-    Request traverses web            Database mutates state;             Response returns 200 OK
-                                     Payment charged!                    (NETWORK PACKET DROPPED!)
-```
-
-#### The Dilemma:
-1. In Phase 2, the server executes the mutation: \$100 is deducted from the customer's bank account.
-2. In Phase 3, the client's network connection resets, or the API gateway times out at 30 seconds.
-3. The client's SDK receives a network timeout error (`ECONNRESET`). **The client has no idea whether the payment succeeded or failed.**
-4. Standard retry policies (e.g., in payment SDKs or message queues) automatically retry the request.
-5. If the endpoint is not idempotent, the server executes Phase 2 a second time, **double-charging the customer**.
+<Diagram>
+<Row>
+<Box title="PUT /account/balance" accent="#34d399">
+<Field icon="✅" code="idempotent" hint="retry-safe — sets an absolute value, same end state every time" variant="neutral" />
+</Box>
+<Box title="POST /charge" accent="#fb7185">
+<Field icon="⚠️" code="not idempotent" hint="retry without protection = double charge" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
 
 ---
 
-### HTTP Verbs: RFC 9110 Idempotency Specifications
+### Why this actually breaks things: the retry window
 
-| HTTP Method | Idempotent by Specification? | Safe? (Read-Only) | Systems Nuance |
+A single API call isn't instant — it has three phases, and the dangerous part is what happens if something fails between the last two:
+
+<Diagram>
+<Row>
+<Box title="Request sent" accent="#60a5fa">
+<Field icon="📤" code="Client → Server" variant="neutral" />
+</Box>
+<Arrow label="reaches server" />
+<Box title="Server executes" accent="#f59e0b">
+<Field icon="💳" code="Charge $100 — succeeds" variant="neutral" />
+</Box>
+<Arrow label="response lost" />
+<Box title="Client times out" accent="#fb7185">
+<Field icon="❓" code="No idea if it worked" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
+
+Walk through what happens:
+
+1. The server runs the charge. It succeeds — \$100 is deducted.
+2. On the way back, the connection drops, or the gateway times out.
+3. The client just sees a timeout (`ECONNRESET`). It genuinely doesn't know whether the charge went through.
+4. Most retry logic (in payment SDKs, in message queues) just tries again automatically.
+5. If the endpoint isn't idempotent, step 1 runs a second time — the customer gets charged twice.
+
+The server did its job correctly both times. The problem is entirely about what happens when the *response* gets lost, not the request.
+
+---
+
+### Which HTTP methods are safe by default
+
+| HTTP Method | Idempotent? | Safe (read-only)? | Why |
 | :--- | :--- | :--- | :--- |
-| **`GET` / `HEAD`** | **Yes** | **Yes** | Multiple reads do not alter server data state. |
-| **`PUT`** | **Yes** | No | Replaces the entire resource state. Executing `PUT /users/42` with `{ "name": "Alice" }` ten times leaves the record identical. |
-| **`DELETE`** | **Yes** | No | Deleting a resource ten times results in the resource being deleted. (The 1st call returns `200/204`, subsequent calls return `404`, but the persistent state is identical). |
-| **`POST`** | **NO** | No | Non-idempotent by default. Typically appends a new child record (e.g., creating a new invoice or charge). |
-| **`PATCH`** | **NO** | No | Non-idempotent by default (e.g., `PATCH /counter` with `{ "$increment": 1 }` mutates state on every execution). |
+| **`GET` / `HEAD`** | Yes | Yes | Reading doesn't change anything, no matter how many times you do it. |
+| **`PUT`** | Yes | No | It replaces the whole resource. `PUT /users/42` with `{"name": "Alice"}` ten times leaves the same end state as once. |
+| **`DELETE`** | Yes | No | Delete it once, it's gone. Delete it again, it's still gone (you'll get a `404` instead of `200`, but the data state didn't change further). |
+| **`POST`** | **No** | No | Usually creates a new record — call it twice, you typically get two records. |
+| **`PATCH`** | **No**, usually | No | Depends what it does. `PATCH /counter` with `{"$increment": 1}` changes the result every single time you call it. |
 
 ---
 
-### The Solution: The Idempotency Key Architecture
+### The fix: idempotency keys
 
-To make `POST` and `PATCH` requests safely retryable, APIs (pioneered by Stripe and Adyen) implement **Idempotency Keys**:
-- The client generates a unique token (typically a Version 4 UUID) and passes it in an HTTP header:
-  ```http
-  POST /v1/charges HTTP/1.1
-  Host: api.stripe.com
-  Idempotency-Key: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
-  Content-Type: application/json
+To make `POST` safe to retry, APIs like Stripe's and Adyen's let the client attach a unique token to the request — an **idempotency key**, usually a UUID:
 
-  { "amount": 1000, "currency": "usd" }
-  ```
+```http
+POST /v1/charges HTTP/1.1
+Host: api.stripe.com
+Idempotency-Key: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+Content-Type: application/json
 
----
-
-### The Idempotency Key State Machine & Concurrency Hazards
-
-A common interview trap is assuming the server just checks if a key exists in Redis and returns the cached result. 
-
-**What happens if a network glitch causes the client to send Request 2 while Request 1 is STILL PROCESSING in the background?**
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Client
-    participant Gateway as API Gateway (Idempotency Engine)
-    participant Redis as Redis Cache (State Store)
-    participant Core as Core Banking Service
-
-    Client->>Gateway: 1. POST /charge (Key K1, Payload $100)
-    Gateway->>Redis: 2. SET K1 IN_PROGRESS NX EX 60 (Atomic Lock)
-    Note over Redis: Lock Acquired with status IN_PROGRESS
-    Gateway->>Core: 3. Dispatches payment processing to Core Banking
-
-    Note over Client: Network stalls and client fires retry
-    Client->>Gateway: 4. POST /charge (Key K1, Payload $100)
-    Gateway->>Redis: 5. Inspects K1 state in Redis
-    Note over Redis: K1 is currently IN_PROGRESS
-    Gateway-->>Client: 6. Returns 409 Conflict (Transaction in progress)
-
-    Core-->>Gateway: 7. Payment succeeds (Charge ID ch_8812)
-    Gateway->>Redis: 8. Updates K1 (Status COMPLETED, Response 200 OK)
-    Gateway-->>Client: 9. Returns 200 OK (Original Request completes)
-
-    Note over Client: Client retries a 3rd time
-    Client->>Gateway: 10. POST /charge (Key K1, Payload $100)
-    Gateway->>Redis: 11. Inspects K1 state (COMPLETED)
-    Gateway-->>Client: 12. Replays Cached Response immediately
+{ "amount": 1000, "currency": "usd" }
 ```
 
-#### The Three State Machine Transitions:
-1. **`IN_PROGRESS` (Atomic Lease):**
-   - The gateway executes an atomic **`SET key "IN_PROGRESS" NX EX 60`** in Redis.
-   - If the key already exists and is `IN_PROGRESS`, a concurrent duplicate is executing. The gateway returns **`409 Conflict`** or blocks briefly to await resolution.
-2. **`COMPLETED` (Cached Response):**
-   - Once the downstream transaction completes, the gateway saves the exact HTTP status code, response headers, and response body in Redis with a 24- to 72-hour TTL.
-   - Any future retry with this key **skips all business logic** and immediately replays the cached HTTP response.
-3. **`FAILED`:**
-   - If an unrecoverable system exception occurs (e.g., database timeout before charging), the key is deleted to allow the client to safely retry.
+The client generates this key once per *logical* operation. If the request has to be retried, it sends the exact same key — telling the server "this is the same attempt, not a new charge."
 
 ---
 
-### The Security Guard: The Payload Hash Mismatch Check
+### What the server actually has to do with that key
 
-What happens if a client (or an attacker) sends the same `Idempotency-Key`, but **changes the request body** (e.g., attempts to pay \$5,000 instead of \$10)?
+The naive assumption is "just check if the key exists in Redis and return whatever's cached." That breaks the moment a retry arrives *while the first attempt is still running* — before anything's been cached yet. A production idempotency engine needs three states for a key, not two:
+
+<Diagram>
+<Row>
+<Box title="1st request arrives" accent="#60a5fa">
+<Field icon="🔒" code="SET key IN_PROGRESS" hint="atomic lock in Redis" variant="neutral" />
+</Box>
+<Arrow label="retry arrives mid-flight" />
+<Box title="Still IN_PROGRESS" accent="#f59e0b">
+<Field icon="🚫" code="409 Conflict" hint="another attempt with this key is already running" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
+
+<Diagram>
+<Row>
+<Box title="Original request finishes" accent="#34d399">
+<Field icon="✅" code="status → COMPLETED" hint="cache the exact response" variant="public" />
+</Box>
+<Arrow label="later retry with same key" />
+<Box title="Cached response replayed" accent="#34d399">
+<Field icon="📋" code="200 OK (same charge_id)" hint="no business logic re-run" variant="public" />
+</Box>
+</Row>
+</Diagram>
+
+1. **`IN_PROGRESS` (a lease, not a cache hit):** the gateway does an atomic `SET key "IN_PROGRESS" NX EX 60` in Redis. If the key is already there and still `IN_PROGRESS`, something else with this exact key is mid-flight — the gateway returns `409 Conflict` rather than running the charge a second time in parallel.
+2. **`COMPLETED` (cached forever, or close to it):** once the real operation finishes, the gateway stores the full response — status code, headers, body — for 24-72 hours. Any later retry with the same key skips the business logic entirely and just replays that stored response.
+3. **`FAILED`:** if something breaks before the charge actually happens (a database timeout, say), the key gets deleted so the client is free to safely try again from scratch.
+
+---
+
+### What if the retry doesn't match the original request?
+
+Here's the attack (or bug) this has to catch: someone reuses the same idempotency key but changes the amount —
 
 ```http
 // Request 1:
 Idempotency-Key: 9b1deb4d...
 { "amount": 1000 }
 
-// Request 2 (Tampered / Buggy Retry):
+// Request 2 (tampered, or just a buggy retry):
 Idempotency-Key: 9b1deb4d...
 { "amount": 500000 }
 ```
 
-#### The Defense:
-1. When storing the idempotency record, the server computes a cryptographic hash of the request parameters:
-   $$\text{Payload\_Hash} = \text{SHA-256}(\text{HTTP\_Method} + \text{Path} + \text{Request\_Body})$$
-2. On every subsequent request matching that key, the server recomputes the incoming hash and compares it against the stored hash.
-3. If the hashes differ, the server **strictly aborts** and returns **`422 Unprocessable Entity`** or **`400 Bad Request`**:
-   ```json
-   {
-     "error": "Idempotency-Key reused with modified parameters or different payload."
-   }
-   ```
+The fix is to hash the request alongside the key, not just trust the key alone:
+
+$$\text{Payload\_Hash} = \text{SHA-256}(\text{HTTP\_Method} + \text{Path} + \text{Request\_Body})$$
+
+Every time that key shows up again, the server recomputes the hash of the incoming request and compares it to the hash it stored the first time. If they don't match, it refuses outright — `422 Unprocessable Entity` or `400 Bad Request` — instead of either re-running the charge or silently replaying the wrong cached response:
+
+```json
+{
+  "error": "Idempotency-Key reused with modified parameters or different payload."
+}
+```
 
 ---
 
-### Summary
+### Say this in the interview
 
-"API idempotency guarantees that duplicate requests cause no additional persistent mutations. While GET, PUT, and DELETE are idempotent by specification, POST requires client-generated Idempotency Keys. Production servers use an atomic state machine in Redis (IN_PROGRESS with lock lease, transitioning to COMPLETED with cached response replay). Concurrent in-flight retries are blocked with 409 Conflict, and payload hashing prevents accidental or malicious reuse of idempotency keys with altered parameters."
+*"Idempotency means repeating a request has the same effect as making it once. GET, PUT, and DELETE are idempotent by nature; POST isn't, which matters because a client that times out waiting for a response has no way to know if the operation actually succeeded, and its retry logic will fire again. The fix is a client-generated idempotency key: the server tracks it through IN_PROGRESS, COMPLETED, and FAILED states in something like Redis, returning 409 for a concurrent retry and replaying the cached response for a later one. To stop the key from being reused with a different payload, the server also hashes the request body and rejects a mismatch."*
 
 ---
 

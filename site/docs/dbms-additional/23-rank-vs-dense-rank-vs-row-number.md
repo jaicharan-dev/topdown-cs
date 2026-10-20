@@ -1,53 +1,48 @@
 ---
 id: 23-rank-vs-dense-rank-vs-row-number
 title: "RANK() vs. DENSE_RANK() vs. ROW_NUMBER()"
-description: "Compare SQL window ranking functions (ROW_NUMBER, RANK, DENSE_RANK), mathematical gap formulas, tie handling, and top-N per partition patterns."
+description: "Compare SQL window ranking functions - how each one handles ties, whether it leaves gaps, and how to find the top N per group."
 sidebar_position: 9
 sidebar_class_name: sidebar-medium
 ---
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
+import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
-> **Interview Question:** "What is the difference between `ROW_NUMBER()`, `RANK()`, and `DENSE_RANK()` in SQL? How does each handle duplicate ties mathematically, why can't window functions be filtered in a `WHERE` clause, and how do you find the top 2 highest earners per department?"
+> **Interview Question:** "What is the difference between `ROW_NUMBER()`, `RANK()`, and `DENSE_RANK()` in SQL? How does each handle duplicate ties, why can't window functions be filtered in a `WHERE` clause, and how do you find the top 2 highest earners per department?"
+
+All three number the rows in a group. The only question is: **what happens when two rows tie?**
+
+<Diagram>
+<Row>
+<Box title="ROW_NUMBER()" accent="#60a5fa">
+<Field icon="🔢" code="1, 2, 3, 4" hint="ties broken arbitrarily — always unique" variant="neutral" />
+</Box>
+<Box title="RANK()" accent="#f59e0b">
+<Field icon="🥇" code="1, 2, 2, 4" hint="ties share a rank, but leaves a gap after" variant="neutral" />
+</Box>
+<Box title="DENSE_RANK()" accent="#34d399">
+<Field icon="🥈" code="1, 2, 2, 3" hint="ties share a rank, no gap after" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
+
+Input scores: `[100, 90, 90, 80]`.
+
+- **`ROW_NUMBER()`** doesn't care about ties at all - every row gets a unique, sequential number: `1, 2, 3, 4`. Good for pagination, or picking exactly one row per group (`WHERE rn = 1`).
+- **`RANK()`** gives tied rows the same number, like Olympic medals - two people can share silver. But then it skips ahead: `1, 2, 2, 4` (notice there's no `3`). Good for leaderboards where you want "how many people beat me" to show through as a gap.
+- **`DENSE_RANK()`** also gives tied rows the same number, but doesn't skip anything afterward: `1, 2, 2, 3`. This is what you want when you're looking for "the Nth *distinct* value" - like the second-highest salary.
 
 ---
 
-### The 3 Window Ranking Functions
-
-SQL provides three foundational window ranking functions to assign ordinal positions to rows within a partition. The fundamental differences lie in **how they handle ties** and **whether they introduce gaps into the ranking sequence**:
-
-```mermaid
-graph TD
-    Scores["Input Scores: [100, 90, 90, 80]"]
-    Scores --> RN["ROW_NUMBER(): [1, 2, 3, 4] (No ties, strictly sequential)"]
-    Scores --> RK["RANK():       [1, 2, 2, 4] (Ties share rank, leaves gap!)"]
-    Scores --> DR["DENSE_RANK(): [1, 2, 2, 3] (Ties share rank, NO gaps!)"]
-```
-
----
-
-### Comparison Matrix & Mathematical Definitions
-
-Let $r$ be the current row in a sorted partition:
-
-| Function | Mathematical Definition | Handling of Duplicate Ties | Leaves Gaps? | Primary Use Case |
-| :--- | :--- | :--- | :---: | :--- |
-| **`ROW_NUMBER()`** | $\text{ROW\_NUMBER}(r) = r$ | Ignores ties; assigns arbitrary sequential order | **No** | Pagination; deduplicating records (`WHERE rn = 1`). |
-| **`RANK()`** | $1 + \sum_{i < r} 1$ | Identical values receive identical rank | **Yes** | Olympic competitions (two silver medals $\implies$ next is 4th). |
-| **`DENSE_RANK()`** | $1 + \text{distinct\_count}(v < v_r)$ | Identical values receive identical rank | **No** | N-th highest distinct values (2nd highest salary, top leaderboards). |
-
----
-
-### Visualizing the Difference in Action
-
-Suppose we execute all three functions on an `Employees` table ordered by salary descending:
+### Seeing it on real data
 
 ```sql
-SELECT 
-    name, 
+SELECT
+    name,
     salary,
     ROW_NUMBER() OVER (ORDER BY salary DESC) AS row_num,
     RANK()       OVER (ORDER BY salary DESC) AS rnk,
@@ -55,63 +50,62 @@ SELECT
 FROM Employees;
 ```
 
-#### Output:
-
-| Name | Salary | `ROW_NUMBER()` | `RANK()` | `DENSE_RANK()` | Analysis |
+| Name | Salary | `ROW_NUMBER()` | `RANK()` | `DENSE_RANK()` | What's happening |
 | :--- | :---: | :---: | :---: | :---: | :--- |
-| **Alice** | \$100,000 | **1** | **1** | **1** | Sole highest salary |
-| **Bob** | \$80,000 | **2** | **2** | **2** | Tied for 2nd place |
-| **Charlie** | \$80,000 | **3** | **2** | **2** | Tied for 2nd place |
-| **David** | \$70,000 | **4** | **4** | **3** | **Notice:** `RANK()` jumped to 4; `DENSE_RANK()` moved to 3! |
-| **Emma** | \$60,000 | **5** | **5** | **4** | Dense sequence continues without skipping |
+| **Alice** | \$100,000 | **1** | **1** | **1** | Only one at the top |
+| **Bob** | \$80,000 | **2** | **2** | **2** | Tied for 2nd |
+| **Charlie** | \$80,000 | **3** | **2** | **2** | Tied for 2nd |
+| **David** | \$70,000 | **4** | **4** | **3** | `RANK()` jumps to 4; `DENSE_RANK()` moves to 3 |
+| **Emma** | \$60,000 | **5** | **5** | **4** | Dense sequence keeps counting without skipping |
 
 ---
 
-### The Non-Deterministic `ROW_NUMBER()` Trap
+### A trap: `ROW_NUMBER()` on tied rows is non-deterministic
 
-> **Staff-Level Trap:** If you call `ROW_NUMBER() OVER (ORDER BY salary DESC)` on rows with identical salaries without specifying a secondary unique column, **the returned ranking is non-deterministic**!
+If you call `ROW_NUMBER() OVER (ORDER BY salary DESC)` and two rows have the exact same salary, the database is free to assign `2` to Bob and `3` to Charlie this time, and swap them the next time you run the same query. It's not a bug - there's just nothing in your `ORDER BY` telling it how to break the tie.
 
-The database engine is free to assign `2` to Bob and `3` to Charlie on execution 1, and swap them on execution 2.
-- **The Remedy:** Always provide a deterministic tie-breaker column in the `ORDER BY` clause:
+**The fix:** always add a unique tie-breaker column:
+
 ```sql
 ROW_NUMBER() OVER (ORDER BY salary DESC, employee_id ASC)
 ```
 
 ---
 
-### Why Window Functions Cannot Be Filtered in a `WHERE` Clause
+### Why you can't filter on these in `WHERE`
 
-A common junior error is attempting to filter directly on a window function:
+This looks reasonable, but it's a syntax error:
+
 ```sql
--- SYNTAX ERROR: Window functions not allowed here!
+-- SYNTAX ERROR: window functions aren't allowed here
 SELECT name, salary FROM Employees WHERE DENSE_RANK() OVER (ORDER BY salary DESC) <= 2;
 ```
 
-#### The Reason: SQL Logical Query Processing Order
-The relational engine evaluates clauses in this strict logical sequence:
-1. `FROM` & `JOIN`
-2. `WHERE` (Filters physical table rows)
+The reason comes down to the order SQL actually runs in:
+
+1. `FROM` / `JOIN`
+2. `WHERE` — filters raw table rows
 3. `GROUP BY`
 4. `HAVING`
 5. `SELECT`
-6. **Window Functions** (Evaluated *after* filtering and grouping!)
+6. **window functions run here** — after filtering, after grouping
 7. `ORDER BY`
 8. `LIMIT`
 
-Because the `WHERE` clause executes **before** window functions are calculated, the engine cannot filter on them directly. You must wrap the query in a **Common Table Expression (CTE)** or subquery!
+`WHERE` runs in step 2. Window functions aren't computed until step 6. So by the time `WHERE` checks its condition, `DENSE_RANK()` doesn't exist yet - there's nothing to compare against. You have to compute the rank first (in a CTE or subquery), then filter on it from the outside.
 
 ---
 
-### The Canonical Interview Query: Top-N Earners Per Department
+### The classic follow-up: top 2 earners per department
 
 ```sql
 WITH RankedDepartmentSalaries AS (
-    SELECT 
+    SELECT
         department_id,
         name,
         salary,
         DENSE_RANK() OVER (
-            PARTITION BY department_id 
+            PARTITION BY department_id
             ORDER BY salary DESC
         ) AS rnk
     FROM Employees
@@ -122,25 +116,17 @@ WHERE rnk <= 2
 ORDER BY department_id, rnk;
 ```
 
----
-
-### The Interview Answer (60-90 seconds)
-
-> "`ROW_NUMBER()`, `RANK()`, and `DENSE_RANK()` are window functions that evaluate rows within a partition.
->
-> `ROW_NUMBER()` assigns a strictly unique, sequential integer to every row regardless of ties. Because identical values are ordered non-deterministically, a secondary tie-breaker column should always be provided in `ORDER BY`.
->
-> `RANK()` assigns the same rank to identical values, but skips numbers for subsequent rows, leaving gaps in the ranking sequence equal to the number of ties.
->
-> `DENSE_RANK()` also gives tied values the same rank, but leaves zero gaps, ensuring that the N-th distinct value receives rank $N$. This makes `DENSE_RANK()` the correct tool for finding the N-th highest metrics.
->
-> Finally, because window functions are evaluated in the `SELECT` phase, long after the `WHERE` clause filters rows, filtering by rank requires wrapping the window query inside a CTE or subquery."
+`PARTITION BY department_id` resets the ranking inside each department, so "top 2" means top 2 *per department*, not overall.
 
 ---
 
-### Code Demonstration: Ranking Functions & Top-N Per Department
+### Say this in the interview
 
-The following Python script tests `ROW_NUMBER()`, `RANK()`, and `DENSE_RANK()` in SQLite, proving gap behavior and solving the top-2 earners per department query.
+*"All three number rows within a partition, and they only differ in how they treat ties. `ROW_NUMBER()` ignores ties and always hands out unique numbers - so it needs a deterministic `ORDER BY` or the results can shuffle between runs. `RANK()` gives tied rows the same number but then skips ahead, leaving a gap. `DENSE_RANK()` gives tied rows the same number with no gap, so it's the right one for 'find the Nth highest distinct value.' And because window functions are computed after `WHERE` has already run, you can't filter on them directly - you wrap the query in a CTE and filter from outside."*
+
+---
+
+### Checking this yourself: ranking and top-N per group in SQLite
 
 ```python
 import sqlite3
@@ -171,7 +157,7 @@ def run_ranking_demo():
 
     print("--- 1. Comparing Ranking Functions (Department 10) ---")
     cursor.execute("""
-        SELECT 
+        SELECT
             name, salary,
             ROW_NUMBER() OVER (ORDER BY salary DESC, emp_id ASC) as rn,
             RANK()       OVER (ORDER BY salary DESC) as rk,
@@ -187,7 +173,7 @@ def run_ranking_demo():
     print("\n--- 2. Querying Top 2 Highest Earners Per Department ---")
     cursor.execute("""
         WITH DepartmentRanks AS (
-            SELECT 
+            SELECT
                 dept_id, name, salary,
                 DENSE_RANK() OVER (PARTITION BY dept_id ORDER BY salary DESC) as rnk
             FROM Employees

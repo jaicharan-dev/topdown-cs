@@ -6,55 +6,33 @@ sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
 
+import { Diagram, Box, Field } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is the Decorator pattern, how does it uphold the Open/Closed Principle (OCP) without subclass explosion, and how does it differ from Python's `@decorator` syntax? Show both the classic beverage example and an enterprise database repository decorator with transparent delegation."
 
----
+Start with `Coffee`. Now customers want Milk, Sugar, Caramel, Whipped Cream — in any combination. If you try to handle this with subclasses, you need `CoffeeWithMilk`, `CoffeeWithMilkAndSugar`, `CoffeeWithMilkSugarAndCaramel`... for N toppings, that's up to **2^N subclasses**, and changing the base price means touching every single one.
 
-### 1. Executive Summary & The Subclass Explosion Problem
+**Decorator** fixes this with nesting instead of subclassing — literally like Russian nesting dolls. Each wrapper has the exact same interface as what it wraps, forwards the call inward, and adds its own bit on the way back out:
 
-The **Decorator Pattern** is a structural design pattern that allows you to dynamically attach new behaviors and responsibilities to an object at runtime by wrapping it in an object of a matching interface.
+<Diagram>
+<Box title="WhippedCream" accent="#f59e0b">
+<Field icon="🍦" code="+ $0.75" variant="neutral" />
+<Box title="Milk" accent="#60a5fa">
+<Field icon="🥛" code="+ $0.50" variant="neutral" />
+<Box title="Espresso (the core)" accent="#34d399">
+<Field icon="☕" code="$2.50" variant="neutral" />
+</Box>
+</Box>
+</Box>
+</Diagram>
 
-#### The Problem: Subclass Explosion (Violating OCP)
-Imagine an e-commerce checkout or coffee ordering system. You start with `Coffee`. Then customers want Milk, Sugar, Caramel, or Whipped Cream:
-- `CoffeeWithMilk`
-- `CoffeeWithMilkAndSugar`
-- `CoffeeWithMilkSugarAndCaramel`
-- `CoffeeWithWhippedCream...`
-
-For $N$ optional toppings, naive inheritance requires up to **$2^N$ distinct subclasses**! Modifying a base price requires updating dozens of classes, catastrophic code duplication, and rigid compile-time coupling.
-
-#### The Solution: Recursive Object Composition
-Instead of static inheritance, the Decorator pattern acts like **Russian Nesting Dolls**:
-- The innermost doll is the raw, concrete component (`SimpleCoffee` or `SQLRepository`).
-- Each wrapper doll has the exact same interface, delegates the call down to its inner doll, and decorates the result with added behavior (cost, logging, caching).
-
-```
-       ┌────────────────────────┐
-       │     Component (ABC)    │
-       ├────────────────────────┤
-       │ + execute()            │
-       └───────────▲────────────┘
-                   │
-         ┌─────────┴─────────┐
-         │                   │
-┌────────────────┐  ┌────────────────────────┐
-│ ConcreteObject │  │  BaseDecorator         │
-│ (Core Logic)   │  ├────────────────────────┤
-└────────────────┘  │ - _wrapped: Component  │───► Holds inner reference
-                    └──────────▲─────────────┘
-                               │
-                     ┌─────────┴─────────┐
-                     │                   │
-            ┌────────────────┐  ┌────────────────┐
-            │ CacheDecorator │  │ LogDecorator   │
-            └────────────────┘  └────────────────┘
-```
+`WhippedCream(Milk(Espresso())).get_cost()` resolves from the inside out: `2.50 → +0.50 → +0.75 = $3.75`.
 
 ---
 
-### 2. Pedagogical Implementation: Dynamic Beverage Builder
+### Building It: Dynamic Beverage Wrapper
 
 ```python
 from abc import ABC, abstractmethod
@@ -104,14 +82,11 @@ class WhippedCream(CoffeeDecorator):
         return f"{self._coffee.get_description()}, Whipped Cream"
 ```
 
-- **Usage:** `order = WhippedCream(Milk(Espresso()))`  
-  Calling `order.get_cost()` executes inside-out ($2.50 \to +0.50 \to +0.75 = \$3.75$).
-
 ---
 
-### 3. Enterprise Backend Use Case: Repository Caching & Logging
+### A Second Example: Repository Caching & Logging
 
-In production microservices, decorators are heavily used to wrap database repositories and HTTP clients with cross-cutting infrastructure concerns (caching, latency metrics, retry policies):
+The same trick works for infrastructure concerns, not just toppings — wrapping a database repository with caching, latency logging, or retries, without touching the repository's own SQL:
 
 ```python
 import time
@@ -169,9 +144,9 @@ class LoggingUserRepository(UserRepository):
 
 ---
 
-### 4. The Python Collision: GoF OOP Decorator vs. Python `@decorator`
+### Don't Confuse This With Python's `@decorator` Syntax
 
-Staff interviewers frequently test whether you understand the fundamental difference between the GoF pattern and Python's language syntax:
+Same name, genuinely different mechanism — this trips people up constantly:
 
 | Dimension | GoF Structural Decorator (OOP) | Python `@decorator` (Functional) |
 | :--- | :--- | :--- |
@@ -183,11 +158,9 @@ Staff interviewers frequently test whether you understand the fundamental differ
 
 ---
 
-### 5. Transparent Attribute Forwarding via __getattr__()
+### The Gotcha: Wrapping Hides Methods the Interface Didn't Declare
 
-A common pitfall with OOP decorators is **interface blindness**: if the concrete object has auxiliary methods not declared in the base interface, the decorator wrapper hides them.
-
-To fix this in Python, implement `__getattr__` to forward unhandled method calls transparently down the chain:
+If the wrapped object has extra methods that aren't part of the shared interface, the decorator hides them — callers only see what the interface promises. Python's `__getattr__` fixes this by forwarding anything unhandled straight through to the inner object:
 
 ```python
 class TransparentDecorator(Coffee):
@@ -201,7 +174,13 @@ class TransparentDecorator(Coffee):
 
 ---
 
-### 6. Python Verification Script
+### Say this in the interview
+
+*"Decorator wraps an object in another object implementing the same interface, letting you add behavior without subclassing — it solves the 2^N subclass explosion you'd get from combining optional features through inheritance. Each layer forwards the call inward and adds its own bit on the way back out, so you can stack caching, logging, or retries around a repository without touching its code. Don't conflate it with Python's `@decorator` syntax — that's a function wrapper resolved at module load time, while GoF Decorator wraps whole object instances at runtime."*
+
+---
+
+### Python: Verification Script
 
 The following standalone script demonstrates beverage order composition and enterprise repository caching with execution latency measurements:
 
