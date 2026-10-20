@@ -6,6 +6,8 @@ sidebar_position: 8
 sidebar_class_name: sidebar-hard
 ---
 
+import { Diagram, Row, Box, Field, Tree } from '@site/src/components/ConceptDiagram';
+
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
 > **Interview Question:** "What does each call print? Explain why this code violates Barbara Liskov's formal definition of the Liskov Substitution Principle (LSP), why real-world mathematical taxonomy fails in OOP, and how you would architecturally refactor this system."
@@ -52,13 +54,11 @@ sidebar_class_name: sidebar-hard
 
 ---
 
-The Rectangle/Square dilemma is the canonical illustration of the **Liskov Substitution Principle (LSP)**, the "L" in the SOLID design principles. 
-
-While candidates easily notice that `resizeRectangle(new Square())` outputs 100 instead of 50, staff-level interviewers expect you to articulate the violation using formal **Design by Contract** terminology (preconditions, postconditions, and invariants).
+A square is mathematically a rectangle — but once you make both *mutable* objects, that relationship breaks. `Square` overrides the setters so width and height always stay equal, which quietly changes what calling `setHeight()` means. That's the whole bug, and it's the canonical example of the "L" in SOLID: the Liskov Substitution Principle.
 
 ---
 
-### 1. Exact Output
+### Exact Output
 
 ```text
 50
@@ -67,20 +67,28 @@ While candidates easily notice that `resizeRectangle(new Square())` outputs 100 
 
 ---
 
-### 2. Step-by-Step Execution Trace
+### Step-by-Step Execution Trace
 
-1. **`resizeRectangle(new Rectangle())`:**
-   - `r.setWidth(5)` $\implies$ `width = 5, height = 0`.
-   - `r.setHeight(10)` $\implies$ `width = 5, height = 10`.
-   - `r.getArea()` returns $5 \times 10 = \mathbf{50}$.
-2. **`resizeRectangle(new Square())`:**
-   - `r.setWidth(5)` invokes `Square.setWidth(5)` $\implies$ `width = 5, height = 5`.
-   - `r.setHeight(10)` invokes `Square.setHeight(10)` $\implies$ `width = 10, height = 10`. (Setting height silently mutates width!).
-   - `r.getArea()` returns $10 \times 10 = \mathbf{100}$.
+<Diagram>
+<Row>
+<Box title="resizeRectangle(new Rectangle())" accent="#34d399">
+<Field icon="1️⃣" code="setWidth(5) → width=5, height=0" variant="neutral" />
+<Field icon="2️⃣" code="setHeight(10) → width=5, height=10" variant="neutral" />
+<Field icon="✅" code="getArea() = 5 × 10 = 50" variant="neutral" />
+</Box>
+<Box title="resizeRectangle(new Square())" accent="#fb7185">
+<Field icon="1️⃣" code="setWidth(5) → width=5, height=5" hint="Square's override keeps both equal" variant="neutral" />
+<Field icon="2️⃣" code="setHeight(10) → width=10, height=10" hint="setting height silently changed width too" variant="neutral" />
+<Field icon="⚠️" code="getArea() = 10 × 10 = 100" hint="caller only called setWidth and setHeight — never expected width to move" variant="neutral" />
+</Box>
+</Row>
+</Diagram>
+
+For a plain `Rectangle`, `setWidth` and `setHeight` are independent, so the area comes out as expected: 50. For a `Square`, `setHeight(10)` has to also change `width` to keep it a square — which silently invalidates whatever `setWidth(5)` had just set, giving 100 instead.
 
 ---
 
-### 3. Formal Analysis: Why This Violates LSP
+### Why This Violates LSP
 
 Barbara Liskov and Jeannette Wing (1994) formally defined subtyping:
 > *Let $\phi(x)$ be a property provable about objects $x$ of type $T$. Then $\phi(y)$ should be true for objects $y$ of type $S$ where $S$ is a subtype of $T$.*
@@ -109,43 +117,25 @@ assert r.getArea() == 50; // FAILS with Square!
 
 ---
 
-### 4. The Senior Architectural Fallacy: "Is-A" vs. "Behaves-Like"
+### The Fallacy: "Is-A" vs. "Behaves-Like"
 
-The root cause of this design failure is confusing **mathematical taxonomy** with **software behavioral modeling**:
-
-```text
-MATHEMATICAL REALITY (Static Taxonomy):
-  A Square IS-A Rectangle (Every square has 4 right angles and parallel sides).
-
-OBJECT-ORIENTED REALITY (Behavioral Contracts):
-  A mutable Square DOES NOT BEHAVE LIKE a mutable Rectangle!
-  Because Rectangle promises independent dimension mutability,
-  Square CANNOT safely inherit from Rectangle.
-```
-
-In Object-Oriented Programming, inheritance must model **behavioral substitutability**, not ontological classification.
+Mathematically, a square is a rectangle — every square has 4 right angles and parallel sides, so the "is-a" check passes. But inheritance in OOP isn't about that kind of taxonomy; it's a promise that the subtype behaves like the supertype. `Rectangle` promises independent width/height mutation, and a mutable `Square` cannot honor that promise — so it shouldn't inherit from `Rectangle`, no matter how true the math is.
 
 ---
 
-### 5. Architectural Solutions That Restore LSP
+### Architectural Solutions That Restore LSP
 
 #### Solution 1: Segregated Read-Only Interface (`Shape`)
-Decouple the common read-only behavior (`getArea()`) from mutable dimension setters:
+Decouple the common read-only behavior (`getArea()`) from mutable dimension setters — `Rectangle` and `Square` both implement `Shape`, but neither inherits from the other:
 
-```text
-              <<interface>>
-                 Shape
-             + getArea(): int
-               ^        ^
-               |        |
-        +------+        +------+
-        |                      |
-    Rectangle                Square
-  + width: int            + side: int
-  + height: int           + setSide(s: int)
-  + setWidth(w: int)
-  + setHeight(h: int)
-```
+<Diagram>
+<Tree root={
+<Box title="Shape «interface»" accent="#818cf8"><Field icon="🔹" code="getArea(): int" variant="neutral" /></Box>
+}>
+<Box title="Rectangle implements Shape" accent="#60a5fa"><Field icon="↳" code="setWidth(w), setHeight(h)" variant="neutral" /></Box>
+<Box title="Square implements Shape" accent="#60a5fa"><Field icon="↳" code="setSide(s)" variant="neutral" /></Box>
+</Tree>
+</Diagram>
 
 ```java
 public interface Shape {
@@ -188,7 +178,7 @@ Without in-place state mutation, postcondition contradictions disappear.
 
 ---
 
-### 6. Runnable Java Verification Code
+### Java: Runnable Verification
 
 ```java
 /**
@@ -246,14 +236,6 @@ public class LspViolationDemo {
 
 ---
 
-### 7. Concise Staff-Level Interview Answer
+### Say this in the interview
 
-> "The first call prints `50`, and the second call prints `100`.
->
-> This is a canonical Liskov Substitution Principle (LSP) violation because `Square` breaks the behavioral contract established by `Rectangle`. In Design by Contract, a subtype is forbidden from weakening supertype postconditions. When `Rectangle.setHeight(10)` is invoked, it guarantees the postcondition that `height == 10` and `width == width_initial`. 
->
-> However, `Square` overrides `setHeight` to mutate both dimensions simultaneously, corrupting the width to 10 and resulting in an unexpected area of 100.
->
-> This exposes the classic 'Is-A' taxonomy fallacy: while a square is mathematically a rectangle, in software engineering, inheritance is strictly about behavioral compatibility. A mutable square cannot behave like a mutable rectangle. 
->
-> To resolve this, we remove the inheritance hierarchy between them, have both implement a shared read-only `Shape` interface with `getArea()`, or model them as immutable value objects where dimensions cannot be mutated in place."
+*"The first call prints 50, the second prints 100 — that's the bug. Square breaks the contract Rectangle establishes: calling setHeight() on a Rectangle is supposed to leave width untouched, but Square's override changes both dimensions together, so width silently becomes 10 too. This is the classic 'is-a' fallacy — a square is mathematically a rectangle, but inheritance in software is about behavioral substitutability, not taxonomy, and a mutable Square can't behave like a mutable Rectangle. The fix is to stop forcing the inheritance: give both a shared read-only Shape interface with just getArea(), or make them immutable value objects so there's no in-place mutation to violate a contract over."*
