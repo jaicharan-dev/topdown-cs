@@ -645,7 +645,7 @@ What this buys is that **the database and the outside world can never disagree a
 whether the order exists.** The relay may deliver a message twice if it crashes between
 sending and marking, so every consumer must be idempotent — which is why the payment call
 carries the idempotency key from
-[the crash-recovery question](./2-financial-crash-recovery-and-idempotency).
+[the crash-recovery question](../dbms-additional/35-crash-recovery-and-idempotency).
 
 That is the trade: at-least-once delivery with idempotent consumers, instead of exactly-once
 delivery that is not available at any price.
