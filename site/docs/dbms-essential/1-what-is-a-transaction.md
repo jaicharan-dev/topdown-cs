@@ -6,7 +6,7 @@ sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -52,18 +52,21 @@ COMMIT;
 A transaction moves through five states as it runs:
 
 <Diagram>
-<Tree root={
-<Box title="Active" accent="#818cf8">
-<Field icon="▶️" code="BEGIN" hint="statements are running" variant="neutral" />
-</Box>
-}>
-<Box title="Partially Committed → Committed" accent="#34d399">
-<Field icon="✅" code="flush to disk (WAL)" hint="durable — can't be rolled back after this" variant="neutral" />
-</Box>
-<Box title="Failed → Aborted" accent="#fb7185">
-<Field icon="❌" code="rollback" hint="undo log reverses every change" variant="neutral" />
-</Box>
-</Tree>
+<Row>
+<Box label="Active" sub="running" />
+<Arrow />
+<Box label="Partially Committed" sub="in memory" />
+<Arrow />
+<Box label="Committed" sub="on disk" />
+</Row>
+</Diagram>
+
+<Diagram>
+<Row>
+<Box label="Failed" />
+<Arrow />
+<Box label="Aborted" sub="rolled back" />
+</Row>
 </Diagram>
 
 1. **Active** — statements are running.

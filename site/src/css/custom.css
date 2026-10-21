@@ -1493,6 +1493,141 @@ html:not([data-theme='dark']) .csf-dsa-node-count {
   width: 100%;
 }
 
+/* ===================================================================
+   SIMPLE DIAGRAM - plain black/white boxes and lines, no icons or
+   accent colors, minimal text. Used in Essentials tracks.
+   =================================================================== */
+.csf-sd-wrapper {
+  margin: 1.5rem 0;
+  padding: 1rem;
+}
+
+.csf-sd-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.csf-sd-box {
+  flex: 0 0 auto;
+  min-width: 110px;
+  border: 1.5px solid var(--ifm-font-color-base);
+  padding: 0.7rem 1rem;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.csf-sd-box__label {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.csf-sd-box__sub {
+  font-size: 0.78rem;
+  color: var(--ifm-font-color-secondary);
+  margin-top: 0.2rem;
+}
+
+.csf-sd-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 48px;
+  gap: 0.2rem;
+}
+
+.csf-sd-arrow__line {
+  position: relative;
+  width: 100%;
+  height: 1.5px;
+  background: var(--ifm-font-color-base);
+}
+
+.csf-sd-arrow__line::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-top: 1.5px solid var(--ifm-font-color-base);
+  border-right: 1.5px solid var(--ifm-font-color-base);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+.csf-sd-arrow__label {
+  font-size: 0.65rem;
+  color: var(--ifm-font-color-secondary);
+  white-space: nowrap;
+}
+
+.csf-sd-tree {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.csf-sd-tree > .csf-sd-box {
+  margin-bottom: 0;
+}
+
+.csf-sd-tree__connector {
+  width: 1.5px;
+  height: 18px;
+  background: var(--ifm-font-color-base);
+}
+
+.csf-sd-tree__children {
+  display: flex;
+  gap: 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  border-top: 1.5px solid var(--ifm-font-color-base);
+  padding-top: 18px;
+  margin-top: 1px;
+}
+
+.csf-sd-tree__child-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.csf-sd-tree__child-wrap::before {
+  content: '';
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  width: 1.5px;
+  height: 18px;
+  background: var(--ifm-font-color-base);
+}
+
+@media (max-width: 680px) {
+  .csf-sd-row {
+    flex-direction: column;
+  }
+  .csf-sd-arrow {
+    flex: none;
+    width: 100%;
+    height: 28px;
+  }
+  .csf-sd-arrow__line {
+    width: 1.5px;
+    height: 100%;
+  }
+  .csf-sd-arrow__line::after {
+    right: 50%;
+    top: auto;
+    bottom: 0;
+    transform: translateX(50%) rotate(135deg);
+  }
+}
+
 .csf-compact-card__glow {
   position: absolute;
   top: 34%;
