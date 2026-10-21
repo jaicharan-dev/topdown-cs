@@ -6,7 +6,7 @@ sidebar_position: 13
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+import { Diagram, Box, Tree } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -44,17 +44,9 @@ A balanced binary tree (AVL, red-black) gives you $O(\log_2 N)$ lookups in theor
 The detail that trips people up: *why B+ Tree and not plain B-Tree?* In a B-Tree, every node — even internal ones — stores full row data. In a B+ Tree, internal nodes store only keys and pointers; all the actual row data lives in the leaf nodes, which are linked together in a chain:
 
 <Diagram>
-<Tree root={
-<Box title="Root (keys only, no row data)" accent="#818cf8">
-<Field icon="🗂️" code="keys: 50, 100" hint="just routes you to the right leaf" variant="neutral" />
-</Box>
-}>
-<Box title="Leaf 1: ids < 50" accent="#34d399">
-<Field icon="📄" code="full rows" hint="linked to the next leaf" variant="neutral" />
-</Box>
-<Box title="Leaf 2: 50-100" accent="#34d399">
-<Field icon="📄" code="full rows" hint="linked to leaves on both sides" variant="neutral" />
-</Box>
+<Tree root={<Box label="Root" sub="keys only" />}>
+<Box label="Leaf: id < 50" sub="full rows" />
+<Box label="Leaf: 50-100" sub="full rows" />
 </Tree>
 </Diagram>
 

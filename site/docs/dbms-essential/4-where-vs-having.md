@@ -6,7 +6,7 @@ sidebar_position: 4
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -22,21 +22,13 @@ That's the whole difference: **`WHERE` filters rows before grouping. `HAVING` fi
 
 <Diagram>
 <Row>
-<Box title="1. FROM / JOIN" accent="#60a5fa">
-<Field icon="📋" code="get the rows" variant="neutral" />
-</Box>
+<Box label="FROM / JOIN" sub="get the rows" />
 <Arrow />
-<Box title="2. WHERE" accent="#34d399">
-<Field icon="🔍" code="filter raw rows" hint="index-backed" variant="neutral" />
-</Box>
+<Box label="WHERE" sub="filter rows" />
 <Arrow />
-<Box title="3. GROUP BY" accent="#f59e0b">
-<Field icon="🗂️" code="bucket into groups" variant="neutral" />
-</Box>
+<Box label="GROUP BY" sub="bucket rows" />
 <Arrow />
-<Box title="4. HAVING" accent="#818cf8">
-<Field icon="🔍" code="filter the groups" hint="works on SUM, COUNT, AVG..." variant="neutral" />
-</Box>
+<Box label="HAVING" sub="filter groups" />
 </Row>
 </Diagram>
 

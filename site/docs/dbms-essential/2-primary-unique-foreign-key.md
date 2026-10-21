@@ -6,7 +6,7 @@ sidebar_position: 2
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -18,15 +18,9 @@ Think about a passport, a phone number, and a guardian's ID on a school form. A 
 
 <Diagram>
 <Row>
-<Box title="Primary Key" accent="#60a5fa">
-<Field icon="🪪" code="passport number" hint="one per table, never NULL" variant="public" />
-</Box>
-<Box title="Unique Key" accent="#34d399">
-<Field icon="📱" code="phone number" hint="many allowed, can be NULL" variant="neutral" />
-</Box>
-<Box title="Foreign Key" accent="#f59e0b">
-<Field icon="👪" code="guardian ID" hint="must match a real parent row" variant="neutral" />
-</Box>
+<Box label="Primary Key" sub="never NULL" />
+<Box label="Unique Key" sub="can be NULL" />
+<Box label="Foreign Key" sub="points to a parent" />
 </Row>
 </Diagram>
 

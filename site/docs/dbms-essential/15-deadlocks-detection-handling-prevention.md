@@ -6,7 +6,7 @@ sidebar_position: 12
 sidebar_class_name: sidebar-medium
 ---
 
-import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -22,13 +22,9 @@ Alice and Bob transfer money to each other at the same time:
 
 <Diagram>
 <Row>
-<Box title="Transaction 1: Alice → Bob" accent="#fb7185">
-<Field icon="🔒" code="holds lock on Alice's row" hint="waiting for Bob's row" variant="neutral" />
-</Box>
-<Arrow label="waits for ↔ waits for" />
-<Box title="Transaction 2: Bob → Alice" accent="#fb7185">
-<Field icon="🔒" code="holds lock on Bob's row" hint="waiting for Alice's row" variant="neutral" />
-</Box>
+<Box label="T1: Alice → Bob" sub="holds Alice, wants Bob" />
+<Arrow label="waits on each other" />
+<Box label="T2: Bob → Alice" sub="holds Bob, wants Alice" />
 </Row>
 </Diagram>
 

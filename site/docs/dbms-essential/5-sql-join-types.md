@@ -6,7 +6,7 @@ sidebar_position: 5
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -16,21 +16,11 @@ A join combines two tables based on a matching column. The five types only diffe
 
 <Diagram>
 <Row>
-<Box title="INNER" accent="#60a5fa">
-<Field icon="🤝" code="only matched rows" variant="neutral" />
-</Box>
-<Box title="LEFT" accent="#34d399">
-<Field icon="⬅️" code="all of left + matches" hint="unmatched right = NULL" variant="neutral" />
-</Box>
-<Box title="RIGHT" accent="#f59e0b">
-<Field icon="➡️" code="all of right + matches" hint="unmatched left = NULL" variant="neutral" />
-</Box>
-<Box title="FULL" accent="#818cf8">
-<Field icon="🔗" code="everything, both sides" hint="unmatched side = NULL" variant="neutral" />
-</Box>
-<Box title="CROSS" accent="#ec4899">
-<Field icon="✖️" code="every row × every row" hint="no matching condition" variant="neutral" />
-</Box>
+<Box label="INNER" sub="matched only" />
+<Box label="LEFT" sub="all of left" />
+<Box label="RIGHT" sub="all of right" />
+<Box label="FULL" sub="all, both sides" />
+<Box label="CROSS" sub="every pair" />
 </Row>
 </Diagram>
 

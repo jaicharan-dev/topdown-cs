@@ -6,7 +6,7 @@ sidebar_position: 6
 sidebar_class_name: sidebar-medium
 ---
 
-import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -16,42 +16,24 @@ You type `SELECT` first, but it doesn't run first. The database runs clauses in 
 
 <Diagram>
 <Row>
-<Box title="1. FROM/JOIN" accent="#60a5fa">
-<Field icon="📋" code="get rows" variant="neutral" />
-</Box>
+<Box label="1. FROM/JOIN" sub="get rows" />
 <Arrow />
-<Box title="2. WHERE" accent="#34d399">
-<Field icon="🔍" code="filter rows" variant="neutral" />
-</Box>
+<Box label="2. WHERE" sub="filter rows" />
 <Arrow />
-<Box title="3. GROUP BY" accent="#f59e0b">
-<Field icon="🗂️" code="bucket rows" variant="neutral" />
-</Box>
+<Box label="3. GROUP BY" sub="bucket rows" />
 <Arrow />
-<Box title="4. HAVING" accent="#818cf8">
-<Field icon="🔍" code="filter groups" variant="neutral" />
-</Box>
+<Box label="4. HAVING" sub="filter groups" />
 </Row>
 <Row>
-<Box title="5. SELECT" accent="#ec4899">
-<Field icon="📤" code="compute + alias" variant="neutral" />
-</Box>
+<Box label="5. SELECT" sub="compute + alias" />
 <Arrow />
-<Box title="6. WINDOW" accent="#fb923c">
-<Field icon="🪟" code="OVER (...)" variant="neutral" />
-</Box>
+<Box label="6. WINDOW" sub="OVER (...)" />
 <Arrow />
-<Box title="7. DISTINCT" accent="#a1a1aa">
-<Field icon="🧹" code="dedupe" variant="neutral" />
-</Box>
+<Box label="7. DISTINCT" sub="dedupe" />
 <Arrow />
-<Box title="8. ORDER BY" accent="#60a5fa">
-<Field icon="↕️" code="sort" variant="neutral" />
-</Box>
+<Box label="8. ORDER BY" sub="sort" />
 <Arrow />
-<Box title="9. LIMIT" accent="#34d399">
-<Field icon="✂️" code="page" variant="neutral" />
-</Box>
+<Box label="9. LIMIT" sub="page" />
 </Row>
 </Diagram>
 

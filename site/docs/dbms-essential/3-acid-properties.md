@@ -6,7 +6,7 @@ sidebar_position: 3
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -16,18 +16,10 @@ ACID is just four promises a database makes about any transaction you run. Think
 
 <Diagram>
 <Row>
-<Box title="Atomicity" accent="#60a5fa">
-<Field icon="📦" code="all or nothing" variant="neutral" />
-</Box>
-<Box title="Consistency" accent="#34d399">
-<Field icon="✅" code="never breaks the rules" variant="neutral" />
-</Box>
-<Box title="Isolation" accent="#f59e0b">
-<Field icon="🚧" code="transactions don't step on each other" variant="neutral" />
-</Box>
-<Box title="Durability" accent="#818cf8">
-<Field icon="💾" code="once saved, stays saved" variant="neutral" />
-</Box>
+<Box label="Atomicity" sub="all or nothing" />
+<Box label="Consistency" sub="rules hold" />
+<Box label="Isolation" sub="no interference" />
+<Box label="Durability" sub="stays saved" />
 </Row>
 </Diagram>
 

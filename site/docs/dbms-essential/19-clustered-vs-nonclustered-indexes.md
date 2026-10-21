@@ -6,7 +6,7 @@ sidebar_position: 14
 sidebar_class_name: sidebar-medium
 ---
 
-import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -18,17 +18,9 @@ That's the difference between the two kinds of index:
 
 <Diagram>
 <Row>
-<Box title="Clustered index (the book itself)" accent="#60a5fa">
-<Field icon="📖" code="IS the table" hint="rows are physically stored in this order" variant="neutral" />
-<Field icon="📖" code="leaf = full row" variant="neutral" />
-<Field icon="📖" code="exactly 1 per table" variant="neutral" />
-</Box>
+<Box label="Clustered index" sub="is the table" />
 <Arrow label="vs." />
-<Box title="Non-clustered index (the back-of-book index)" accent="#a1a1aa">
-<Field icon="🔖" code="a separate lookup structure" variant="neutral" />
-<Field icon="🔖" code="leaf = key + pointer to the row" variant="neutral" />
-<Field icon="🔖" code="many allowed per table" variant="neutral" />
-</Box>
+<Box label="Non-clustered index" sub="key + pointer" />
 </Row>
 </Diagram>
 

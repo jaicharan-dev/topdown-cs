@@ -6,7 +6,7 @@ sidebar_position: 15
 sidebar_class_name: sidebar-medium
 ---
 
-import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+import { Diagram, Box, Tree } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -21,17 +21,9 @@ The real decision isn't "old vs. new" — it's a trade-off between schema struct
 ### The landscape
 
 <Diagram>
-<Tree root={
-<Box title="Database architectures" accent="#818cf8">
-<Field icon="🗄️" code="pick by access pattern" hint="not by trend" variant="neutral" />
-</Box>
-}>
-<Box title="Relational (SQL)" accent="#60a5fa">
-<Field icon="📐" code="Postgres, MySQL, Oracle" hint="rigid schema, ACID, joins" variant="neutral" />
-</Box>
-<Box title="NoSQL" accent="#34d399">
-<Field icon="🧩" code="Key-Value, Document, Wide-Column, Graph" hint="flexible schema, horizontal scale" variant="neutral" />
-</Box>
+<Tree root={<Box label="Database architectures" />}>
+<Box label="Relational (SQL)" sub="rigid schema, ACID" />
+<Box label="NoSQL" sub="flexible, scales out" />
 </Tree>
 </Diagram>
 

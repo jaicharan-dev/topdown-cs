@@ -6,7 +6,7 @@ sidebar_position: 11
 sidebar_class_name: sidebar-medium
 ---
 
-import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -22,15 +22,9 @@ Transaction A reads a change Transaction B made, before B has committed. If B th
 
 <Diagram>
 <Row>
-<Box title="Transaction B (writer)" accent="#fb7185">
-<Field icon="1" code="UPDATE balance = 5000" hint="not committed yet" variant="neutral" />
-<Field icon="2" code="ROLLBACK" hint="balance reverts to 100" variant="neutral" />
-</Box>
+<Box label="Transaction B" sub="updates, then rolls back" />
 <Arrow label="A reads mid-way" />
-<Box title="Transaction A (reader)" accent="#60a5fa">
-<Field icon="👀" code="SELECT balance" hint="reads 5000 — a value that never existed" variant="neutral" />
-<Field icon="⚠️" code="dispatches a $5000 loan" hint="based on dirty data" variant="neutral" />
-</Box>
+<Box label="Transaction A" sub="reads the uncommitted value" />
 </Row>
 </Diagram>
 
