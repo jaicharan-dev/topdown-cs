@@ -6,7 +6,7 @@ sidebar_position: 8
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box } from '@site/src/components/SimpleDiagram';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
@@ -18,9 +18,9 @@ Each new HTTP version exists to fix a specific bottleneck the last one hit. The 
 
 <Diagram>
 <Row>
-<Box title="HTTP/1.1 (1997)" accent="#a1a1aa"><Field icon="🐢" code="one request at a time per connection" hint="needs 6 parallel TCP connections to cope" variant="neutral" /></Box>
-<Box title="HTTP/2 (2015)" accent="#60a5fa"><Field icon="🔀" code="multiplexed over one TCP connection" hint="binary frames + HPACK compression" variant="neutral" /></Box>
-<Box title="HTTP/3 (2022)" accent="#34d399"><Field icon="🚀" code="runs over QUIC/UDP" hint="no transport-level head-of-line blocking" variant="public" /></Box>
+<Box label="HTTP/1.1" sub="one request at a time" />
+<Box label="HTTP/2" sub="multiplexed, one TCP" />
+<Box label="HTTP/3" sub="QUIC over UDP" />
 </Row>
 </Diagram>
 

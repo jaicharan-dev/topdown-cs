@@ -6,7 +6,7 @@ sidebar_position: 3
 sidebar_class_name: sidebar-medium
 ---
 
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -20,17 +20,11 @@ Think of two people shouting across a noisy room, checking they can actually hea
 
 <Diagram>
 <Row>
-<Box title="Client" accent="#60a5fa">
-<Field icon="📤" code="SYN (seq=x)" hint="1. let's connect, here's my starting number" variant="neutral" />
-</Box>
+<Box label="Client" sub="SYN" />
 <Arrow label="1" />
-<Box title="Server" accent="#34d399">
-<Field icon="📤" code="SYN-ACK (seq=y, ack=x+1)" hint="2. got it, here's mine too" variant="neutral" />
-</Box>
+<Box label="Server" sub="SYN-ACK" />
 <Arrow label="2" />
-<Box title="Client" accent="#60a5fa">
-<Field icon="✅" code="ACK (ack=y+1)" hint="3. got yours — ESTABLISHED" variant="neutral" />
-</Box>
+<Box label="Client" sub="ACK" />
 </Row>
 </Diagram>
 
@@ -62,21 +56,13 @@ TCP is full-duplex — the client-to-server and server-to-client directions are 
 
 <Diagram>
 <Row>
-<Box title="Client" accent="#60a5fa">
-<Field icon="🛑" code="FIN (seq=u)" hint="1. I'm done sending" variant="neutral" />
-</Box>
+<Box label="Client" sub="FIN" />
 <Arrow label="1" />
-<Box title="Server" accent="#34d399">
-<Field icon="✅" code="ACK (ack=u+1)" hint="2. half-closed: client can only receive now" variant="neutral" />
-</Box>
+<Box label="Server" sub="ACK" />
 <Arrow label="2" />
-<Box title="Server" accent="#34d399">
-<Field icon="🛑" code="FIN (seq=w)" hint="3. now I'm done too" variant="neutral" />
-</Box>
+<Box label="Server" sub="FIN" />
 <Arrow label="3" />
-<Box title="Client" accent="#60a5fa">
-<Field icon="✅" code="ACK (ack=w+1)" hint="4. client enters TIME_WAIT" variant="neutral" />
-</Box>
+<Box label="Client" sub="ACK" />
 </Row>
 </Diagram>
 

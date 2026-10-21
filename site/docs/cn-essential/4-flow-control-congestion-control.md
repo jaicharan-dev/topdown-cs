@@ -6,7 +6,7 @@ sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
 
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -19,12 +19,8 @@ Both of these slow down how fast TCP sends data — but they're protecting two c
 
 <Diagram>
 <Row>
-<Box title="Flow Control" accent="#60a5fa">
-<Field icon="🅿️" code="rwnd" hint="protects the receiver's buffer" variant="neutral" />
-</Box>
-<Box title="Congestion Control" accent="#f59e0b">
-<Field icon="🛣️" code="cwnd" hint="protects the network path" variant="neutral" />
-</Box>
+<Box label="Flow Control" sub="rwnd, protects receiver" />
+<Box label="Congestion Control" sub="cwnd, protects network" />
 </Row>
 </Diagram>
 
@@ -55,17 +51,11 @@ Routers never tell a sender how much bandwidth is available — TCP has to probe
 
 <Diagram>
 <Row>
-<Box title="Slow Start" accent="#60a5fa">
-<Field icon="📈" code="cwnd doubles every RTT" hint="starts small, grows fast" variant="neutral" />
-</Box>
+<Box label="Slow Start" sub="cwnd doubles" />
 <Arrow label="hits ssthresh" />
-<Box title="Congestion Avoidance" accent="#34d399">
-<Field icon="📈" code="cwnd +1 MSS per RTT" hint="linear growth (AIMD)" variant="neutral" />
-</Box>
+<Box label="Congestion Avoidance" sub="cwnd +1 per RTT" />
 <Arrow label="packet loss" />
-<Box title="Fast Retransmit / Recovery" accent="#fb7185">
-<Field icon="✂️" code="cwnd halved, not reset" hint="3 dup ACKs trigger this" variant="neutral" />
-</Box>
+<Box label="Fast Retransmit" sub="cwnd halved" />
 </Row>
 </Diagram>
 

@@ -6,7 +6,7 @@ sidebar_position: 6
 sidebar_class_name: sidebar-medium
 ---
 
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -35,13 +35,13 @@ Think of the recursive resolver as someone with no idea where you live, asking f
 
 <Diagram>
 <Row>
-<Box title="Recursive Resolver" accent="#60a5fa"><Field icon="🔍" code="Where is example.com?" variant="neutral" /></Box>
+<Box label="Recursive Resolver" />
 <Arrow label="asks" />
-<Box title="Root Nameserver" accent="#a1a1aa"><Field icon="📍" code={'"try the .com servers"'} variant="neutral" /></Box>
+<Box label="Root Nameserver" />
 <Arrow label="asks" />
-<Box title="TLD Nameserver (.com)" accent="#f59e0b"><Field icon="📍" code={'"try example.com’s own NS"'} variant="neutral" /></Box>
+<Box label="TLD Nameserver" sub=".com" />
 <Arrow label="asks" />
-<Box title="Authoritative Nameserver" accent="#34d399"><Field icon="✅" code="93.184.216.34" variant="public" /></Box>
+<Box label="Authoritative Nameserver" sub="93.184.216.34" />
 </Row>
 </Diagram>
 

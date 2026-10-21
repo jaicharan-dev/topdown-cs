@@ -6,7 +6,7 @@ sidebar_position: 10
 sidebar_class_name: sidebar-hard
 ---
 
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
@@ -18,15 +18,15 @@ This is the classic "walk me through what happens" question. It's really just si
 
 <Diagram>
 <Row>
-<Box title="1. Pre-flight" accent="#a1a1aa"><Field icon="🔍" code="parse URL, check HSTS + cache" variant="neutral" /></Box>
+<Box label="1. Pre-flight" />
 <Arrow />
-<Box title="2. DNS" accent="#60a5fa"><Field icon="📍" code="resolve hostname → IP" variant="neutral" /></Box>
+<Box label="2. DNS" />
 <Arrow />
-<Box title="3. ARP" accent="#f59e0b"><Field icon="🔗" code="find the gateway's MAC" variant="neutral" /></Box>
+<Box label="3. ARP" />
 <Arrow />
-<Box title="4. TCP + TLS" accent="#818cf8"><Field icon="🤝" code="handshake, encrypt tunnel" variant="neutral" /></Box>
+<Box label="4. TCP + TLS" />
 <Arrow />
-<Box title="5. HTTP" accent="#34d399"><Field icon="📦" code="request, response HTML" variant="public" /></Box>
+<Box label="5. HTTP" />
 </Row>
 </Diagram>
 
@@ -87,17 +87,23 @@ Once HTML bytes start arriving, the browser doesn't wait for the whole document 
 
 <Diagram>
 <Row>
-<Box title="HTML bytes" accent="#60a5fa"><Field icon="📄" code="tokenized" variant="neutral" /></Box>
+<Box label="HTML bytes" />
 <Arrow label="builds" />
-<Box title="DOM" accent="#34d399"><Field icon="🌳" code="document tree" variant="neutral" /></Box>
+<Box label="DOM" />
 <Arrow label="+ CSSOM" />
-<Box title="Render Tree" accent="#f59e0b"><Field icon="🎨" code="visible nodes only" variant="neutral" /></Box>
+<Box label="Render Tree" />
 <Arrow />
-<Box title="Layout" accent="#818cf8"><Field icon="📐" code="compute coordinates" variant="neutral" /></Box>
+<Box label="Layout" />
+</Row>
+</Diagram>
+
+<Diagram>
+<Row>
+<Box label="Layout" />
 <Arrow />
-<Box title="Paint" accent="#ec4899"><Field icon="🖌️" code="rasterize to pixels" variant="neutral" /></Box>
+<Box label="Paint" />
 <Arrow />
-<Box title="Composite" accent="#a1a1aa"><Field icon="🖥️" code="GPU layers → screen" variant="public" /></Box>
+<Box label="Composite" />
 </Row>
 </Diagram>
 

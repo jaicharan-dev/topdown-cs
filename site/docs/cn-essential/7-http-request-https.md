@@ -6,7 +6,7 @@ sidebar_position: 7
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box } from '@site/src/components/SimpleDiagram';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
@@ -70,16 +70,8 @@ Before any encrypted data can flow, client and server have to agree on keys. TLS
 
 <Diagram>
 <Row>
-<Box title="TLS 1.2 — 2 round trips" accent="#a1a1aa">
-<Field icon="1️⃣" code="ClientHello" hint="client proposes ciphers" variant="neutral" />
-<Field icon="2️⃣" code="ServerHello + Cert + KeyExchange" variant="neutral" />
-<Field icon="3️⃣" code="ClientKeyExchange + Finished" variant="neutral" />
-<Field icon="4️⃣" code="Server Finished → data flows" variant="neutral" />
-</Box>
-<Box title="TLS 1.3 — 1 round trip" accent="#34d399">
-<Field icon="1️⃣" code="ClientHello + Key Share (guessed)" hint="sends its key share immediately" variant="public" />
-<Field icon="2️⃣" code="ServerHello + Key Share + Cert + Finished" hint="data flows right after" variant="public" />
-</Box>
+<Box label="TLS 1.2" sub="2 round trips" />
+<Box label="TLS 1.3" sub="1 round trip" />
 </Row>
 </Diagram>
 

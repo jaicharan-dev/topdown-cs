@@ -6,7 +6,7 @@ sidebar_position: 9
 sidebar_class_name: sidebar-medium
 ---
 
-import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow, Tree } from '@site/src/components/SimpleDiagram';
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
 
@@ -36,15 +36,15 @@ A CDN is a globally distributed set of reverse-proxy nodes (points of presence) 
 
 <Diagram>
 <Row>
-<Box title="Client" accent="#60a5fa"><Field icon="💻" code="makes a request" variant="neutral" /></Box>
+<Box label="Client" />
 <Arrow label="protects client" />
-<Box title="Forward Proxy" accent="#a1a1aa"><Field icon="🛡️" code="hides client IP" variant="neutral" /></Box>
+<Box label="Forward Proxy" />
 <Arrow />
-<Box title="CDN Edge" accent="#f59e0b"><Field icon="📦" code="serves cached assets" variant="neutral" /></Box>
+<Box label="CDN Edge" />
 <Arrow />
-<Box title="Load Balancer" accent="#818cf8"><Field icon="⚖️" code="picks a healthy backend" variant="neutral" /></Box>
+<Box label="Load Balancer" />
 <Arrow label="protects server" />
-<Box title="Backend" accent="#34d399"><Field icon="🖥️" code="handles the request" variant="public" /></Box>
+<Box label="Backend" />
 </Row>
 </Diagram>
 
@@ -83,12 +83,10 @@ If you route cache keys with plain modulo hashing (`hash(key) % N`), losing one 
 **Consistent hashing** fixes this by placing both servers and keys on a circular hash space, and assigning each key to the first server found going clockwise from it.
 
 <Diagram>
-<Tree root={
-<Box title="Hash Ring" accent="#818cf8"><Field icon="⭕" code="servers + keys placed by hash" variant="neutral" /></Box>
-}>
-<Box title="Server A" accent="#34d399"><Field icon="🖥️" code="owns this ring segment" variant="neutral" /></Box>
-<Box title="Server B" accent="#34d399"><Field icon="🖥️" code="owns this ring segment" variant="neutral" /></Box>
-<Box title="Server C" accent="#34d399"><Field icon="🖥️" code="owns this ring segment" variant="neutral" /></Box>
+<Tree root={<Box label="Hash Ring" />}>
+<Box label="Server A" />
+<Box label="Server B" />
+<Box label="Server C" />
 </Tree>
 </Diagram>
 

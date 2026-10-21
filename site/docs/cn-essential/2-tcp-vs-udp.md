@@ -8,7 +8,7 @@ sidebar_class_name: sidebar-easy
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -20,12 +20,8 @@ That's TCP and UDP. **TCP** trades speed for reliability, order, and integrity. 
 
 <Diagram>
 <Row>
-<Box title="TCP" accent="#60a5fa">
-<Field icon="✅" code="reliable, ordered, checked" hint="connection-based, 20-60 byte header" variant="neutral" />
-</Box>
-<Box title="UDP" accent="#f59e0b">
-<Field icon="⚡" code="fast, no guarantees" hint="connectionless, fixed 8 byte header" variant="neutral" />
-</Box>
+<Box label="TCP" sub="reliable, ordered" />
+<Box label="UDP" sub="fast, no guarantees" />
 </Row>
 </Diagram>
 

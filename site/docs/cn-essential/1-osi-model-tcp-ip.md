@@ -6,7 +6,7 @@ sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -38,25 +38,15 @@ As data moves down the stack, each layer wraps it in its own header — that's *
 
 <Diagram>
 <Row>
-<Box title="Application" accent="#60a5fa">
-<Field icon="📄" code="HTTP / JSON data" variant="neutral" />
-</Box>
+<Box label="Application" sub="HTTP / JSON data" />
 <Arrow label="+ TCP header" />
-<Box title="Transport" accent="#34d399">
-<Field icon="📦" code="Segment" hint="adds ports, sequence #s" variant="neutral" />
-</Box>
+<Box label="Transport" sub="Segment" />
 <Arrow label="+ IP header" />
-<Box title="Network" accent="#f59e0b">
-<Field icon="📦" code="Packet" hint="adds source/destination IP" variant="neutral" />
-</Box>
+<Box label="Network" sub="Packet" />
 <Arrow label="+ MAC header" />
-<Box title="Data Link" accent="#a78bfa">
-<Field icon="📦" code="Frame" hint="adds MAC addresses + checksum" variant="neutral" />
-</Box>
-<Arrow label="→ bits" />
-<Box title="Physical" accent="#a1a1aa">
-<Field icon="⚡" code="0110100..." variant="neutral" />
-</Box>
+<Box label="Data Link" sub="Frame" />
+<Arrow label="bits" />
+<Box label="Physical" sub="0110100..." />
 </Row>
 </Diagram>
 
@@ -76,21 +66,22 @@ As data moves down the stack, each layer wraps it in its own header — that's *
 
 <Diagram>
 <Row>
-<Box title="OSI — 7 layers (the theory)" accent="#a1a1aa">
-<Field icon="7" code="Application" variant="neutral" />
-<Field icon="6" code="Presentation" variant="neutral" />
-<Field icon="5" code="Session" variant="neutral" />
-<Field icon="4" code="Transport" variant="neutral" />
-<Field icon="3" code="Network" variant="neutral" />
-<Field icon="2" code="Data Link" variant="neutral" />
-<Field icon="1" code="Physical" variant="neutral" />
-</Box>
-<Box title="TCP/IP — 4 layers (what's actually used)" accent="#34d399">
-<Field icon="4" code="Application" hint="merges OSI layers 5, 6, 7" variant="public" />
-<Field icon="3" code="Transport" variant="public" />
-<Field icon="2" code="Internet" variant="public" />
-<Field icon="1" code="Network Access" hint="merges OSI layers 1, 2" variant="public" />
-</Box>
+<Box label="Application" />
+<Box label="Presentation" />
+<Box label="Session" />
+<Box label="Transport" />
+<Box label="Network" />
+<Box label="Data Link" />
+<Box label="Physical" />
+</Row>
+</Diagram>
+
+<Diagram>
+<Row>
+<Box label="Application" sub="merges 5, 6, 7" />
+<Box label="Transport" />
+<Box label="Internet" />
+<Box label="Network Access" sub="merges 1, 2" />
 </Row>
 </Diagram>
 

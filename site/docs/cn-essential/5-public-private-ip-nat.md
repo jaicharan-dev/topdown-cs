@@ -6,7 +6,7 @@ sidebar_position: 5
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -45,13 +45,9 @@ Most home and office routers use **Port Address Translation**, which maps thousa
 
 <Diagram>
 <Row>
-<Box title="Private IP" accent="#a1a1aa">
-<Field icon="🏠" code="192.168.1.5:45120" hint="only valid inside the LAN" variant="neutral" />
-</Box>
-<Arrow label="NAT rewrites source IP + port" />
-<Box title="Public IP" accent="#34d399">
-<Field icon="🌐" code="203.0.113.10:61001" hint="routable on the internet" variant="neutral" />
-</Box>
+<Box label="Private IP" sub="192.168.1.5:45120" />
+<Arrow label="NAT rewrites" />
+<Box label="Public IP" sub="203.0.113.10:61001" />
 </Row>
 </Diagram>
 
@@ -67,12 +63,8 @@ If Alice and Bob are both behind home routers, neither has a public IP to give t
 
 <Diagram>
 <Row>
-<Box title="STUN" accent="#60a5fa">
-<Field icon="🪞" code="public reflector" hint="tells you your own public IP:port" variant="neutral" />
-</Box>
-<Box title="TURN" accent="#f59e0b">
-<Field icon="🔁" code="relay server" hint="fallback when direct P2P is blocked" variant="neutral" />
-</Box>
+<Box label="STUN" sub="reveals your public address" />
+<Box label="TURN" sub="relay fallback" />
 </Row>
 </Diagram>
 
