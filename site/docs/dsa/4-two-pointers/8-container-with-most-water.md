@@ -1,148 +1,100 @@
 ---
 id: 8-container-with-most-water
 title: "11. Container With Most Water"
-description: "Two-pointer bottleneck elimination maximizing area in O(n)"
+description: "Start at both ends and always move the shorter wall inward"
 sidebar_position: 8
 sidebar_class_name: sidebar-medium
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Two Pointers</span>
-<span className="badge badge--secondary margin-left--sm margin-bottom--md">Greedy Shrink</span>
 
-> **Problem Statement:** Given an integer array `height` of length $n$, there are $n$ vertical lines drawn such that the two endpoints of the $i^{\text{th}}$ line are `(i, 0)` and `(i, height[i])`. Find two lines that, together with the x-axis, form a container that contains the most water. Return the maximum amount of water a container can store.
+> **Problem Statement:** You are given an array `height`. Each number is the height of a vertical line standing on the x-axis. Pick two lines so that the water held between them is as much as possible, and return that amount of water.
 
 ```text
 Input:  height = [1, 8, 6, 2, 5, 4, 8, 3, 7]
 Output: 49
-Explanation: The vertical lines are represented by array [1, 8, 6, 2, 5, 4, 8, 3, 7]. The max area is between index 1 (height 8) and index 8 (height 7), with width = 8 - 1 = 7 and height = min(8, 7) = 7, yielding area = 7 * 7 = 49.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-A container formed by two vertical walls at indices `left` and `right` holds an amount of water defined by the rectangle formula:
+Think of each number as a wall. Pick any two walls and pour water between them.
 
-$$\text{Area} = (\text{right} - \text{left}) \times \min(height[\text{left}], height[\text{right}])$$
+Two things decide how much water you get:
 
-The width is the horizontal distance between the two lines, and the effective height is strictly bottlenecked by the shorter of the two walls.
+- **How far apart the walls are.** That is the width of your container.
+- **The shorter of the two walls.** Water spills over the shorter one, so whatever the taller wall has above that point is wasted.
 
-#### Brute Force: Quadratic Pair Enumeration
-The simplest approach tests every combination of pairs $(i, j)$ using two nested loops:
-- For each pair, compute the area using the formula above.
-- Track the maximum area encountered.
+So for any two walls:
 
-With $n$ up to $10^5$, evaluating $O(n^2)$ pairs causes a time-limit exceeded failure.
+```text
+water = distance between them  x  height of the shorter wall
+```
 
-#### Optimal Approach: Two Pointers with Bottleneck Elimination
-We begin with the widest possible container: `left = 0` and `right = len(height) - 1`.
-
-Every time we move a pointer inward, the container width decreases by 1. To compensate for lost width and discover a larger area, the bottleneck height must increase:
-- **If we move the taller wall:** The width shrinks, but the height is still bottlenecked by the shorter wall (or gets even smaller). The area is guaranteed to be smaller. Moving the taller wall is provably wasteful.
-- **If we move the shorter wall:** We discard the limiting factor. Although width decreases, we may encounter a much taller wall that yields a greater overall area.
-
-By continually advancing the pointer pointing to the shorter wall, we discard inferior containers while guaranteeing that no potentially superior container is missed.
-
-#### Execution Walkthrough
-
-Let us trace `height = [1, 8, 6, 2, 5, 4, 8, 3, 7]`:
-
-| Step | `left` (Height) | `right` (Height) | Width | Limiting Height | Calculated Area | Max Area | Action Taken |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **1** | `0` (`1`) | `8` (`7`) | `8` | $\min(1, 7) = 1$ | $8 \times 1 = 8$ | `8` | Shorter wall at `left`; increment `left -> 1` |
-| **2** | `1` (`8`) | `8` (`7`) | `7` | $\min(8, 7) = 7$ | $7 \times 7 = 49$ | `49` | Shorter wall at `right`; decrement `right -> 7` |
-| **3** | `1` (`8`) | `7` (`3`) | `6` | $\min(8, 3) = 3$ | $6 \times 3 = 18$ | `49` | Shorter wall at `right`; decrement `right -> 6` |
-| **4** | `1` (`8`) | `6` (`8`) | `5` | $\min(8, 8) = 8$ | $5 \times 8 = 40$ | `49` | Equal height; decrement `right -> 5` |
-| **5** | `1` (`8`) | `5` (`4`) | `4` | $\min(8, 4) = 4$ | $4 \times 4 = 16$ | `49` | Shorter wall at `right`; decrement `right -> 4` |
-| **6** | `1` (`8`) | `4` (`5`) | `3` | $\min(8, 5) = 5$ | $3 \times 5 = 15$ | `49` | Shorter wall at `right`; decrement `right -> 3` |
-| **7** | `1` (`8`) | `3` (`2`) | `2` | $\min(8, 2) = 2$ | $2 \times 2 = 4$ | `49` | Shorter wall at `right`; decrement `right -> 2` |
-| **8** | `1` (`8`) | `2` (`6`) | `1` | $\min(8, 6) = 6$ | $1 \times 6 = 6$ | `49` | Shorter wall at `right`; decrement `right -> 1` |
-| **End** | `1` (`8`) | `1` (`8`) | `0` | - | - | **49** | Pointers meet; terminate loop |
+We need the pair that gives the biggest value.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Pointers and State:** Set `left = 0`, `right = len(height) - 1`, and `max_water = 0`.
-2. **Loop While Pointers Do Not Cross:** Continue while `left < right`:
-   - Compute current width: `w = right - left`.
-   - Compute limiting height: `h = min(height[left], height[right])`.
-   - Update maximum volume: `max_water = max(max_water, w * h)`.
-   - If `height[left] < height[right]`, increment `left += 1` to discard the shorter left wall.
-   - Otherwise, decrement `right -= 1` to discard the shorter (or equal) right wall.
-3. **Return Global Maximum:** Once pointers meet, return `max_water`.
+The obvious idea is to try every pair of walls. It works, but with a hundred thousand walls there are far too many pairs and it is much too slow. We want to look at each wall only once.
+
+So start with the widest container possible: the very first wall and the very last wall. This is the one pair we know has the maximum width.
+
+Now we have to move inward, and this is the whole idea of the problem: **every move makes the container narrower.** We lose width on every single step. The only way to end up with more water is if we get a taller shorter-wall in exchange.
+
+Which of the two walls should we move, then?
+
+- If we move the **taller** wall, the shorter wall stays exactly where it is, still capping the water. We lost width and gained no height, so the result can only get worse. Pointless.
+- If we move the **shorter** wall, we throw away the wall that was holding us back. We still lose width, but now there is at least a chance of finding a taller wall and holding more water.
+
+That gives us the rule: **always move the shorter wall inward.** Remember the most water seen so far, and stop when the two walls meet.
+
+And we are not skipping the answer by doing this. The shorter wall has just been measured against the farthest wall it had. Any other partner for it would be closer *and* still capped by the same short height, so it could never do better. Once it has been measured, it is safe to drop.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Two-Pointer Greedy Shrink" default>
+`height = [1, 8, 6, 2, 5, 4, 8, 3, 7]`
+
+- Start with the first wall (height `1`) and the last wall (height `7`). Width is `8`, the shorter wall is `1`, so water is `8`. The left wall is the shorter one, so move it right.
+- Now the walls are `8` and `7`. Width is `7`, the shorter wall is `7`, so water is `49`. That is our best so far.
+- From here the right wall is always the shorter one, so the right side keeps stepping inward. The container keeps getting narrower and nothing beats `49`.
+
+Answer: `49`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def maxArea(self, height: list[int]) -> int:
         left = 0
         right = len(height) - 1
-        max_water = 0
+        best = 0
 
         while left < right:
-            # Water level is strictly constrained by the shorter wall
-            h = min(height[left], height[right])
-            w = right - left
-            max_water = max(max_water, w * h)
+            # the shorter wall decides the water level
+            water = (right - left) * min(height[left], height[right])
+            best = max(best, water)
 
-            # Greedily discard the limiting wall
+            # drop the shorter wall and move inward
             if height[left] < height[right]:
                 left += 1
             else:
                 right -= 1
 
-        return max_water
+        return best
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Alternative / Brute Force: Nested Loops">
-
-```python
-class Solution:
-    def maxArea(self, height: list[int]) -> int:
-        n = len(height)
-        max_water = 0
-
-        for i in range(n):
-            for j in range(i + 1, n):
-                h = min(height[i], height[j])
-                w = j - i
-                max_water = max(max_water, w * h)
-
-        return max_water
-```
-
-  </TabItem>
-</Tabs>
+Each step moves one pointer inward, so every wall is looked at once. That is $O(n)$ time, and since we only keep a few variables, $O(1)$ space.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Nested Loops** | $O(n^2)$ | $O(1)$ | Tests every possible pair of lines. Quadratic time causes timeout on large inputs. |
-| **Two-Pointer Greedy Shrink** | $O(n)$ | $O(1)$ | Discards the limiting bottleneck at each step, converging inward in a single pass with constant extra memory. |
-
----
-
-### Common Pitfall: Moving the Taller Boundary Pointer
-
-Moving the pointer pointing to the taller wall is a common conceptual blunder. If `height[left] < height[right]`, moving `right` inward reduces width while keeping the ceiling height bounded by `height[left]`. No pairing of `left` with an interior wall can exceed the initial area formed with `right`. Always move the pointer corresponding to the shorter wall.
-
----
-
-### Concise Interview Takeaway
-
-For **Container With Most Water**, place two pointers at opposite ends to maximize width. Because width shrinks with every inward step, only moving the shorter wall can potentially increase area by finding a taller bottleneck. This greedy elimination solves the problem in $O(n)$ time and $O(1)$ auxiliary space.
+Start wide, at both ends. Every step costs you width, so the only wall worth moving is the shorter one — moving the taller one can never help. Keep the best water you have seen and stop when the pointers meet.
