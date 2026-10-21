@@ -91,10 +91,20 @@ class Solution:
         return best
 ```
 
-Each step moves one pointer inward, so every wall is looked at once. That is $O(n)$ time, and since we only keep a few variables, $O(1)$ space.
+---
+
+### Time and space complexity
+
+There are two questions to ask about any solution: how much **work** does it do, and how much **extra memory** does it use. Both are answered in terms of `n`, the number of walls in the input.
+
+**Time: $O(n)$.** Look at the loop. On every pass we move either `left` or `right` one step inward, and we stop the moment they meet. So between them the two pointers walk across the array exactly once — nine walls means eight steps, because the pointers start eight apart and close the gap by one each time. A million walls means about a million steps. Double the input and you double the work, and that straight-line relationship is what $O(n)$ means.
+
+Now compare that with checking every pair of walls. For `n` walls there are about $n^2 / 2$ pairs, so a million walls would be roughly five hundred billion checks — the same answer, but it would never finish. That gap is the entire reason we bother with two pointers.
+
+**Space: $O(1)$.** Count what we store: `left`, `right`, `best`. Three numbers. Not three per wall — three in total, whether the input has nine walls or nine million. We never build a new list or copy the array. Memory that stays the same size no matter how big the input gets is called $O(1)$, or constant space. The input array itself does not count here; we only count what *we* add on top of it.
 
 ---
 
 ### Remember this
 
-Start wide, at both ends. Every step costs you width, so the only wall worth moving is the shorter one — moving the taller one can never help. Keep the best water you have seen and stop when the pointers meet.
+Start wide, at both ends. Every step costs you width, so the only wall worth moving is the shorter one — moving the taller one can never help. Keep the best water you have seen and stop when the pointers meet. One walk across the array and three variables: $O(n)$ time, $O(1)$ space.
