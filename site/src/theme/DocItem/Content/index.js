@@ -18,10 +18,15 @@ function useSyntheticTitle() {
 
 export default function DocItemContent({children}) {
   const syntheticTitle = useSyntheticTitle();
-  const {metadata} = useDoc();
+  const {metadata, frontMatter} = useDoc();
+
+  // `prose: lab` in a doc's front matter opts that page into an alternate
+  // typographic treatment, so a look can be tried on one page at a time
+  // without touching the default styling of the other 180.
+  const proseClass = frontMatter.prose ? `prose-${frontMatter.prose}` : null;
 
   return (
-    <div className={clsx(ThemeClassNames.docs.docMarkdown, 'markdown')}>
+    <div className={clsx(ThemeClassNames.docs.docMarkdown, 'markdown', proseClass)}>
       {syntheticTitle && (
         <header className="csf-question-header">
           <Heading as="h1" className="csf-question-header__title">
