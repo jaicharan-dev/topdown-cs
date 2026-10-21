@@ -6,7 +6,7 @@ sidebar_position: 2
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -36,13 +36,13 @@ That's the whole lifecycle. Textbooks call the first five the "5-state model." R
 
 <Diagram>
 <Row>
-<Box title="New" accent="#a1a1aa"><Field icon="🆕" code="created" hint="admitted by long-term scheduler" variant="neutral" /></Box>
+<Box label="New" />
 <Arrow />
-<Box title="Ready" accent="#60a5fa"><Field icon="⏳" code="waiting for CPU" variant="neutral" /></Box>
+<Box label="Ready" />
 <Arrow label="dispatched" />
-<Box title="Running" accent="#34d399"><Field icon="▶️" code="on the CPU" variant="neutral" /></Box>
+<Box label="Running" />
 <Arrow label="exit()" />
-<Box title="Terminated" accent="#fb7185"><Field icon="🏁" code="done" variant="neutral" /></Box>
+<Box label="Terminated" />
 </Row>
 </Diagram>
 

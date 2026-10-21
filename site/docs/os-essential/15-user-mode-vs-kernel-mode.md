@@ -6,7 +6,7 @@ sidebar_position: 15
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -26,13 +26,9 @@ x86 CPUs actually support four privilege rings (0 through 3), but modern OSs (Li
 
 <Diagram>
 <Row>
-<Box title="Ring 3 — User Mode" accent="#60a5fa">
-<Field icon="🧑" code="apps, browsers" hint="can't touch hardware directly" variant="neutral" />
-</Box>
+<Box label="Ring 3" sub="User Mode — apps" />
 <Arrow label="syscall / trap" />
-<Box title="Ring 0 — Kernel Mode" accent="#818cf8">
-<Field icon="🛡️" code="OS kernel, drivers" hint="unrestricted access" variant="neutral" />
-</Box>
+<Box label="Ring 0" sub="Kernel Mode — OS" />
 </Row>
 </Diagram>
 

@@ -6,7 +6,7 @@ sidebar_position: 16
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -22,11 +22,11 @@ Think of it like going to a bank. You can't walk into the vault yourself. You go
 
 <Diagram>
 <Row>
-<Box title="App (libc)" accent="#60a5fa"><Field icon="📞" code="write(fd, buf, n)" hint="calls the libc wrapper" variant="neutral" /></Box>
+<Box label="App" sub="write(fd, buf, n)" />
 <Arrow label="SYSCALL trap" />
-<Box title="Kernel" accent="#818cf8"><Field icon="🛡️" code="dispatch + run" hint="validates, does the real work" variant="neutral" /></Box>
+<Box label="Kernel" sub="dispatch + run" />
 <Arrow label="SYSRET" />
-<Box title="App" accent="#60a5fa"><Field icon="✅" code="result in RAX" hint="execution resumes" variant="neutral" /></Box>
+<Box label="App" sub="resumes" />
 </Row>
 </Diagram>
 

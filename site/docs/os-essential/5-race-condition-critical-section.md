@@ -8,7 +8,7 @@ sidebar_class_name: sidebar-medium
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -24,9 +24,9 @@ Alice and Bob share a bank account with \$1,000 in it. At the exact same moment,
 
 <Diagram>
 <Row>
-<Box title="Alice's terminal" accent="#fb7185"><Field icon="💳" code="reads balance = $1000" hint="then charges $1000" variant="neutral" /></Box>
+<Box label="Alice's terminal" sub="reads $1000, charges $1000" />
 <Arrow label="races with" />
-<Box title="Bob's terminal" accent="#fb7185"><Field icon="💳" code="reads balance = $1000" hint="then charges $1000" variant="neutral" /></Box>
+<Box label="Bob's terminal" sub="reads $1000, charges $1000" />
 </Row>
 </Diagram>
 

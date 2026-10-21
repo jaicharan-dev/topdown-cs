@@ -6,7 +6,7 @@ sidebar_position: 10
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -32,17 +32,13 @@ A **page fault** is what happens when you ask for a page that's currently in the
 
 <Diagram>
 <Row>
-<Box title="Virtual address space (contiguous)" accent="#60a5fa">
-<Field icon="📄" code="Page 0" variant="neutral" />
-<Field icon="📄" code="Page 1" variant="neutral" />
-<Field icon="📄" code="Page 2" variant="neutral" />
-</Box>
+<Box label="Page 0" />
+<Box label="Page 1" />
+<Box label="Page 2" />
 <Arrow label="page table" />
-<Box title="Physical RAM (scattered)" accent="#34d399">
-<Field icon="🧱" code="Frame 12" variant="neutral" />
-<Field icon="🧱" code="Frame 4" variant="neutral" />
-<Field icon="🧱" code="Frame 87" variant="neutral" />
-</Box>
+<Box label="Frame 12" />
+<Box label="Frame 4" />
+<Box label="Frame 87" />
 </Row>
 </Diagram>
 

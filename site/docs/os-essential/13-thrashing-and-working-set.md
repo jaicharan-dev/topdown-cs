@@ -6,7 +6,7 @@ sidebar_position: 13
 sidebar_class_name: sidebar-medium
 ---
 
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -30,13 +30,13 @@ The root cause is a mismatch between the CPU scheduler and the memory manager �
 
 <Diagram>
 <Row>
-<Box title="Too many processes loaded" accent="#f59e0b"><Field icon="📈" code="high multiprogramming" variant="neutral" /></Box>
+<Box label="Too many processes" />
 <Arrow />
-<Box title="RAM runs out of free frames" accent="#fb923c"><Field icon="🧱" code="no free frames left" variant="neutral" /></Box>
+<Box label="RAM runs out" />
 <Arrow />
-<Box title="Nonstop page faults" accent="#fb7185"><Field icon="💥" code="constant faulting" variant="neutral" /></Box>
+<Box label="Nonstop page faults" />
 <Arrow />
-<Box title="CPU sits idle, waiting on disk" accent="#fb7185"><Field icon="⏳" code="utilization crashes" variant="neutral" /></Box>
+<Box label="CPU sits idle" />
 </Row>
 </Diagram>
 
@@ -64,9 +64,9 @@ Computing exact working sets is expensive. In practice, many OSes use a simpler 
 
 <Diagram>
 <Row>
-<Box title="Fault rate too high" accent="#fb7185"><Field icon="📈" code="above upper threshold" hint="starving — give it more frames (or suspend it)" variant="neutral" /></Box>
-<Box title="Safe zone" accent="#34d399"><Field icon="✅" code="between thresholds" hint="leave it alone" variant="neutral" /></Box>
-<Box title="Fault rate too low" accent="#60a5fa"><Field icon="📉" code="below lower threshold" hint="holding onto unneeded frames — reclaim some" variant="neutral" /></Box>
+<Box label="Fault rate too high" sub="give it more frames" />
+<Box label="Safe zone" sub="leave it alone" />
+<Box label="Fault rate too low" sub="reclaim excess frames" />
 </Row>
 </Diagram>
 

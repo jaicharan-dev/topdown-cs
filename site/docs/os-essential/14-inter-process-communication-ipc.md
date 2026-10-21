@@ -8,7 +8,7 @@ sidebar_class_name: sidebar-medium
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -27,10 +27,10 @@ The OS keeps every process's memory walled off from every other process — that
 
 <Diagram>
 <Row>
-<Box title="Pipes" accent="#60a5fa"><Field icon="🪠" code="one-way byte stream" hint="parent → child, or a named FIFO file" variant="neutral" /></Box>
-<Box title="Message Queues" accent="#f59e0b"><Field icon="📬" code="queued messages" hint="async — sender doesn't wait around" variant="neutral" /></Box>
-<Box title="Shared Memory" accent="#34d399"><Field icon="🗄️" code="same RAM, both processes" hint="fastest — but you manage the locking" variant="neutral" /></Box>
-<Box title="Sockets" accent="#818cf8"><Field icon="☎️" code="two-way connection" hint="local (Unix socket) or over a network (TCP)" variant="neutral" /></Box>
+<Box label="Pipes" sub="one-way stream" />
+<Box label="Message Queues" sub="async, queued" />
+<Box label="Shared Memory" sub="fastest, no locking" />
+<Box label="Sockets" sub="two-way connection" />
 </Row>
 </Diagram>
 

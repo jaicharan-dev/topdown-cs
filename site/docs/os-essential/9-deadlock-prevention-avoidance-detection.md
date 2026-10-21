@@ -6,7 +6,7 @@ sidebar_position: 9
 sidebar_class_name: sidebar-medium
 ---
 
-import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -43,19 +43,13 @@ A deadlock can only happen if four conditions are all true at the same time (the
 Instead of permanently banning a condition, avoidance checks every single request as it arrives, and only grants it if doing so leaves the system in a state where everyone can still, eventually, finish.
 
 <Diagram>
-<Box title="All possible system states" accent="#a1a1aa">
 <Row>
-<Box title="Safe State" accent="#34d399">
-<Field icon="✅" code="a safe order exists" hint="every process can still finish eventually" variant="neutral" />
-</Box>
-<Box title="Unsafe State" accent="#f59e0b">
-<Field icon="⚠️" code="no safe order exists" hint="might lead to deadlock — but might not" variant="neutral" />
-<Box title="Deadlock" accent="#fb7185">
-<Field icon="🔒" code="actual circular freeze" variant="neutral" />
-</Box>
-</Box>
+<Box label="Safe State" sub="a finishing order exists" />
+<Arrow label="may become" />
+<Box label="Unsafe State" sub="no order guaranteed" />
+<Arrow label="might become" />
+<Box label="Deadlock" sub="actual freeze" />
 </Row>
-</Box>
 </Diagram>
 
 - **Safe state:** there's at least one order in which every process could run to completion and hand back its resources, one at a time.

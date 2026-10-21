@@ -8,7 +8,7 @@ sidebar_class_name: sidebar-easy
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -32,18 +32,15 @@ Think of a **process** as a restaurant: it has its own building, its own ingredi
 ### What's actually shared, under the hood
 
 <Diagram>
-<Box title="Process: isolated address space" accent="#818cf8">
-<Field icon="📄" code="Code + Data segment" hint="shared by every thread in this process" variant="neutral" />
-<Field icon="🗄️" code="Heap" hint="shared, dynamically allocated" variant="neutral" />
 <Row>
-<Box title="Thread 1" accent="#34d399">
-<Field icon="📝" code="registers + stack" hint="private to this thread" variant="neutral" />
-</Box>
-<Box title="Thread 2" accent="#34d399">
-<Field icon="📝" code="registers + stack" hint="private to this thread" variant="neutral" />
-</Box>
+<Box label="Code + Data" sub="shared" />
+<Arrow />
+<Box label="Heap" sub="shared" />
 </Row>
-</Box>
+<Row>
+<Box label="Thread 1" sub="private stack" />
+<Box label="Thread 2" sub="private stack" />
+</Row>
 </Diagram>
 
 #### 1. What the kernel tracks for each one

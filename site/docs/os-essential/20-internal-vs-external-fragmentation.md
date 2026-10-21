@@ -6,7 +6,7 @@ sidebar_position: 20
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -21,12 +21,8 @@ Fragmentation is memory that's technically free, but unusable. There are two dif
 
 <Diagram>
 <Row>
-<Box title="Internal fragmentation" accent="#fb7185">
-<Field icon="🥚" code="waste inside a block" hint="e.g. last page of an allocation, half-empty" variant="neutral" />
-</Box>
-<Box title="External fragmentation" accent="#f59e0b">
-<Field icon="🚗" code="waste scattered between blocks" hint="free, but too small/split to use" variant="neutral" />
-</Box>
+<Box label="Internal Fragmentation" sub="waste inside a block" />
+<Box label="External Fragmentation" sub="waste between blocks" />
 </Row>
 </Diagram>
 
@@ -62,12 +58,8 @@ Linux solves this with two allocators stacked on top of each other:
 
 <Diagram>
 <Row>
-<Box title="Buddy Allocator" accent="#818cf8">
-<Field icon="🧱" code="page-level, powers of 2" hint="4KB, 8KB, 16KB... merges free buddies back together" variant="neutral" />
-</Box>
-<Box title="Slab Allocator" accent="#34d399">
-<Field icon="🗃️" code="object-level, fixed-size slots" hint="carves a page into same-size structs" variant="neutral" />
-</Box>
+<Box label="Buddy Allocator" sub="page-level, powers of 2" />
+<Box label="Slab Allocator" sub="object-level, fixed slots" />
 </Row>
 </Diagram>
 

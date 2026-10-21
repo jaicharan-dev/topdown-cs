@@ -6,7 +6,7 @@ sidebar_position: 19
 sidebar_class_name: sidebar-medium
 ---
 
-import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -24,12 +24,8 @@ That tradeoff — uniform-but-arbitrary vs. meaningful-but-irregular — is the 
 
 <Diagram>
 <Row>
-<Box title="Paging" accent="#60a5fa">
-<Field icon="🧩" code="fixed-size frames (4KB)" hint="no external fragmentation" variant="neutral" />
-</Box>
-<Box title="Segmentation" accent="#f59e0b">
-<Field icon="📦" code="variable-size units" hint="matches code / heap / stack" variant="neutral" />
-</Box>
+<Box label="Paging" sub="fixed-size frames" />
+<Box label="Segmentation" sub="variable-size units" />
 </Row>
 </Diagram>
 

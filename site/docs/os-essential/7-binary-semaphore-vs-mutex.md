@@ -8,7 +8,7 @@ sidebar_class_name: sidebar-medium
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -25,8 +25,8 @@ import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
 
 <Diagram>
 <Row>
-<Box title="Mutex" accent="#60a5fa"><Field icon="🔑" code="lock() / unlock()" hint="same thread does both" variant="locked" /></Box>
-<Box title="Binary Semaphore" accent="#f59e0b"><Field icon="📟" code="wait() / signal()" hint="can be two different threads" variant="neutral" /></Box>
+<Box label="Mutex" sub="same thread locks & unlocks" />
+<Box label="Binary Semaphore" sub="any thread can signal" />
 </Row>
 </Diagram>
 

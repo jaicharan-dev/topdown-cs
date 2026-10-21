@@ -6,7 +6,7 @@ sidebar_position: 18
 sidebar_class_name: sidebar-medium
 ---
 
-import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -21,13 +21,13 @@ Think of it like two people sharing a textbook instead of photocopying it. You a
 ### Shared until someone writes
 
 <Diagram>
-<Box title="Shared pages (copy-on-write)" accent="#818cf8">
-<Field icon="📄" code="physical frame 842" hint="marked read-only, shared by both" variant="neutral" />
 <Row>
-<Box title="Parent" accent="#34d399"><Field icon="📝" code="page table → frame 842" variant="neutral" /></Box>
-<Box title="Child" accent="#34d399"><Field icon="📝" code="page table → frame 842" variant="neutral" /></Box>
+<Box label="Parent" sub="page table" />
+<Arrow />
+<Box label="Frame 842" sub="read-only, shared" />
+<Arrow />
+<Box label="Child" sub="page table" />
 </Row>
-</Box>
 </Diagram>
 
 Here's what actually happens, step by step:

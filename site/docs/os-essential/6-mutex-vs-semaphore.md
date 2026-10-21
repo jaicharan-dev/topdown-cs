@@ -8,7 +8,7 @@ sidebar_class_name: sidebar-medium
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -25,8 +25,8 @@ Both a mutex and a semaphore control access to a shared resource. The difference
 
 <Diagram>
 <Row>
-<Box title="Mutex" accent="#60a5fa"><Field icon="🔑" code="locked by Thread A" hint="only Thread A can unlock it" variant="locked" /></Box>
-<Box title="Semaphore" accent="#f59e0b"><Field icon="🎫" code="count = 3" hint="any thread can signal or wait" variant="neutral" /></Box>
+<Box label="Mutex" sub="locked by Thread A" />
+<Box label="Semaphore" sub="count = 3" />
 </Row>
 </Diagram>
 

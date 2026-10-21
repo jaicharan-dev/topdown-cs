@@ -6,7 +6,7 @@ sidebar_position: 12
 sidebar_class_name: sidebar-medium
 ---
 
-import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
@@ -27,12 +27,8 @@ The librarian's fix: keep a small pocket notepad (**the TLB**) with the shelf nu
 
 <Diagram>
 <Row>
-<Box title="TLB hit — fast path" accent="#34d399">
-<Field icon="⚡" code="~1-2 ns" hint="translation already cached, go straight to RAM" variant="neutral" />
-</Box>
-<Box title="TLB miss — slow path" accent="#fb7185">
-<Field icon="🐢" code="100s of ns" hint="walk the page table in RAM first" variant="neutral" />
-</Box>
+<Box label="TLB hit" sub="~1-2 ns" />
+<Box label="TLB miss" sub="100s of ns" />
 </Row>
 </Diagram>
 

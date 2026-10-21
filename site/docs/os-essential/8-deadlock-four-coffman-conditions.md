@@ -8,7 +8,7 @@ sidebar_class_name: sidebar-easy
 
 import Tabs from '@theme/Tabs';
 import TabItem from '@theme/TabItem';
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -24,9 +24,9 @@ Alice and Bob are drawing geometry diagrams together. Drawing a line needs both 
 
 <Diagram>
 <Row>
-<Box title="Alice" accent="#fb7185"><Field icon="✏️" code="holds Pencil" hint="waiting for the Ruler" variant="neutral" /></Box>
-<Arrow label="stuck waiting on each other" />
-<Box title="Bob" accent="#fb7185"><Field icon="📏" code="holds Ruler" hint="waiting for the Pencil" variant="neutral" /></Box>
+<Box label="Alice" sub="holds Pencil, wants Ruler" />
+<Arrow label="stuck waiting" />
+<Box label="Bob" sub="holds Ruler, wants Pencil" />
 </Row>
 </Diagram>
 

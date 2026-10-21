@@ -6,7 +6,7 @@ sidebar_position: 17
 sidebar_class_name: sidebar-easy
 ---
 
-import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
+import { Diagram, Row, Box } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -22,14 +22,8 @@ Think of it like an office:
 
 <Diagram>
 <Row>
-<Box title="Zombie" accent="#fb7185">
-<Field icon="💀" code="child, already dead" hint="parent hasn't called wait() yet" variant="neutral" />
-<Field icon="🗄️" code="still holds a PID slot" hint="0% CPU, 0 bytes RAM" variant="neutral" />
-</Box>
-<Box title="Orphan" accent="#34d399">
-<Field icon="🏃" code="child, still running" hint="parent died first" variant="neutral" />
-<Field icon="👶" code="adopted by PID 1 (init)" hint="harmless" variant="neutral" />
-</Box>
+<Box label="Zombie" sub="dead, not yet reaped" />
+<Box label="Orphan" sub="alive, adopted by init" />
 </Row>
 </Diagram>
 
