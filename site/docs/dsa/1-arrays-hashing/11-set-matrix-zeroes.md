@@ -1,154 +1,133 @@
 ---
 id: 11-set-matrix-zeroes
 title: "73. Set Matrix Zeroes"
-description: "First row/column as marker flags for O(1) space"
+description: "Write the notes in the first row and column, then wipe"
 sidebar_position: 11
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Arrays & Hashing</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Matrix Manipulation</span>
 
-> **Problem Statement:** Given an $m \times n$ integer matrix, if an element is `0`, set its entire row and column to `0`s in-place. You must do this using $O(1)$ constant extra space.
+> **Problem Statement:** You are given a matrix. Wherever a cell holds `0`, set its whole row and its whole column to `0`. Change the matrix you were given, and use only a constant amount of extra memory.
 
 ```text
 Input:  matrix = [[1, 1, 1], [1, 0, 1], [1, 1, 1]]
 Output: [[1, 0, 1], [0, 0, 0], [1, 0, 1]]
-Explanation: The cell at (1, 1) is 0, so row 1 and column 1 are both set to 0.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-In an $m \times n$ matrix, whenever an entry is `0`, its entire row and column must be overwritten with zeros. Overwriting rows and columns immediately upon finding a zero produces artificial zeros that trigger cascading wipes across the entire board. Therefore, cells containing zeros must be recorded before performing any updates.
+The obvious attempt is to walk the matrix and, every time you meet a `0`, wipe its row and column on the spot.
 
-#### Brute Force: Auxiliary Row and Column Arrays
-Maintaining two separate arrays `row_zero = [False] * m` and `col_zero = [False] * n` requires $O(m + n)$ auxiliary memory. While this cleanly isolates flags from board mutations, the problem asks for $O(1)$ constant extra space.
+That destroys the matrix. The zeros you just wrote are indistinguishable from the zeros that were there to begin with, so when the walk reaches one of them it wipes another row and column, which creates more zeros, and the damage spreads until almost everything is `0`.
 
-#### Optimal Approach: Boundary Markers with Disjoint Column Flag
-Instead of allocating separate memory, we embed the marker flags directly into the first row and first column of the matrix:
-- When cell `(r, c)` contains zero, set `matrix[r][0] = 0` (marking row `r`) and `matrix[0][c] = 0` (marking column `c`).
-- Because cell `(0, 0)` overlaps row 0 and column 0, letting it track both causes ambiguity. We dedicate `matrix[0][0]` to mark row 0, and use a separate boolean variable `first_col_zero` to track column 0.
-- We update the inner matrix first (`r >= 1` and `c >= 1`) based on the markers, then zero out row 0 and column 0 last.
-
-#### Execution Walkthrough
-
-Let us trace `matrix = [[1, 1, 1], [1, 0, 1], [1, 1, 1]]`:
-
-| Step | Operation | Cell / Scope | Marker State | Grid State |
-| :---: | :--- | :---: | :--- | :--- |
-| **1** | Boundary flag check | Column 0 | `first_col_zero = False` | No change |
-| **2** | Scan inner cells | `(1, 1) == 0` | `matrix[1][0] = 0`, `matrix[0][1] = 0` | Row 1 marked, Col 1 marked |
-| **3** | Update inner cells | `(1, 1) .. (2, 2)` | Inner cells with marked row or col set to 0 | Row 1 becomes `[0, 0, 0]`, Cell `(2, 1)` becomes `0` |
-| **4** | Update row 0 | `matrix[0][0] == 1` | Row 0 remains unchanged | `matrix[0] = [1, 0, 1]` |
-| **5** | Update col 0 | `first_col_zero == False` | Col 0 remains unchanged | Final matrix matches target |
+So the job splits into two stages that must not be mixed. First work out which rows and columns are doomed. Only then wipe them.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Determine Boundary State & Flag Interior:**
-   - Initialize `first_col_zero = False`.
-   - Loop `r` from `0` to `m - 1`:
-     - If `matrix[r][0] == 0`, set `first_col_zero = True`.
-     - For `c` from `1` to `n - 1`: if `matrix[r][c] == 0`, set `matrix[r][0] = 0` and `matrix[0][c] = 0`.
-2. **Zero Out Inner Subgrid:**
-   - For `r` from `1` to `m - 1` and `c` from `1` to `n - 1`:
-     - If `matrix[r][0] == 0` or `matrix[0][c] == 0`, set `matrix[r][c] = 0`.
-3. **Zero Out Row 0:**
-   - If `matrix[0][0] == 0`, set all cells in row 0 (`matrix[0][c]`) to `0`.
-4. **Zero Out Column 0:**
-   - If `first_col_zero` is `True`, set all cells in column 0 (`matrix[r][0]`) to `0`.
+Keeping a list of doomed rows and a list of doomed columns works perfectly and is easy to explain. It costs memory proportional to the width plus the height of the matrix. The problem asks for constant extra memory, so the lists have to go somewhere else.
+
+The idea is to store the notes inside the matrix, in cells that are already doomed anyway.
+
+Use the first row as the notes about columns, and the first column as the notes about rows. If the cell at row `i`, column `j` is `0`, write a `0` into the first cell of row `i` and the first cell of column `j`. Those marker cells end up zero in the final answer regardless, so nothing is lost by scribbling on them.
+
+There is one cell this cannot handle. The corner cell belongs to the first row and the first column at the same time, so it cannot carry two separate pieces of information. Give the first column its own single boolean variable, and let the corner cell speak only for the first row. One extra variable is still constant memory.
+
+The order of operations then matters:
+
+1. **Scan and mark**, reading each cell and writing markers into the first row and column.
+2. **Wipe the inside**, from row `1` and column `1` onward, reading the markers. The inside is wiped first because the markers must stay readable while it happens.
+3. **Wipe the first row and the first column last**, once nothing else needs to read them.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: In-Place Boundary Markers" default>
+Start with:
+
+```text
+1 1 1
+1 0 1
+1 1 1
+```
+
+**Scan and mark.** The only `0` is at row `1`, column `1`. So write `0` into the first cell of row `1`, and into the first cell of column `1`:
+
+```text
+1 0 1
+0 0 1
+1 1 1
+```
+
+**Wipe the inside**, looking only at cells from row `1` and column `1` onward. Row `1` is marked, so its remaining cells go to `0`. Column `1` is marked, so its remaining cells go to `0`:
+
+```text
+1 0 1
+0 0 0
+1 0 1
+```
+
+**Finish the first row and column.** The corner cell is `1`, so the first row stays. The boolean for the first column was never set, so the first column stays. That is the final answer.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def setZeroes(self, matrix: list[list[int]]) -> None:
-        """
-        Modify matrix in-place with O(1) extra space.
-        """
-        m, n = len(matrix), len(matrix[0])
+        rows, cols = len(matrix), len(matrix[0])
         first_col_zero = False
-        
-        # Step 1: Record flags in first row and column
-        for r in range(m):
-            if matrix[r][0] == 0:
+
+        # 1. mark, using row 0 and column 0 as the notes
+        for i in range(rows):
+            if matrix[i][0] == 0:
                 first_col_zero = True
-            for c in range(1, n):
-                if matrix[r][c] == 0:
-                    matrix[r][0] = 0
-                    matrix[0][c] = 0
-                    
-        # Step 2: Zero out inner subgrid cells using markers
-        for r in range(1, m):
-            for c in range(1, n):
-                if matrix[r][0] == 0 or matrix[0][c] == 0:
-                    matrix[r][c] = 0
-                    
-        # Step 3: Zero out the first row if flagged
+            for j in range(1, cols):
+                if matrix[i][j] == 0:
+                    matrix[i][0] = 0
+                    matrix[0][j] = 0
+
+        # 2. wipe the inside while the notes are still readable
+        for i in range(1, rows):
+            for j in range(1, cols):
+                if matrix[i][0] == 0 or matrix[0][j] == 0:
+                    matrix[i][j] = 0
+
+        # 3. the notes themselves, last of all
         if matrix[0][0] == 0:
-            for c in range(n):
-                matrix[0][c] = 0
-                
-        # Step 4: Zero out the first column if flagged
+            for j in range(cols):
+                matrix[0][j] = 0
+
         if first_col_zero:
-            for r in range(m):
-                matrix[r][0] = 0
+            for i in range(rows):
+                matrix[i][0] = 0
 ```
 
-  </TabItem>
-  <TabItem value="auxiliary" label="Alternative: Separate Marker Sets">
-
-```python
-class Solution:
-    def setZeroes(self, matrix: list[list[int]]) -> None:
-        m, n = len(matrix), len(matrix[0])
-        rows_to_zero: set[int] = set()
-        cols_to_zero: set[int] = set()
-        
-        for r in range(m):
-            for c in range(n):
-                if matrix[r][c] == 0:
-                    rows_to_zero.add(r)
-                    cols_to_zero.add(c)
-                    
-        for r in range(m):
-            for c in range(n):
-                if r in rows_to_zero or c in cols_to_zero:
-                    matrix[r][c] = 0
-```
-
-  </TabItem>
-</Tabs>
+Notice that the marking loop starts its inner scan at column `1`. Column `0` is handled by the boolean instead, which is what keeps the corner cell free to speak for the first row.
 
 ---
 
-### Complexity Analysis
+### Time and space complexity
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Separate Marker Sets** | $O(m \times n)$ | $O(m + n)$ | Stores zero indices in auxiliary sets. Straightforward, but uses linear auxiliary space. |
-| **In-Place Boundary Markers** | $O(m \times n)$ | $O(1)$ | Embeds marker bits into matrix row 0 and column 0. Achieves optimal constant auxiliary space. |
+Call the matrix `m` rows by `n` columns.
+
+#### Time: $O(m n)$
+
+Two full passes over the matrix, one to mark and one to wipe, plus two single-line passes at the end. Each cell is read a constant number of times, so the work tracks the number of cells.
+
+#### Space: $O(1)$
+
+One boolean, and that is all. The notes live inside the matrix in cells that were destined to be zero anyway, so no storage grows with the size of the input. Keeping separate lists of doomed rows and columns would have been $O(m + n)$.
 
 ---
 
-### Common Pitfall: Premature Boundary Overwrite
+### Remember this
 
-Updating row 0 or column 0 before updating the interior cells overwrites the marker flags. If cell `matrix[0][0]` is set to 0 during an early pass, subsequent checks for row or column zeros will falsely trigger and clear unaffected elements. Interior cells must always be updated before applying modifications to the first row and first column.
-
----
-
-### Concise Interview Takeaway
-
-For **Set Matrix Zeroes**, prevent cascading zero contamination by recording zero coordinates prior to updating values. To achieve $O(1)$ auxiliary space, reuse row 0 and column 0 as in-place bitboards, with one extra boolean variable for column 0. Update interior cells first from $1$ to $m - 1$ and $1$ to $n - 1$, and update boundary markers last.
+Mark first, wipe afterwards, or your own zeros get mistaken for the originals. Store the marks in the first row and the first column, keep one boolean for the first column because the corner cell cannot do two jobs, wipe the inside before touching the markers, and do the first row and column last. $O(m n)$ time, $O(1)$ space.
