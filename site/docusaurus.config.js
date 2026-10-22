@@ -143,7 +143,7 @@ const config = {
           ],
         },
         theme: {
-          customCss: ['./src/css/custom.css', './src/css/prose-lab.css'],
+          customCss: ['./src/css/custom.css', './src/css/prose-experiments.css'],
         },
       }),
     ],

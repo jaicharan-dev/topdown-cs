@@ -4,12 +4,12 @@ title: "11. Container With Most Water"
 description: "Start at both ends and always move the shorter wall inward"
 sidebar_position: 8
 sidebar_class_name: sidebar-medium
-prose: lab
+prose: soft
 ---
 
-<p className="lab-kicker">Medium · Two pointers · O(n) time · O(1) space</p>
+<p className="soft-meta">Medium · Two pointers · O(n) time, O(1) space</p>
 
-<p className="lab-lede">You are given an array <code>height</code>. Each number is the height of a vertical line standing on the x-axis. Pick two lines so that the water held between them is as much as possible, and return that amount of water.</p>
+<p className="soft-lede">You are given an array <code>height</code>. Each number is the height of a vertical line standing on the x-axis. Pick two lines so that the water held between them is as much as possible, and return that amount of water.</p>
 
 ```text
 Input:  height = [1, 8, 6, 2, 5, 4, 8, 3, 7]
@@ -46,7 +46,7 @@ Which of the two walls should we move, then?
 - If we move the **taller** wall, the shorter wall stays exactly where it is, still capping the water. We lost width and gained no height, so the result can only get worse. Pointless.
 - If we move the **shorter** wall, we throw away the wall that was holding us back. We still lose width, but now there is at least a chance of finding a taller wall and holding more water.
 
-<p className="lab-rule-line">Always move the shorter wall inward.</p>
+<p className="soft-key">Always move the shorter wall inward.</p>
 
 Keep the most water you have seen as you go, and stop when the two walls meet.
 
@@ -103,4 +103,4 @@ Memory that stays the same size no matter how big the input gets is called $O(1)
 
 ### Remember this
 
-<p className="lab-takeaway">Start wide, at both ends. Every step costs you width, so the only wall worth moving is the shorter one, because moving the taller one can never help. Keep the best water you have seen and stop when the pointers meet. One walk across the array and three variables: $O(n)$ time, $O(1)$ space.</p>
+<p className="soft-takeaway">Start wide, at both ends. Every step costs you width, so the only wall worth moving is the shorter one, because moving the taller one can never help. Keep the best water you have seen and stop when the pointers meet. One walk across the array and three variables: $O(n)$ time, $O(1)$ space.</p>
