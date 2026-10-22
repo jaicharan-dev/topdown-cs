@@ -1,144 +1,107 @@
 ---
 id: 6-subarray-sum-equals-k
 title: "560. Subarray Sum Equals K"
-description: "Prefix sums with a hash map of previously seen sums"
+description: "Keep a running total and count how often the total you need appeared before"
 sidebar_position: 6
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Arrays & Hashing</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Prefix Sums</span>
 
-> **Problem Statement:** Given an array of integers `nums` and an integer `k`, return the total number of subarrays whose sum equals to `k`. A subarray is a contiguous non-empty sequence of elements within an array.
+> **Problem Statement:** You are given an array of integers `nums` and a number `k`. Count how many contiguous stretches of the array add up to `k`. A stretch means neighbouring elements, not a selection picked from anywhere.
 
 ```text
 Input:  nums = [1, 1, 1], k = 2
 Output: 2
-Explanation: The subarrays [nums[0], nums[1]] and [nums[1], nums[2]] both sum to 2.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-A subarray is a contiguous non-empty sequence of elements within an array. For example, in `nums = [1, 1, 1]` with `k = 2`, the subarrays `nums[0..1]` and `nums[1..2]` each sum to 2, producing a total count of 2.
+Walk the array keeping a running total of everything you have added so far.
 
-#### Brute Force: Cumulative Subarray Summation
-Testing all pairs $(i, j)$ requires calculating the sum of elements from $i$ to $j$. Computing this across all subarrays naively takes $O(n^3)$ time, or $O(n^2)$ time with a running sum. When $n = 20,000$, quadratic time fails. Furthermore, a two-pointer sliding window cannot be used because negative values invalidate the monotonicity property: expanding a window might decrease its sum, while shrinking might increase it.
+Now suppose your running total is `7` right now, and `k` is `2`. If at some earlier point in the walk the running total was `5`, then everything you added between that moment and now came to exactly `2`. That stretch is one of the answers.
 
-#### Optimal Approach: Prefix Sum Hash Map
-Imagine tracking your cumulative running elevation as you hike along a trail:
+```text
+sum of a stretch = running total now  -  running total before the stretch started
+```
 
-$$\text{curr\_sum} = \sum_{m=0}^{i} \text{nums}[m]$$
-
-If the current cumulative sum is $\text{curr\_sum}$, any preceding prefix at index $j < i$ with cumulative sum:
-
-$$\text{target\_prefix} = \text{curr\_sum} - k$$
-
-identifies a valid contiguous subarray between index $j + 1$ and $i$ whose elements sum exactly to $k$:
-
-$$\text{curr\_sum} - (\text{curr\_sum} - k) = k$$
-
-By keeping a hash map `prefix_counts` recording the frequency of each observed prefix sum, we query how many times $\text{curr\_sum} - k$ has appeared in $O(1)$ time and accumulate those frequencies. We initialize `prefix_counts = {0: 1}` to account for subarrays starting directly at index 0.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [1, 2, 1, 2, 1]` with `k = 3`:
-
-| Step | Element | `curr_sum` | Target (`curr_sum - k`) | Count Found | `total` | `prefix_counts` State |
-| :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **1** | `1` | `1` | $1 - 3 = -2$ | `0` | `0` | `{0: 1, 1: 1}` |
-| **2** | `2` | `3` | $3 - 3 = 0$ | `1` (base `0`) | `1` | `{0: 1, 1: 1, 3: 1}` |
-| **3** | `1` | `4` | $4 - 3 = 1$ | `1` (prefix `1`) | `2` | `{0: 1, 1: 1, 3: 1, 4: 1}` |
-| **4** | `2` | `6` | $6 - 3 = 3$ | `1` (prefix `3`) | `3` | `{0: 1, 1: 1, 3: 1, 4: 1, 6: 1}` |
-| **5** | `1` | `7` | $7 - 3 = 4$ | `1` (prefix `4`) | `4` | `{0: 1, 1: 1, 3: 1, 4: 1, 6: 1, 7: 1}` |
+So the only thing worth asking at each step is: how many times have I previously stood at a running total of `running - k`? Each of those earlier moments marks the start of a stretch ending right here.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State:** Set `total_subarrays = 0`, `curr_sum = 0`, and instantiate `prefix_counts = {0: 1}` representing one occurrence of an empty prefix sum of 0.
-2. **Iterate Through Array:** For each `num` in `nums`:
-   - Add `num` to `curr_sum`.
-   - Check if `(curr_sum - k)` exists in `prefix_counts`. If present, add its count to `total_subarrays`.
-   - Record the current prefix sum: increment `prefix_counts[curr_sum]` by 1.
-3. **Return Total:** Return `total_subarrays`.
+Testing every stretch means picking a start, picking an end, and adding up what is in between. That is far too much work for a long array.
+
+The running total turns it into one pass, but only if you can answer "how many times have I seen this total before" quickly. That is a dictionary: map each running total to the number of times it has occurred.
+
+At every element: add it to the running total, look up `running - k` in the dictionary and add that count to the answer, then record the current running total.
+
+Two things are worth being careful about.
+
+The dictionary stores **counts**, not just whether a total was seen. If the same running total occurred three times earlier, three different stretches end here, so the count has to be added, not a `1`.
+
+The dictionary also has to start with a running total of `0` already seen once. That stands for the moment before the walk begins, and it is what lets a stretch that starts at the very first element be counted. Without it, an array like `[2]` with `k = 2` would return `0`.
+
+Because this works on running totals rather than on the numbers themselves, it handles negative numbers and zeros without any special cases.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Prefix Sum Hash Map" default>
+Take `nums = [1, 1, 1]` with `k = 2`. Start with a running total of `0`, an answer of `0`, and the dictionary holding "total `0`, seen once".
+
+1. **Add `1`.** The running total is `1`. You need an earlier total of `1 - 2 = -1`, which has never occurred, so nothing is added. Record total `1`.
+2. **Add `1`.** The running total is `2`. You need an earlier total of `0`, which occurred once, so the answer becomes `1`. Record total `2`.
+3. **Add `1`.** The running total is `3`. You need an earlier total of `1`, which occurred once, so the answer becomes `2`. Record total `3`.
+
+The answer is `2`, matching the two stretches of `[1, 1]`.
+
+---
+
+### The code
 
 ```python
 from collections import defaultdict
 
 class Solution:
     def subarraySum(self, nums: list[int], k: int) -> int:
-        total_subarrays = 0
-        curr_sum = 0
-        
-        # Maps prefix_sum -> frequency of occurrence
-        prefix_counts: dict[int, int] = defaultdict(int)
-        prefix_counts[0] = 1  # Base case for subarrays starting at index 0
-        
+        # a running total of 0 exists before the walk starts
+        seen = defaultdict(int)
+        seen[0] = 1
+
+        running = 0
+        total = 0
+
         for num in nums:
-            curr_sum += num
-            
-            # If (curr_sum - k) exists, add its occurrences to total
-            if (curr_sum - k) in prefix_counts:
-                total_subarrays += prefix_counts[curr_sum - k]
-                
-            # Record the current prefix sum
-            prefix_counts[curr_sum] += 1
-            
-        return total_subarrays
+            running += num
+
+            # every earlier point with this total starts a stretch ending here
+            total += seen[running - k]
+
+            seen[running] += 1
+
+        return total
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Alternative: Cumulative Brute Force">
+---
 
-```python
-class Solution:
-    def subarraySum(self, nums: list[int], k: int) -> int:
-        count = 0
-        n = len(nums)
-        
-        for start in range(n):
-            curr_sum = 0
-            for end in range(start, n):
-                curr_sum += nums[end]
-                if curr_sum == k:
-                    count += 1
-                    
-        return count
-```
+### Time and space complexity
 
-  </TabItem>
-</Tabs>
+#### Time: $O(n)$
+
+One pass over the array. Each element costs an addition, one dictionary lookup and one dictionary update, and none of those get slower as the dictionary fills. So the work tracks the length of the array.
+
+#### Space: $O(n)$
+
+The dictionary holds one entry per distinct running total. If every running total along the way is different, which happens with an array of all positive numbers, it ends up with `n` entries, so the memory grows with the input.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Cumulative Brute Force** | $O(n^2)$ | $O(1)$ | Tests every contiguous subarray starting point. Avoids extra storage, but quadratic runtime causes time limit exceeded on large inputs. |
-| **Prefix Sum Hash Map** | $O(n)$ | $O(n)$ | Computes prefix totals and queries complementary differences in $O(1)$ average time. Optimal linear runtime. |
-
----
-
-### Common Pitfall: Missing the Base Case `{0: 1}`
-
-Forgetting to initialize `prefix_counts[0] = 1` causes the algorithm to miss any valid subarray that begins at index 0. For example, in `nums = [3]` with `k = 3`, `curr_sum` becomes 3, and `curr_sum - k = 0`. Without `{0: 1}` already in the map, the initial valid prefix would be overlooked, returning 0 instead of 1.
-
----
-
-### Concise Interview Takeaway
-
-For **Subarray Sum Equals K**, use a prefix sum hash map. Two pointers and sliding windows fail because negative numbers break monotonicity. Maintain a running sum and query the count of `curr_sum - k` at each index in $O(1)$ average time. Pre-populate `{0: 1}` to capture valid subarrays that originate at index 0.
+A stretch sums to `k` exactly when the running total now, minus `k`, equals the running total at some earlier point. Keep a dictionary counting how often each running total has appeared, seed it with `0` seen once, and add the stored count rather than one. $O(n)$ time, $O(n)$ space, and negatives cause no trouble.
