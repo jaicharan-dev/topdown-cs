@@ -1,125 +1,101 @@
 ---
 id: 4-group-anagrams
 title: "49. Group Anagrams"
-description: "Character-frequency tuple keys vs sorted-string hashing"
+description: "Give every word a label that ignores letter order, then bucket by it"
 sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Arrays & Hashing</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Hash Map</span>
 
-> **Problem Statement:** Given an array of strings `strs`, group the anagrams together. You can return the answer in any order. An anagram is a word formed by rearranging the letters of another word, using all original letters exactly once.
+> **Problem Statement:** You are given a list of words `strs`. Put the anagrams together in groups and return those groups in any order. Two words are anagrams when one is a rearrangement of the other, using all the same letters.
 
 ```text
 Input:  strs = ["eat", "tea", "tan", "ate", "nat", "bat"]
 Output: [["bat"], ["nat", "tan"], ["ate", "eat", "tea"]]
-Explanation: "eat", "tea", and "ate" are anagrams and map to one group; "tan" and "nat" form another; "bat" forms the third.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-An anagram is a word produced by rearranging the letters of another word using all original characters exactly once. For example, `"eat"`, `"tea"`, and `"ate"` are anagrams because each contains one `'a'`, one `'e'`, and one `'t'`. To group anagrams together, every member of the same anagram family must map to an identical canonical key.
+Anagrams are the same letters in a different order. `eat`, `tea` and `ate` are three arrangements of one bag of letters: one `a`, one `e`, one `t`.
 
-#### Brute Force: Pairwise Anagram Comparison
-Comparing every pair of words to determine if they are anagrams requires $O(n^2 \cdot k)$ operations, which becomes prohibitively slow when the list contains thousands of strings.
+So give each word a label that throws the order away and keeps only the letters. Any two anagrams will get exactly the same label, and any two words that are not anagrams will get different ones.
 
-#### Optimal Approach: Canonical Signature Hashing
-Instead of comparing pairs, we compute a canonical signature for each word to serve as a hash map key:
-- **Sorted String Key:** Sorting the characters of any anagram yields the exact same string (e.g., `"eat"`, `"tea"`, and `"ate"` all become `"aet"`). This requires $O(k \log k)$ time per word of length $k$.
-- **Character Count Tuple Key:** Counting the 26 lowercase English character frequencies yields an identical 26-element tuple for all anagrams (e.g., $(1, 0, \dots, 1, \dots)$). Because tuples are hashable in Python, they serve directly as dictionary keys in $O(k)$ time per word.
-
-#### Execution Walkthrough
-
-Let us trace `strs = ["eat", "tea", "tan", "ate", "nat", "bat"]` using the sorted string signature:
-
-| Step | Word | Sorted Key | Action Taken | Hash Map State (`groups`) |
-| :---: | :---: | :---: | :--- | :--- |
-| **1** | `"eat"` | `"aet"` | Add `"eat"` to `"aet"` bucket | `{"aet": ["eat"]}` |
-| **2** | `"tea"` | `"aet"` | Add `"tea"` to `"aet"` bucket | `{"aet": ["eat", "tea"]}` |
-| **3** | `"tan"` | `"ant"` | Create `"ant"` bucket | `{"aet": ["eat", "tea"], "ant": ["tan"]}` |
-| **4** | `"ate"` | `"aet"` | Add `"ate"` to `"aet"` bucket | `{"aet": ["eat", "tea", "ate"], "ant": ["tan"]}` |
-| **5** | `"nat"` | `"ant"` | Add `"nat"` to `"ant"` bucket | `{"aet": ["eat", "tea", "ate"], "ant": ["tan", "nat"]}` |
-| **6** | `"bat"` | `"abt"` | Create `"abt"` bucket | `{"aet": ["eat", "tea", "ate"], "ant": ["tan", "nat"], "abt": ["bat"]}` |
+Once every word has a label, the grouping does itself. Put each word in the pile named by its label, and the piles are the answer.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Bucket Map:** Create a dictionary `groups = defaultdict(list)` to store word clusters indexed by canonical keys.
-2. **Compute Canonical Signature:** For each word in `strs`:
-   - Sort the characters lexicographically: `key = "".join(sorted(word))`.
-   - Append `word` to `groups[key]`.
-3. **Extract Groups:** Return `list(groups.values())` containing all grouped anagram lists.
+Comparing every word against every other word to test for anagram-ness is slow and awkward, and it gets worse as the list grows.
+
+The label is the whole idea, and there are two natural ones:
+
+- **Sort the letters.** `eat`, `tea` and `ate` all sort to `aet`. Simple to write and easy to remember.
+- **Count the letters.** Record how many of each letter the word has, and use that count as the label. This avoids sorting, which matters when the words are long.
+
+The sorted label is the one to reach for first, because it is one line and hard to get wrong. Use a dictionary that maps a label to the list of words carrying it. Walk the words once, append each to its list, and return the lists at the end.
+
+A plain dictionary needs you to create the empty list the first time a label appears. `defaultdict(list)` does that for you, which keeps the loop to two lines.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Sorted String Key" default>
+Take `strs = ["eat", "tea", "tan", "ate", "nat", "bat"]`. The label is the word with its letters sorted.
+
+1. **`eat`** has the label `aet`. No pile yet, so start one: `eat`.
+2. **`tea`** has the label `aet`. That pile exists, so join it: `eat`, `tea`.
+3. **`tan`** has the label `ant`. Start a new pile: `tan`.
+4. **`ate`** has the label `aet`. Join the first pile: `eat`, `tea`, `ate`.
+5. **`nat`** has the label `ant`. Join the second pile: `tan`, `nat`.
+6. **`bat`** has the label `abt`. Start a third pile: `bat`.
+
+Three piles, which is the answer.
+
+---
+
+### The code
 
 ```python
 from collections import defaultdict
 
 class Solution:
     def groupAnagrams(self, strs: list[str]) -> list[list[str]]:
-        groups: dict[str, list[str]] = defaultdict(list)
-        
+        groups = defaultdict(list)
+
         for word in strs:
-            key = "".join(sorted(word))
-            groups[key].append(word)
-            
+            # same letters give the same label, whatever the order
+            label = "".join(sorted(word))
+            groups[label].append(word)
+
         return list(groups.values())
 ```
 
-  </TabItem>
-  <TabItem value="count" label="Alternative: Frequency Tuple Key">
+---
 
-```python
-from collections import defaultdict
+### Time and space complexity
 
-class Solution:
-    def groupAnagrams(self, strs: list[str]) -> list[list[str]]:
-        groups: dict[tuple[int, ...], list[str]] = defaultdict(list)
-        
-        for word in strs:
-            count = [0] * 26
-            for char in word:
-                count[ord(char) - ord("a")] += 1
-            groups[tuple(count)].append(word)
-            
-        return list(groups.values())
-```
+Two sizes matter here, so give them both names: `n` is how many words there are, and `k` is the length of the longest word.
 
-  </TabItem>
-</Tabs>
+#### Time: $O(n k \log k)$
+
+Each word is handled once, and the expensive part of handling it is sorting its letters, which costs $k \log k$ for a word of length `k`. Do that `n` times and you get $O(n k \log k)$.
+
+The dictionary work is free by comparison: looking up a label and appending to a list are both constant time.
+
+If the words are long enough for that `log k` to hurt, swap the sorted label for a letter count, which builds the label in $O(k)$ and brings the total to $O(n k)$.
+
+#### Space: $O(n k)$
+
+Every word ends up stored in some pile, and the labels are about the same size as the words again. So the memory grows with the total amount of text handed in, not with anything smaller.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-Let $n$ be the number of strings and $k$ be the maximum length of a string.
-
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Sorted String Key** | $O(n \cdot k \log k)$ | $O(n \cdot k)$ | Sorts each word to construct string keys. Minimal code overhead and highly performant for short words. |
-| **Frequency Tuple Key** | $O(n \cdot k)$ | $O(n \cdot k)$ | Tallies 26 character frequencies into an immutable tuple key. Optimal linear scaling for large string lengths $k$. |
-
----
-
-### Common Pitfall: Unhashable Mutable Keys in Python
-
-In Python, list objects are mutable and therefore unhashable. Attempting to use a 26-element list directly as a dictionary key (`groups[count].append(word)`) raises a `TypeError: unhashable type: 'list'`. When using character counts as hash keys, always convert the array to an immutable tuple via `tuple(count)` before indexing into the map.
-
----
-
-### Concise Interview Takeaway
-
-For **Group Anagrams**, map each string to an invariant canonical representation. Sorting characters yields an $O(n \cdot k \log k)$ string key that is clean and idiomatic. If string length $k$ is large, construct an immutable 26-slot frequency tuple in $O(n \cdot k)$ linear time. Group elements under their common key using a hash map.
+Anagrams differ only in order, so build a label that order cannot affect: the sorted letters, or a count of each letter. Bucket the words into a dictionary keyed by that label and return the buckets. $O(n k \log k)$ time with the sorted label, $O(n k)$ space.

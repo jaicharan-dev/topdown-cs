@@ -1,135 +1,98 @@
 ---
 id: 1-two-sum
 title: "1. Two Sum"
-description: "Hash map complement lookup in a single pass"
+description: "For each number, ask whether the partner it needs has already been seen"
 sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Arrays & Hashing</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Hash Map</span>
 
-> **Problem Statement:** Given an array of integers `nums` and an integer `target`, return the indices of the two numbers such that they add up to `target`. Each input has exactly one solution, and you may not use the same element twice. You can return the answer in any order.
+> **Problem Statement:** You are given an array of integers `nums` and a number `target`. Find the two numbers that add up to `target` and return their positions. There is exactly one answer, and you cannot use the same element twice.
 
 ```text
 Input:  nums = [2, 7, 11, 15], target = 9
 Output: [0, 1]
-Explanation: nums[0] + nums[1] == 2 + 7 == 9, so we return [0, 1].
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine you have a list of numbers: `nums = [2, 7, 11, 15]`, and your target is `9`. You need to find the two numbers that sum to `9`.
+You are looking for a pair. The thing to notice is that once you fix one number, the other one is no longer a choice. If the target is `9` and you are standing on `2`, the only number that can finish the job is `7`.
 
-#### Brute Force: Checking Every Pair
-The most direct approach is comparing every pair:
-- Pick the first number `2`.
-- Test it against `7`: Does $2 + 7 = 9$? Yes, a match is found.
-
-If the answer was not at the front, you would check `2` with `11`, then `2` with `15`. Next, you would test `7` against all subsequent numbers, and so on.
-
-While simple, checking every pair takes $O(n^2)$ quadratic time. If the array contains tens of thousands of items, this approach is far too slow for production systems.
-
-#### Optimal Approach: The Complement Notebook
-Instead of repeatedly scanning backwards, what if we walk through the list **just once**?
-
-As you inspect each number `x`, you only need to determine the exact partner value required to reach the target:
-
-$$\text{complement} = \text{target} - x$$
-
-To make lookups instant, you carry a **small notebook** (a hash map / dictionary). In this notebook, you record every number you have seen so far, along with its index.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [2, 7, 11, 15]` with `target = 9`:
-
-| Step | Element | Required Complement | Found in Notebook? | Action Taken | Notebook State (`seen`) |
-| :---: | :---: | :---: | :---: | :--- | :--- |
-| **1** | `nums[0] = 2` | $9 - 2 = 7$ | No | Record `2` at index `0` | `{2: 0}` |
-| **2** | `nums[1] = 7` | $9 - 7 = 2$ | **Yes** (at index `0`) | Match found! Return `[0, 1]` | `{2: 0}` |
-
-Because hash table lookups take $O(1)$ constant time on average, you examine each number once, solving the problem in a single pass.
+So the question changes shape. Instead of "which two numbers add up to the target", it becomes "for this number, have I already walked past the partner it needs?"
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Hash Map:** Create an empty dictionary `seen` to store previously inspected numbers and their indices (`value -> index`).
-2. **Iterate with Index:** Traverse `nums` using `enumerate(nums)` to track both the index `i` and element `num`.
-3. **Compute Complement:** For each number, determine its required partner: `complement = target - num`.
-4. **Probe Hash Map:**
-   - If `complement` already exists in `seen`, return `[seen[complement], i]`.
-   - If not, save the current number and its index: `seen[num] = i`.
-5. **Fallback:** Return an empty list if no solution is found.
+The obvious approach is to take every number and test it against every other number. That works, but on a long array it is far too slow, because the number of pairs grows with the square of the length.
+
+The fix is to remember what you have already seen. Walk the array once, carrying a notebook. For each number, work out the partner it needs:
+
+```text
+partner = target - current number
+```
+
+Then ask the notebook whether that partner has turned up earlier. If it has, you have both halves of the answer and you are done. If it has not, write the current number into the notebook along with its position, and move on.
+
+A dictionary is the right notebook because looking something up in it is instant, no matter how much is already written down. That is what keeps the whole thing to a single pass.
+
+One detail matters. Ask the notebook **before** you write the current number into it. If you write first, a number whose partner is itself would find its own entry and return the same position twice, which the problem forbids.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: One-Pass Hash Map" default>
+Take `nums = [2, 7, 11, 15]` with `target = 9`.
+
+1. **The number is `2`.** It needs `7`. The notebook is empty, so there is no match. Write down that `2` sits at index `0`.
+2. **The number is `7`.** It needs `2`. The notebook has `2`, at index `0`. That is the pair, so return `[0, 1]`.
+
+The array is never finished, because the answer appeared on the second step.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def twoSum(self, nums: list[int], target: int) -> list[int]:
-        seen: dict[int, int] = {}  # value -> index
-        
+        seen = {}  # number -> the index it was found at
+
         for i, num in enumerate(nums):
-            complement = target - num
-            
-            # If the partner number was already seen, return the answer
-            if complement in seen:
-                return [seen[complement], i]
-            
-            # Otherwise, remember this number and where we saw it
+            partner = target - num
+
+            # ask before writing, so a number cannot pair with itself
+            if partner in seen:
+                return [seen[partner], i]
+
             seen[num] = i
-            
+
         return []
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Brute Force: Nested Loops">
+---
 
-```python
-class Solution:
-    def twoSum(self, nums: list[int], target: int) -> list[int]:
-        n = len(nums)
-        for i in range(n):
-            for j in range(i + 1, n):
-                if nums[i] + nums[j] == target:
-                    return [i, j]
-                    
-        return []
-```
+### Time and space complexity
 
-  </TabItem>
-</Tabs>
+#### Time: $O(n)$
+
+The loop runs once per element and never goes back. Everything inside it is cheap: one subtraction, one dictionary lookup, one dictionary write. Dictionary operations do not get slower as the dictionary fills up, so the work per element stays flat.
+
+That means the total work tracks the length of the array. Ten thousand numbers, ten thousand steps. Compare it with testing every pair, which on ten thousand numbers is about fifty million checks.
+
+#### Space: $O(n)$
+
+The notebook is the cost. In the worst case the answer is the last pair, so by then almost every number has been written down. The dictionary grows with the input, which is $O(n)$ extra memory.
+
+This is the trade being made: spend memory on the notebook to avoid rescanning the array for every element.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force** | $O(n^2)$ | $O(1)$ | Tests every pair with nested loops. Uses no auxiliary memory, but quadratic time is too slow for large arrays. |
-| **One-Pass Hash Map** | $O(n)$ | $O(n)$ | Traverses the array once with $O(1)$ average lookups. Trades $O(n)$ extra memory for optimal linear speed. |
-
----
-
-### Common Pitfall: Using the Same Element Twice
-
-If `target = 6` and `nums = [3, 2, 4]`, pairing `3` at index `0` with itself ($3 + 3 = 6$) is invalid because the problem prohibits using the same element twice.
-
-We avoid this by checking `seen` **before** writing the current number into it. Because `nums[i]` has not yet been recorded, an element can never look up and pair with itself.
-
----
-
-### Concise Interview Takeaway
-
-For **Two Sum**, use a single-pass hash map lookup. As you iterate through `nums`, calculate `complement = target - num`. If that complement exists in your map, return both indices immediately. Otherwise, record the current element and continue. This trades $O(n)$ auxiliary memory to reduce runtime from $O(n^2)$ down to $O(n)$.
+For each number, the partner it needs is fixed at `target - num`, so the only question is whether you have seen that partner already. A dictionary answers that instantly, which turns a pairwise search into one pass. Check the dictionary before inserting, or an element will match itself. $O(n)$ time, $O(n)$ space.
