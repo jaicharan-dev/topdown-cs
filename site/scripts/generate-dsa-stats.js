@@ -72,13 +72,14 @@ function generateStats() {
     fs.mkdirSync(outDir, { recursive: true });
   }
 
+  // Deliberately no timestamp: the output is committed, and a regenerated
+  // date made the file show up as modified after every `npm start`.
   const stats = {
     totalProblems,
     topics,
-    generatedAt: new Date().toISOString(),
   };
 
-  fs.writeFileSync(outFile, JSON.stringify(stats, null, 2), 'utf8');
+  fs.writeFileSync(outFile, JSON.stringify(stats, null, 2) + '\n', 'utf8');
   console.log(`[generate-dsa-stats] Generated ${outFile} (Total problems: ${totalProblems})`);
 }
 
