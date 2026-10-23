@@ -1,126 +1,96 @@
 ---
 id: 1-valid-anagram
 title: "242. Valid Anagram"
-description: "Letter frequency balancing using a fixed array or hash map"
+description: "Count the letters of one word, then let the other word spend them"
 sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Strings</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Frequency Array</span>
 
-> **Problem Statement:** Given two strings `s` and `t`, return `true` if `t` is an anagram of `s`, and `false` otherwise. An anagram is a word formed by rearranging the letters of another word, using all original letters exactly once.
+> **Problem Statement:** You are given two strings `s` and `t`. Return `true` if `t` is an anagram of `s`, meaning it uses exactly the same letters the same number of times, just in a different order.
 
 ```text
 Input:  s = "anagram", t = "nagaram"
 Output: true
-Explanation: Both strings contain three 'a's, one 'g', one 'm', one 'n', and one 'r'.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine you have two bags of Scrabble letter tiles. You want to know whether both bags contain the exact same inventory of letters.
+Anagrams are not about order at all. They are about stock.
 
-#### Brute Force: Sorting Both Strings
-The most direct approach is sorting both strings alphabetically and checking whether they match character-by-character: `sorted(s) == sorted(t)`. If the sorted sequences are identical, the strings must be anagrams.
-
-While straightforward, sorting takes $O(n \log n)$ time and creates new sorted string copies in memory.
-
-#### Optimal Approach: The Balance Sheet (Frequency Array)
-Instead of reordering characters, we can count them directly. Think of a ledger with 26 slots, one for each lowercase English letter from `'a'` to `'z'`:
-- Every time you see a letter in `s`, deposit `+1` into its slot.
-- Every time you see a letter in `t`, withdraw `-1` from its slot.
-- If both words are true anagrams, every deposit is cancelled out by a matching withdrawal, leaving every balance at zero.
-
-#### Execution Walkthrough
-
-Let us trace `s = "anagram"` and `t = "nagaram"`:
-
-| Step | Char in `s` (+1) | Char in `t` (-1) | Net Balance Changes | Non-Zero Ledger Entries |
-| :---: | :---: | :---: | :--- | :--- |
-| **1** | `'a'` | `'n'` | `count['a'] += 1`, `count['n'] -= 1` | `{'a': 1, 'n': -1}` |
-| **2** | `'n'` | `'a'` | `count['n'] += 1`, `count['a'] -= 1` | All balances currently `0` |
-| **3** | `'a'` | `'g'` | `count['a'] += 1`, `count['g'] -= 1` | `{'a': 1, 'g': -1}` |
-| **4** | `'g'` | `'a'` | `count['g'] += 1`, `count['a'] -= 1` | All balances currently `0` |
-| **5** | `'a'` | `'r'` | `count['a'] += 1`, `count['r'] -= 1` | `{'a': 1, 'r': -1}` |
-| **6** | `'r'` | `'a'` | `count['r'] += 1`, `count['a'] -= 1` | All balances currently `0` |
-| **7** | `'m'` | `'m'` | `count['m'] += 1`, `count['m'] -= 1` | All balances currently `0` |
-
-All 26 slots end at zero, confirming that `t` is a valid anagram of `s`.
+Imagine the first word hands you a basket: three `a`, one `g`, one `m`, one `n`, one `r`. Now the second word walks through and takes one letter out of the basket for each letter it contains. If it ever reaches for a letter that is not there, the words cannot be anagrams. If it empties the basket exactly, they are.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Check Lengths:** If `len(s) != len(t)`, return `False` immediately since strings of unequal length cannot be anagrams.
-2. **Initialize Frequency Ledger:** Create an array `counts` of size 26 initialized to zero (`counts = [0] * 26`).
-3. **Tally Character Frequencies:** Iterate through both strings simultaneously using `zip(s, t)`. For each step, increment `counts[ord(char_s) - ord('a')]` and decrement `counts[ord(char_t) - ord('a')]`.
-4. **Verify Balances:** Check whether all values in `counts` are equal to zero. If any slot is non-zero, return `False`.
-5. **Return Result:** Return `True` once all 26 balances are confirmed to be zero.
+Sorting both strings and comparing them works, and it is a single line of code. It is a perfectly good answer, but it costs $O(n \log n)$ because of the sorting, and this problem does not need that much.
+
+Counting is cheaper. Build a count of every letter in `s`, then walk `t` and subtract. If any count drops below zero, `t` has more of some letter than `s` had, so the answer is `false` immediately.
+
+Start by comparing lengths. If they differ, the answer is `false` and you are done. That check is not just a shortcut: it is what makes the subtraction enough on its own. With equal lengths, if `t` never over-spends any letter, it cannot have under-spent one either, because the totals have to match. So you never need a second pass to confirm the basket is empty.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Frequency Array" default>
+Take `s = "anagram"` and `t = "nagaram"`.
+
+1. **Lengths match**, both are `7`, so carry on.
+2. **Count `s`:** three `a`, one each of `n`, `g`, `r`, `m`.
+3. **Spend `t`:** `n` leaves none, `a` drops to two, `g` leaves none, `a` drops to one, `r` leaves none, `a` drops to zero, `m` leaves none.
+
+Nothing ever went negative, so the answer is `true`.
+
+If `t` had been `"nagaramm"`, the lengths would differ and it would have failed at step one. If it had been `"nagarbm"`, the `b` would have gone negative and failed at step three.
+
+---
+
+### The code
 
 ```python
+from collections import Counter
+
 class Solution:
     def isAnagram(self, s: str, t: str) -> bool:
-        # Quick check: lengths must be identical
+        # different lengths can never be anagrams
         if len(s) != len(t):
             return False
 
-        # 26-slot frequency ledger for lowercase English letters 'a' through 'z'
-        counts = [0] * 26
+        counts = Counter(s)
 
-        for char_s, char_t in zip(s, t):
-            counts[ord(char_s) - ord('a')] += 1
-            counts[ord(char_t) - ord('a')] -= 1
+        for ch in t:
+            counts[ch] -= 1
+            # t wants more of this letter than s had
+            if counts[ch] < 0:
+                return False
 
-        # Every deposit must be cancelled out by a matching withdrawal
-        return all(count == 0 for count in counts)
+        return True
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Alternative: Sorting">
+---
 
-```python
-class Solution:
-    def isAnagram(self, s: str, t: str) -> bool:
-        if len(s) != len(t):
-            return False
+### Time and space complexity
 
-        return sorted(s) == sorted(t)
-```
+#### Time: $O(n)$
 
-  </TabItem>
-</Tabs>
+Counting `s` reads it once. Spending `t` reads it once. Every step inside those loops is a dictionary read or write, which does not get slower as the dictionary fills. Two passes over strings of length `n` is $O(n)$.
+
+That is the gain over sorting, which would be $O(n \log n)$.
+
+#### Space: $O(k)$
+
+The counter holds one entry per distinct letter, where `k` is the size of the alphabet. For lowercase English that is at most 26 entries no matter how long the strings are, so it is effectively $O(1)$.
+
+If the input is full Unicode, `k` grows with the number of distinct characters actually used, which is where this differs from the fixed array of 26 slots that interviewers sometimes ask for.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Frequency Array** | $O(n)$ | $O(1)$ | Single pass over both strings with a fixed 26-element array. Optimal linear time with constant auxiliary space. |
-| **Sorting** | $O(n \log n)$ | $O(n)$ | Clean one-liner, but incurs higher runtime and creates new sorted string copies in memory. |
-
----
-
-### Common Pitfall: Handling Non-ASCII and Unicode Characters
-
-A fixed 26-slot array relies on the assumption that input contains only lowercase English characters (`'a'` through `'z'`). If inputs include uppercase characters, whitespace, punctuation, or Unicode codepoints (such as accented characters or emojis), `ord(char) - ord('a')` produces out-of-bounds indices. For general Unicode support, replace the fixed array with a dynamic hash map (`dict` or `collections.Counter`).
-
----
-
-### Concise Interview Takeaway
-
-Treat anagram validation as a zero-sum balance sheet. Increment counts for string `s` and decrement for string `t`. If all balances return to zero, the character frequencies match identically. This achieves optimal $O(n)$ runtime with $O(1)$ auxiliary memory.
+Anagrams are the same letters in the same quantities, so count rather than sort. Check the lengths first, count the letters of `s`, then subtract the letters of `t` and fail the moment a count goes negative. Equal lengths plus no over-spending is all the proof you need. $O(n)$ time, $O(k)$ space for the alphabet.

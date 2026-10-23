@@ -1,133 +1,83 @@
 ---
 id: 4-reverse-words-in-a-string
 title: "151. Reverse Words in a String"
-description: "Tokenizing whitespace vs the classic two-step reversal technique"
+description: "Split on whitespace, flip the list, join with single spaces"
 sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Strings</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Two Pointers</span>
 
-> **Problem Statement:** Given an input string `s`, reverse the order of the words. A word is defined as a sequence of non-space characters. The words in `s` will be separated by at least one space. Return a string of the words in reverse order concatenated by a single space, with no leading, trailing, or multiple consecutive spaces.
+> **Problem Statement:** You are given a string `s`. Reverse the order of the words in it and return the result. A word is any run of non-space characters. The answer must have exactly one space between words, and none at either end, however messy the spacing in the input was.
 
 ```text
 Input:  s = "the sky is blue"
 Output: "blue is sky the"
-Explanation: The words are reversed in order and joined by a single space.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine a sentence containing inconsistent spacing: `"  the  sky  is   blue  "`.
+The words themselves are untouched. `blue` is still spelled `blue`. Only their order flips, so this is a reversal of a list of words, not a reversal of characters.
 
-#### Brute Force: Built-in Tokenization and Reversal
-The most straightforward approach treats words like cards in a deck. Strip away irregular surrounding whitespace, split the sentence into clean tokens `["the", "sky", "is", "blue"]`, reverse the order of the cards to `["blue", "is", "sky", "the"]`, and join them with single spaces.
+The second half of the problem is tidying. The input may arrive with spaces at the front, spaces at the end, and several spaces between words. All of that has to be flattened to a single space between neighbouring words and nothing on either side.
 
-In Python, `s.split()` handles this directly in linear time by automatically trimming whitespace and collapsing consecutive spaces.
-
-#### Optimal Approach: Two-Pointer Backward Scan
-In technical interviews, you are often asked to implement the logic without high-level library functions:
-- Traverse the string from right to left using two pointers (`i` and `j`).
-- Skip past any trailing or consecutive whitespace.
-- Anchor the right end of a word at `j`, move pointer `i` leftward until encountering another space or the string start, and extract the word slice `s[i + 1 : j + 1]`.
-- Append each word directly to a list, collecting words in reverse order as you go.
-
-In systems languages with mutable strings (such as C++ or Java `char[]`), you can also achieve $O(1)$ auxiliary space through the classic double reversal: reverse the entire string, then reverse each word individually and compress whitespace in place.
-
-#### Execution Walkthrough
-
-Let us trace `s = "  the sky  "` using a backward two-pointer scan:
-
-| Step | Pointer `i` | Action | Word Extracted | Collected Words |
-| :---: | :---: | :--- | :---: | :--- |
-| **1** | Index `10` down to `8` | Skip trailing spaces | None | `[]` |
-| **2** | Index `8` down to `6` | Scan word `"sky"` (indices `6..8`) | `"sky"` | `["sky"]` |
-| **3** | Index `5` | Skip intermediate space | None | `["sky"]` |
-| **4** | Index `4` down to `2` | Scan word `"the"` (indices `2..4`) | `"the"` | `["sky", "the"]` |
-| **5** | Index `1` down to `0` | Skip leading spaces, finish scan | None | `["sky", "the"]` |
-
-Joining the collected words with `" "` yields `"sky the"`.
+So there are really two jobs: cut the string into words, ignoring however much whitespace sits between them, then put them back together in the opposite order.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Pointers and Storage:** Initialize pointer `i` at the end of the string (`len(s) - 1`) and an empty list `words = []` to store parsed tokens.
-2. **Skip Redundant Spaces:** While `i >= 0` and `s[i] == ' '`, decrement `i`. If `i < 0`, terminate the loop.
-3. **Identify Word Boundaries:** Set `j = i`. Decrement `i` while `i >= 0` and `s[i] != ' '`.
-4. **Collect Word Token:** Append the slice `s[i + 1 : j + 1]` to `words`.
-5. **Repeat and Join:** Continue the loop until the front of the string is reached. Concatenate the tokens with `" ".join(words)`.
+Cutting into words is the part worth being careful about, because the obvious way to do it is subtly wrong. Splitting on the single character `" "` turns two spaces in a row into an empty word, and those empty words become stray spaces when you join everything back up.
+
+Python's `split()` with no argument does the right thing on its own: it treats any run of whitespace as one separator and throws the empties away. `"  the   sky  "` becomes exactly `the`, `sky`, with no blanks in the list and nothing from the ends.
+
+After that, reverse the list and join with a single space. The tidying is already done by the way the split worked, so there is no trimming step at the end.
+
+**If an interviewer asks for the in-place version**, meaning working on a character array with no extra storage, the classic trick is two reversals. Reverse the entire string first, which puts the words in the right order but spells each one backwards. Then reverse each word in place, which fixes the spelling and leaves the order alone. It is worth being able to describe that, but it cannot be done on a Python string, because strings cannot be modified once created.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Two-Pointer Backward Scan" default>
+Take `s = "the sky is blue"`.
+
+1. **Split on whitespace:** `the`, `sky`, `is`, `blue`.
+2. **Reverse the list:** `blue`, `is`, `sky`, `the`.
+3. **Join with one space:** `"blue is sky the"`.
+
+Now take the messier `s = "  hello   world  "`. The split still gives exactly `hello`, `world`, because leading, trailing and repeated spaces are all absorbed. Reversing and joining gives `"world hello"`, already correctly spaced.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def reverseWords(self, s: str) -> str:
-        words: list[str] = []
-        i = len(s) - 1
-
-        while i >= 0:
-            # Skip spaces moving backwards
-            while i >= 0 and s[i] == ' ':
-                i -= 1
-            if i < 0:
-                break
-
-            # Mark the end of the word
-            j = i
-            # Move backwards to find the start of the word
-            while i >= 0 and s[i] != ' ':
-                i -= 1
-
-            # Extract the word and append
-            words.append(s[i + 1 : j + 1])
-
-        return " ".join(words)
+        # split() with no argument absorbs every run of whitespace
+        return " ".join(reversed(s.split()))
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Alternative: Built-in Split and Reverse">
+---
 
-```python
-class Solution:
-    def reverseWords(self, s: str) -> str:
-        # s.split() automatically strips extra whitespace and collapses duplicates
-        words = s.split()
-        return " ".join(reversed(words))
-```
+### Time and space complexity
 
-  </TabItem>
-</Tabs>
+#### Time: $O(n)$
+
+The split reads the string once. Reversing a list of `w` words is `w` steps, and `w` can never be more than `n`. The join writes each character of the answer once. Every stage is one sweep over the data, so the total is linear in the length of the string.
+
+#### Space: $O(n)$
+
+The list of words holds all the characters of the input, and the joined result is another copy of roughly the same size. Both grow with the input.
+
+That is unavoidable in Python, because strings cannot be changed after they are created, so producing a different string means building a new one. In a language where you are handed a mutable character array, the two-reversal method does the job with $O(1)$ extra space.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Two-Pointer Scan** | $O(n)$ | $O(n)$ | Scans characters backwards in a single pass without relying on high-level split helpers. Allocates $O(n)$ memory for extracted tokens. |
-| **Built-in Split** | $O(n)$ | $O(n)$ | Clean and idiomatic Python implementation. Fast in practice, but relies on language-level tokenization. |
-
----
-
-### Common Pitfall: Handling Consecutive Whitespace with Explicit Delimiters
-
-Calling `s.split(' ')` with an explicit space delimiter treats adjacent spaces as separate boundaries, generating empty strings `""` in the output array. In contrast, calling `s.split()` with no arguments automatically strips leading and trailing spaces and collapses multiple consecutive spaces. When writing manual pointer loops, ensure you skip all consecutive spaces before slicing out each word.
-
----
-
-### Concise Interview Takeaway
-
-In Python, `s.split()` cleanly handles irregular whitespace and isolates words in $O(n)$ time. When asked for manual character-level handling, use a backward two-pointer scan to extract words from right to left. For low-level languages with mutable strings, mention the classic double reversal trick (reverse entire string, then reverse each word) to achieve $O(1)$ auxiliary space.
+Split on runs of whitespace, reverse the list, join with a single space. Splitting on the space character instead creates empty words out of repeated spaces, which turn into stray spaces in the answer. For the in-place version on a character array: reverse the whole string, then reverse each word back. $O(n)$ time, $O(n)$ space in Python.

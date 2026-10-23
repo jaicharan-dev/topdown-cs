@@ -1,85 +1,70 @@
 ---
 id: 2-longest-common-prefix
 title: "14. Longest Common Prefix"
-description: "Vertical scanning across string columns with early exit"
+description: "Stack the words up and read down the columns until one disagrees"
 sidebar_position: 2
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Strings</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Vertical Scanning</span>
 
-> **Problem Statement:** Given an array of strings `strs`, find the longest common prefix string amongst them. If there is no common prefix, return an empty string `""`.
+> **Problem Statement:** You are given a list of words `strs`. Return the longest piece of text that every word starts with. If the words share no common start, return an empty string.
 
 ```text
 Input:  strs = ["flower", "flow", "flight"]
 Output: "fl"
-Explanation: The longest prefix shared among all three words is "fl".
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine stacking words vertically like departure listings on an airport flight board:
+Write the words one under another, lined up at the left:
 
 ```text
-Index:    0   1   2   3   4   5
-Word 0:   f   l   o   w   e   r
-Word 1:   f   l   o   w
-Word 2:   f   l   i   g   h   t
-          |   |   |
-          f   l  MISMATCH ('o' vs 'i')
+f l o w e r
+f l o w
+f l i g h t
 ```
 
-There are two primary ways to find the shared prefix:
+Now read down the columns instead of along the rows. The first column is `f` three times, so `f` is shared. The second is `l` three times, so `l` is shared too. The third column is `o`, `o`, `i`, which is a disagreement, and the moment one word disagrees the common prefix cannot go any further.
 
-#### Brute Force: Horizontal Scanning
-Horizontal scanning compares strings in sequential pairs: compare Word 0 and Word 1 to obtain `"flow"`, then compare `"flow"` with Word 2 to narrow it down to `"fl"`.
-
-While correct, horizontal scanning does extra work when a later string is very short or shares no prefix at all. If the 100th word starts with `'z'`, comparing the first 99 words in depth is wasted effort.
-
-#### Optimal Approach: Vertical Scanning
-Vertical scanning looks straight down column by column across all strings simultaneously:
-- Column 0: All three words have `'f'`. Continue.
-- Column 1: All three words have `'l'`. Continue.
-- Column 2: Word 0 and Word 1 have `'o'`, but Word 2 has `'i'`. Stop immediately!
-
-Vertical scanning guarantees the earliest possible termination: the instant any string runs out of characters or disagrees, we return the prefix formed so far without inspecting any remaining columns.
-
-#### Execution Walkthrough
-
-Let us trace `strs = ["flower", "flow", "flight"]`:
-
-| Column Index `i` | Char in `strs[0]` | Char in `strs[1]` | Char in `strs[2]` | Column Status | Current Prefix |
-| :---: | :---: | :---: | :---: | :--- | :--- |
-| **0** | `'f'` | `'f'` | `'f'` | All match | `"f"` |
-| **1** | `'l'` | `'l'` | `'l'` | All match | `"fl"` |
-| **2** | `'o'` | `'o'` | `'i'` | Mismatch at `strs[2][2]` | Return `strs[0][:2]` (`"fl"`) |
-
-The loop halts immediately at column index `2`, returning `"fl"`.
+The answer is everything above that break: `fl`.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Handle Edge Case:** If `strs` is empty, return an empty string `""`.
-2. **Select Reference String:** Choose `strs[0]` as the column reference guide.
-3. **Iterate Through Character Columns:** Loop through each character `char` at index `i` in `strs[0]` using `enumerate(strs[0])`.
-4. **Compare Across Remaining Words:** For each string `other_word` in `strs[1:]`:
-   - If `i == len(other_word)` (the word has ended) or `other_word[i] != char` (mismatch found), return `first_word[:i]`.
-5. **Return Full Reference String:** If all columns pass without mismatch, the entire first string is the common prefix. Return `first_word`.
+Reading down the columns is the whole method, and it has one property worth noticing: it stops as early as it possibly can. The instant a column disagrees, you are finished, no matter how long the words are after that point.
+
+Use the first word as the ruler. For each of its characters, check the same position in every other word. Two things can end the scan:
+
+- **A word disagrees** at that position.
+- **A word runs out.** A word shorter than the prefix so far caps it, because the answer can never be longer than the shortest word.
+
+Both cases mean the same thing, so they can be the same check, and the answer is the part of the first word you had already cleared.
+
+If the loop finishes without either happening, the first word is itself the common prefix, which is what you get from a list like `["ab", "abc"]` reordered, or from a list where every word is identical.
+
+A different approach is to sort the list and compare only the first and last words, since those two are the most different at the front. It is clever and short, but sorting costs more than the straight scan, so it is not worth it here.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Vertical Scanning" default>
+Take `strs = ["flower", "flow", "flight"]`, using `"flower"` as the ruler.
+
+1. **Position `0`** is `f` in the ruler. `"flow"` has `f`, `"flight"` has `f`. Agreed.
+2. **Position `1`** is `l`. Both others have `l`. Agreed.
+3. **Position `2`** is `o`. `"flow"` has `o`, but `"flight"` has `i`. That is the break, so return the first two characters: `"fl"`.
+
+Nothing past position `2` is ever looked at, in any of the words.
+
+---
+
+### The code
 
 ```python
 class Solution:
@@ -87,60 +72,33 @@ class Solution:
         if not strs:
             return ""
 
-        # Use the first string as our column-by-column reference
-        first_word = strs[0]
+        ruler = strs[0]
 
-        for i, char in enumerate(first_word):
-            # Inspect the i-th character across all remaining words
-            for other_word in strs[1:]:
-                # Stop if other_word has ended or character doesn't match
-                if i == len(other_word) or other_word[i] != char:
-                    return first_word[:i]
+        for i, ch in enumerate(ruler):
+            for word in strs[1:]:
+                # this word ended, or it disagrees here
+                if i == len(word) or word[i] != ch:
+                    return ruler[:i]
 
-        return first_word
+        return ruler
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Alternative: Horizontal Scanning">
+---
 
-```python
-class Solution:
-    def longestCommonPrefix(self, strs: list[str]) -> str:
-        if not strs:
-            return ""
+### Time and space complexity
 
-        prefix = strs[0]
+#### Time: $O(S)$ in the worst case
 
-        for word in strs[1:]:
-            # Shrink prefix until it matches the start of current word
-            while not word.startswith(prefix):
-                prefix = prefix[:-1]
-                if not prefix:
-                    return ""
+Let `S` be the total number of characters across all the words. The worst case is a list where every word is identical, because then nothing ever breaks early and every character of every word gets compared. That is $O(S)$.
 
-        return prefix
-```
+In practice it is usually far less, because the scan stops at the first disagreeing column. For `["flower", "flow", "flight"]` it reads nine characters out of sixteen. A list like `["apple", "banana"]` stops after comparing the very first column.
 
-  </TabItem>
-</Tabs>
+#### Space: $O(1)$
+
+Two loop variables, and a slice of the first word produced only at the moment of returning. Nothing is accumulated as the scan runs.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Vertical Scanning** | $O(S)$ | $O(1)$ | Where $S$ is the sum of characters. Exits at the exact first mismatch, achieving minimal checks in typical inputs. |
-| **Horizontal Scanning** | $O(S)$ | $O(1)$ | Compares full prefixes across words sequentially. May perform unnecessary comparisons if short words or mismatches appear late. |
-
----
-
-### Common Pitfall: Index Out of Range on Variable String Lengths
-
-Strings in `strs` often have varying lengths. Accessing `other_word[i]` directly without checking string bounds leads to an `IndexError` when `other_word` is shorter than `strs[0]`. By placing `i == len(other_word)` before `other_word[i] != char`, short-circuit evaluation prevents out-of-range indexing and safely triggers the early return.
-
----
-
-### Concise Interview Takeaway
-
-Scan character columns vertically across all strings simultaneously. The algorithm exits the exact moment any string terminates or produces a mismatch, guaranteeing optimal early exit with $O(1)$ auxiliary space and at most $O(S)$ time complexity.
+Stack the words and read down the columns, using the first word as the ruler. Stop at the first column where a word disagrees or runs out, and return everything above the break. $O(S)$ time in the worst case where all words match, usually much less, and $O(1)$ space.

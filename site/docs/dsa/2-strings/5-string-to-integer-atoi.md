@@ -1,176 +1,120 @@
 ---
 id: 5-string-to-integer-atoi
 title: "8. String to Integer (atoi)"
-description: "Sequential 4-phase conveyor belt parser with 32-bit clamping"
+description: "Four stages in order: spaces, sign, digits, clamp"
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Strings</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Simulation & Parsing</span>
 
-> **Problem Statement:** Implement the `myAtoi(string s)` function, which converts a string to a 32-bit signed integer. Follow the rules: ignore leading whitespace, determine sign (`+` or `-`), read contiguous digits until the first non-digit, and clamp the result to the 32-bit signed integer range `[-2^31, 2^31 - 1]`.
+> **Problem Statement:** Convert a string to a 32-bit signed integer by hand. Skip any spaces at the front, take an optional `+` or `-`, then read digits until something that is not a digit appears. Anything that does not fit the 32-bit range gets pulled back to the nearest end of it. Return `0` if there are no digits to read.
 
 ```text
 Input:  s = "   -042"
 Output: -42
-Explanation: Leading whitespace is ignored, '-' sets negative sign, and digits "042" are parsed as 42. Final value is -42.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine a coin-sorting conveyor belt at a bank. Every character must pass through four strict, one-way checkpoints in exact chronological order:
+This is less of a puzzle and more of a machine with four stations, and the string passes through them in a fixed order:
 
 ```text
-Input: "   -0042abc"
-
-Checkpoint 1: [ Skip Whitespaces ]  ---> Ignores "   "
-Checkpoint 2: [ Read Sign (+ / -)]  ---> Catches "-", records sign = -1
-Checkpoint 3: [ Accumulate Digits]  ---> Reads '0', '0', '4', '2' -> 42
-                                         Stops immediately at 'a'!
-Checkpoint 4: [ 32-Bit Clamping  ]  ---> -42 is safely within [-2^31, 2^31 - 1]
-                                         Result: -42
+skip spaces  ->  take a sign  ->  read digits  ->  clamp to range
 ```
 
-The conveyor belt never moves backward:
-- Once you see a sign, you can never process another sign.
-- Once you start reading digits, the moment you encounter a space or letter, parsing terminates immediately.
-- If no valid digits are encountered at all (for example `"words and 987"`), output `0`.
+Each station gets one go, and once the string has moved past a station it never returns. That single rule settles almost every tricky input on its own.
 
-#### Brute Force: Regular Expression Extraction
-A regex pattern like `^\s*([+-]?\d+)` can capture optional whitespace, an optional sign, and contiguous digits before delegating to `int()`.
+Take `"+-12"`. The sign station runs once, takes the `+`, and is finished. The digit station then meets `-`, which is not a digit, so it reads nothing and the answer is `0`. There is no rule to look up and no special case to write. The machine simply cannot visit the sign station twice.
 
-While concise, regular expressions incur high parsing overhead, create intermediate substring copies, and bypass the manual state machine mechanics expected in interview evaluations.
-
-#### Optimal Approach: Single-Pass State Machine
-Instead of regular expressions or auxiliary string trimming, use a single pointer `i` that advances sequentially across the four checkpoints:
-1. Skip leading whitespace.
-2. Read at most one sign flag (`+` or `-`).
-3. Accumulate numerical digits while preemptively guarding against 32-bit signed overflow.
-4. Stop immediately upon encountering any non-digit character or reaching the end of the string.
-
-#### Execution Walkthrough
-
-Let us trace `s = "   -42a"`:
-
-| Pointer `i` | Char `s[i]` | Phase / Checkpoint | State Updates |
-| :---: | :---: | :--- | :--- |
-| **0..2** | `' '` | Phase 1: Skip whitespace | Advance `i` to `3` |
-| **3** | `'-'` | Phase 2: Detect sign | `sign = -1`, advance `i` to `4` |
-| **4** | `'4'` | Phase 3: Parse digit | `res = 0 * 10 + 4 = 4`, advance `i` to `5` |
-| **5** | `'2'` | Phase 3: Parse digit | `res = 4 * 10 + 2 = 42`, advance `i` to `6` |
-| **6** | `'a'` | Non-digit encountered | Halt parsing immediately |
-
-Apply sign: `res * sign = 42 * (-1) = -42`.
-Clamping: $-42$ falls within $[-2^{31}, 2^{31} - 1]$, returning `-42`.
+Take `"words and 987"`. The space station skips nothing, the sign station sees `w` and takes nothing, the digit station sees `w` and stops immediately. The answer is `0`, even though there are digits further along, because the machine never goes backwards.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Constants and Pointers:** Set `INT_MAX = 2**31 - 1`, `INT_MIN = -2**31`, `n = len(s)`, and `i = 0`.
-2. **Skip Leading Whitespace:** Increment `i` while `i < n` and `s[i] == ' '`. If `i == n`, return `0`.
-3. **Determine Sign:** Initialize `sign = 1`. If `s[i] == '-'`, set `sign = -1` and increment `i`. Else if `s[i] == '+'`, increment `i`.
-4. **Accumulate Digits with Overflow Protection:** While `i < n` and `s[i].isdigit()`:
-   - Calculate `digit = ord(s[i]) - ord('0')`.
-   - Check if `res > INT_MAX // 10` or (`res == INT_MAX // 10` and `digit > 7`). If so, return `INT_MAX` if `sign == 1` else `INT_MIN`.
-   - Update `res = res * 10 + digit` and increment `i`.
-5. **Apply Sign and Return:** Return `res * sign`.
+Walk an index through the string, one station at a time.
+
+1. **Spaces.** Move the index past every space at the front. Only spaces count here, not other whitespace.
+2. **Sign.** If the current character is `+` or `-`, remember it and step past. At most one.
+3. **Digits.** While the current character is a digit, fold it into the running value: multiply what you have by ten and add the new digit. Stop at the first character that is not a digit. Leading zeros need no attention, because multiplying zero by ten keeps it at zero.
+4. **Clamp.** Apply the sign, then pull the value back inside the 32-bit range if it has escaped.
+
+The clamping step is not optional in Python, and this catches people out. Python integers grow as large as they need to, so nothing ever overflows on its own. A string of forty digits will parse into a perfectly valid, enormous number, and only an explicit range check brings it back to the required answer.
+
+In C++ or Java the opposite problem exists. There the value would silently wrap around mid-loop, so the check has to happen on every digit, before the multiplication that would break it, rather than once at the end.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Single-Pass Parser" default>
+Take `s = "   -042"`.
+
+1. **Spaces:** three of them, so the index moves to position `3`.
+2. **Sign:** the character there is `-`, so the sign becomes negative and the index moves to `4`.
+3. **Digits:** `0` gives a running value of `0`. Then `4` gives `0 * 10 + 4 = 4`. Then `2` gives `4 * 10 + 2 = 42`. The string ends, so the reading stops.
+4. **Clamp:** apply the sign for `-42`, which sits comfortably inside the range.
+
+The answer is `-42`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def myAtoi(self, s: str) -> int:
-        INT_MAX = 2**31 - 1
-        INT_MIN = -2**31
+        INT_MIN, INT_MAX = -2**31, 2**31 - 1
+        i, n = 0, len(s)
 
-        n = len(s)
-        i = 0
-
-        # Phase 1: Skip leading whitespace without string allocation
-        while i < n and s[i] == ' ':
+        # 1. spaces at the front
+        while i < n and s[i] == " ":
             i += 1
 
-        if i == n:
-            return 0
-
-        # Phase 2: Detect sign
+        # 2. one optional sign
         sign = 1
-        if s[i] == '-':
-            sign = -1
-            i += 1
-        elif s[i] == '+':
-            i += 1
-
-        # Phase 3: Parse digits with 32-bit overflow guard
-        res = 0
-        threshold = INT_MAX // 10  # 214748364
-
-        while i < n and s[i].isdigit():
-            digit = ord(s[i]) - ord('0')
-
-            # Guard against overflow before multiplying by 10
-            if res > threshold or (res == threshold and digit > 7):
-                return INT_MAX if sign == 1 else INT_MIN
-
-            res = res * 10 + digit
+        if i < n and s[i] in "+-":
+            if s[i] == "-":
+                sign = -1
             i += 1
 
-        return res * sign
+        # 3. digits, stopping at the first character that is not one
+        value = 0
+        while i < n and s[i] in "0123456789":
+            value = value * 10 + int(s[i])
+            i += 1
+
+        value *= sign
+
+        # 4. Python integers never overflow, so the range has to be forced
+        if value < INT_MIN:
+            return INT_MIN
+        if value > INT_MAX:
+            return INT_MAX
+
+        return value
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Alternative: Regex Parsing">
-
-```python
-import re
-
-class Solution:
-    def myAtoi(self, s: str) -> int:
-        INT_MAX = 2**31 - 1
-        INT_MIN = -2**31
-
-        # Match optional leading whitespace, optional sign, and contiguous digits
-        match = re.match(r'^\s*([+-]?\d+)', s)
-        if not match:
-            return 0
-
-        val = int(match.group(1))
-        return max(INT_MIN, min(val, INT_MAX))
-```
-
-  </TabItem>
-</Tabs>
+Testing membership in `"0123456789"` is deliberate. Python's `isdigit` also accepts characters such as superscript digits, which then blow up when converted, so spelling out the ten characters you actually want is the safer check.
 
 ---
 
-### Complexity Analysis
+### Time and space complexity
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Single-Pass Parser** | $O(n)$ | $O(1)$ | Scans the string once with a single pointer. Prevents overflow with constant auxiliary space. |
-| **Regex Parsing** | $O(n)$ | $O(n)$ | Short and expressive, but incurs regex engine overhead and allocates match substrings. |
+#### Time: $O(n)$
 
----
+The index only ever moves forward, and each of the four stages advances it without ever stepping back. In the worst case the string is read once from end to end, so the work tracks its length.
 
-### Common Pitfall: Checking Overflow After Integer Multiplication
+#### Space: $O(1)$
 
-In compiled languages like C, C++, or Java, computing `res * 10 + digit` when `res` is already near `INT_MAX` causes signed integer overflow before any clamping comparison can run. Even though Python provides arbitrary-precision integers, interviewers test whether you implement the pre-multiplication boundary check: verifying `res > INT_MAX // 10` or (`res == INT_MAX // 10` and `digit > 7`) before multiplying by 10.
+An index, a sign, and a running value. Nothing is stored that grows with the input, since the digits are folded into a single number as they are read rather than collected into a list first.
 
 ---
 
-### Concise Interview Takeaway
+### Remember this
 
-Model `atoi` as a sequential 4-checkpoint state machine: skip whitespace, parse sign, accumulate digits, and clamp. Always check 32-bit limits before multiplying by 10 to demonstrate robust low-level engineering principles.
+Four stages in a fixed order, each one visited once: skip spaces, take at most one sign, read digits until something else appears, then clamp. That ordering is what makes inputs like `"+-12"` and `"words and 987"` return `0` without any special handling. In Python the clamp is mandatory because integers never overflow; in a fixed-width language you must check before each multiplication instead. $O(n)$ time, $O(1)$ space.
