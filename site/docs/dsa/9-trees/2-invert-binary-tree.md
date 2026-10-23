@@ -1,145 +1,95 @@
 ---
 id: 2-invert-binary-tree
 title: "226. Invert Binary Tree"
-description: "Recursive mirror reflection via child pointer swapping"
+description: "Swap the two children at every node and let the recursion reach the rest"
 sidebar_position: 2
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Trees</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">DFS / Postorder</span>
 
-> **Problem Statement:** Given the `root` of a binary tree, invert the tree, and return its root.
+> **Problem Statement:** Given the root of a binary tree, mirror it left to right and return the root.
 
 ```text
 Input:  root = [4, 2, 7, 1, 3, 6, 9]
 Output: [4, 7, 2, 9, 6, 3, 1]
-Explanation: The root node 4 has children 2 and 7. Inverting swaps 2 and 7, and recursively inverts all descending subtrees.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Inverting a binary tree means generating its mirror image: every node's left child becomes its right child, and every right child becomes its left child.
+Hold the tree up to a mirror. Everything that was on the left is now on the right, all the way down.
 
-#### Brute Force: Allocating a New Inverted Tree
-A brute-force strategy creates a completely new mirror copy of the tree from scratch by allocating new `TreeNode` instances at every level. While correct, it allocates $O(n)$ heap memory for duplicate nodes and discards the original tree structure.
+The useful observation is that mirroring is **local**. At any single node, mirroring means swapping its two children. If each child subtree then mirrors itself, the whole tree is mirrored.
 
-#### Optimal Approach: In-Place Recursive Pointer Swapping
-Because we have direct references to each node's pointers, we can mirror the tree in-place without allocating new nodes:
-1. Swap the references: `root.left, root.right = root.right, root.left`.
-2. Recursively invert the left subtree.
-3. Recursively invert the right subtree.
-
-When the recursion hits a leaf node or `None`, the calls resolve bottom-up, leaving the entire tree mirrored in-place.
-
-#### Execution Walkthrough
-
-Consider inverting the tree with `root = [4, 2, 7, 1, 3, 6, 9]`:
-
-| Step | Current Node | Left Child Before | Right Child Before | Action Taken | New Subtree State |
-| :---: | :---: | :---: | :---: | :--- | :--- |
-| **1** | `4` | `2` | `7` | Swap children of `4` | Left is `7`, Right is `2` |
-| **2** | `7` | `6` | `9` | Swap children of `7` | Left is `9`, Right is `6` |
-| **3** | `9` | `None` | `None` | Leaf node, base case returns | Leaves remain unchanged |
-| **4** | `6` | `None` | `None` | Leaf node, base case returns | Leaves remain unchanged |
-| **5** | `2` | `1` | `3` | Swap children of `2` | Left is `3`, Right is `1` |
-| **6** | `3` | `None` | `None` | Leaf node, base case returns | Leaves remain unchanged |
-| **7** | `1` | `None` | `None` | Leaf node, base case returns | Leaves remain unchanged |
+So there is no clever structure to find here. Swap, then ask the children to do the same.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Check Base Case:** If `root is None`, return `None` immediately.
-2. **Swap Pointers:** Swap `root.left` and `root.right` using simultaneous tuple assignment.
-3. **Recurse on Subtrees:**
-   - Recursively call `self.invertTree(root.left)`.
-   - Recursively call `self.invertTree(root.right)`.
-4. **Return Root:** Return the current `root` node pointer.
+The recursion is as short as recursion gets:
+
+**If the node is empty**, there is nothing to mirror, so return.
+
+**Otherwise**, swap its left and right children, then invert each of them.
+
+The order does not matter here, which is unusual. You can swap first and then recurse into the new positions, or recurse first and swap afterwards. Both produce the same tree, because the swap and the recursion touch different things: the swap rearranges arrows at this node, while the recursion rearranges arrows further down.
+
+That freedom is worth noticing, because most tree problems do care. Anything where a node's answer depends on its subtrees must recurse first, and anything passing information downward must act first.
+
+An iterative version works too: put the root in a queue or stack, and for each node pulled out, swap its children and push them. Same work, no recursion stack.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Recursive DFS" default>
+The tree has root `4` with children `2` and `7`. Node `2` has children `1` and `3`, and node `7` has children `6` and `9`.
+
+1. **At node 4.** Swap its children, so `7` is now on the left and `2` on the right.
+2. **At node 7** (now the left child). Swap its children, so `9` is on the left and `6` on the right. Both are leaves, so their own calls do nothing.
+3. **At node 2** (now the right child). Swap its children, so `3` is on the left and `1` on the right.
+
+Reading the tree level by level now gives `4`, then `7, 2`, then `9, 6, 3, 1`.
+
+---
+
+### The code
 
 ```python
-# Definition for a binary tree node.
-# class TreeNode:
-#     def __init__(self, val=0, left=None, right=None):
-#         self.val = val
-#         self.left = left
-#         self.right = right
-
 class Solution:
-    def invertTree(self, root: TreeNode | None) -> TreeNode | None:
+    def invertTree(self, root: TreeNode) -> TreeNode:
         if not root:
             return None
 
-        # Swap children in-place
+        # swapping here and recursing below are independent, so order is free
         root.left, root.right = root.right, root.left
 
-        # Recursively invert both subtrees
         self.invertTree(root.left)
         self.invertTree(root.right)
 
         return root
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Iterative BFS (Queue)">
+---
 
-```python
-from collections import deque
+### Time and space complexity
 
-class Solution:
-    def invertTree(self, root: TreeNode | None) -> TreeNode | None:
-        if not root:
-            return None
+#### Time: $O(n)$
 
-        queue: deque[TreeNode] = deque([root])
+Every node is visited exactly once, and the swap at each one is a constant amount of work.
 
-        while queue:
-            node = queue.popleft()
-            
-            # Swap current node's children
-            node.left, node.right = node.right, node.left
+#### Space: $O(h)$
 
-            if node.left:
-                queue.append(node.left)
-            if node.right:
-                queue.append(node.right)
+The recursion stack, one frame per level, where `h` is the height. Balanced gives $O(\log n)$, a chain gives $O(n)$.
 
-        return root
-```
-
-  </TabItem>
-</Tabs>
+No new nodes are created. The existing ones are relinked, which is why the function can return the same root it was given.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Recursive DFS** | $O(n)$ | $O(h)$ | Modifies pointers in-place. Space is bounded by recursion depth $h$ ($O(\log n)$ balanced, $O(n)$ skewed). |
-| **Iterative BFS** | $O(n)$ | $O(w)$ | Avoids call stack limitations. Uses a queue storing up to tree max width $w$ nodes ($O(n)$ worst-case). |
-
----
-
-### Common Pitfall: Overwriting Pointers During Sequential Assignment
-
-When swapping child pointers without Python's tuple unpacking (`root.left, root.right = root.right, root.left`), assigning `root.left = root.right` immediately overwrites the original left pointer. To avoid losing the reference in languages without simultaneous assignment, you must save the original pointer in a temporary variable: `temp = root.left; root.left = root.right; root.right = temp`.
-
----
-
-### Concise Interview Takeaway
-
-Inverting a binary tree requires swapping the left and right child pointers of each node and recursively repeating the operation down both subtrees. This in-place pointer swap traverses every node once in $O(n)$ time with $O(h)$ auxiliary stack memory.
+Mirroring is local: swap the two children at a node, then let each subtree mirror itself. Unlike most tree problems the order is free here, because the swap and the recursive calls touch different links. $O(n)$ time, $O(h)$ stack space.

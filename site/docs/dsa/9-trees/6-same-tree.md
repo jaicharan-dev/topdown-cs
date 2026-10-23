@@ -1,138 +1,103 @@
 ---
 id: 6-same-tree
 title: "100. Same Tree"
-description: "Synchronized dual-tree preorder DFS checking structure and values"
+description: "Walk both trees in step and compare the nodes you land on"
 sidebar_position: 6
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Trees</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">DFS / Preorder</span>
 
-> **Problem Statement:** Given the roots of two binary trees `p` and `q`, write a function to check if they are the same or not. Two binary trees are considered the same if they are structurally identical, and the nodes have the same value.
+> **Problem Statement:** Given the roots of two binary trees, say whether they have the same shape and the same values in the same places.
 
 ```text
 Input:  p = [1, 2, 3], q = [1, 2, 3]
 Output: true
-Explanation: Both trees have root 1 with left child 2 and right child 3, possessing identical topology and values.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Comparing whether two binary trees are identical requires traversing both trees in lockstep. At every corresponding position across the two trees, both structural topology and node data must match exactly.
+Walk both trees at once, taking the same step in each. Whenever you move left in one, move left in the other.
 
-#### Brute Force: Serializing Trees to Strings
-A naive approach converts both trees into serialized string representations (such as Pre-order traversal strings with null placeholders) and compares the resulting strings for equality. While conceptually simple, string serialization incurs substantial string construction and parsing overhead, allocating unnecessary intermediate string and list memory.
+At every stop, three things can be true:
 
-#### Optimal Approach: Synchronized Dual-Tree DFS
-A lockstep recursive traversal directly examines corresponding node pairs `(p, q)`:
-1. **Both Nodes Empty (`not p and not q`):** Both subtrees terminate at the same position, which is a structural match (`True`).
-2. **One Node Empty (`not p or not q`):** One tree branches where the other does not, violating structural identity (`False`).
-3. **Value Mismatch (`p.val != q.val`):** Structures match, but data differs (`False`).
-4. **Matching Nodes:** Recurse concurrently on both left subtrees and right subtrees:
-   $$\text{isSameTree}(p.left, q.left) \land \text{isSameTree}(p.right, q.right)$$
+- **Both positions are empty.** The trees agree here, so this branch is fine.
+- **One is empty and the other is not.** The shapes differ, so the answer is `false`.
+- **Both hold a node.** Compare the values, then carry on into both pairs of children.
 
-#### Execution Walkthrough
-
-Consider evaluating `p = [1, 2, 1]` and `q = [1, 1, 2]`:
-
-| Step | Pair Evaluated (`p`, `q`) | Left Subtree Status | Right Subtree Status | Comparison / Condition | Result |
-| :---: | :---: | :---: | :---: | :--- | :---: |
-| **1** | `(1, 1)` | Nodes exist | Nodes exist | `1 == 1` (Values match) | Recurse on children |
-| **2** | `(2, 1)` | Leaves | Leaves | `2 != 1` (Value mismatch!) | `False` (Short-circuit) |
-
-Because the left children have mismatched values (`2 != 1`), the evaluation terminates early and returns `False` without inspecting the right subtree.
+The trees are the same exactly when the walk finishes without hitting the second case or a value mismatch.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Check Base Cases:**
-   - If both `p` and `q` are `None`, return `True` (both subtrees are empty).
-   - If one of `p` or `q` is `None` while the other exists, return `False` (structural mismatch).
-   - If `p.val != q.val`, return `False` (value mismatch).
-2. **Recurse on Subtrees:** Recursively call `self.isSameTree(p.left, q.left)` and `self.isSameTree(p.right, q.right)`.
-3. **Aggregate Result:** Return `True` only if both recursive calls return `True`.
+The recursion compares two nodes at a time rather than one, which is the only difference from a single-tree walk.
+
+Order the checks carefully, because the empty cases have to be settled before any value is read:
+
+1. **Both empty** returns `true`. Note this comes first, so it also covers two empty trees.
+2. **Only one empty** returns `false`. Reaching this line means at least one is a real node, so a mismatch in shape is already proven.
+3. **Values differ** returns `false`.
+4. Otherwise, both left subtrees must match **and** both right subtrees must match.
+
+That final `and` is what forces the whole tree to agree. It also short-circuits: if the left sides disagree, the right sides are never examined, so a mismatch near the top ends the work immediately.
+
+Comparing values before checking for emptiness is the classic crash here, since an empty position has no value to read.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Recursive DFS" default>
+Both trees are root `1` with children `2` and `3`.
+
+1. **Both roots hold `1`.** Values match, so compare the children.
+2. **Both left children hold `2`.** Values match. Their own children are all empty, and empty against empty is `true`.
+3. **Both right children hold `3`.** Same again.
+
+Every branch returns `true`, so the answer is `true`.
+
+Had the second tree been `[1, 3, 2]`, step 2 would compare `2` against `3`, return `false`, and the right subtrees would never be looked at.
+
+---
+
+### The code
 
 ```python
-# Definition for a binary tree node.
-# class TreeNode:
-#     def __init__(self, val=0, left=None, right=None):
-#         self.val = val
-#         self.left = left
-#         self.right = right
-
 class Solution:
-    def isSameTree(self, p: TreeNode | None, q: TreeNode | None) -> bool:
-        # Both subtrees are empty
+    def isSameTree(self, p: TreeNode, q: TreeNode) -> bool:
+        # both empty: this branch agrees
         if not p and not q:
             return True
 
-        # Structural asymmetry or value mismatch
-        if not p or not q or p.val != q.val:
+        # one empty, one not: the shapes differ
+        if not p or not q:
             return False
 
-        # Recurse on both child pairs simultaneously
-        return self.isSameTree(p.left, q.left) and self.isSameTree(p.right, q.right)
+        if p.val != q.val:
+            return False
+
+        return (self.isSameTree(p.left, q.left)
+                and self.isSameTree(p.right, q.right))
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Iterative BFS (Queue)">
+---
 
-```python
-from collections import deque
+### Time and space complexity
 
-class Solution:
-    def isSameTree(self, p: TreeNode | None, q: TreeNode | None) -> bool:
-        queue: deque[tuple[TreeNode | None, TreeNode | None]] = deque([(p, q)])
+#### Time: $O(n)$
 
-        while queue:
-            node_p, node_q = queue.popleft()
+Where `n` is the size of the smaller tree, since any disagreement stops the walk. In the worst case, identical trees, every pair of nodes is compared once.
 
-            if not node_p and not node_q:
-                continue
-            if not node_p or not node_q or node_p.val != node_q.val:
-                return False
+#### Space: $O(h)$
 
-            queue.append((node_p.left, node_q.left))
-            queue.append((node_p.right, node_q.right))
-
-        return True
-```
-
-  </TabItem>
-</Tabs>
+The recursion stack, one frame per level of the trees being walked in step.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Recursive DFS** | $O(\min(m, n))$ | $O(\min(h_p, h_q))$ | Compares corresponding nodes simultaneously. Early exits upon the first discrepancy. Space is bounded by recursion depth. |
-| **Iterative BFS** | $O(\min(m, n))$ | $O(\min(w_p, w_q))$ | Traverses tree levels in tandem using a queue, avoiding call stack recursion limits for deep trees. |
-
----
-
-### Common Pitfall: Checking Values Before Verifying Null Pointers
-
-Attempting to check `p.val == q.val` before confirming that both `p` and `q` are non-null will raise an `AttributeError: 'NoneType' object has no attribute 'val'`. You must always handle the base cases where either or both nodes are `None` before referencing `.val`.
-
----
-
-### Concise Interview Takeaway
-
-Traverse both trees in lockstep. Return `True` if both nodes are `None`, `False` if one node is `None` or their values differ, and recurse on both left and right child pairs with logical `and`. The search short-circuits on the first discovered mismatch, running in $O(\min(m, n))$ time and $O(\min(h_p, h_q))$ stack space.
+Walk both trees together and compare node pairs. Handle both-empty first, then one-empty, then the values, then recurse into both pairs of children joined with `and`. Checking emptiness before reading a value is what keeps it from crashing, and the `and` short-circuits so a mismatch ends the work early. $O(n)$ time, $O(h)$ stack space.

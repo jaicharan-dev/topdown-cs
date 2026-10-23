@@ -1,133 +1,91 @@
 ---
 id: 3-maximum-depth-of-binary-tree
 title: "104. Maximum Depth of Binary Tree"
-description: "Recursive post-order DFS depth calculation vs level-by-level BFS"
+description: "A node's depth is one more than the deeper of its two children"
 sidebar_position: 3
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Trees</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">DFS / Postorder</span>
 
-> **Problem Statement:** Given the `root` of a binary tree, return its maximum depth. A binary tree's maximum depth is the number of nodes along the longest path from the root node down to the farthest leaf node.
+> **Problem Statement:** Given the root of a binary tree, return its maximum depth, counted as the number of nodes on the longest path from the root down to a leaf.
 
 ```text
 Input:  root = [3, 9, 20, null, null, 15, 7]
 Output: 3
-Explanation: The longest path travels from root 3 to either node 15 or node 7, covering 3 nodes.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Calculating the maximum depth of a binary tree is naturally formulated as a bottom-up problem. For any node, its depth is determined by the maximum depth achieved by its child subtrees plus one for the node itself:
+Ask the question at a single node and the answer almost writes itself.
 
-$$\text{depth}(\text{node}) = 1 + \max(\text{depth}(\text{left}), \text{depth}(\text{right}))$$
+How deep is the tree hanging below me? However deep my deeper child is, plus one for me.
 
-#### Brute Force: Iterative BFS Level Counting
-An alternative iterative strategy explores the tree level by level using a queue (Breadth-First Search). At each step, we record the queue length, consume all nodes belonging to the current level, and increment a depth counter. While optimal in time ($O(n)$), it maintains an explicit queue that can store up to the maximum width of the tree ($O(w)$ memory).
+```text
+depth(node) = 1 + the larger of depth(left) and depth(right)
+```
 
-#### Optimal Approach: Recursive Post-Order DFS
-A post-order Depth-First Search evaluates children before the parent. We recursively find the height of the left subtree and the height of the right subtree, then return the maximum of the two plus one. When the recursion hits a null pointer, the base case returns zero, neatly unwinding the call stack.
+An empty spot has depth zero. That is the whole problem: one line of arithmetic and one base case.
 
-#### Execution Walkthrough
-
-Consider evaluating `root = [3, 9, 20, null, null, 15, 7]`:
-
-| Step | Node Evaluated | Left Subtree Depth | Right Subtree Depth | Calculation | Resulting Depth |
-| :---: | :---: | :---: | :---: | :---: | :---: |
-| **1** | `9` (leaf) | `0` (`None`) | `0` (`None`) | $1 + \max(0, 0)$ | `1` |
-| **2** | `15` (leaf) | `0` (`None`) | `0` (`None`) | $1 + \max(0, 0)$ | `1` |
-| **3** | `7` (leaf) | `0` (`None`) | `0` (`None`) | $1 + \max(0, 0)$ | `1` |
-| **4** | `20` | `1` (node `15`) | `1` (node `7`) | $1 + \max(1, 1)$ | `2` |
-| **5** | `3` (root) | `1` (node `9`) | `2` (node `20`) | $1 + \max(1, 2)$ | `3` |
+This is the shape that nearly every tree problem in this block takes. A node's answer is built from its children's answers, so the recursion has to finish the children **before** the parent can respond. That is postorder.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Check Base Case:** If `root is None`, return `0` because an empty subtree has zero depth.
-2. **Compute Left Depth:** Recursively evaluate `self.maxDepth(root.left)`.
-3. **Compute Right Depth:** Recursively evaluate `self.maxDepth(root.right)`.
-4. **Aggregate and Return:** Return $1 + \max(\text{left\_depth}, \text{right\_depth})$.
+**Empty node:** return `0`. There is nothing there, so it contributes no depth. This also handles an entirely empty tree with no extra code.
+
+**Any other node:** ask both children how deep they are, take the larger, add one for the node itself.
+
+The `+ 1` is where the counting convention lives. This problem counts **nodes** on the path, so a single leaf has depth `1`. Some versions of the same question count **edges**, where a single leaf is `0`. Nothing about the recursion changes, only what the base case returns, so read the wording before writing.
+
+A breadth-first version is also fine: walk the tree level by level and count how many levels you complete. It uses a queue whose width can be $O(n)$ rather than a stack whose depth is $O(h)$, so on a wide tree it costs more, and on a very deep one it costs less.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Recursive DFS" default>
+The tree is root `3`, with children `9` and `20`, and `20` has children `15` and `7`.
+
+1. **At node 9**, a leaf. Both children are empty and return `0`, so its depth is `1 + 0 = 1`.
+2. **At node 15 and node 7**, both leaves, so both have depth `1`.
+3. **At node 20.** Its children report `1` and `1`, so its depth is `1 + 1 = 2`.
+4. **At node 3.** Its children report `1` from node `9` and `2` from node `20`. The larger is `2`, so the depth is `1 + 2 = 3`.
+
+The answer is `3`, the path `3 -> 20 -> 15`.
+
+---
+
+### The code
 
 ```python
-# Definition for a binary tree node.
-# class TreeNode:
-#     def __init__(self, val=0, left=None, right=None):
-#         self.val = val
-#         self.left = left
-#         self.right = right
-
 class Solution:
-    def maxDepth(self, root: TreeNode | None) -> int:
+    def maxDepth(self, root: TreeNode) -> int:
         if not root:
-            return 0
+            return 0   # nothing here contributes no depth
 
-        left_depth = self.maxDepth(root.left)
-        right_depth = self.maxDepth(root.right)
-
-        return 1 + max(left_depth, right_depth)
+        # both children have to answer before this node can
+        return 1 + max(self.maxDepth(root.left), self.maxDepth(root.right))
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Iterative BFS (Level Order)">
+---
 
-```python
-from collections import deque
+### Time and space complexity
 
-class Solution:
-    def maxDepth(self, root: TreeNode | None) -> int:
-        if not root:
-            return 0
+#### Time: $O(n)$
 
-        queue: deque[TreeNode] = deque([root])
-        depth = 0
+Every node is asked exactly once, and each answer is one comparison and one addition.
 
-        while queue:
-            depth += 1
-            for _ in range(len(queue)):
-                node = queue.popleft()
-                if node.left:
-                    queue.append(node.left)
-                if node.right:
-                    queue.append(node.right)
+#### Space: $O(h)$
 
-        return depth
-```
-
-  </TabItem>
-</Tabs>
+The recursion stack holds one frame per level, so it is the height of the tree. Balanced gives $O(\log n)$. A tree that is one long chain gives $O(n)$, and that is also the case where a recursive solution can run out of stack on very large inputs.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Recursive DFS** | $O(n)$ | $O(h)$ | Clean recursive post-order formulation. Stack space bounded by tree height $h$ ($O(\log n)$ balanced, $O(n)$ skewed). |
-| **Iterative BFS** | $O(n)$ | $O(w)$ | Avoids call stack overflow by processing nodes level by level. Queue stores up to max tree width $w$ nodes ($O(n)$ worst-case). |
-
----
-
-### Common Pitfall: Confusing Depth (Edges) with Node Count (Levels)
-
-In graph theory, depth is occasionally measured as the number of edges from the root to a node (where the root has depth 0). In LeetCode problem definitions, maximum depth specifies the count of nodes along the path (where a single root node has depth 1, and an empty tree has depth 0). Ensure your base cases reflect node count rather than edge distance.
-
----
-
-### Concise Interview Takeaway
-
-The maximum depth of a binary tree is computed cleanly using post-order recursion via $1 + \max(\text{depth}(\text{left}), \text{depth}(\text{right}))$ with base case $0$ for `None`. This visits every node once in $O(n)$ time using $O(h)$ call stack space.
+A node's depth is one more than its deeper child, and an empty spot is zero. That makes this the simplest example of the pattern used throughout tree problems: finish the children, then answer for the parent. Check whether the question counts nodes or edges, because that changes only the base case. $O(n)$ time, $O(h)$ stack space.

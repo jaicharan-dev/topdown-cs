@@ -1,188 +1,104 @@
 ---
 id: 19-binary-tree-maximum-path-sum
 title: "124. Binary Tree Maximum Path Sum"
-description: "Postorder one-way branch gain with global split arch optimization"
+description: "Report one side upward, record both sides sideways, and refuse any negative branch"
 sidebar_position: 19
 sidebar_class_name: sidebar-hard
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Trees</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Dynamic Programming on Trees</span>
 
-> **Problem Statement:** A path in a binary tree is a non-empty sequence of nodes where each adjacent pair in the sequence is connected by an edge. A node may appear at most once in the sequence, and the path does not need to pass through the root. Given the root of a binary tree, return the maximum path sum of any valid path.
+> **Problem Statement:** A path is any sequence of connected nodes, each used once, which need not pass through the root. Return the largest total a path can have. Values may be negative.
 
 ```text
 Input:  root = [-10, 9, 20, null, null, 15, 7]
 Output: 42
-Explanation: The optimal path is 15 -> 20 -> 7 with path sum 15 + 20 + 7 = 42.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-A tree path can twist and turn, but it has a fundamental physical rule: **a valid path cannot branch**. You can enter a node from one subtree and exit into another, but you cannot visit three branches at once.
+This is Diameter of Binary Tree with values instead of edge counts, and one extra decision.
 
-At any given node `curr`, we must resolve a tension between two distinct geometric concepts:
+As before, every path has a **highest node**, and the best path through that node reaches down into the left and down into the right. So compute that at every node and keep the largest.
 
-1. **The Peak of the Arch (The Local Split):**
-   - Imagine `curr` acts as the highest elevation of a bridge connecting its left subtree to its right subtree.
-   - The total sum of this bridge is: `curr.val + left_gain + right_gain`.
-   - Because this path forms an inverted "U" shape (turning around at `curr`), it **cannot be extended upward** to `curr`'s parent.
-   - We evaluate this complete arch as a candidate for our overall answer: `global_max = max(global_max, arch_sum)`.
+The new wrinkle is negatives. In the diameter problem, a longer branch was always better. Here a branch can actively hurt: if the best the left side can offer is `-7`, attaching it makes the path worse than not attaching it at all.
 
-2. **The Extendable Branch (Sent to the Parent):**
-   - When reporting back to `curr`'s parent, the parent can only extend the path down **one** of `curr`'s sides (either left or right).
-   - Therefore, the helper function must return: `curr.val + max(left_gain, right_gain)`.
-
-```
-         (Parent)
-            |
-          [curr]   <-- Peak of the Arch!
-          /    \
-     [Left]    [Right]
-
-     Candidate for global_max:  curr.val + left_gain + right_gain
-     Value returned to Parent: curr.val + max(left_gain, right_gain)
-```
-
-Node values can be negative. If a child subtree yields a negative sum (such as `-5`), including it in our path will only decrease the total score. We greedily clamp negative subtree contributions to zero using `max(0, dfs(child))`, effectively choosing to skip that subtree entirely.
-
-#### Brute Force: Evaluating Paths for Every Node Pair
-The brute force mental model evaluates every pair of nodes $(u, v)$ in the tree, finds their unique simple path, and sums the values along that path. Because there are $O(n^2)$ pairs and computing each path takes $O(n)$ time, this naive enumeration scales at $O(n^3)$ or $O(n^2)$ time with heavy allocations.
-
-#### Optimal Approach: Postorder Bottom-Up Gain Propagation
-Instead of evaluating paths externally, we compute optimal gains bottom-up in a single postorder traversal:
-1. Recursively calculate the maximum extendable branch gain from the left and right subtrees.
-2. Clamp negative gains to `0`.
-3. Calculate the complete arch sum passing through `curr` (`curr.val + left_gain + right_gain`) and update our running `global_max`.
-4. Return only the single best branch continuation (`curr.val + max(left_gain, right_gain)`) to the parent.
-
-This resolves both local peaks and parent continuations in $O(n)$ time and $O(h)$ space.
-
-#### Execution Walkthrough
-
-Let us trace `root = [-10, 9, 20, null, null, 15, 7]`:
-
-| Node Visited | Left Child Gain | Right Child Gain | Arch Sum (`node + left + right`) | Global Max Updated | Value Returned to Parent |
-| :---: | :---: | :---: | :---: | :---: | :---: |
-| `9` | 0 | 0 | $9 + 0 + 0 = 9$ | 9 | $9 + \max(0, 0) = 9$ |
-| `15` | 0 | 0 | $15 + 0 + 0 = 15$ | 15 | $15 + \max(0, 0) = 15$ |
-| `7` | 0 | 0 | $7 + 0 + 0 = 7$ | 15 | $7 + \max(0, 0) = 7$ |
-| `20` | 15 | 7 | $20 + 15 + 7 = 42$ | **42** | $20 + \max(15, 7) = 35$ |
-| `-10` | 9 | 35 | $-10 + 9 + 35 = 34$ | 42 | $-10 + \max(9, 35) = 25$ |
-
-The maximum path sum found is **42** (the path `15 -> 20 -> 7`).
+So each branch comes with a question: **is this side worth including?** If its best contribution is negative, take nothing from it and count it as zero.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Global Best:** Set `global_max = float('-inf')` to correctly handle trees where all node values are negative.
-2. **Define Helper `max_gain(node)`:**
-   - **Base Case:** If `node` is `None`, return `0`.
-   - **Compute Child Gains:**
-     - `left_gain = max(0, max_gain(node.left))`
-     - `right_gain = max(0, max_gain(node.right))`
-   - **Evaluate Local Arch:**
-     - Compute `arch_sum = node.val + left_gain + right_gain`.
-     - Update `global_max = max(global_max, arch_sum)`.
-   - **Return Extendable Branch:** Return `node.val + max(left_gain, right_gain)`.
-3. **Execute & Return:** Invoke `max_gain(root)` and return `global_max`.
+The two-jobs split from the diameter problem carries over exactly, and it is still the crux.
+
+**What a node reports upward:** the best total it can offer on a single downward path, which is its own value plus the better of its two branches. Only one branch, because a path running through this node up to its parent cannot fork.
+
+**What a node contributes to the answer:** its value plus **both** branches, which is the best path whose highest point is this node. That number is never returned, because no parent could use a forked path.
+
+Then clamp each branch at zero. Taking `max(0, child's report)` means "use this side only if it helps", which handles every negative case without a special branch.
+
+Note what is **not** clamped: the node's own value. Every path has at least one node, so a tree of nothing but negative values must answer with its largest single value, not zero. Clamping the node itself would wrongly allow an empty path.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Postorder DFS with Global Max" default>
+The tree is root `-10`, with children `9` and `20`, and `20` has children `15` and `7`.
+
+1. **Node 9** is a leaf. Both branches clamp to `0`. It contributes `9` and reports `9` upward.
+2. **Nodes 15 and 7** are leaves too, each contributing and reporting their own value.
+3. **Node 20.** Its branches report `15` and `7`, both positive, so neither clamps. It contributes `20 + 15 + 7 = 42`, and reports `20 + 15 = 35` upward, taking only the better branch.
+4. **Node -10.** Its branches report `9` and `35`. Its contribution is `-10 + 9 + 35 = 34`, which does not beat `42`. It reports `-10 + 35 = 25` upward.
+
+The best contribution seen anywhere is `42`, the path `15 -> 20 -> 7`. Note that this path never touches the root, which is exactly what the problem warns about.
+
+---
+
+### The code
 
 ```python
-class TreeNode:
-    def __init__(self, val: int = 0, left: 'TreeNode | None' = None, right: 'TreeNode | None' = None):
-        self.val = val
-        self.left = left
-        self.right = right
-
 class Solution:
-    def maxPathSum(self, root: TreeNode | None) -> int:
-        global_max = float('-inf')
+    def maxPathSum(self, root: TreeNode) -> int:
+        best = float("-inf")
 
-        def max_gain(node: TreeNode | None) -> int:
-            nonlocal global_max
+        def gain(node) -> int:
+            nonlocal best
+
             if not node:
                 return 0
 
-            # Prune negative branches by taking max with 0
-            left_gain = max(0, max_gain(node.left))
-            right_gain = max(0, max_gain(node.right))
+            # a branch worth less than nothing is simply not used
+            left = max(0, gain(node.left))
+            right = max(0, gain(node.right))
 
-            # Arch sum treats current node as the highest convergence point
-            arch_sum = node.val + left_gain + right_gain
-            global_max = max(global_max, arch_sum)
+            # the best path whose highest point is this node
+            best = max(best, node.val + left + right)
 
-            # Return only a single branch continuation to parent
-            return node.val + max(left_gain, right_gain)
+            # upward, only one branch can come along
+            return node.val + max(left, right)
 
-        max_gain(root)
-        return int(global_max)
+        gain(root)
+        return best
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Object Attribute State Tracking">
+---
 
-```python
-class TreeNode:
-    def __init__(self, val: int = 0, left: 'TreeNode | None' = None, right: 'TreeNode | None' = None):
-        self.val = val
-        self.left = left
-        self.right = right
+### Time and space complexity
 
-class Solution:
-    def __init__(self):
-        self.max_sum = float('-inf')
+#### Time: $O(n)$
 
-    def maxPathSum(self, root: TreeNode | None) -> int:
-        self.max_sum = float('-inf')
-        self._calculate_gain(root)
-        return int(self.max_sum)
+Each node is visited once and does a constant amount of comparison and addition.
 
-    def _calculate_gain(self, node: TreeNode | None) -> int:
-        if not node:
-            return 0
+#### Space: $O(h)$
 
-        left = max(0, self._calculate_gain(node.left))
-        right = max(0, self._calculate_gain(node.right))
-
-        self.max_sum = max(self.max_sum, node.val + left + right)
-
-        return node.val + max(left, right)
-```
-
-  </TabItem>
-</Tabs>
+The recursion stack.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Pairwise Path Search** | $O(n^2)$ | $O(n)$ | Checks simple paths across every pair of nodes. Excessively slow for medium and large trees. |
-| **Postorder DFS** | $O(n)$ | $O(h)$ | Single postorder traversal computing arch sums while propagating single-branch gains upward. |
-
----
-
-### Common Pitfall: Returning the Full Arch to Ancestors or Initializing with Zero
-
-Returning `node.val + left_gain + right_gain` to the parent is invalid because a tree path cannot branch into two children and then continue upward to its parent (creating a disallowed Y-junction). Furthermore, initializing `global_max = 0` fails when the tree consists entirely of negative numbers (such as `[-3]`), where the correct answer must be `-3`.
-
----
-
-### Concise Interview Takeaway
-
-Distinguish between the local arch (`node.val + left + right`) evaluated for the global maximum and the extendable branch (`node.val + max(left, right)`) returned to the parent. Clamp negative branches to zero using `max(0, gain)`, and initialize the global maximum to negative infinity to support trees with exclusively negative values.
+Every node is a candidate for the highest point of the best path, so record its value plus both branches, while reporting its value plus only the better branch upward, because a path cannot fork. Clamp each branch at zero so a harmful subtree is skipped, but never clamp the node's own value, or an all-negative tree wrongly answers zero instead of its largest value. $O(n)$ time, $O(h)$ stack space.

@@ -1,184 +1,109 @@
 ---
 id: 17-flatten-binary-tree-to-linked-list
 title: "114. Flatten Binary Tree to Linked List"
-description: "In-place tree flattening via reverse preorder traversal and Morris predecessor grafting"
+description: "Build the chain backwards, so the piece you need next is already finished"
 sidebar_position: 17
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Trees</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">In-Place Pointer Manipulation</span>
 
-> **Problem Statement:** Given the root of a binary tree, flatten the tree into a linked list in-place using the existing tree nodes. The resulting linked list should follow the tree's preorder traversal sequence, where every node's left child pointer is set to `None` and its right child pointer points to the next node in the sequence.
+> **Problem Statement:** Flatten a binary tree into a chain that follows its preorder sequence, reusing the existing nodes. Every node's left pointer must end up empty and its right pointer must lead to the next node.
 
 ```text
 Input:  root = [1, 2, 5, 3, 4, null, 6]
-Output: [1, null, 2, null, 3, null, 4, null, 5, null, 6]
-Explanation: The preorder sequence is 1 -> 2 -> 3 -> 4 -> 5 -> 6. Each node's left child becomes null and right child points to the next node.
+Output: 1 -> 2 -> 3 -> 4 -> 5 -> 6, all on the right
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Preorder traversal visits nodes in the sequence: **Root $\to$ Left $\to$ Right**.
-If you attempt to flatten the tree moving forward (such as setting `root.right = root.left`), you immediately overwrite and permanently lose the original `root.right` subtree.
+Flattening forwards is awkward. At a node you would move its left subtree over to the right, but that overwrites the link to the right subtree, which you still need. You can save it in a variable, then walk to the end of the moved subtree to attach it, and that walking is extra work at every node.
 
-To prevent this data loss, we can use two primary strategies:
+Reverse the order instead and the problem dissolves.
 
-```
-Original Tree:            Flattened Chain:
-      1                         1
-    /   \                        \
-   2     5         ===>           2
-  / \     \                        \
- 3   4     6                        3
-                                     \
-                                      4
-                                       \
-                                        5
-                                         \
-                                          6
-```
+The preorder sequence is `node, left subtree, right subtree`. Build the chain from the **back**: handle the right subtree, then the left, then the node. Each time you finish a node, remember it as the head of everything flattened so far. When you then handle its parent, the piece that should follow it is already built and sitting in that variable, ready to attach.
 
-#### Brute Force: Array Collection and Relinking
-A straightforward approach performs a standard preorder traversal to collect references to all nodes in a list `[1, 2, 3, 4, 5, 6]`. A secondary loop then iterates through the array, updating `node[i].left = None` and `node[i].right = node[i + 1]`. While this runs in $O(n)$ time, storing all nodes in an auxiliary array consumes $O(n)$ extra memory and does not satisfy the requirement for true in-place restructuring.
-
-#### Optimal Approach: Morris Predecessor Grafting
-To achieve true $O(1)$ auxiliary space without recursion:
-1. Walk down the tree with a pointer `curr`.
-2. Whenever `curr` has a left child:
-   - Find the rightmost node of that left subtree (the inorder predecessor).
-   - Attach `curr.right` to that predecessor's `right` pointer.
-   - Move the entire left subtree to `curr.right`, and set `curr.left = None`.
-3. Advance `curr = curr.right`.
-
-Alternatively, a reverse preorder DFS (**Right $\to$ Left $\to$ Root**) assembles the list backwards using a `prev` pointer in $O(h)$ recursion stack space.
-
-#### Execution Walkthrough
-
-Let us trace Morris Predecessor Grafting on `root = [1, 2, 5, 3, 4, null, 6]`:
-
-| Step | `curr` Node | Has Left Child? | Predecessor Found | Action Taken | Next `curr` |
-| :---: | :---: | :---: | :---: | :--- | :---: |
-| **1** | `1` | Yes (`2`) | `4` (rightmost of `2`) | Connect `4.right = 5`, `1.right = 2`, `1.left = None` | `2` |
-| **2** | `2` | Yes (`3`) | `3` (rightmost of `3`) | Connect `3.right = 4`, `2.right = 3`, `2.left = None` | `3` |
-| **3** | `3` | No | None | Advance along right pointer | `4` |
-| **4** | `4` | No | None | Advance along right pointer | `5` |
-| **5** | `5` | No | None | Advance along right pointer | `6` |
-| **6** | `6` | No | None | Advance along right pointer; traversal terminates | `None` |
+No searching for a tail, because you always have the head of what comes next.
 
 ---
 
-### Step-by-Step Algorithm (Morris Grafting)
+### How to think about it
 
-1. **Initialize Pointer:** Set `curr = root`.
-2. **Iterate Down Right Spine:** While `curr` is not `None`:
-   - **Check Left Subtree:** If `curr.left` is not `None`:
-     - Locate the rightmost node of `curr.left`: set `pred = curr.left` and advance `while pred.right: pred = pred.right`.
-     - Graft the existing right subtree: `pred.right = curr.right`.
-     - Shift left branch to right: `curr.right = curr.left`.
-     - Nullify left branch: `curr.left = None`.
-   - **Advance:** Move forward via `curr = curr.right`.
+Walk in **reverse preorder**, meaning right subtree first, then left subtree, then the node itself. Keep one variable holding the head of the chain built so far, starting empty.
+
+At each node, once both children have been handled:
+
+- Point its **right** at the chain built so far.
+- Set its **left** to nothing, as the problem requires.
+- Make this node the new head of the chain.
+
+Because the traversal runs backwards, the chain grows from its tail toward its head, and every attachment is a single assignment.
+
+The order of the two recursive calls is not optional here. Going right first is what puts the right subtree deeper in the chain than the left, which is what preorder requires.
+
+This is the same shape as building a reversed linked list, where each new node points at everything accumulated so far.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Morris Grafting (O(1) Space)" default>
+The tree is root `1`, with left child `2` and right child `5`. Node `2` has children `3` and `4`; node `5` has a right child `6`.
+
+Working in reverse preorder, so the sequence of nodes handled is `6, 5, 4, 3, 2, 1`:
+
+1. **Node 6.** Nothing built yet, so its right becomes empty. The chain is `6`.
+2. **Node 5.** Its right becomes `6`. The chain is `5 -> 6`.
+3. **Node 4.** Its right becomes `5`. The chain is `4 -> 5 -> 6`.
+4. **Node 3.** Its right becomes `4`. The chain is `3 -> 4 -> 5 -> 6`.
+5. **Node 2.** Its right becomes `3`, its left is cleared. The chain is `2 -> 3 -> 4 -> 5 -> 6`.
+6. **Node 1.** Its right becomes `2`, its left is cleared. The chain is complete.
+
+The result is `1 -> 2 -> 3 -> 4 -> 5 -> 6`, which is exactly the preorder sequence.
+
+---
+
+### The code
 
 ```python
-class TreeNode:
-    def __init__(self, val: int = 0, left: 'TreeNode | None' = None, right: 'TreeNode | None' = None):
-        self.val = val
-        self.left = left
-        self.right = right
-
 class Solution:
-    def flatten(self, root: TreeNode | None) -> None:
-        """
-        Flatten binary tree in-place using Morris predecessor grafting.
-        Do not return anything, modify root in-place instead.
-        """
-        curr = root
+    def flatten(self, root: TreeNode) -> None:
+        self.built = None   # head of the chain assembled so far
 
-        while curr:
-            if curr.left:
-                # Find the rightmost node of the left subtree
-                pred = curr.left
-                while pred.right:
-                    pred = pred.right
-
-                # Splice original right subtree onto predecessor's right
-                pred.right = curr.right
-                # Move left subtree to the right
-                curr.right = curr.left
-                curr.left = None
-
-            # Move down the right spine
-            curr = curr.right
-```
-
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Reverse Preorder DFS">
-
-```python
-class TreeNode:
-    def __init__(self, val: int = 0, left: 'TreeNode | None' = None, right: 'TreeNode | None' = None):
-        self.val = val
-        self.left = left
-        self.right = right
-
-class Solution:
-    def flatten(self, root: TreeNode | None) -> None:
-        """
-        Flatten binary tree in-place using reverse preorder DFS.
-        Do not return anything, modify root in-place instead.
-        """
-        prev: TreeNode | None = None
-
-        def dfs(node: TreeNode | None) -> None:
-            nonlocal prev
+        def walk(node):
             if not node:
                 return
 
-            # Traverse in reverse preorder: Right -> Left -> Root
-            dfs(node.right)
-            dfs(node.left)
+            # reverse preorder: right, then left, then this node
+            walk(node.right)
+            walk(node.left)
 
-            # Stitch current node onto the front of the suffix chain
-            node.right = prev
+            node.right = self.built
             node.left = None
-            prev = node
+            self.built = node
 
-        dfs(root)
+        walk(root)
 ```
 
-  </TabItem>
-</Tabs>
+---
+
+### Time and space complexity
+
+#### Time: $O(n)$
+
+Each node is handled once and does three assignments. The forwards version, which walks to the end of the relocated left subtree at every node, is $O(n^2)$ on a skewed tree.
+
+#### Space: $O(h)$
+
+The recursion stack.
+
+There is also a loop version using Morris-style threading, which finds the rightmost node of each left subtree and splices there, reaching $O(1)$ space. It is worth naming as the follow-up answer, though the reverse walk is far easier to get right under pressure.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Reverse Preorder DFS** | $O(n)$ | $O(h)$ | Builds the linked list from tail to head. Uses $O(h)$ recursion stack frames. |
-| **Morris Grafting** | $O(n)$ | $O(1)$ | Traverses each edge at most twice while rewiring pointers in place with zero extra space. |
-
----
-
-### Common Pitfall: Overwriting the Right Pointer During Forward Traversal
-
-A frequent mistake is setting `root.right = root.left` before processing the original `root.right` subtree. Without saving or grafting the original right branch first, all descendants in that branch are disconnected and permanently lost from the tree.
-
----
-
-### Concise Interview Takeaway
-
-Forward preorder traversal overwrites right subtrees before they can be visited. To flatten the tree in true $O(1)$ space, use Morris predecessor grafting: attach the right subtree to the rightmost node of the left subtree, shift the left subtree to the right pointer, and set `curr.left = None`. Alternatively, reverse preorder DFS (Right $\to$ Left $\to$ Root) stitches the list backwards from tail to head in $O(h)$ space.
+Build the chain backwards. Walking right, then left, then the node means the piece that should follow is already finished and held in one variable, so attaching it is a single assignment with no tail to search for. Clear each left pointer as you go. $O(n)$ time, $O(h)$ stack space.

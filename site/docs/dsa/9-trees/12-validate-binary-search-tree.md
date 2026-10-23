@@ -1,169 +1,101 @@
 ---
 id: 12-validate-binary-search-tree
 title: "98. Validate Binary Search Tree"
-description: "Recursive range validation with tightening upper and lower bounds"
+description: "Every node inherits a range from its ancestors, not just a rule about its parent"
 sidebar_position: 12
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Trees</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">BST Properties</span>
 
-> **Problem Statement:** Given the root of a binary tree, determine whether it is a valid Binary Search Tree (BST). A binary tree is a valid BST if and only if for every node: the left subtree contains only nodes with values strictly less than the node's value, the right subtree contains only nodes with values strictly greater than the node's value, and both left and right subtrees must themselves be valid binary search trees.
+> **Problem Statement:** Decide whether a binary tree is a valid binary search tree: every value in a node's left subtree must be smaller than it, every value in its right subtree larger, and the same must hold for every node.
 
 ```text
 Input:  root = [5, 1, 6, null, null, 4, 7]
 Output: false
-Explanation: The root is 5. Its right child is 6, but 6's left child is 4, which is not greater than the ancestor 5.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Think of each node as an heir subject to strict legal covenants inherited from **all** of its ancestors, not just its immediate parent:
-- If the ancestor at the root is `5`, and your branch is on its right side, **every single descendant** in your entire subtree must have a value strictly greater than `5`.
-- If your immediate parent is `6` and places you as its left child, your allowable window shrinks to strictly between `5` and `6` (`5 < val < 6`).
-- If you have value `4`, your immediate parent `6` might think you look fine locally (`4 < 6`), but you flagrantly violate your ancestor `5`!
+Here is the wrong solution, and it is wrong in an interesting way:
 
-```
-          5
-        /   \
-       1     6
-            / \
-          [4]  7   <-- Local check 4 < 6 < 7 passes!
-                       BUT [4] is in 5's right subtree (must be > 5).
-                       Tree is INVALID!
-```
+> Check that each node is bigger than its left child and smaller than its right child.
 
-Checking only immediate parent-child relationships (`node.left.val < node.val < node.right.val`) is the single most common trap in BST questions.
+That passes the example above. Node `5` is bigger than `1` and smaller than `6`. Node `6` is bigger than `4` and smaller than `7`. Every parent is happy with its own children, and yet the tree is not a valid search tree: the `4` sits in `5`'s **right** subtree while being smaller than `5`.
 
-#### Brute Force: Full Inorder Traversal Array Check
-A property of any valid BST is that its inorder traversal yields a strictly increasing sequence. The brute force mental model traverses the entire tree inorder, records all node values into an array, and checks whether `arr[i] < arr[i + 1]` holds for every adjacent pair. While $O(n)$ in time, it spends $O(n)$ auxiliary space to store all values upfront, even if an early node violates the BST invariant.
-
-#### Optimal Approach: Recursive Range Invariants
-Instead of accumulating nodes into an array, we pass valid range bounds `(low, high)` down the recursion stack:
-1. The root starts with unbounded boundaries: `(-inf, +inf)`.
-2. When stepping into a **left** child, the current node value becomes the new ceiling: `(low, node.val)`.
-3. When stepping into a **right** child, the current node value becomes the new floor: `(node.val, high)`.
-4. At every node, we assert `low < node.val < high`. If violated, we fail immediately without exploring further.
-
-#### Execution Walkthrough
-
-Let us trace the invalid tree `root = [5, 1, 6, null, null, 4, 7]`:
-
-| Step | Node | Valid Range `(low, high)` | In Range? | Action Taken | Subtree Valid? |
-| :---: | :---: | :---: | :---: | :--- | :---: |
-| **1** | `5` (root) | `(-inf, +inf)` | **Yes** | Check left with `(-inf, 5)`, right with `(5, +inf)` | Pending |
-| **2** | `1` (left of 5) | `(-inf, 5)` | **Yes** | Leaf node, left and right are `None` | `True` |
-| **3** | `6` (right of 5) | `(5, +inf)` | **Yes** | Check left with `(5, 6)`, right with `(6, +inf)` | Pending |
-| **4** | `4` (left of 6) | `(5, 6)` | **No** (`4 <= 5`) | Violates lower bound from root ancestor `5`! | `False` |
-
-The recursion halts and returns `False` immediately.
+The reason is that the rule reaches further than one level. Going right from `5` means every value below, however deep, must stay above `5`. A node is constrained not by its parent but by **every ancestor it has**.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Define Helper Function `validate(node, low, high)`:**
-   - **Base Case:** If `node` is `None`, return `True` (an empty subtree satisfies all bounds).
-   - **Range Check:** If not `low < node.val < high`, return `False` (strict inequalities are required; duplicates violate BST rules).
-   - **Recurse Subtrees:**
-     - Left branch: `validate(node.left, low, node.val)`.
-     - Right branch: `validate(node.right, node.val, high)`.
-     - Return `True` only if both branches return `True`.
-2. **Initial Call:** Start at the root with infinite bounds: `validate(root, float('-inf'), float('inf'))`.
+Carry a range downward: a low bound and a high bound that the current node must sit strictly between. The root starts with no limits at all.
+
+Then the recursion is short:
+
+- **Empty node:** valid, since an empty subtree breaks nothing.
+- **Out of range:** invalid.
+- **Otherwise:** go left with the high bound tightened to this node's value, and go right with the low bound tightened to it. Both sides must be valid.
+
+The tightening is the whole idea. Walking left can only ever lower the ceiling; walking right can only raise the floor. By the time you reach a deep node, its range encodes every turn taken to get there.
+
+The bounds must be **strict**, because the problem says strictly less and strictly greater, so a duplicate value makes the tree invalid.
+
+**The other good solution** uses the fact from the traversals page: an inorder walk of a valid search tree produces values in sorted order. So walk inorder and check that each value is strictly greater than the one before. It needs only the previous value rather than a pair of bounds, and it is just as fast.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Recursive Range Invariants" default>
+The tree is root `5`, with left child `1` and right child `6`. Node `6` has children `4` and `7`.
+
+1. **At node 5**, with no bounds. Fine.
+2. **At node 1**, which must be below `5`. It is, so fine.
+3. **At node 6**, which must be above `5`. It is. Going into its subtrees, the floor of `5` stays, because `6` is still in `5`'s right subtree.
+4. **At node 4**, which must be above `5` and below `6`. It is below `5`, so the range is violated and the answer is `false`.
+
+The check that caught it is the inherited floor of `5`, which a parent-only check would never have applied.
+
+---
+
+### The code
 
 ```python
-class TreeNode:
-    def __init__(self, val: int = 0, left: 'TreeNode | None' = None, right: 'TreeNode | None' = None):
-        self.val = val
-        self.left = left
-        self.right = right
-
 class Solution:
-    def isValidBST(self, root: TreeNode | None) -> bool:
-        def validate(node: TreeNode | None, low: float, high: float) -> bool:
-            # An empty subtree is trivially valid
+    def isValidBST(self, root: TreeNode) -> bool:
+        def valid(node, low, high) -> bool:
             if not node:
                 return True
 
-            # Node value must strictly lie within inherited (low, high) bounds
+            # strict, because equal values are not allowed
             if not (low < node.val < high):
                 return False
 
-            # Tighten ceiling for left child, tighten floor for right child
-            return (validate(node.left, low, node.val) and 
-                    validate(node.right, node.val, high))
+            # going left lowers the ceiling, going right raises the floor
+            return (valid(node.left, low, node.val)
+                    and valid(node.right, node.val, high))
 
-        return validate(root, float('-inf'), float('inf'))
+        return valid(root, float("-inf"), float("inf"))
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Iterative Inorder Traversal">
+---
 
-```python
-class TreeNode:
-    def __init__(self, val: int = 0, left: 'TreeNode | None' = None, right: 'TreeNode | None' = None):
-        self.val = val
-        self.left = left
-        self.right = right
+### Time and space complexity
 
-class Solution:
-    def isValidBST(self, root: TreeNode | None) -> bool:
-        stack: list[TreeNode] = []
-        current = root
-        prev_val = float('-inf')
+#### Time: $O(n)$
 
-        while stack or current:
-            # Push all left nodes
-            while current:
-                stack.append(current)
-                current = current.left
+Every node is checked once against two bounds, and the `and` stops the walk at the first violation.
 
-            current = stack.pop()
+#### Space: $O(h)$
 
-            # Inorder traversal of a valid BST must be strictly increasing
-            if current.val <= prev_val:
-                return False
-
-            prev_val = current.val
-            current = current.right
-
-        return True
-```
-
-  </TabItem>
-</Tabs>
+The recursion stack. The bounds are passed as arguments rather than stored, so nothing accumulates.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Iterative Inorder** | $O(n)$ | $O(h)$ | Verifies strictly increasing values using an explicit stack. Stops immediately upon seeing an inversion. |
-| **Recursive Range Invariants** | $O(n)$ | $O(h)$ | Tightens $(low, high)$ bounds on each frame. Stack memory is proportional to tree height $h$. |
-
----
-
-### Common Pitfall: Local-Only Validation and Strict Inequality Violations
-
-Checking only that `node.left.val < node.val < node.right.val` fails because ancestor constraints are inherited globally across deep subtrees. Furthermore, remember that standard BST definitions require strictly smaller left descendants and strictly larger right descendants. If a node has a child with the identical value (`node.val == child.val`), the tree is invalid.
-
----
-
-### Concise Interview Takeaway
-
-Local parent-child checks fail because ancestor constraints are inherited globally. Pass allowable bounds `(low, high)` down the call stack, tightening the upper bound on left turns and the lower bound on right turns. Alternatively, an iterative inorder traversal must yield strictly increasing values: if any popped node value is less than or equal to the previous value, return `False`.
+Checking a node only against its own children is the classic wrong answer: the constraint comes from every ancestor, not just the parent. Pass a low and high bound down, tightening the ceiling when you go left and the floor when you go right, and compare strictly. The inorder walk producing sorted values is the equally good alternative. $O(n)$ time, $O(h)$ stack space.

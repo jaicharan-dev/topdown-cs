@@ -1,158 +1,116 @@
 ---
 id: 9-binary-tree-level-order-traversal
 title: "102. Binary Tree Level Order Traversal"
-description: "Batch breadth-first search using queue level snapshotting"
+description: "Measure the queue before you drain it, and that count is one whole level"
 sidebar_position: 9
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Trees</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">BFS / Level Order</span>
 
-> **Problem Statement:** Given the `root` of a binary tree, return the level order traversal of its nodes' values (i.e., from left to right, level by level).
+> **Problem Statement:** Given the root of a binary tree, return its values level by level, each level read left to right, with each level as its own list.
 
 ```text
 Input:  root = [3, 9, 20, null, null, 15, 7]
 Output: [[3], [9, 20], [15, 7]]
-Explanation: Level 0 contains [3], level 1 contains [9, 20], and level 2 contains [15, 7].
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Level order traversal processes nodes layer by layer from top to bottom and left to right. This behavior corresponds directly to Breadth-First Search (BFS) using a First-In, First-Out (FIFO) queue.
+Every problem so far has gone **down** a branch as far as possible before coming back. This one goes **across**, finishing an entire row before touching the next.
 
-#### Brute Force: Recursive DFS with Depth Indexing
-An alternative DFS strategy passes an integer `depth` argument during recursion, appending each node's value into a nested list at index `depth` (expanding the list as new depth levels are reached). While functionally correct, it visits nodes out of level order (diving deep before backtracking), requiring careful list management and failing to process elements in strict breadth-first order.
+That is breadth-first search, and it runs on a queue instead of recursion. Start with the root in the queue. Take a node out, record it, and put its children at the back. Because children are always added behind everything already waiting, nodes come out in exactly the order you want: all of one row, then all of the next.
 
-#### Optimal Approach: Queue Snapshotting BFS
-To group nodes cleanly by level in pure BFS order without needing depth metadata on nodes:
-1. Use a double-ended queue (`collections.deque`) initialized with `root`.
-2. At the start of each level iteration, take a snapshot of the queue length: `level_size = len(queue)`.
-3. Loop exactly `level_size` times to consume all nodes belonging strictly to the current level, while pushing their children to the back of the queue.
-4. Append the collected level values to the final result list.
-
-Because children are placed at the back of the queue, they will only be processed during subsequent level iterations after the current batch finishes.
-
-#### Execution Walkthrough
-
-Consider evaluating `root = [3, 9, 20, null, null, 15, 7]`:
-
-| Level | Queue Snapshot (`len`) | Nodes Dequeued | Values Collected | Children Enqueued | Output Array (`result`) |
-| :---: | :---: | :---: | :---: | :---: | :--- |
-| **0** | `1` (`[3]`) | `3` | `[3]` | `9, 20` | `[[3]]` |
-| **1** | `2` (`[9, 20]`) | `9, 20` | `[9, 20]` | `15, 7` | `[[3], [9, 20]]` |
-| **2** | `2` (`[15, 7]`) | `15, 7` | `[15, 7]` | None (leaves) | `[[3], [9, 20], [15, 7]]` |
+One difficulty remains. A plain queue walk gives you the values in the right order but as one flat stream, with nothing marking where a row ends.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Check Base Case:** If `root is None`, return an empty list `[]`.
-2. **Initialize Queue and Result:** Create a deque initialized with `[root]` and an empty list `result`.
-3. **Iterate Over Levels:** While `queue` is not empty:
-   - Capture `level_size = len(queue)` to freeze the current level count.
-   - Initialize an empty list `current_level = []`.
-   - Loop `level_size` times:
-     - Pop the front node: `node = queue.popleft()`.
-     - Append `node.val` to `current_level`.
-     - If `node.left` exists, enqueue `node.left`.
-     - If `node.right` exists, enqueue `node.right`.
-   - Append `current_level` to `result`.
-4. **Return Traversal:** Return `result`.
+The trick is simple once seen: **measure the queue before you start draining it**.
+
+At the moment a level begins, the queue holds exactly that level's nodes and nothing else. So take its size, then process precisely that many nodes, collecting their values into one list. Every child added during that burst belongs to the next level and waits its turn behind the ones you are processing.
+
+```text
+queue holds [3]            size 1 -> take 1  -> level [3]
+queue holds [9, 20]        size 2 -> take 2  -> level [9, 20]
+queue holds [15, 7]        size 2 -> take 2  -> level [15, 7]
+queue is empty             stop
+```
+
+Capture the size into a variable before the inner loop. Testing the queue's length as the loop condition fails, because the queue grows while you are draining it and the loop would run past the level boundary.
+
+Use a double-ended queue so that removing from the front is constant time. Removing from the front of an ordinary list shifts every remaining element, which quietly makes the whole traversal $O(n^2)$.
+
+An empty tree should produce an empty list, so check the root before starting.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Iterative BFS (Queue Snapshot)" default>
+The tree is root `3`, with children `9` and `20`, and `20` has children `15` and `7`.
+
+1. **Queue holds `3`**, size `1`. Take `3`, record it, and add `9` and `20`. The first level is `[3]`.
+2. **Queue holds `9, 20`**, size `2`. Take `9`, which has no children. Take `20`, adding `15` and `7`. The second level is `[9, 20]`.
+3. **Queue holds `15, 7`**, size `2`. Take both; neither has children. The third level is `[15, 7]`.
+4. **Queue is empty**, so stop.
+
+The answer is `[[3], [9, 20], [15, 7]]`.
+
+---
+
+### The code
 
 ```python
 from collections import deque
 
-# Definition for a binary tree node.
-# class TreeNode:
-#     def __init__(self, val=0, left=None, right=None):
-#         self.val = val
-#         self.left = left
-#         self.right = right
-
 class Solution:
-    def levelOrder(self, root: TreeNode | None) -> list[list[int]]:
+    def levelOrder(self, root: TreeNode) -> list[list[int]]:
         if not root:
             return []
 
-        result: list[list[int]] = []
-        queue: deque[TreeNode] = deque([root])
+        out = []
+        queue = deque([root])
 
         while queue:
+            # take the size first: the queue grows while this level drains
             level_size = len(queue)
-            current_level: list[int] = []
+            level = []
 
             for _ in range(level_size):
                 node = queue.popleft()
-                current_level.append(node.val)
+                level.append(node.val)
 
                 if node.left:
                     queue.append(node.left)
                 if node.right:
                     queue.append(node.right)
 
-            result.append(current_level)
+            out.append(level)
 
-        return result
+        return out
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Recursive DFS (Depth Tracking)">
+---
 
-```python
-class Solution:
-    def levelOrder(self, root: TreeNode | None) -> list[list[int]]:
-        result: list[list[int]] = []
+### Time and space complexity
 
-        def dfs(node: TreeNode | None, depth: int) -> None:
-            if not node:
-                return
+#### Time: $O(n)$
 
-            # Start a new level list if reaching this depth for the first time
-            if depth == len(result):
-                result.append([])
+Every node enters and leaves the queue exactly once, each for constant cost.
 
-            result[depth].append(node.val)
-            dfs(node.left, depth + 1)
-            dfs(node.right, depth + 1)
+#### Space: $O(w)$
 
-        dfs(root, 0)
-        return result
-```
+Where `w` is the widest level of the tree, because that is the most the queue ever holds at once. In the worst case, a complete tree's bottom row, that is about half the nodes, so $O(n)$.
 
-  </TabItem>
-</Tabs>
+This is the opposite trade from depth-first search, which costs the tree's **height** instead. Deep narrow trees favour breadth-first; wide shallow trees favour depth-first.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Iterative BFS (Queue Snapshot)** | $O(n)$ | $O(w)$ | Natural level-by-level evaluation using FIFO queue. Space is proportional to maximum level width $w \le n/2$. |
-| **Recursive DFS (Depth Tracking)** | $O(n)$ | $O(h)$ | Uses call stack recursion with explicit depth indices. Space is bounded by tree height $h$ ($O(\log n)$ balanced, $O(n)$ skewed). |
-
----
-
-### Common Pitfall: Using Python list.pop(0) Instead of deque.popleft()
-
-Using a standard Python `list` as a FIFO queue causes `pop(0)` to shift all remaining elements to the left, taking $O(k)$ time per pop where $k$ is the current length. Over $n$ nodes, this degrades overall runtime from optimal $O(n)$ to $O(n^2)$. Always use `collections.deque` which guarantees $O(1)$ amortized double-ended pops and pushes.
-
----
-
-### Concise Interview Takeaway
-
-For level-order traversal, use Breadth-First Search with a FIFO queue. Record `level_size = len(queue)` at the start of each level to process nodes in discrete batches without attaching depth tags to each node. This achieves optimal $O(n)$ time complexity and $O(w)$ auxiliary space, where $w$ is the maximum width of the tree.
+Breadth-first with a queue gives the values in level order, and capturing the queue's size before draining it is what carves that stream into levels. Use a real queue so removal from the front is constant, not a list. $O(n)$ time and $O(w)$ space, where `w` is the widest level.
