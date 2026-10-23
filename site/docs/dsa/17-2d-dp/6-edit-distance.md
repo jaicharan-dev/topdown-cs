@@ -1,169 +1,127 @@
 ---
 id: 6-edit-distance
 title: "72. Edit Distance"
-description: "Find minimum insert, delete, and replace operations to convert one string into another"
+description: "Three neighbours, three operations, and a free move when the letters already match"
 sidebar_position: 6
 sidebar_class_name: sidebar-hard
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">2D Dynamic Programming</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">String Alignment DP</span>
 
-> **Problem Statement:** Given two strings `word1` and `word2`, return the minimum number of operations required to convert `word1` to `word2`. You have three operations permitted on a word: insert a character, delete a character, or replace a character.
+> **Problem Statement:** Given two words, return the fewest single-character edits needed to turn the first into the second. An edit inserts, deletes or replaces one character.
 
 ```text
 Input:  word1 = "horse", word2 = "ros"
 Output: 3
-Explanation:
-horse -> rorse (replace 'h' with 'r')
-rorse -> rose (remove 'r')
-rose -> ros (remove 'e')
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-We want to transform prefix `word1[:i]` into prefix `word2[:j]` with the minimum number of edits.
+Same table as Longest Common Subsequence, with each cell asking a cost rather than a length:
 
-#### Brute Force: Recursive Three-Way Branching
-A naive recursive solution attempts all three allowed edits whenever two characters disagree: delete a character from `word1`, insert the needed character from `word2`, or replace the character. Without memoization, this explores a branching factor of 3 at every step, creating an exponential time complexity of $O(3^{\max(m, n)})$ that quickly crashes due to time limits.
+> What is the cheapest way to turn the first `i` characters of one word into the first `j` of the other?
 
-#### Optimal Approach: 2D Levenshtein Matrix DP
-Let `dp[i][j]` represent the minimum edit distance required to convert prefix `word1[:i]` into prefix `word2[:j]`.
+Now the three neighbours each correspond to one of the three permitted edits:
 
-Base cases establish the cost of transforming to or from empty strings:
-- Transforming an empty string into `word2[:j]` requires $j$ insertions: `dp[0][j] = j`.
-- Transforming `word1[:i]` into an empty string requires $i$ deletions: `dp[i][0] = i`.
+```text
+diagonal  replace a character   (or free, if they already match)
+above     delete a character from the first word
+left      insert a character into the first word
+```
 
-When evaluating character `word1[i - 1]` against `word2[j - 1]`:
-1. **Characters Match (`word1[i - 1] == word2[j - 1]`):**
-   No operation is needed. The cost is identical to aligning the prefixes without these characters:
-   $$\text{dp}[i][j] = \text{dp}[i - 1][j - 1]$$
+When the two characters at this position **match**, nothing needs doing: the cost is whatever the diagonal was, with no edit added. That free move is the only place a cost does not increase, and it is what the whole table is really searching for.
 
-2. **Characters Differ (`word1[i - 1] != word2[j - 1]`):**
-   We incur 1 edit operation and select the cheapest among the three permissible actions:
-   - **Delete from `word1`:** transitions from `dp[i - 1][j]` (top neighbor).
-   - **Insert into `word1`:** transitions from `dp[i][j - 1]` (left neighbor).
-   - **Replace in `word1`:** transitions from `dp[i - 1][j - 1]` (top-left diagonal).
-   $$\text{dp}[i][j] = 1 + \min(\text{dp}[i - 1][j], \, \text{dp}[i][j - 1], \, \text{dp}[i - 1][j - 1])$$
-
-#### Execution Walkthrough
-
-Tracing `word1 = "horse"` and `word2 = "ros"`:
-
-| `i` (`word1`) | `j` (`word2`) | Characters Compared | Match? | Optimal Decision | Resulting `dp[i][j]` |
-| :---: | :---: | :---: | :---: | :--- | :---: |
-| `1` (`h`) | `1` (`r`) | `'h'` vs `'r'` | No | $1 + \min(\text{del}: 1, \text{ins}: 1, \text{rep}: 0) = 1 + 0$ | 1 |
-| `2` (`o`) | `2` (`o`) | `'o'` vs `'o'` | **Yes** | Copy diagonal `dp[1][1]` directly | 1 |
-| `3` (`r`) | `1` (`r`) | `'r'` vs `'r'` | **Yes** | Copy diagonal `dp[2][0]` directly | 2 |
-| `4` (`s`) | `3` (`s`) | `'s'` vs `'s'` | **Yes** | Copy diagonal `dp[3][2]` directly | 2 |
-| `5` (`e`) | `3` (`s`) | `'e'` vs `'s'` | No | $1 + \min(\text{del}: 2, \text{ins}: 4, \text{rep}: 2) = 1 + 2$ | 3 |
-
-The bottom-right corner `dp[5][3]` yields the minimal edit distance of 3.
+When they differ, all three edits are available, so take the cheapest and add one.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State Matrix:** Construct a 2D table `dp` of size $(m + 1) \times (n + 1)$, where $m = \text{len}(word1)$ and $n = \text{len}(word2)$.
-2. **Populate Base Borders:**
-   - Set `dp[i][0] = i` for all $0 \le i \le m$.
-   - Set `dp[0][j] = j` for all $0 \le j \le n$.
-3. **Fill Table by Prefixes:** For `i` from 1 to $m$ and `j` from 1 to $n$:
-   - If `word1[i - 1] == word2[j - 1]`, assign `dp[i][j] = dp[i - 1][j - 1]`.
-   - Otherwise, assign `dp[i][j] = 1 + min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1])`.
-4. **Return Answer:** Return `dp[m][n]`.
+Pad the table with an extra first row and column, as before, but this time they are **not** zeros. They are the costs of turning a prefix into nothing, or nothing into a prefix:
+
+- Row zero counts insertions: turning an empty word into `j` characters costs `j`.
+- Column zero counts deletions: turning `i` characters into nothing costs `i`.
+
+Getting those boundaries right is half the problem, and leaving them as zeros is the usual mistake.
+
+Then each inner cell is one comparison: equal characters take the diagonal unchanged, different characters take one more than the smallest of the three neighbours.
+
+The answer sits in the bottom-right corner.
+
+Matching the three neighbours to the three operations is worth being able to recite, because it is the question that follows "what is the recurrence". Above means the first word had a character the second did not, so delete it. Left means the second word had one the first did not, so insert it. Diagonal means both had a character in that position, so replace if they differ.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Space-Optimized 1D Rolling Row" default>
+Turning `horse` into `ros`:
+
+```text
+       ""  r  o  s
+  ""    0  1  2  3
+   h    1  1  2  3
+   o    2  2  1  2
+   r    3  2  2  2
+   s    4  3  3  2
+   e    5  4  4  3
+```
+
+- **The first row and column** count pure insertions and deletions.
+- **Row `o`, column `o`:** the characters match, so the cost is the diagonal unchanged, `1`.
+- **Row `r`, column `r`:** they match, so take the diagonal, `2`.
+- **Row `s`, column `s`:** they match, giving `2`.
+- **Row `e`:** `e` matches nothing, so every cell is one more than its cheapest neighbour, ending at `3`.
+
+The answer is `3`: replace `h` with `r`, delete `r`, delete `e`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def minDistance(self, word1: str, word2: str) -> int:
         m, n = len(word1), len(word2)
-        # Ensure word2 is the shorter string to optimize auxiliary space
-        if m < n:
-            word1, word2 = word2, word1
-            m, n = n, m
+        table = [[0] * (n + 1) for _ in range(m + 1)]
 
-        # dp[j] stores edit distance from empty prefix of word1 to word2[:j]
-        dp = list(range(n + 1))
-
-        for i in range(1, m + 1):
-            prev_diag = dp[0]
-            dp[0] = i  # Cost of deleting i characters to form empty word2
-            for j in range(1, n + 1):
-                temp = dp[j]
-                if word1[i - 1] == word2[j - 1]:
-                    dp[j] = prev_diag
-                else:
-                    # 1 + min(delete: dp[j], insert: dp[j - 1], replace: prev_diag)
-                    dp[j] = 1 + min(dp[j], dp[j - 1], prev_diag)
-                prev_diag = temp
-
-        return dp[n]
-```
-
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Full 2D Levenshtein Table">
-
-```python
-class Solution:
-    def minDistance(self, word1: str, word2: str) -> int:
-        m, n = len(word1), len(word2)
-        dp = [[0] * (n + 1) for _ in range(m + 1)]
-
-        # Base case: converting prefix of word1 to empty string
+        # turning a prefix into nothing, and nothing into a prefix
         for i in range(m + 1):
-            dp[i][0] = i
-
-        # Base case: converting empty string to prefix of word2
+            table[i][0] = i
         for j in range(n + 1):
-            dp[0][j] = j
+            table[0][j] = j
 
         for i in range(1, m + 1):
             for j in range(1, n + 1):
                 if word1[i - 1] == word2[j - 1]:
-                    dp[i][j] = dp[i - 1][j - 1]
+                    table[i][j] = table[i - 1][j - 1]   # free, no edit needed
                 else:
-                    dp[i][j] = 1 + min(
-                        dp[i - 1][j],      # Delete
-                        dp[i][j - 1],      # Insert
-                        dp[i - 1][j - 1]   # Replace
+                    table[i][j] = 1 + min(
+                        table[i - 1][j - 1],   # replace
+                        table[i - 1][j],       # delete
+                        table[i][j - 1],       # insert
                     )
 
-        return dp[m][n]
+        return table[m][n]
 ```
 
-  </TabItem>
-</Tabs>
+---
+
+### Time and space complexity
+
+#### Time: $O(m \cdot n)$
+
+One comparison and at most one three-way minimum per cell.
+
+#### Space: $O(m \cdot n)$
+
+The table, reducible to two rows since each row reads only the one above and the cell to its left.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Full 2D Levenshtein Table** | $O(m \times n)$ | $O(m \times n)$ | Visualizes the complete transformation matrix across all prefixes, using full grid allocation. |
-| **Space-Optimized 1D Rolling Row** | $O(m \times n)$ | $O(\min(m, n))$ | Tracks the diagonal predecessor via a scalar variable, cutting memory to a single row array. |
-
----
-
-### Common Pitfall: Forgetting Base Case Initialization for Empty Strings
-
-A common mistake is initializing the entire DP matrix with zeros without filling row 0 and column 0. Transforming an empty string into a word of length $k$ requires exactly $k$ insertions, and transforming a word of length $k$ into an empty string requires $k$ deletions. Without setting `dp[i][0] = i` and `dp[0][j] = j`, transitions along the boundaries will produce incorrect zero-cost edits.
-
----
-
-### Concise Interview Takeaway
-
-Edit distance uses dynamic programming to evaluate three potential operations when characters differ: deletion (`dp[i - 1][j]`), insertion (`dp[i][j - 1]`), and replacement (`dp[i - 1][j - 1]`). Adding 1 to the minimum of these three choices guarantees optimal edit count. When characters match, inherit the diagonal predecessor directly without adding cost.
+The same table as Longest Common Subsequence with costs instead of lengths, where the three neighbours are the three edits: diagonal replaces, above deletes, left inserts. Matching characters take the diagonal with **no** cost added, which is the free move the whole table hunts for. Fill the first row and column with `j` and `i` rather than zeros, since those are the costs of building from or reducing to nothing. $O(m \cdot n)$ time.

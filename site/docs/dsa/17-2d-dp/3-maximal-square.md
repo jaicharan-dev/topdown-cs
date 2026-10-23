@@ -1,158 +1,127 @@
 ---
 id: 3-maximal-square
 title: "221. Maximal Square"
-description: "Find area of largest square of 1s in binary matrix using 3-way min expansion DP"
+description: "A square ending here is limited by the smallest of the three squares behind it"
 sidebar_position: 3
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">2D Dynamic Programming</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Geometry Matrix DP</span>
 
-> **Problem Statement:** Given an `m x n` binary matrix filled with `'0'`s and `'1'`s, find the largest square containing only `'1'`s and return its area.
+> **Problem Statement:** Given a matrix of `0`s and `1`s, find the largest square made entirely of `1`s and return its area.
 
 ```text
-Input:  matrix = [["1","0","1","0","0"],["1","0","1","1","1"],["1","1","1","1","1"],["1","0","0","1","0"]]
+Input:  matrix = [["1","0","1","0","0"],["1","0","1","1","1"],
+                  ["1","1","1","1","1"],["1","0","0","1","0"]]
 Output: 4
-Explanation: The maximal square of all '1's has side length 2, resulting in an area of 2 * 2 = 4.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Instead of identifying where a square starts and scanning outwards, reverse the perspective: determine the largest valid square whose bottom-right corner is anchored at cell `(r, c)`.
+Ask a focused question at each cell: **how big is the largest square whose bottom-right corner is here?**
 
-#### Brute Force: Testing Every Subgrid
-For every cell containing `'1'`, search outward to verify whether it can serve as the top-left corner of a square of side $k = 1, 2, \dots, \min(m, n)$. Verifying each candidate square takes $O(k^2)$ checks. Across all grid locations and possible side lengths, this brute force approach runs in $O((m \times n)^2)$ time, which becomes prohibitively slow on matrices with hundreds of rows and columns.
+If the cell is `0`, the answer is zero. If it is `1`, the square extends back up and to the left, and it can only be as large as all three of its neighbours allow:
 
-#### Optimal Approach: Bottom-Right Anchor and Three-Way Minimum
-Let `dp[r][c]` denote the maximum side length of a square whose bottom-right corner rests at `(r, c)`:
-- If `matrix[r][c] == '0'`, no square of `'1'`s can terminate here: `dp[r][c] = 0`.
-- If `matrix[r][c] == '1'`, for this cell to extend into a square of side length $k$, its three adjacent predecessors must each support a square of side length at least $k - 1$:
-  1. The neighbor directly above: `(r - 1, c)`
-  2. The neighbor directly to the left: `(r, c - 1)`
-  3. The diagonal neighbor to the top-left: `(r - 1, c - 1)`
+```text
+above        above-left
+left         HERE
+```
 
-The new square's side length is bounded by the weakest among these three supports:
-$$\text{dp}[r][c] = 1 + \min(\text{dp}[r - 1][c], \, \text{dp}[r][c - 1], \, \text{dp}[r - 1][c - 1])$$
+For a square of side `3` to end here, there must be squares of side at least `2` ending at the cell above, the cell to the left, **and** the cell diagonally up-left. Any one of them falling short caps the whole thing.
 
-If a cell lies on the top border ($r = 0$) or left border ($c = 0$), it lacks the full trio of neighbors and can only support a square of side length 1 if its value is `'1'`.
+So the rule is the **smallest** of those three, plus one:
 
-#### Execution Walkthrough
+```text
+side(cell) = 1 + min(above, left, above-left)
+```
 
-Consider a $3 \times 3$ grid `matrix = [["1","1","1"], ["1","1","1"], ["0","1","1"]]`:
-
-| Cell `(r, c)` | Value | Above `dp[r - 1][c]` | Left `dp[r][c - 1]` | Diagonal `dp[r - 1][c - 1]` | Computed `dp[r][c]` | Max Side Length |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| `(0, 0)` to `(0, 2)` | `'1'` | Border | Border | Border | 1 | 1 |
-| `(1, 0)` | `'1'` | 1 | Border | Border | 1 | 1 |
-| `(1, 1)` | `'1'` | 1 | 1 | 1 | $1 + \min(1, 1, 1) = 2$ | 2 |
-| `(1, 2)` | `'1'` | 1 | 2 | 1 | $1 + \min(1, 2, 1) = 2$ | 2 |
-| `(2, 0)` | `'0'` | 1 | Border | Border | 0 | 2 |
-| `(2, 1)` | `'1'` | 2 | 0 | 1 | $1 + \min(2, 0, 1) = 1$ | 2 |
-| `(2, 2)` | `'1'` | 2 | 1 | 2 | $1 + \min(2, 1, 2) = 2$ | 2 |
-
-The maximum side length encountered is 2, producing an area of $2 \times 2 = 4$.
+Three neighbours rather than two, and `min` rather than `max`, because every one of them is a limit.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Check Boundary Conditions:** Return 0 immediately if the matrix is empty or has zero columns.
-2. **Allocate State Buffer:** Maintain either an $m \times n$ table or a 1D row array of size $n + 1$ initialized to 0, along with a variable `max_side = 0`.
-3. **Scan Grid Row by Row:** For each cell `(r, c)`:
-   - If `matrix[r][c] == "1"`:
-     - Compute side length as `1 + min(top, left, diagonal)`.
-     - Update `max_side = max(max_side, side)`.
-   - If `matrix[r][c] == "0"`, the side length terminates at 0.
-4. **Calculate Result:** Return `max_side * max_side`.
+Fill a grid of side lengths, left to right and top to bottom.
+
+**A cell holding `0`** gets `0`: no square can end on empty ground.
+
+**A cell in the top row or left column** holding `1` gets `1`. There is no room behind it for anything larger.
+
+**Any other cell holding `1`** takes one more than the smallest of its three neighbours.
+
+Track the largest side seen anywhere, and remember the question asks for the **area**, so square it at the end. Returning the side length is the easiest way to get this wrong.
+
+Why the diagonal neighbour is needed is worth being able to explain. The cell above guarantees a tall block, and the cell to the left guarantees a wide one, but neither says anything about the corner where they meet. The diagonal value is what certifies that the interior is filled.
+
+Using `min` of the three is the heart of it: a square is only as good as its weakest supporting direction.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Space-Optimized 1D DP" default>
+Fill in the side lengths:
+
+```text
+1  0  1  0  0
+1  0  1  1  1
+1  1  1  2  2
+1  0  0  1  0
+```
+
+- **Rows 0 and 1** are mostly `1`s and `0`s copied straight across, since the top row has no room behind it and row 1 has no two-by-two block of `1`s.
+- **Cell (2,3)** holds `1`. Above is `1`, left is `1`, above-left is `1`, so the smallest is `1` and the side becomes `2`. That is the two-by-two square covering rows 1 and 2, columns 2 and 3.
+- **Cell (2,4)** likewise becomes `2`.
+- **Cell (3,3)** holds `1`, but its left neighbour is `0`, so the smallest is `0` and the side stays `1`.
+
+The largest side is `2`, so the area is `4`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def maximalSquare(self, matrix: list[list[str]]) -> int:
-        if not matrix or not matrix[0]:
-            return 0
+        rows, cols = len(matrix), len(matrix[0])
+        side = [[0] * cols for _ in range(rows)]
+        best = 0
 
-        m, n = len(matrix), len(matrix[0])
-        dp = [0] * (n + 1)
-        max_side = 0
-        prev_diag = 0
+        for r in range(rows):
+            for c in range(cols):
+                if matrix[r][c] != "1":
+                    continue
 
-        for r in range(m):
-            for c in range(1, n + 1):
-                temp = dp[c]
-                if matrix[r][c - 1] == "1":
-                    # dp[c] is top neighbor, dp[c - 1] is left neighbor, prev_diag is top-left
-                    dp[c] = 1 + min(dp[c], dp[c - 1], prev_diag)
-                    max_side = max(max_side, dp[c])
+                if r == 0 or c == 0:
+                    side[r][c] = 1   # no room behind it for anything bigger
                 else:
-                    dp[c] = 0
-                prev_diag = temp
+                    # every direction is a limit, so take the smallest
+                    side[r][c] = 1 + min(side[r - 1][c],
+                                         side[r][c - 1],
+                                         side[r - 1][c - 1])
 
-        return max_side * max_side
+                best = max(best, side[r][c])
+
+        return best * best   # the question asks for the area
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Full 2D DP Table">
+---
 
-```python
-class Solution:
-    def maximalSquare(self, matrix: list[list[str]]) -> int:
-        if not matrix or not matrix[0]:
-            return 0
+### Time and space complexity
 
-        m, n = len(matrix), len(matrix[0])
-        dp = [[0] * n for _ in range(m)]
-        max_side = 0
+#### Time: $O(m \cdot n)$
 
-        for r in range(m):
-            for c in range(n):
-                if matrix[r][c] == "1":
-                    if r == 0 or c == 0:
-                        dp[r][c] = 1
-                    else:
-                        dp[r][c] = 1 + min(
-                            dp[r - 1][c],
-                            dp[r][c - 1],
-                            dp[r - 1][c - 1]
-                        )
-                    max_side = max(max_side, dp[r][c])
+One comparison of three values per cell.
 
-        return max_side * max_side
-```
+#### Space: $O(m \cdot n)$
 
-  </TabItem>
-</Tabs>
+The grid of side lengths. It can be reduced to two rows, or one row plus a saved diagonal value, since the formula only reaches back one row.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Full 2D DP Table** | $O(m \times n)$ | $O(m \times n)$ | Directly indexes neighbors with clear spatial geometry, allocating memory for every cell in the matrix. |
-| **Space-Optimized 1D DP** | $O(m \times n)$ | $O(n)$ | Compresses the grid to a single row buffer by tracking the top-left diagonal in a scalar variable. |
-
----
-
-### Common Pitfall: Returning Side Length Instead of Area
-
-The dynamic programming recurrence computes the maximum *side length* of a square, but the problem statement explicitly asks for the *area*. Forgetting to square the final value (returning `max_side` instead of `max_side * max_side`) is one of the most common oversights on this question. Additionally, remember that inputs are strings (`"1"` and `"0"`), not raw integers.
-
----
-
-### Concise Interview Takeaway
-
-Anchor each square at its bottom-right corner: to form an all-ones square of size $k$, its top, left, and diagonal neighbors must each be valid squares of size at least $k - 1$. Taking $1 + \min(\text{top}, \text{left}, \text{diagonal})$ solves the problem in $O(m \times n)$ time, and compressing state reduces memory usage to $O(n)$.
+Ask at each cell how large a square can **end** there. A `1` extends the squares above, left and diagonally up-left, so the answer is one more than the **smallest** of the three, because each is a limit. The diagonal is what certifies the corner between the tall and wide blocks. Square the best side at the end, since the answer is an area. $O(m \cdot n)$ time.

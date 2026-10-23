@@ -1,130 +1,99 @@
 ---
 id: 1-unique-paths
 title: "62. Unique Paths"
-description: "Count grid traversal paths from top-left to bottom-right using 2D/1D dynamic programming"
+description: "Routes into a cell are routes from above plus routes from the left"
 sidebar_position: 1
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">2D Dynamic Programming</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Grid DP</span>
 
-> **Problem Statement:** There is a robot on an `m x n` grid. The robot is initially located at the top-left corner (`grid[0][0]`) and tries to move to the bottom-right corner (`grid[m - 1][n - 1]`). The robot can only move either down or right at any point in time. Given the two integers `m` and `n`, return the total number of possible unique paths that the robot can take to reach the destination.
+> **Problem Statement:** A robot starts at the top-left corner of a grid and can only move right or down. Count the distinct routes to the bottom-right corner.
 
 ```text
 Input:  m = 3, n = 7
 Output: 28
-Explanation: From the top-left corner (0, 0), there are 28 unique valid paths that move solely right and down to reach (2, 6).
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine navigating an $m \times n$ city grid where every street is strictly one-way: you may only travel south (down) or east (right).
+Stand on any cell and look back. The robot only moves right or down, so it arrived from exactly one of two places: the cell **above**, or the cell to the **left**.
 
-#### Brute Force: Recursive Exploration
-The most straightforward mental model is exploring every branching route from start to destination recursively. From cell `(r, c)`, the robot chooses between `(r + 1, c)` and `(r, c + 1)`. The recursion terminates when reaching `(m - 1, n - 1)` (which counts as 1 valid path) or crossing out of bounds (which counts as 0).
+Those two groups of routes are different from each other, since they differ in the final move, and together they are all the routes. So:
 
-However, many paths converge at identical interior coordinates. Without memoization, this explores an exponential decision tree of size $O(2^{m + n})$, recalculating identical subproblems repeatedly and timing out on typical constraints.
+```text
+routes(cell) = routes(above) + routes(left)
+```
 
-#### Optimal Approach: 2D Grid DP and Space Compression
-Notice that arriving at any interior cell `(r, c)` can only occur via two mutually exclusive moves:
-1. Moving down from the neighbor directly above: `(r - 1, c)`.
-2. Moving right from the neighbor directly to the left: `(r, c - 1)`.
+This is Climbing Stairs with a second dimension. There, a step was reached from one of two earlier steps; here, a cell is reached from one of two neighbours. The formula is the same addition, laid out on a grid instead of a line.
 
-By the addition rule of combinatorics, the number of ways to reach `(r, c)` is:
-$$\text{dp}[r][c] = \text{dp}[r - 1][c] + \text{dp}[r][c - 1]$$
-
-Every cell in the first row has exactly 1 way to be reached (moving right continuously). Similarly, every cell in the first column has exactly 1 way (moving down continuously).
-
-Furthermore, computing row $r$ requires only the values from row $r - 1$ and the current row's previous column. We can compress the entire 2D matrix into a single 1D array of width $n$:
-$$\text{row}[c] = \text{row}[c] + \text{row}[c - 1]$$
-Here, `row[c]` on the right-hand side represents the value from the row above, while `row[c - 1]` represents the updated value from the cell directly to the left.
-
-#### Execution Walkthrough
-
-Let us trace `m = 3, n = 4` using a compressed 1D row:
-
-| Row Index | `c = 0` | `c = 1` | `c = 2` | `c = 3` | Transition Details |
-| :---: | :---: | :---: | :---: | :---: | :--- |
-| **Row 0** | 1 | 1 | 1 | 1 | Base row: only one direct path moving right |
-| **Row 1** | 1 | $1 + 1 = 2$ | $1 + 2 = 3$ | $1 + 3 = 4$ | `row[c] = row[c] + row[c - 1]` |
-| **Row 2** | 1 | $1 + 2 = 3$ | $3 + 3 = 6$ | $4 + 6 = 10$ | Destination cell `row[3]` evaluates to 10 |
-
-The robot has 10 unique paths to reach the bottom-right corner.
+The top row and the left column are the base cases: there is exactly one way along each of them, since the robot has no choice but to keep going straight.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State:** Create a 1D list `row = [1] * n` representing the top row where each cell has exactly 1 incoming path.
-2. **Iterate Grid Rows:** Loop `r` from index 1 to $m - 1$.
-3. **Accumulate Path Counts:** For each column index `c` from 1 to $n - 1$, update `row[c] += row[c - 1]`. The unchanged `row[0]` remains 1 because only downward steps reach the first column.
-4. **Return Destination Result:** Return `row[n - 1]`, which holds the total number of unique paths to the bottom-right corner.
+Fill a grid of counts, working left to right and top to bottom so that both the cell above and the cell to the left are always already known.
+
+Set the whole top row and left column to `1`, then every inner cell is one addition.
+
+**The memory reduction** is the same observation as in the 1D problems. The formula reaches back one row and one column, so the whole grid is unnecessary: a single row suffices. Walking it left to right, the value already in a slot is the row above and the value just computed is the cell to the left, so `row[c] += row[c - 1]` does the whole update in place.
+
+That collapse from a grid to a row is the standard move in this block, and it is worth doing once by hand to see why the stale value is exactly the one you want.
+
+**The arithmetic shortcut** is worth naming: every route makes `m - 1` downward moves and `n - 1` rightward ones in some order, so the answer is the number of ways to choose which moves are downward, a binomial coefficient. That is $O(m + n)$ with no table at all, though it risks overflow in fixed-width languages.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Space-Optimized 1D DP" default>
+Take a small case, `m = 3` and `n = 3`, so the grid of counts fills in as:
+
+```text
+1  1  1
+1  2  3
+1  3  6
+```
+
+The top row and left column are all `1`. The cell at row 1, column 1 is `1 + 1 = 2`. The one to its right is `1 + 2 = 3`. The bottom-right is `3 + 3 = 6`.
+
+For the stated input of `m = 3` and `n = 7`, the same filling carries on across seven columns and ends at `28`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def uniquePaths(self, m: int, n: int) -> int:
-        # Space-optimized 1D array representing the current row's path counts
+        # one row is enough: the stale value is the row above
         row = [1] * n
 
-        # Process each row starting from row index 1
         for _ in range(1, m):
             for c in range(1, n):
-                # row[c] is the cell above; row[c - 1] is the cell to the left
-                row[c] += row[c - 1]
+                row[c] += row[c - 1]   # from above, plus from the left
 
         return row[n - 1]
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Full 2D DP Table">
+---
 
-```python
-class Solution:
-    def uniquePaths(self, m: int, n: int) -> int:
-        # dp[r][c] stores the number of unique paths to reach cell (r, c)
-        dp = [[1] * n for _ in range(m)]
+### Time and space complexity
 
-        for r in range(1, m):
-            for c in range(1, n):
-                dp[r][c] = dp[r - 1][c] + dp[r][c - 1]
+#### Time: $O(m \cdot n)$
 
-        return dp[m - 1][n - 1]
-```
+One addition per cell.
 
-  </TabItem>
-</Tabs>
+#### Space: $O(n)$
+
+A single row. The full grid is $O(m \cdot n)$ and is the clearer first draft; collapse it once the formula's reach is clear. The binomial shortcut needs no table at all.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Full 2D DP Table** | $O(m \times n)$ | $O(m \times n)$ | Computes every subproblem iteratively with clear 2D indexing, but allocates a full $m \times n$ matrix. |
-| **Space-Optimized 1D DP** | $O(m \times n)$ | $O(n)$ | Reuses a single row array of size $n$, cutting auxiliary memory from quadratic grid size down to linear width. |
-
----
-
-### Common Pitfall: Off-by-One in Combinatorial Alternatives
-
-While this problem can mathematically be solved using combinations $\binom{m + n - 2}{m - 1}$, using floating-point division or naive factorials often introduces precision issues or integer overflow in other languages. In dynamic programming, the primary pitfall is improperly indexing base rows or resetting `row[0]` during rolling-row updates. Because the robot can only reach the leftmost column by moving down, `row[0]` must always remain 1.
-
----
-
-### Concise Interview Takeaway
-
-Each cell in a grid DP represents the sum of its incoming valid transitions: `dp[r][c] = dp[r - 1][c] + dp[r][c - 1]`. Because updates only depend on the current row and the row directly above, compressing the matrix into a single 1D array of size $O(n)$ preserves linear-grid runtime while keeping auxiliary space minimal.
+A cell is reached from above or from the left, so the counts add, which makes this Climbing Stairs on a grid. The top row and left column are all `1`, since there is no choice along them. Because the formula reaches back only one row, a single row replaces the grid, with `row[c] += row[c - 1]` reading the row above and the cell to the left at once. $O(m \cdot n)$ time, $O(n)$ space.

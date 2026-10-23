@@ -1,146 +1,116 @@
 ---
 id: 5-longest-common-subsequence
 title: "1143. Longest Common Subsequence"
-description: "Find longest common subsequence length of two strings using 2D grid dynamic programming"
+description: "Matching letters extend the diagonal, mismatches take the better of dropping one"
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">2D Dynamic Programming</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">String Alignment DP</span>
 
-> **Problem Statement:** Given two strings `text1` and `text2`, return the length of their longest common subsequence. If there is no common subsequence, return 0. A subsequence of a string is a new string generated from the original string with some characters (can be none) deleted without changing the relative order of the remaining characters.
+> **Problem Statement:** Given two strings, return the length of the longest sequence of characters appearing in both, in the same order but not necessarily together.
 
 ```text
 Input:  text1 = "abcde", text2 = "ace"
 Output: 3
-Explanation: The longest common subsequence is "ace" and its length is 3.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-When comparing two sequences to find shared patterns or alignments, structure the problem as a 2D grid where each axis represents the prefix of one string.
+Put one string down the side of a table and the other along the top. Each cell answers one question:
 
-#### Brute Force: Generating All Subsequences
-A brute force approach enumerates all possible subsequences of `text1` (there are $2^m$ such subsequences) and checks whether each exists within `text2`. Because string length can reach $1000$, generating $2^{1000}$ subsets is computationally impossible.
+> How long is the best common subsequence of the first `i` characters of one and the first `j` of the other?
 
-#### Optimal Approach: 2D Prefix Matrix Alignment
-Let `dp[i][j]` represent the length of the longest common subsequence between prefix `text1[:i]` (length $i$) and prefix `text2[:j]` (length $j$). A grid of size $(m + 1) \times (n + 1)$ allows row 0 and column 0 to denote empty string prefixes where LCS is always 0.
+Standing in a cell, compare the two characters those indices point at:
 
-When evaluating `text1[i - 1]` and `text2[j - 1]`, two mutually exclusive cases emerge:
+**They match.** That character can join the subsequence, and the rest is the best you could do before either of them, which is the cell diagonally up-left. So this cell is `1 +` that.
 
-1. **Characters Match (`text1[i - 1] == text2[j - 1]`):**
-   This shared character extends the LCS of the prefixes prior to these two letters. We add 1 to the top-left diagonal:
-   $$\text{dp}[i][j] = 1 + \text{dp}[i - 1][j - 1]$$
+**They differ.** At least one of the two characters is not in the answer, so try dropping each in turn: the cell above, meaning drop a character from the side string, and the cell to the left, meaning drop one from the top. Take the better.
 
-2. **Characters Differ (`text1[i - 1] != text2[j - 1]`):**
-   These two characters cannot be paired together. The optimal subsequence must either discard `text1[i - 1]` or discard `text2[j - 1]`. We inherit the maximum of the two options:
-   $$\text{dp}[i][j] = \max(\text{dp}[i - 1][j], \, \text{dp}[i][j - 1])$$
-
-Because computing row $i$ relies only on row $i - 1$ and the current row, auxiliary space can be reduced from $O(m \times n)$ down to $O(n)$ using two alternating rows.
-
-#### Execution Walkthrough
-
-Tracing `text1 = "abcde"` against `text2 = "ace"`:
-
-| `text1` Char (`i`) | `text2` Char (`j`) | Match? | Recurrence Relation | Resulting Cell `dp[i][j]` | Current Row State |
-| :---: | :---: | :---: | :--- | :---: | :--- |
-| `a` (`i = 1`) | `a` (`j = 1`) | **Yes** | $1 + \text{dp}[0][0] = 1 + 0$ | 1 | `[0, 1, 1, 1]` |
-| `b` (`i = 2`) | `a`, `c`, `e` | No | $\max(\text{top}, \text{left})$ | No change | `[0, 1, 1, 1]` |
-| `c` (`i = 3`) | `c` (`j = 2`) | **Yes** | $1 + \text{dp}[2][1] = 1 + 1$ | 2 | `[0, 1, 2, 2]` |
-| `d` (`i = 4`) | `a`, `c`, `e` | No | $\max(\text{top}, \text{left})$ | No change | `[0, 1, 2, 2]` |
-| `e` (`i = 5`) | `e` (`j = 3`) | **Yes** | $1 + \text{dp}[4][2] = 1 + 2$ | 3 | `[0, 1, 2, 3]` |
-
-The bottom-right cell `dp[5][3]` yields the final answer 3.
+```text
+match:     1 + diagonal
+no match:  max(above, left)
+```
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Table:** Create a matrix `dp` of size $(m + 1) \times (n + 1)$ filled with zeros, where $m = \text{len}(text1)$ and $n = \text{len}(text2)$.
-2. **Iterate Prefix Lengths:** Loop `i` from 1 to $m$ and `j` from 1 to $n$.
-3. **Apply Recurrence Transition:**
-   - If `text1[i - 1] == text2[j - 1]`, set `dp[i][j] = 1 + dp[i - 1][j - 1]`.
-   - Otherwise, set `dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])`.
-4. **Return Final Prefix Alignment:** Return `dp[m][n]`.
+Make the table one larger in each direction, with an extra first row and column of zeros standing for "one of the strings is empty". That removes every boundary check: the diagonal, the above and the left always exist.
+
+Fill it row by row. Every cell is one comparison and either an addition or a maximum.
+
+The answer is in the bottom-right corner, which represents both strings in full.
+
+**Why matching takes the diagonal** rather than the cell above or left is the part to be clear on. Using the matched pair consumes **one character from each** string, so the remaining problem is both strings shortened by one, which is precisely the diagonal.
+
+This table is the foundation for a family of problems. Edit Distance is the same table with a different rule in each cell, and Longest Palindromic Subsequence is this exact algorithm run against the string's own reverse. Recognising the shape is worth more than memorising any single one.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Space-Optimized Rolling Rows" default>
+With `abcde` down the side and `ace` along the top:
+
+```text
+      ""  a  c  e
+  ""   0  0  0  0
+   a   0  1  1  1
+   b   0  1  1  1
+   c   0  1  2  2
+   d    0  1  2  2
+   e   0  1  2  3
+```
+
+- **Row `a`, column `a`:** they match, so `1 +` the diagonal zero, giving `1`.
+- **Row `b`:** `b` matches nothing, so each cell copies the better of above and left, leaving the row unchanged from the one above it.
+- **Row `c`, column `c`:** they match, so `1 +` the diagonal `1`, giving `2`.
+- **Row `e`, column `e`:** they match, so `1 +` the diagonal `2`, giving `3`.
+
+The bottom-right holds `3`, from the subsequence `ace`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def longestCommonSubsequence(self, text1: str, text2: str) -> int:
         m, n = len(text1), len(text2)
-        # Ensure text2 is the shorter string to minimize auxiliary memory
-        if m < n:
-            text1, text2 = text2, text1
-            m, n = n, m
 
-        prev = [0] * (n + 1)
-
-        for i in range(1, m + 1):
-            curr = [0] * (n + 1)
-            for j in range(1, n + 1):
-                if text1[i - 1] == text2[j - 1]:
-                    curr[j] = 1 + prev[j - 1]
-                else:
-                    curr[j] = max(prev[j], curr[j - 1])
-            prev = curr
-
-        return prev[n]
-```
-
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Full 2D DP Table">
-
-```python
-class Solution:
-    def longestCommonSubsequence(self, text1: str, text2: str) -> int:
-        m, n = len(text1), len(text2)
-        dp = [[0] * (n + 1) for _ in range(m + 1)]
+        # the extra row and column stand for an empty string
+        table = [[0] * (n + 1) for _ in range(m + 1)]
 
         for i in range(1, m + 1):
             for j in range(1, n + 1):
-                # Characters match: extend diagonal alignment
                 if text1[i - 1] == text2[j - 1]:
-                    dp[i][j] = 1 + dp[i - 1][j - 1]
+                    # the pair is used, so both strings shorten by one
+                    table[i][j] = 1 + table[i - 1][j - 1]
                 else:
-                    # Characters differ: take optimal prefix exclusion
-                    dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])
+                    # drop a character from one string or the other
+                    table[i][j] = max(table[i - 1][j], table[i][j - 1])
 
-        return dp[m][n]
+        return table[m][n]
 ```
 
-  </TabItem>
-</Tabs>
+---
+
+### Time and space complexity
+
+#### Time: $O(m \cdot n)$
+
+One comparison per cell.
+
+#### Space: $O(m \cdot n)$
+
+The table. It can be reduced to two rows, since each row only reads the one above it, which brings it to $O(n)$. The full table is needed only if the subsequence itself has to be reconstructed by walking back through it.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Full 2D DP Table** | $O(m \times n)$ | $O(m \times n)$ | Clear visual correspondence with the entire alignment matrix, but retains all rows in memory. |
-| **Space-Optimized Rolling Rows** | $O(m \times n)$ | $O(\min(m, n))$ | Preserves identical quadratic time while limiting memory to two rows of the shorter string. |
-
----
-
-### Common Pitfall: Substring vs Subsequence Confusion
-
-Substrings require contiguous character sequences, whereas subsequences permit skipping characters so long as the relative left-to-right order is preserved. In substring problems, a mismatch resets the counter to 0 (`dp[i][j] = 0`). In subsequence problems, a mismatch retains the best prior result: `dp[i][j] = max(dp[i - 1][j], dp[i][j - 1])`.
-
----
-
-### Concise Interview Takeaway
-
-LCS forms the foundational template for two-string sequence alignments. If characters match, step diagonally to add 1: `dp[i][j] = 1 + dp[i - 1][j - 1]`. If characters mismatch, take the maximum of skipping either character: `max(dp[i - 1][j], dp[i][j - 1])`. Using two rolling arrays reduces memory from $O(m \times n)$ to $O(\min(m, n))$.
+Lay the two strings out as a table where each cell is the answer for two prefixes. Matching characters take `1 +` the **diagonal**, because the pair consumes one character from each string; mismatches take the better of above and left. Pad with a row and column of zeros for the empty prefixes. This table is the base for Edit Distance and for the palindromic subsequence problem. $O(m \cdot n)$ time.

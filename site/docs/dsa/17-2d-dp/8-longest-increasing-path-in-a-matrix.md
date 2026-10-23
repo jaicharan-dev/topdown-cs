@@ -1,161 +1,118 @@
 ---
 id: 8-longest-increasing-path-in-a-matrix
 title: "329. Longest Increasing Path in a Matrix"
-description: "Find longest strictly increasing path using memoized depth-first search on DAG"
+description: "Strictly increasing means no cycles, so a plain search plus a cache is enough"
 sidebar_position: 8
 sidebar_class_name: sidebar-hard
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">2D Dynamic Programming</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Memoized DFS / DAG</span>
 
-> **Problem Statement:** Given an `m x n` integers matrix, return the length of the longest strictly increasing path in the matrix. From each cell, you can move in four orthogonal directions: up, down, left, or right. You may not move diagonally or step outside the matrix boundaries.
+> **Problem Statement:** Given a matrix of numbers, find the longest path whose values strictly increase, moving up, down, left or right.
 
 ```text
 Input:  matrix = [[9, 9, 4], [6, 6, 8], [2, 1, 1]]
 Output: 4
-Explanation: The longest increasing path is [1, 2, 6, 9].
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-In standard grid traversals, tracking a `visited` set is required to avoid infinite looping cycles. However, in this problem, every step must move to an adjacent cell with a strictly greater numeric value ($\text{matrix}[nr][nc] > \text{matrix}[r][c]$).
+Grid searches normally need a visited marker, because a walk can loop back on itself. Here it cannot, and understanding why is what makes the solution simple.
 
-Because an increasing sequence ($1 < 2 < 6 < 9$) can never cycle back to a smaller or identical number, the grid forms an implicit **Directed Acyclic Graph (DAG)**.
+Every step must go to a **strictly larger** value. So a path can never return to where it has been, since that would mean arriving back at a value both larger and smaller than itself. The grid, read as a graph of allowed moves, has no cycles at all.
 
-#### Brute Force: Unmemoized Exhaustive DFS
-Starting a standard depth-first search from every cell without caching recalculates the longest increasing path for identical coordinates repeatedly. In the worst case, this leads to exponential $O(4^{m \times n})$ time complexity, timing out on even modest grid sizes.
+That means two things. No visited set is needed. And the answer at a cell, the longest increasing path starting there, depends only on its neighbours' answers and never on how you arrived.
 
-#### Optimal Approach: Memoized DFS on an Implicit DAG
-Because the grid contains zero directed cycles, optimal substructure holds across every cell:
-$$\text{LIP}(r, c) = 1 + \max_{(nr, nc)} (\text{LIP}(nr, nc))$$
-for all in-bounds orthogonal neighbors where $\text{matrix}[nr][nc] > \text{matrix}[r][c]$. If a cell has no strictly larger neighbors, its longest path is simply 1.
-
-By memoizing the result of `dfs(r, c)` in a 2D matrix or dictionary `memo`, each cell is computed exactly once. Subsequent lookups return immediately in $O(1)$ time.
-
-#### Execution Walkthrough
-
-Tracing `matrix = [[9, 9, 4], [6, 6, 8], [2, 1, 1]]`:
-
-| Cell Coordinate `(r, c)` | Value | Greater Orthogonal Neighbors | Subproblem Transition | Cached Path Length |
-| :---: | :---: | :--- | :--- | :---: |
-| `(0, 0)` | 9 | None | Base peak cell | 1 |
-| `(0, 1)` | 9 | None | Base peak cell | 1 |
-| `(1, 2)` | 8 | None (all neighbors $\le 8$) | Base peak cell | 1 |
-| `(0, 2)` | 4 | `(1, 2): 8` | $1 + \text{dfs}(1, 2) = 1 + 1$ | 2 |
-| `(1, 0)` | 6 | `(0, 0): 9`, `(0, 1): 9` | $1 + \max(1, 1)$ | 2 |
-| `(2, 0)` | 2 | `(1, 0): 6` | $1 + \text{dfs}(1, 0) = 1 + 2$ | 3 |
-| `(2, 1)` | 1 | `(2, 0): 2`, `(1, 1): 6` | $1 + \max(\text{dfs}(2, 0), \text{dfs}(1, 1)) = 1 + 3$ | 4 |
-
-Iterating through all starting positions confirms that the maximum global path length is 4.
+So compute it for every cell and keep the largest. The same cell gets asked about many times, from each of its smaller neighbours, so **cache** the answer the first time it is worked out.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Guard Against Empty Input:** Return 0 if the matrix is empty or has zero columns.
-2. **Initialize Memoization Buffer:** Create a 2D array `memo` of size $m \times n$ initialized to 0.
-3. **Define Memoized DFS (`dfs(r, c)`):**
-   - If `memo[r][c] != 0`, return the cached value `memo[r][c]`.
-   - Initialize `max_len = 1`.
-   - For each direction `(dr, dc)` in `[(-1, 0), (1, 0), (0, -1), (0, 1)]`:
-     - Calculate neighbor coordinates `nr = r + dr`, `nc = c + dc`.
-     - If `(nr, nc)` is within bounds and `matrix[nr][nc] > matrix[r][c]`:
-       - Update `max_len = max(max_len, 1 + dfs(nr, nc))`.
-   - Store `memo[r][c] = max_len` and return it.
-4. **Find Global Maximum:** Evaluate `dfs(r, c)` across all coordinates $0 \le r < m$ and $0 \le c < n$, returning the overall maximum.
+Write a search that returns the length of the longest increasing path starting at a cell:
+
+1. **If the answer is cached**, return it.
+2. **Otherwise** try all four neighbours, and for each one that is strictly larger, take the path length from there.
+3. **The answer is `1 +` the best of those**, or `1` if no neighbour is larger, since the cell alone is a path of length one.
+4. **Cache it** before returning.
+
+Then sweep every cell as a starting point and take the largest result.
+
+The cache is what turns this from exponential into linear. Without it the same sub-paths get recomputed from every route that reaches them. With it, each cell is computed exactly once and read thereafter.
+
+That is memoisation, and this problem is the clean example of where it beats a table: the dependencies run in whatever direction the values happen to increase, so there is no row-by-row order to fill in. The alternative is to sort all the cells by value and process them in order, which is a genuine table-filling solution and also $O(m n \log(m n))$ because of the sort, so the cache is both simpler and faster.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Memoized DFS (Top-Down DP)" default>
+The matrix is:
+
+```text
+9  9  4
+6  6  8
+2  1  1
+```
+
+Start from the `1` at the bottom middle. Its larger neighbours are `2` to the left and `6` above.
+
+- **From `2`:** its only larger neighbour is `6` above. From `6`, the larger neighbour is `9` above. From `9`, nothing is larger, so that chain gives `9`, then `6`, then `2`, a length of `3`. So starting at `1` through `2` gives `4`.
+- **From `6`:** the chain `6 -> 9` gives `2`, so starting at `1` that way gives `3`.
+
+The best from this cell is `4`, the path `1 -> 2 -> 6 -> 9`.
+
+When the sweep later starts at `2`, its answer is already cached as `3` and is returned immediately rather than recomputed. That saving, multiplied across the grid, is the whole point.
+
+---
+
+### The code
 
 ```python
+from functools import lru_cache
+
 class Solution:
     def longestIncreasingPath(self, matrix: list[list[int]]) -> int:
-        if not matrix or not matrix[0]:
-            return 0
-
         rows, cols = len(matrix), len(matrix[0])
-        memo = [[0] * cols for _ in range(rows)]
-        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
-        def dfs(r: int, c: int) -> int:
-            if memo[r][c] != 0:
-                return memo[r][c]
+        @lru_cache(maxsize=None)
+        def longest_from(r: int, c: int) -> int:
+            best = 1   # the cell on its own is already a path
 
-            max_len = 1
-            for dr, dc in directions:
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 nr, nc = r + dr, c + dc
-                if 0 <= nr < rows and 0 <= nc < cols and matrix[nr][nc] > matrix[r][c]:
-                    max_len = max(max_len, 1 + dfs(nr, nc))
 
-            memo[r][c] = max_len
-            return max_len
+                # strictly larger, which is also why no visited set is needed
+                if (0 <= nr < rows and 0 <= nc < cols
+                        and matrix[nr][nc] > matrix[r][c]):
+                    best = max(best, 1 + longest_from(nr, nc))
 
-        return max(dfs(r, c) for r in range(rows) for c in range(cols))
+            return best
+
+        return max(longest_from(r, c)
+                   for r in range(rows)
+                   for c in range(cols))
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Sorted Coordinate DP (Bottom-Up)">
+---
 
-```python
-class Solution:
-    def longestIncreasingPath(self, matrix: list[list[int]]) -> int:
-        if not matrix or not matrix[0]:
-            return 0
+### Time and space complexity
 
-        rows, cols = len(matrix), len(matrix[0])
-        dp = [[1] * cols for _ in range(rows)]
+#### Time: $O(m \cdot n)$
 
-        # Sorting cells in descending order guarantees DAG topological ordering
-        cells = sorted(
-            ((r, c) for r in range(rows) for c in range(cols)),
-            key=lambda cell: matrix[cell[0]][cell[1]],
-            reverse=True
-        )
+Each cell's answer is computed once and cached, and computing it looks at four neighbours. Everything afterwards is a cache read.
 
-        directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
-        global_max = 1
+Without the cache it would be exponential, since every path would be explored separately.
 
-        for r, c in cells:
-            for dr, dc in directions:
-                nr, nc = r + dr, c + dc
-                if 0 <= nr < rows and 0 <= nc < cols and matrix[nr][nc] > matrix[r][c]:
-                    dp[r][c] = max(dp[r][c], 1 + dp[nr][nc])
-            global_max = max(global_max, dp[r][c])
+#### Space: $O(m \cdot n)$
 
-        return global_max
-```
-
-  </TabItem>
-</Tabs>
+The cache, plus recursion depth that can reach the number of cells on a grid whose values increase along a single snaking path.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Memoized DFS (Top-Down DP)** | $O(m \times n)$ | $O(m \times n)$ | Visits each cell and directed edge at most once, using recursion stack and a memo grid. |
-| **Sorted Coordinate DP (Bottom-Up)** | $O(m \times n \log(m \times n))$ | $O(m \times n)$ | Sorts all cells to establish topological ordering, avoiding recursion at the expense of logarithmic sort overhead. |
-
----
-
-### Common Pitfall: Unnecessary Visited Sets Causing Path Blocking
-
-Because standard DFS on grids usually involves unweighted graphs with potential cycles, many candidates mistakenly include a global `visited` set. If you mark a cell as visited without backtracking, you prevent other valid increasing paths from using that same cell. Since the strictly increasing constraint mathematically precludes cycles, no `visited` set is required, only memoization.
-
----
-
-### Concise Interview Takeaway
-
-Because strictly increasing paths can never revisit smaller or equal values, the matrix behaves as a cycle-free Directed Acyclic Graph. Finding the longest path translates directly to computing the longest path in a DAG using DFS with memoization, achieving optimal $O(m \times n)$ runtime.
+Strictly increasing moves cannot cycle, so no visited marker is needed and a cell's answer is independent of how you reached it. Compute the longest path starting at each cell, recursing into strictly larger neighbours, and cache each answer the first time. The cache is what makes it linear instead of exponential, and memoisation beats a table here because the dependencies follow the values rather than the grid. $O(m \cdot n)$ time.
