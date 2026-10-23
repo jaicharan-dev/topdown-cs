@@ -1,125 +1,100 @@
 ---
 id: 1-binary-search
 title: "704. Binary Search"
-description: "Canonical low/high/mid boundary template for sorted arrays"
+description: "Halve the range every step by asking which side the target can be on"
 sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Binary Search</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Standard Bisect</span>
 
-> **Problem Statement:** Given a sorted array of integers `nums` in ascending order and a target value `target`, search for `target` within `nums`. If it exists, return its index; otherwise, return `-1`. The solution must run in $O(\log n)$ time.
+> **Problem Statement:** You are given a sorted array `nums` and a `target`. Return the position of the target, or `-1` if it is not there. It has to run in $O(\log n)$ time.
 
 ```text
 Input:  nums = [-1, 0, 3, 5, 9, 12], target = 9
 Output: 4
-Explanation: 9 exists in nums and its index is 4.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine searching for a word in an 800-page dictionary. You do not start from page 1 flipping through every single page; instead, you open the book right in the middle (page 400). If your target word comes alphabetically after the middle word, you immediately discard pages 1 through 400. You repeat this process with the remaining half (pages 401 to 800), opening to page 600.
+Looking up a word in a dictionary, nobody starts at page one. You open somewhere near the middle, see whether your word comes before or after, and throw away the half it cannot be in. Then you do the same with what is left.
 
-Because the array is sorted, every single comparison cuts the remaining search space in half. Even with 1,000,000 elements, you find your target in at most 20 comparisons ($\approx \log_2(1{,}000{,}000)$).
+Each look halves the search. That is why a dictionary of a hundred thousand words takes about seventeen looks rather than fifty thousand.
 
-#### Brute Force: Linear Scan
-Iterate index by index from $0$ to $n - 1$. While it works on any array, it completely ignores the sorted property and takes $O(n)$ time in the worst case when the element is near the end or absent.
-
-#### Optimal Approach: Boundary Halving
-Maintain two boundary pointers, `low` and `high`, representing the current inclusive search interval `[low, high]`. In each step, evaluate the midpoint:
-- If `nums[mid] == target`, return `mid`.
-- If `nums[mid] < target`, the target must reside in the right half: discard the left half by setting `low = mid + 1`.
-- If `nums[mid] > target`, the target must reside in the left half: discard the right half by setting `high = mid - 1`.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [-1, 0, 3, 5, 9, 12]` with `target = 9`:
-
-| Step | `low` | `high` | `mid` | `nums[mid]` | Comparison | Action Taken | Search Window |
-| :---: | :---: | :---: | :---: | :---: | :---: | :--- | :---: |
-| **1** | `0` | `5` | `2` | `3` | `3 < 9` | Discard left half: `low = mid + 1` | `[3, 5]` |
-| **2** | `3` | `5` | `4` | `9` | `9 == 9` | Match found! Return index `4` | `[4, 4]` |
+The array being sorted is what makes the throwing away legal. One comparison against the middle tells you about **every** element on one side at once.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Boundary Pointers:** Set `low = 0` and `high = len(nums) - 1`, covering the full inclusive range of valid indices.
-2. **Execute Search Loop:** While `low <= high`:
-   - Compute midpoint: `mid = low + (high - low) // 2` to safely avoid potential integer overflow.
-   - If `nums[mid] == target`, immediately return `mid`.
-   - If `nums[mid] < target`, move `low = mid + 1`.
-   - If `nums[mid] > target`, move `high = mid - 1`.
-3. **Handle Not Found:** If the loop terminates with `low > high`, the target does not exist in `nums`. Return `-1`.
+Hold a range with two markers, `low` and `high`, that starts as the whole array and shrinks. Everything outside the range has already been ruled out.
+
+Each step, look at the middle of the range:
+
+- **It is the target.** Done, return its position.
+- **It is too small.** The target cannot be at the middle or anywhere left of it, so move `low` to just past the middle.
+- **It is too big.** The target cannot be at the middle or right of it, so move `high` to just before the middle.
+
+Two details are what make this terminate correctly, and both are where buggy binary searches come from.
+
+**The `+ 1` and `- 1`.** The middle has just been checked, so it must be excluded from the new range. Writing `low = mid` instead of `low = mid + 1` leaves the range the same size when it gets down to two elements, and the loop spins forever.
+
+**The `low <= high`, not `low < high`.** When the range narrows to a single element, `low` and `high` are equal. That element still has to be checked, and a strict comparison would skip it and wrongly return `-1`.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Iterative Binary Search" default>
+Take `nums = [-1, 0, 3, 5, 9, 12]` with `target = 9`. The range starts as the whole array, positions `0` to `5`.
+
+1. **The middle is position 2, holding `3`.** Too small, so the target is somewhere to the right. The range becomes positions `3` to `5`.
+2. **The middle is position 4, holding `9`.** That is the target, so return `4`.
+
+Six elements, two looks.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def search(self, nums: list[int], target: int) -> int:
         low, high = 0, len(nums) - 1
 
-        # Search space is inclusive [low, high]
         while low <= high:
-            # Prevents 32-bit integer overflow in statically typed languages
-            mid = low + (high - low) // 2
+            mid = (low + high) // 2
 
             if nums[mid] == target:
                 return mid
-            elif nums[mid] < target:
-                low = mid + 1
+
+            if nums[mid] < target:
+                low = mid + 1    # everything from mid leftward is too small
             else:
-                high = mid - 1
+                high = mid - 1   # everything from mid rightward is too big
 
         return -1
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Linear Search">
+---
 
-```python
-class Solution:
-    def search(self, nums: list[int], target: int) -> int:
-        for i, val in enumerate(nums):
-            if val == target:
-                return i
-        return -1
-```
+### Time and space complexity
 
-  </TabItem>
-</Tabs>
+#### Time: $O(\log n)$
+
+The range halves every step, so the question is how many times `n` can be halved before nothing is left. That count is the logarithm of `n` in base two.
+
+The numbers are worth holding on to. A thousand elements take about ten steps. A million take twenty. A billion take thirty. Each time the data gets a thousand times bigger, the work goes up by ten steps.
+
+#### Space: $O(1)$
+
+Three numbers. Writing it recursively instead costs $O(\log n)$ stack frames, so the loop is the better answer when memory is being discussed.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Linear Search** | $O(n)$ | $O(1)$ | Scans elements sequentially. Does not require sorted data, but wastes time when elements are already ordered. |
-| **Iterative Binary Search** | $O(\log n)$ | $O(1)$ | Halves the search space on each iteration. Requires sorted input, achieving logarithmic speed with minimal pointer memory. |
-
----
-
-### Common Pitfall: Boundary Off-By-One and Midpoint Overflow
-
-Two common mistakes break standard binary search:
-Using `while low < high` instead of `while low <= high` causes the loop to terminate prematurely when `low == high`, failing to evaluate the single remaining candidate element.
-Using `(low + high) // 2` can cause 32-bit signed integer overflow in languages like C++ or Java when `low + high` exceeds $2^{31} - 1$. Calculating `low + (high - low) // 2` avoids this and is the industry-standard habit.
-
----
-
-### Concise Interview Takeaway
-
-For basic binary search, maintain inclusive bounds `[low, high]` with `while low <= high`. Calculate `mid = low + (high - low) // 2` to avoid integer overflow, and shift pointers past `mid` by 1 to halve the candidate space on each check. This achieves $O(\log n)$ runtime with $O(1)$ space.
+Hold a range, check its middle, and throw away the half the target cannot be in. Always exclude the middle from the new range with `mid + 1` or `mid - 1`, or the loop can stop shrinking, and use `low <= high` so a range of one element still gets checked. $O(\log n)$ time, $O(1)$ space.

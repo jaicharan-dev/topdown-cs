@@ -1,187 +1,128 @@
 ---
 id: 11-median-of-two-sorted-arrays
 title: "4. Median of Two Sorted Arrays"
-description: "Binary search on the partition cut of the smaller array"
+description: "Search for the cut that puts the right half of everything on the left"
 sidebar_position: 11
 sidebar_class_name: sidebar-hard
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Binary Search</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Partition Cut</span>
 
-> **Problem Statement:** Given two sorted arrays `nums1` and `nums2` of size `m` and `n` respectively, return the median of the two sorted arrays. The overall run time complexity should be $O(\log(m + n))$.
+> **Problem Statement:** You are given two sorted arrays. Return the median of all their values combined, in $O(\log(m + n))$ time.
 
 ```text
 Input:  nums1 = [1, 3], nums2 = [2]
 Output: 2.0
-Explanation: Merged array = [1, 2, 3] and median is 2.0.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Merging the two arrays takes $O(m + n)$ time and space, which violates the strict $O(\log(m + n))$ requirement. To achieve logarithmic time, do not search for specific values: binary search for the partition cut that splits both arrays simultaneously.
+Merging the two arrays and taking the middle is correct, and it is $O(m + n)$. The required bound rules it out, which means the merged array can never actually be built.
 
-#### Brute Force: Two-Pointer Merge
-Merge both arrays into a single combined sorted list of size $m + n$ and return the middle element (or average of two middle elements). This requires $O(m + n)$ time and $O(m + n)$ auxiliary memory.
+So think about what the median really is. It is the point where the combined data splits into two halves of equal size, with every value on the left no bigger than every value on the right. The median is then read off the values closest to that split.
 
-#### Optimal Approach: Binary Search on the Partition Cut
-The median divides the combined elements into two equal halves: a Left Half and a Right Half.
+You do not need the merged array to describe that split. A cut in each array is enough:
 
-If the total number of elements is $m + n$, the Left Half must contain:
-$$\text{half} = \lfloor \frac{m + n + 1}{2} \rfloor \quad \text{elements}$$
+```text
+nums1:  a a a | b b b
+nums2:  c c   | d d d d
+        ~~~~~   ~~~~~~
+        left     right
+```
 
-If we place a cut in array $A$ contributing $i$ elements to the Left Half, array $B$ must contribute the rest:
-$$j = \text{half} - i \quad \text{elements}$$
-
-Because arrays $A$ and $B$ are individually sorted, we only need to verify the four cross-boundary values around the cut:
-- $A_{\text{left}} \le B_{\text{right}}$
-- $B_{\text{left}} \le A_{\text{right}}$
-
-When both conditions hold, every element in the Left Half is smaller than or equal to every element in the Right Half:
-- **Odd Total Elements:** The median is $\max(A_{\text{left}}, B_{\text{left}})$.
-- **Even Total Elements:** The median is the average:
-  $$\frac{\max(A_{\text{left}}, B_{\text{left}}) + \min(A_{\text{right}}, B_{\text{right}})}{2.0}$$
-
-If $A_{\text{left}} > B_{\text{right}}$, array $A$ contributed too many elements to the left partition: move the cut left (`high = i - 1`). If $B_{\text{left}} > A_{\text{right}}$, array $A$ contributed too few elements: move the cut right (`low = i + 1`). Running binary search exclusively on the shorter array guarantees $j \ge 0$ and optimizes runtime to $O(\log(\min(m, n)))$.
-
-#### Execution Walkthrough
-
-Let us trace `nums1 = [1, 3]` ($m = 2$) and `nums2 = [2]` ($n = 1$). Swap arrays so $A = [2]$ (length 1) and $B = [1, 3]$ (length 2): `total = 3`, `half = 2`. Initial cut range for $A$: `low = 0`, `high = 1`.
-
-| Step | `low` | `high` | $i$ | $j$ | $A_{\text{left}}$ | $A_{\text{right}}$ | $B_{\text{left}}$ | $B_{\text{right}}$ | Valid? | Action Taken | Search Window |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- | :---: |
-| **1** | `0` | `1` | `0` | `2` | $-\infty$ | `2` | `3` | $+\infty$ | No ($3 > 2$) | $B_{\text{left}} > A_{\text{right}}$: `low = i + 1` | `[1, 1]` |
-| **2** | `1` | `1` | `1` | `1` | `2` | $+\infty$ | `1` | `3` | Yes | Valid partition found | `[1, 1]` |
-
-Because total elements is odd (3), the median is $\max(A_{\text{left}}, B_{\text{left}}) = \max(2, 1) = 2.0$.
+Choosing where to cut the first array **forces** where to cut the second, because the two left pieces together must hold exactly half of everything. So there is only one thing to search for: the cut in the first array.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Ensure Array $A$ is Shorter:** If `len(nums1) > len(nums2)`, swap them so $A$ is the shorter array.
-2. **Initialize Range and Target Half:**
-   - Let `total = len(A) + len(B)` and `half = (total + 1) // 2`.
-   - Set cut bounds: `low = 0` and `high = len(A)`.
-3. **Execute Partition Search:** While `low <= high`:
-   - Compute cuts: `i = low + (high - low) // 2` and `j = half - i`.
-   - Extract boundary values using sentinels $\pm\infty$:
-     - `a_left = A[i - 1]` if `i > 0` else $-\infty$
-     - `a_right = A[i]` if `i < len(A)` else $+\infty$
-     - `b_left = B[j - 1]` if `j > 0` else $-\infty$
-     - `b_right = B[j]` if `j < len(B)` else $+\infty$
-   - Validate partition:
-     - If `a_left <= b_right` and `b_left <= a_right`:
-       - If `total % 2 != 0`: return `float(max(a_left, b_left))`.
-       - Else: return `(max(a_left, b_left) + min(a_right, b_right)) / 2.0`.
-     - Else if `a_left > b_right`: move cut left with `high = i - 1`.
-     - Else: move cut right with `low = i + 1`.
-4. **Fallback:** Return `0.0`.
+A cut is correct when both of these hold:
+
+```text
+the last value left of cut 1  <=  the first value right of cut 2
+the last value left of cut 2  <=  the first value right of cut 1
+```
+
+Those two checks are the whole correctness condition. Within each array sortedness already guarantees the rest, so only the cross-comparisons can go wrong.
+
+If the first check fails, the first array contributed something too large, meaning you took too many from it, so move the cut left. If the second fails, you took too few, so move the cut right. That is a binary search over the cut position, from `0` to the length of the first array.
+
+Three details make this work in practice.
+
+**Always cut the smaller array.** Swap them first if necessary. It keeps the search range small and, more importantly, stops the forced cut in the other array from falling outside it.
+
+**Use infinities at the edges.** A cut at position `0` has nothing on its left, and a cut at the end has nothing on its right. Treating the missing values as negative and positive infinity means those cases satisfy the comparisons automatically, with no special branches.
+
+**Round the half up.** Computing the left-hand size as `(m + n + 1) // 2` makes the left side hold the extra element when the total is odd, which means the median is just the largest value on the left. For an even total it is the average of the largest on the left and the smallest on the right.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Binary Search on Partition Cut" default>
+Take `nums1 = [1, 3]` and `nums2 = [2]`. The first array is longer, so swap: now `nums1 = [2]` and `nums2 = [1, 3]`. The left side must hold `(1 + 2 + 1) // 2 = 2` values.
+
+1. **Try cut 1 at position 0**, taking nothing from `nums1`. Then cut 2 must take `2` values, the whole of `nums2`. The last value left of cut 2 is `3`, and the first value right of cut 1 is `2`. Is `3` at most `2`? No, so too few were taken from the first array. Move the cut right.
+2. **Try cut 1 at position 1**, taking the `2`. Then cut 2 takes `1` value, the `1`. The last left of cut 1 is `2`, the first right of cut 2 is `3`, so `2` is at most `3`. The last left of cut 2 is `1`, the first right of cut 1 is infinity, so that holds as well. The cut is correct.
+
+The total is odd, so the median is the largest value on the left: the larger of `2` and `1`, which is `2.0`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def findMedianSortedArrays(self, nums1: list[int], nums2: list[int]) -> float:
-        A, B = nums1, nums2
+        # always cut the smaller array, so the forced cut stays in range
+        if len(nums1) > len(nums2):
+            nums1, nums2 = nums2, nums1
 
-        # Ensure A is the smaller array to guarantee O(log(min(m, n)))
-        if len(A) > len(B):
-            A, B = B, A
+        m, n = len(nums1), len(nums2)
+        half = (m + n + 1) // 2   # rounded up, so the left holds any extra
 
-        total = len(A) + len(B)
-        half = (total + 1) // 2
-        low, high = 0, len(A)
+        low, high = 0, m
 
         while low <= high:
-            i = low + (high - low) // 2  # Partition cut in A
-            j = half - i                  # Partition cut in B
+            cut1 = (low + high) // 2
+            cut2 = half - cut1    # choosing one cut forces the other
 
-            # Assign boundary values with +/- infinity sentinels for edge cuts
-            a_left = A[i - 1] if i > 0 else float("-inf")
-            a_right = A[i] if i < len(A) else float("inf")
-            b_left = B[j - 1] if j > 0 else float("-inf")
-            b_right = B[j] if j < len(B) else float("inf")
+            # infinities stand in for "nothing on this side"
+            left1 = nums1[cut1 - 1] if cut1 > 0 else float("-inf")
+            right1 = nums1[cut1] if cut1 < m else float("inf")
+            left2 = nums2[cut2 - 1] if cut2 > 0 else float("-inf")
+            right2 = nums2[cut2] if cut2 < n else float("inf")
 
-            # Check if partition correctly divides left and right halves
-            if a_left <= b_right and b_left <= a_right:
-                # Odd total: median is the maximum of the left partition
-                if total % 2 != 0:
-                    return float(max(a_left, b_left))
-                # Even total: median is the average of the two middle elements
-                return (max(a_left, b_left) + min(a_right, b_right)) / 2.0
-            elif a_left > b_right:
-                # A contributed too many elements to the left half; move cut left
-                high = i - 1
+            if left1 <= right2 and left2 <= right1:
+                if (m + n) % 2:
+                    return float(max(left1, left2))
+                return (max(left1, left2) + min(right1, right2)) / 2
+
+            if left1 > right2:
+                high = cut1 - 1   # took too many from the first array
             else:
-                # A contributed too few elements to the left half; move cut right
-                low = i + 1
+                low = cut1 + 1    # took too few
 
         return 0.0
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Two-Pointer Merge">
+---
 
-```python
-class Solution:
-    def findMedianSortedArrays(self, nums1: list[int], nums2: list[int]) -> float:
-        merged: list[int] = []
-        i, j = 0, 0
-        m, n = len(nums1), len(nums2)
+### Time and space complexity
 
-        while i < m and j < n:
-            if nums1[i] <= nums2[j]:
-                merged.append(nums1[i])
-                i += 1
-            else:
-                merged.append(nums2[j])
-                j += 1
+#### Time: $O(\log(\min(m, n)))$
 
-        while i < m:
-            merged.append(nums1[i])
-            i += 1
-        while j < n:
-            merged.append(nums2[j])
-            j += 1
+The search runs over cut positions in the smaller array only, halving that range each step. That is comfortably inside the $O(\log(m + n))$ the problem asks for, and it is why swapping the arrays at the start is worth doing.
 
-        total = m + n
-        if total % 2 != 0:
-            return float(merged[total // 2])
-        return (merged[total // 2 - 1] + merged[total // 2]) / 2.0
-```
+#### Space: $O(1)$
 
-  </TabItem>
-</Tabs>
+Six values per step. Nothing is merged or copied, which is the entire point.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Two-Pointer Merge** | $O(m + n)$ | $O(m + n)$ | Merges elements sequentially. Intuitive, but violates logarithmic runtime requirements. |
-| **Partition Binary Search** | $O(\log(\min(m, n)))$ | $O(1)$ | Binary searches cut position on the smaller array. Computes the median directly in logarithmic time and constant space. |
-
----
-
-### Common Pitfall: Partitioning Without Swapping the Shorter Array
-
-Running binary search on the longer array can cause cut $j = \text{half} - i$ to evaluate to negative indices or out-of-bounds positions when $i$ spans the larger range. Swapping the arrays ensures $len(A) \le len(B)$, which guarantees $j \ge 0$ throughout all iterations and optimizes time complexity to $O(\log(\min(m, n)))$. Another pitfall is handling odd versus even total lengths with separate integer divisions instead of the unified `(total + 1) // 2`.
-
----
-
-### Concise Interview Takeaway
-
-Partition the combined elements into equal halves by binary searching the cut index on the smaller array. A partition is valid when cross-boundaries satisfy $A_{\text{left}} \le B_{\text{right}}$ and $B_{\text{left}} \le A_{\text{right}}$, delivering optimal $O(\log(\min(m, n)))$ time and $O(1)$ space.
+The median is defined by a split, not by a merged array, so search for the split. Cutting the first array forces the cut in the second, since the left side must hold half of everything. A cut is right when each array's last left value is no bigger than the other's first right value. Cut the smaller array, use infinities at the edges, and round the half up so an odd total is just the largest value on the left. $O(\log(\min(m, n)))$ time, $O(1)$ space.

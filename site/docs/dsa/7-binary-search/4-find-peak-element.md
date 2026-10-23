@@ -1,124 +1,100 @@
 ---
 id: 4-find-peak-element
 title: "162. Find Peak Element"
-description: "Binary search on local slope direction to find a peak"
+description: "Walk uphill: the slope under your feet says which side must hold a peak"
 sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Binary Search</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Slope Invariant</span>
 
-> **Problem Statement:** A peak element is an element that is strictly greater than its adjacent neighbors. Given a 0-indexed integer array `nums`, find any peak element and return its index. You may imagine that `nums[-1] = nums[n] = -∞`. You must write an algorithm with $O(\log n)$ runtime complexity.
+> **Problem Statement:** A peak is an element bigger than both of its neighbours, with the area outside the array counting as negative infinity. Given an array, return the position of any peak. It has to run in $O(\log n)$ time.
 
 ```text
 Input:  nums = [1, 2, 1, 3, 5, 6, 4]
 Output: 5
-Explanation: Index 5 (value 6) is a peak element because nums[4] = 5 < 6 and nums[6] = 4 < 6. Index 1 (value 2) is also a valid peak.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Binary search does not strictly require an entirely sorted array. It only requires a monotonic decision rule that guarantees a valid solution exists in one half.
+The array is unsorted, so the usual reason binary search works does not apply. Something else does.
 
-#### Brute Force: Linear Scan
-Iterate index by index from left to right and return the first element where `nums[i] > nums[i + 1]`. Because the boundary beyond the array drops to $-\infty$, the first element that stops climbing is guaranteed to be a peak. However, this sequential scan takes $O(n)$ time in the worst case.
+Stand at any position and look at the ground just to your right. The slope is either going up or going down.
 
-#### Optimal Approach: Gradient-Driven Binary Search
-Imagine hiking in dense mountain fog where you can only inspect your current position `mid` and the adjacent step to your right `mid + 1`:
-- **Uphill Slope (`nums[mid] < nums[mid + 1]`):** You are climbing upward to the right. Because the boundary at index $n$ drops to $-\infty$, elevation cannot increase indefinitely without cresting, which guarantees at least one peak exists in the right half. Discard the left half: `low = mid + 1`.
-- **Downhill Slope (`nums[mid] > nums[mid + 1]`):** The elevation drops to your right. That means your current position `mid` is already higher than `mid + 1`. Either `mid` itself is the peak, or a higher peak exists to the left. Discard elements strictly to the right while keeping `mid`: `high = mid`.
+**If it is going up**, start walking right. Either the climb continues until you reach the end of the array, where the drop to negative infinity makes the last element a peak, or it stops climbing somewhere along the way, and wherever it stops is a peak. Either way, a peak exists to your right.
 
-By repeatedly following the upward slope, you converge on a local maximum in logarithmic steps.
+**If it is going down**, the same argument runs leftward from where you stand, so a peak exists at your position or to its left.
 
-#### Execution Walkthrough
-
-Let us trace `nums = [1, 2, 1, 3, 5, 6, 4]`:
-
-| Step | `low` | `high` | `mid` | `nums[mid]` | `nums[mid + 1]` | Slope Direction | Action Taken | Search Window |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- | :---: |
-| **1** | `0` | `6` | `3` | `3` | `5` | Ascending (`3 < 5`) | Move right: `low = mid + 1` | `[4, 6]` |
-| **2** | `4` | `6` | `5` | `6` | `4` | Descending (`6 > 4`) | Move left: `high = mid` | `[4, 5]` |
-| **3** | `4` | `5` | `4` | `5` | `6` | Ascending (`5 < 6`) | Move right: `low = mid + 1` | `[5, 5]` |
-
-When `low == high == 5`, the loop terminates and index `5` is returned as a peak.
+Either answer discards half the array, which is all binary search needs. You never need a sorted array, only a guarantee about which half is worth keeping.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Convergence Bounds:** Set `low = 0` and `high = len(nums) - 1`.
-2. **Execute Gradient Binary Search:** While `low < high`:
-   - Compute midpoint: `mid = low + (high - low) // 2`.
-   - Compare `nums[mid]` with `nums[mid + 1]`:
-     - If `nums[mid] < nums[mid + 1]`, slope ascends rightward: advance `low = mid + 1`.
-     - Else (`nums[mid] > nums[mid + 1]`), slope descends rightward: set `high = mid` to preserve `mid` as a candidate peak.
-3. **Return Converged Index:** When `low == high`, both pointers have converged on a peak. Return `low`.
+Compare the middle element with its right-hand neighbour.
+
+- **The neighbour is bigger**, so the slope rises. A peak lies strictly to the right, and `low` moves to just past the middle.
+- **The neighbour is smaller**, so the slope falls. The middle itself might be the peak, so keep it: `high` becomes the middle.
+
+Narrow until the markers meet, and that position is a peak.
+
+This is the "hunting for a position" shape, so it uses `low < high` and `high = mid`, with no equality check at the end.
+
+Reading `nums[mid + 1]` is safe because the loop runs only while `low` is strictly less than `high`, which guarantees the middle is never the last element.
+
+The problem says to return *any* peak, which is what makes this legal. The array may hold several, and which one you land on depends on where the halving takes you. In the example, both position `1` and position `5` are peaks, and this walk finds `5`.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Gradient Binary Search" default>
+Take `nums = [1, 2, 1, 3, 5, 6, 4]`, with the range covering positions `0` to `6`.
+
+1. **The middle is position 3, holding `3`.** Its right neighbour is `5`, which is bigger, so the slope rises and a peak lies to the right. The range becomes `4` to `6`.
+2. **The middle is position 5, holding `6`.** Its right neighbour is `4`, which is smaller, so the slope falls. Position 5 stays a candidate and the range becomes `4` to `5`.
+3. **The middle is position 4, holding `5`.** Its right neighbour is `6`, bigger, so the slope rises and `low` moves to `5`.
+
+The markers meet at `5`, which holds `6`, with `5` on its left and `4` on its right. A genuine peak.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def findPeakElement(self, nums: list[int]) -> int:
         low, high = 0, len(nums) - 1
 
-        # Terminate when the window shrinks to a single element (low == high)
         while low < high:
-            mid = low + (high - low) // 2
+            mid = (low + high) // 2
 
+            # the ground rises to the right, so a peak must be over there
             if nums[mid] < nums[mid + 1]:
-                # Climbing uphill to the right; peak must exist in the right half
                 low = mid + 1
             else:
-                # Downhill to the right; mid could be the peak or peak is to the left
                 high = mid
 
         return low
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Linear Scan">
+---
 
-```python
-class Solution:
-    def findPeakElement(self, nums: list[int]) -> int:
-        for i in range(len(nums) - 1):
-            if nums[i] > nums[i + 1]:
-                return i
-        return len(nums) - 1
-```
+### Time and space complexity
 
-  </TabItem>
-</Tabs>
+#### Time: $O(\log n)$
+
+Half the range is discarded every step, on the strength of one comparison, so the number of steps is the logarithm of the array length.
+
+#### Space: $O(1)$
+
+Three numbers.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Linear Scan** | $O(n)$ | $O(1)$ | Scans sequentially for the first downward slope. Avoids midpoint logic, but inspects up to $n$ elements. |
-| **Gradient Binary Search** | $O(\log n)$ | $O(1)$ | Follows upward slope to eliminate half the array each step. Reaches a local peak in logarithmic time. |
-
----
-
-### Common Pitfall: Discarding the Midpoint on Downhill Slopes
-
-Setting `high = mid - 1` instead of `high = mid` when `nums[mid] > nums[mid + 1]` is a classic bug. If `nums[mid]` happens to be the peak itself, subtracting 1 completely discards the answer. Using `high = mid` preserves the candidate summit, while using the condition `while low < high` prevents infinite loops when `low` and `high` converge.
-
----
-
-### Concise Interview Takeaway
-
-Binary search does not require a sorted array, only a deterministic direction. Compare `nums[mid]` to `nums[mid + 1]`: if ascending, climb right (`low = mid + 1`); if descending, search left while preserving `mid` (`high = mid`). This converges on a local maximum in $O(\log n)$ time and $O(1)$ space.
+Binary search does not need a sorted array, only a reliable way to rule out half of it. Here the slope does that: rising ground guarantees a peak to the right, falling ground guarantees one at or before where you stand. Keep the middle when the slope falls, discard it when it rises, and the markers meet on a peak. $O(\log n)$ time, $O(1)$ space.

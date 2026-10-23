@@ -1,143 +1,106 @@
 ---
 id: 8-koko-eating-bananas
 title: "875. Koko Eating Bananas"
-description: "Binary search on the answer space with monotonic feasibility checking"
+description: "Binary search the speed itself, because faster never hurts"
 sidebar_position: 8
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Binary Search</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Answer Space</span>
 
-> **Problem Statement:** Koko loves to eat bananas. There are `n` piles of bananas, where the $i$-th pile has `piles[i]` bananas. The guards will return in `h` hours. Koko can decide her hourly eating speed `k`. Each hour, she chooses a pile and eats `k` bananas from it; if the pile has fewer than `k` bananas, she eats all of them and will not eat any more bananas during that hour. Return the minimum integer `k` such that she can eat all the bananas within `h` hours.
+> **Problem Statement:** There are piles of bananas and `h` hours before the guards come back. Koko picks one eating speed and sticks to it. Each hour she eats up to that many bananas from a single pile, and if the pile runs out she waits for the next hour rather than starting another. Find the slowest speed that still clears every pile in time.
 
 ```text
 Input:  piles = [3, 6, 7, 11], h = 8
 Output: 4
-Explanation: At speed k = 4, Koko finishes the piles in 1 + 2 + 2 + 3 = 8 hours. At speed k = 3, she takes 10 hours, which exceeds h.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Most binary search problems seek a specific value inside a pre-sorted array. Here, the input array `piles` is unsorted, but the answer space itself (the eating rate $k$) is sorted and monotonic.
+There is no array to search here. The array of piles is just data, and the thing you are looking for is a **speed**, which does not appear in the input at all.
 
-#### Brute Force: Linear Scan Across Speeds
-Test candidate speeds starting from $k = 1$ upward sequentially: $1, 2, 3, \dots, \max(\text{piles})$. For each speed, compute the total hours taken across all $n$ piles. If the largest pile contains $M = 10^9$ bananas, linear search takes $O(n \cdot M)$ operations, triggering a Time Limit Exceeded error.
+But think about what speeds look like laid out in a row:
 
-#### Optimal Approach: Binary Search on Feasibility
-Eating speed exhibits a monotonic property: if speed $k$ is fast enough to finish within $h$ hours, any speed greater than $k$ will also finish on time. Conversely, if speed $k$ is too slow, any speed less than $k$ is guaranteed to fail.
+```text
+speed:   1   2   3   4   5   6   ...
+works?   no  no  no  yes yes yes ...
+```
 
-This monotonic transition allows binary searching across the candidate speeds $[1, \max(\text{piles})]$:
-- If speed `mid` enables Koko to finish within $h$ hours, it is a valid speed: attempt to find an even slower valid rate by searching left (`high = mid - 1`).
-- If speed `mid` requires more than $h$ hours, it is too slow: speed up by searching right (`low = mid + 1`).
+Every speed is either fast enough or it is not, and once a speed works, every faster speed works too. Eating faster can never make her slower. So that row of yes and no answers has exactly one boundary in it, and the answer is the first `yes`.
 
-#### Execution Walkthrough
-
-Let us trace `piles = [3, 6, 7, 11]` with `h = 8`:
-
-| Step | `low` | `high` | `mid` (Speed) | Hours per Pile | Total Hours | Feasible? ($\le 8$) | Action Taken | Search Window |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- | :---: |
-| **1** | `1` | `11` | `6` | `[1, 1, 2, 2]` | 6 | Yes | Try slower speed: `high = mid - 1` | `[1, 5]` |
-| **2** | `1` | `5` | `3` | `[1, 2, 3, 4]` | 10 | No | Speed up: `low = mid + 1` | `[4, 5]` |
-| **3** | `4` | `5` | `4` | `[1, 2, 2, 3]` | 8 | Yes | Try slower speed: `high = mid - 1` | `[4, 3]` |
-
-When `low > high`, the loop terminates. The algorithm returns `low = 4`, the minimum valid eating speed.
+Finding a boundary in a row that goes no, no, no, yes, yes is precisely what binary search does. The search space is the range of possible speeds rather than the input.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Establish Answer Space:** Set `low = 1` (minimum conceivable eating rate) and `high = max(piles)` (maximum needed rate).
-2. **Execute Binary Search on Feasibility:** While `low <= high`:
-   - Compute midpoint speed: `mid = low + (high - low) // 2`.
-   - Calculate total hours required across all piles:
-     $$\text{hours} = \sum_{p \in \text{piles}} \lceil \frac{p}{\text{mid}} \rceil = \sum_{p \in \text{piles}} \frac{p + \text{mid} - 1}{\text{mid}}$$
-   - If `hours <= h`:
-     - Speed `mid` is sufficient: record feasibility and try slower rates with `high = mid - 1`.
-   - Else:
-     - Speed `mid` is too slow: force higher rates with `low = mid + 1`.
-3. **Return Minimal Speed:** Return `low`, which converges precisely to the smallest valid speed.
+Two pieces are needed.
+
+**A test.** Given a speed, how many hours does it take? For each pile, she needs the pile size divided by the speed, rounded **up**, because a leftover of one banana still occupies a whole hour. Add those up and compare with `h`.
+
+**A range.** The slowest sensible speed is `1`. The fastest worth considering is the largest pile, because at that speed every pile already takes exactly one hour and going faster changes nothing.
+
+Then binary search between them for the first speed that passes the test. The shape is the lower-bound search: when a speed works, keep it as a candidate with `high = mid`; when it does not, rule it out with `low = mid + 1`. The markers meet on the answer.
+
+Use integer arithmetic for the rounding up. Writing `(pile + speed - 1) // speed` keeps everything in integers, whereas dividing with floats and rounding can give a wrong answer when the pile sizes are large enough to lose precision.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Binary Search on Speed" default>
+Take `piles = [3, 6, 7, 11]` and `h = 8`. The range of speeds runs from `1` to `11`.
+
+1. **Try speed 6.** The hours are `1 + 1 + 2 + 2 = 6`, which is within `8`. It works, so keep it as a candidate and look for something slower. The range becomes `1` to `6`.
+2. **Try speed 3.** The hours are `1 + 2 + 3 + 4 = 10`, which is over `8`. Too slow, so rule it out. The range becomes `4` to `6`.
+3. **Try speed 5.** The hours are `1 + 2 + 2 + 3 = 8`, exactly `8`. It works. The range becomes `4` to `5`.
+4. **Try speed 4.** The hours are `1 + 2 + 2 + 3 = 8`, also exactly `8`. It works. The range becomes `4` to `4`.
+
+The markers meet at `4`, which is the answer. Speed `3` was already shown to take ten hours.
+
+---
+
+### The code
 
 ```python
-import math
-
 class Solution:
     def minEatingSpeed(self, piles: list[int], h: int) -> int:
-        # Minimum possible speed is 1; maximum needed speed is max(piles)
+        def hours_needed(speed: int) -> int:
+            # round up without floats: a leftover banana still costs an hour
+            return sum((pile + speed - 1) // speed for pile in piles)
+
         low, high = 1, max(piles)
 
-        while low <= high:
-            speed = low + (high - low) // 2
+        while low < high:
+            mid = (low + high) // 2
 
-            # Calculate total hours needed at this eating speed
-            total_hours = 0
-            for pile in piles:
-                total_hours += math.ceil(pile / speed)
-
-            if total_hours <= h:
-                # Eating at 'speed' finishes on time; test if a slower speed works
-                high = speed - 1
+            if hours_needed(mid) <= h:
+                high = mid      # fast enough, so this might be the answer
             else:
-                # Too slow to finish within h hours; must increase speed
-                low = speed + 1
+                low = mid + 1   # too slow, rule it out
 
-        # 'low' terminates at the minimal speed satisfying the condition
         return low
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Linear Scan Across Speeds">
+---
 
-```python
-import math
+### Time and space complexity
 
-class Solution:
-    def minEatingSpeed(self, piles: list[int], h: int) -> int:
-        speed = 1
-        max_speed = max(piles)
+#### Time: $O(n \log m)$
 
-        while speed <= max_speed:
-            total_hours = sum(math.ceil(p / speed) for p in piles)
-            if total_hours <= h:
-                return speed
-            speed += 1
+Here `n` is the number of piles and `m` is the largest pile. The binary search runs about $\log m$ times, and each test walks all the piles once, which is `n` work.
 
-        return max_speed
-```
+With piles up to a billion that is about thirty tests, each one a single sweep of the piles.
 
-  </TabItem>
-</Tabs>
+#### Space: $O(1)$
+
+A few numbers. The generator inside the sum does not build a list.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Linear Speed Scan** | $O(n \cdot M)$ | $O(1)$ | Tests each integer speed incrementally up to $M = \max(\text{piles})$. Inefficient when piles are large. |
-| **Binary Search on Speed** | $O(n \log M)$ | $O(1)$ | Binary searches the monotonic answer range $[1, M]$. Evaluates feasibility in $O(n)$ per iteration. |
-
----
-
-### Common Pitfall: Setting Upper Bound to Array Sum
-
-Setting `high = sum(piles)` instead of `high = max(piles)` is an unnecessary inflation of the search space. Because Koko can eat from at most one pile per hour, eating faster than `max(piles)` can never save additional hours. Using `max(piles)` bounds the search strictly and cleanly. Furthermore, using floor division instead of ceiling division undercounts hours on partially eaten piles.
-
----
-
-### Concise Interview Takeaway
-
-When the problem asks for the minimum or maximum rate and feasibility is monotonic, binary search the answer space $[1, \max(\text{piles})]$. Test each speed in $O(n)$ time using ceiling division. This yields an optimal $O(n \log(\max(\text{piles})))$ solution with $O(1)$ space.
+When the answer is a number rather than an element, search the range of possible answers. It works whenever the property is one-way: here, if a speed is fast enough then every faster speed is too, so the yes and no answers form a single boundary. Test each candidate speed by totalling the hours with rounding up, and keep the first speed that passes. $O(n \log m)$ time, $O(1)$ space.

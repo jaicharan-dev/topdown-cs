@@ -1,97 +1,89 @@
 ---
 id: 5-search-a-2d-matrix
 title: "74. Search a 2D Matrix"
-description: "Virtual 1D flattening with row = mid // cols, col = mid % cols"
+description: "The rows joined end to end are one sorted list, so search that instead"
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Binary Search</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">2D Matrix Projection</span>
 
-> **Problem Statement:** You are given an $m \times n$ integer matrix `matrix` where each row is sorted in non-decreasing order and the first integer of each row is strictly greater than the last integer of the previous row. Given an integer `target`, return `true` if `target` exists in the matrix or `false` otherwise. The solution must run in $O(\log(m \cdot n))$ time.
+> **Problem Statement:** You are given a matrix where each row is sorted, and the first number of every row is larger than the last number of the row above it. Decide whether a `target` appears in it, in $O(\log(m \cdot n))$ time.
 
 ```text
 Input:  matrix = [[1, 3, 5, 7], [10, 11, 16, 20], [23, 30, 34, 60]], target = 3
 Output: true
-Explanation: The target 3 is found at matrix[0][1].
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Because every row is internally sorted and the first element of each row strictly exceeds the last element of the preceding row, the entire 2D matrix behaves as a single continuous sorted sequence.
+Read the second condition carefully, because it is doing all the work.
 
-#### Brute Force: Row-by-Row Scan
-Scanning through every element sequentially or inspecting row boundaries one by one takes $O(m \cdot n)$ or $O(m + n)$ time. This ignores the total ordering that spans across all cells.
+Each row is sorted, **and** every row starts above where the previous row ended. So if you wrote the rows out one after another on a single line, the result would be sorted from beginning to end:
 
-#### Optimal Approach: Virtual 1D Coordinate Projection
-Rather than physically flattening the matrix into a new array (which costs $O(m \cdot n)$ auxiliary memory), treat the grid as an imaginary 1D array of indices from $0$ to $(m \cdot n) - 1$.
+```text
+1, 3, 5, 7, 10, 11, 16, 20, 23, 30, 34, 60
+```
 
-For any virtual index `mid`, map it directly to 2D matrix coordinates in $O(1)$ time:
-- `row = mid // n` (how many full rows precede `mid`)
-- `col = mid % n` (the column offset within that row)
+That is an ordinary sorted array, and searching one of those is a solved problem. The matrix shape is presentation, not structure.
 
-This enables standard binary search to operate seamlessly on the 2D grid in $O(\log(m \cdot n))$ time with zero auxiliary memory.
-
-#### Execution Walkthrough
-
-Let us trace `matrix = [[1, 3, 5, 7], [10, 11, 16, 20], [23, 30, 34, 60]]` with `target = 3` ($m = 3, n = 4$):
-
-| Step | `low` | `high` | `mid` | `(row, col)` | `matrix[row][col]` | Comparison | Action Taken | Search Window |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- | :---: |
-| **1** | `0` | `11` | `5` | `(1, 1)` | `11` | `11 > 3` | Target is to the left: `high = mid - 1` | `[0, 4]` |
-| **2** | `0` | `4` | `2` | `(0, 2)` | `5` | `5 > 3` | Target is to the left: `high = mid - 1` | `[0, 1]` |
-| **3** | `0` | `1` | `0` | `(0, 0)` | `1` | `1 < 3` | Target is to the right: `low = mid + 1` | `[1, 1]` |
-| **4** | `1` | `1` | `1` | `(0, 1)` | `3` | `3 == 3` | Match found! Return `true` | `[1, 1]` |
+Nothing has to be flattened for real. A position in that imaginary line can be converted into a row and column whenever you need to read a value.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Check Dimensions:** Guard against empty inputs. Set `m = len(matrix)` and `n = len(matrix[0])`.
-2. **Define Virtual Index Bounds:** Set `low = 0` and `high = (m * n) - 1`.
-3. **Execute Projected Binary Search:** While `low <= high`:
-   - Compute midpoint: `mid = low + (high - low) // 2`.
-   - Map midpoint to matrix indices: `row = mid // n`, `col = mid % n`.
-   - Access element: `val = matrix[row][col]`.
-   - If `val == target`, return `True`.
-   - If `val < target`, discard left half: `low = mid + 1`.
-   - If `val > target`, discard right half: `high = mid - 1`.
-4. **Return Fallback:** If `low > high`, the target does not exist in the matrix. Return `False`.
+Run a standard binary search over positions `0` to `m * n - 1`, as though the long line existed.
+
+To read the value at position `i`, convert:
+
+```text
+row    = i // number of columns
+column = i % number of columns
+```
+
+Dividing tells you how many full rows fit before that position, which is the row number. The remainder tells you how far into that row to reach.
+
+Everything else is the plain binary search template: check the middle, move past it in whichever direction, stop when the range empties.
+
+The alternative is two separate searches, one down the first column to pick the row and one across that row. It is also $O(\log(m \cdot n))$ once you work the logarithms out, but it is twice the code and twice the chance of an off-by-one.
+
+Note that this trick depends entirely on the strict relationship between rows. A matrix whose rows and columns are each sorted but where rows can overlap, which is a different common problem, is **not** one sorted line and needs a different method.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Virtual 1D Binary Search" default>
+Take the matrix with 3 rows and 4 columns, so positions run from `0` to `11`, and `target = 3`.
+
+1. **The middle is position 5.** Row `5 // 4 = 1`, column `5 % 4 = 1`, which holds `11`. Too big, so everything from there on is ruled out. The range becomes `0` to `4`.
+2. **The middle is position 2.** Row `0`, column `2`, which holds `5`. Still too big. The range becomes `0` to `1`.
+3. **The middle is position 1.** Row `0`, column `1`, which holds `3`. That is the target, so return `true`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def searchMatrix(self, matrix: list[list[int]], target: int) -> bool:
-        if not matrix or not matrix[0]:
-            return False
-
-        m, n = len(matrix), len(matrix[0])
-        # Treat the m x n grid as a single 1D virtual array of size m * n
-        low, high = 0, (m * n) - 1
+        rows, cols = len(matrix), len(matrix[0])
+        low, high = 0, rows * cols - 1
 
         while low <= high:
-            mid = low + (high - low) // 2
-            # Project virtual 1D index into 2D row and column coordinates
-            row = mid // n
-            col = mid % n
-            val = matrix[row][col]
+            mid = (low + high) // 2
 
-            if val == target:
+            # read the matrix as though it were one long sorted row
+            value = matrix[mid // cols][mid % cols]
+
+            if value == target:
                 return True
-            elif val < target:
+
+            if value < target:
                 low = mid + 1
             else:
                 high = mid - 1
@@ -99,68 +91,20 @@ class Solution:
         return False
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Double Binary Search (Row then Column)">
+---
 
-```python
-class Solution:
-    def searchMatrix(self, matrix: list[list[int]], target: int) -> bool:
-        if not matrix or not matrix[0]:
-            return False
+### Time and space complexity
 
-        m, n = len(matrix), len(matrix[0])
+#### Time: $O(\log(m \cdot n))$
 
-        # Step 1: Binary search to find the potential row
-        top, bottom = 0, m - 1
-        target_row = -1
-        while top <= bottom:
-            mid = top + (bottom - top) // 2
-            if matrix[mid][0] <= target <= matrix[mid][-1]:
-                target_row = mid
-                break
-            elif matrix[mid][0] > target:
-                bottom = mid - 1
-            else:
-                top = mid + 1
+The search covers `m * n` positions and halves the range each step, so it is the logarithm of the total number of cells. For a thousand by a thousand matrix, a million cells, that is about twenty steps.
 
-        if target_row == -1:
-            return False
+#### Space: $O(1)$
 
-        # Step 2: Binary search within the identified row
-        left, right = 0, n - 1
-        row_vals = matrix[target_row]
-        while left <= right:
-            mid = left + (right - left) // 2
-            if row_vals[mid] == target:
-                return True
-            elif row_vals[mid] < target:
-                left = mid + 1
-            else:
-                right = mid - 1
-
-        return False
-```
-
-  </TabItem>
-</Tabs>
+Three numbers. The long sorted line is never actually built, which is the point of converting positions on the fly: building it would cost $O(m \cdot n)$ memory for no benefit.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Double Binary Search** | $O(\log m + \log n)$ | $O(1)$ | Performs two sequential binary searches. Requires managing two separate search loops. |
-| **Virtual 1D Binary Search** | $O(\log(m \cdot n))$ | $O(1)$ | Flattens index calculations conceptually. Achieves identical logarithmic speed in a single clean loop. |
-
----
-
-### Common Pitfall: Dividing by Row Count Instead of Column Count
-
-A frequent error during 2D coordinate conversion is writing `row = mid // m` and `col = mid % m`. The conversion must divide and modulo by the column width `n`, because each completed row contains exactly `n` elements. Using `m` causes index out-of-range exceptions whenever $m \ne n$.
-
----
-
-### Concise Interview Takeaway
-
-Because the matrix elements increase monotonically across rows and columns, treat the entire grid as a virtual 1D array of length $m \cdot n$. Map the midpoint back to 2D via `row = mid // n` and `col = mid % n` to achieve $O(\log(m \cdot n))$ runtime with $O(1)$ space.
+Because every row starts above where the last one ended, the rows laid end to end form a single sorted list. Binary search over positions `0` to `m * n - 1` and convert each one with `mid // cols` and `mid % cols`. This works only with that strict between-row guarantee, not for a matrix whose rows merely overlap in sorted order. $O(\log(m \cdot n))$ time, $O(1)$ space.

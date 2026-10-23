@@ -1,126 +1,100 @@
 ---
 id: 6-find-minimum-in-rotated-sorted-array
 title: "153. Find Minimum in Rotated Sorted Array"
-description: "Binary search comparing mid to high to find the inflection point"
+description: "Compare the middle with the last element to learn which side the wrap is on"
 sidebar_position: 6
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Binary Search</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Rotated Array</span>
 
-> **Problem Statement:** An array of unique integers sorted in ascending order is rotated between $1$ and $n$ times. Given this rotated sorted array `nums`, return the minimum element of the array. The algorithm must run in $O(\log n)$ time.
+> **Problem Statement:** A sorted array of distinct numbers has been rotated some number of times, so it now climbs, drops once, then climbs again. Find its smallest value in $O(\log n)$ time.
 
 ```text
 Input:  nums = [4, 5, 6, 7, 0, 1, 2]
 Output: 0
-Explanation: The original sorted array was [0, 1, 2, 4, 5, 6, 7] rotated 4 times, with 0 as the minimum element.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-A rotated sorted array consists of two monotonically increasing sequences separated by a single sharp drop-off, known as the inflection point. The minimum element is positioned exactly at the bottom of this drop-off.
+A rotated sorted array has exactly one place where it stops climbing:
 
-#### Brute Force: Linear Scan
-Iterate across the array to find the smallest element. While simple, scanning every element ignores the sorted nature of both segments and incurs an $O(n)$ runtime.
+```text
+4, 5, 6, 7, 0, 1, 2
+            ^
+            the one drop, and the smallest value sits just after it
+```
 
-#### Optimal Approach: Inflection Binary Search
-To identify which half holds the drop-off, compare the midpoint `nums[mid]` with the rightmost boundary `nums[high]`:
-- **`nums[mid] > nums[high]`:** The midpoint is part of the elevated left segment. Because it exceeds the right boundary, the drop-off must lie strictly to the right: `low = mid + 1`.
-- **`nums[mid] <= nums[high]`:** The sequence from `mid` to `high` is increasing without interruption. Therefore, no drop-off exists to the right of `mid`. The minimum must be `mid` itself or lie to its left: `high = mid`.
+Find the drop and you have found the minimum. The array is not sorted overall, but it is made of two sorted runs, and the minimum is the first element of the second run.
 
-By comparing against `nums[high]`, we preserve the minimum within `[low, high]` on every step until `low == high`.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [4, 5, 6, 7, 0, 1, 2]`:
-
-| Step | `low` | `high` | `mid` | `nums[mid]` | `nums[high]` | Comparison | Action Taken | Search Window |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- | :---: |
-| **1** | `0` | `6` | `3` | `7` | `2` | `7 > 2` | Drop is to the right: `low = mid + 1` | `[4, 6]` |
-| **2** | `4` | `6` | `5` | `1` | `2` | `1 <= 2` | Min at mid or left: `high = mid` | `[4, 5]` |
-| **3** | `4` | `5` | `4` | `0` | `1` | `0 <= 1` | Min at mid or left: `high = mid` | `[4, 4]` |
-
-Both pointers converge at index `4`, correctly returning `nums[4] = 0`.
+So each step has to answer one question: is the drop to the left of the middle, or to the right?
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Boundary Pointers:** Set `low = 0` and `high = len(nums) - 1`.
-2. **Execute Inflection Search:** While `low < high`:
-   - Compute midpoint: `mid = low + (high - low) // 2`.
-   - If `nums[mid] > nums[high]`:
-     - Midpoint is on the upper ramp; inflection is to the right: `low = mid + 1`.
-   - Else (`nums[mid] <= nums[high]`):
-     - Right segment is sorted; midpoint could be the minimum: `high = mid`.
-3. **Return Minimum Element:** When `low == high`, the pointers point to the minimum. Return `nums[low]`.
+Compare the middle element with the **last** element of the current range.
+
+- **The middle is bigger than the last.** The middle is still up on the first, higher run, and the drop has to be somewhere after it. The minimum lies strictly to the right, so `low` moves past the middle.
+- **The middle is not bigger than the last.** The middle is already down on the second, lower run. The minimum is at the middle or before it, so `high` becomes the middle and the middle stays in play.
+
+When the markers meet, they are on the minimum.
+
+**Why compare against the last element and not the first?** Because comparing against the first is ambiguous. In an array that was never effectively rotated, like `[1, 2, 3, 4, 5]`, the middle is bigger than the first element, which looks exactly like the rotated case even though the minimum is at the very start. Comparing against the last element has no such blind spot: in a sorted run the middle is always smaller than the last, which correctly sends the search leftward.
+
+That makes a fully sorted array fall out as an ordinary case rather than needing special handling.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Inflection Binary Search" default>
+Take `nums = [4, 5, 6, 7, 0, 1, 2]`, with the range covering positions `0` to `6`.
+
+1. **The middle is position 3, holding `7`.** The last element in range is `2`. Seven is bigger, so the middle is on the high run and the drop is to the right. The range becomes `4` to `6`.
+2. **The middle is position 5, holding `1`.** The last is `2`. One is not bigger, so the middle is on the low run. Keep it: the range becomes `4` to `5`.
+3. **The middle is position 4, holding `0`.** The last in range is `1`. Not bigger, so the range becomes `4` to `4`.
+
+The markers meet at position `4`, which holds `0`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def findMin(self, nums: list[int]) -> int:
         low, high = 0, len(nums) - 1
 
-        # Shrink until search window converges on a single element (low == high)
         while low < high:
-            mid = low + (high - low) // 2
+            mid = (low + high) // 2
 
+            # bigger than the last value means the drop is still ahead
             if nums[mid] > nums[high]:
-                # Mid is part of the higher plateau; min must be strictly to the right
                 low = mid + 1
             else:
-                # Right half is sorted; mid could be the minimum itself
                 high = mid
 
         return nums[low]
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Linear Scan">
+---
 
-```python
-class Solution:
-    def findMin(self, nums: list[int]) -> int:
-        min_val = nums[0]
-        for num in nums:
-            if num < min_val:
-                min_val = num
-        return min_val
-```
+### Time and space complexity
 
-  </TabItem>
-</Tabs>
+#### Time: $O(\log n)$
+
+One comparison discards half the range every step.
+
+#### Space: $O(1)$
+
+Two markers and a midpoint.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Linear Scan** | $O(n)$ | $O(1)$ | Checks every element sequentially. Straightforward, but fails to exploit the rotated sorted structure. |
-| **Inflection Binary Search** | $O(\log n)$ | $O(1)$ | Compares midpoint against `high` to isolate the cliff. Converges to the global minimum in logarithmic time. |
-
----
-
-### Common Pitfall: Comparing Against low Instead of high
-
-Comparing `nums[mid]` against `nums[low]` is ambiguous when the array is already sorted (e.g. `[1, 2, 3, 4]`). In that case, `nums[mid] > nums[low]` holds, yet the minimum is at the very beginning, not the right half. Comparing against `nums[high]` provides a reliable invariant regardless of rotation magnitude.
-
----
-
-### Concise Interview Takeaway
-
-Compare `nums[mid]` to `nums[high]`: if `nums[mid] > nums[high]`, the cliff drop lies to the right (`low = mid + 1`); otherwise the right side is ordered, meaning the minimum is at `mid` or to its left (`high = mid`). This converges on the minimum in $O(\log n)$ time and $O(1)$ space.
+A rotated sorted array drops exactly once, and the minimum sits right after the drop. Compare the middle against the **last** element of the range: bigger means the drop is to the right, otherwise the minimum is at the middle or left of it. Comparing against the first element instead cannot tell a rotated array from an unrotated one. $O(\log n)$ time, $O(1)$ space.

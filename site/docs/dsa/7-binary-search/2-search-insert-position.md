@@ -1,127 +1,96 @@
 ---
 id: 2-search-insert-position
 title: "35. Search Insert Position"
-description: "Binary search lower-bound pointer invariant for array insertion"
+description: "Hunt for the first element that is not too small, and that position is the answer either way"
 sidebar_position: 2
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Binary Search</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Lower Bound</span>
 
-> **Problem Statement:** Given a sorted array of distinct integers `nums` and a target value `target`, return the index if `target` is found. If not, return the index where it would be placed if it were inserted in sorted order. You must write an algorithm with $O(\log n)$ runtime complexity.
+> **Problem Statement:** You are given a sorted array of distinct numbers and a `target`. Return the position of the target if it is present, or the position it would have to be inserted at to keep the array sorted. It has to run in $O(\log n)$ time.
 
 ```text
 Input:  nums = [1, 3, 5, 6], target = 2
 Output: 1
-Explanation: 2 is not found in nums, but inserting it at index 1 maintains sorted order: [1, 2, 3, 5, 6].
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-This problem is standard binary search with an essential property: what happens when the target is not in the array?
+The two cases in the question look different but have the same answer.
 
-Imagine slotting a new book into an alphabetically organized bookshelf. Throughout binary search, you maintain a candidate window `[low, high]`. When the loop finishes without finding an exact match, the pointers cross, and the left pointer lands precisely where the element should be inserted.
+Ask instead: **how many elements are strictly smaller than the target?** Call that count `c`.
 
-#### Brute Force: Linear Scan
-Iterate through the array from left to right until finding the first element greater than or equal to `target`. If no such element exists, the target belongs at the very end (`len(nums)`). While intuitive, this approach takes $O(n)$ time in the worst case.
+If the target is present, everything smaller sits before it, so it is at position `c`. If the target is absent, it would have to be inserted right after all the smaller elements, which is also position `c`.
 
-#### Optimal Approach: Lower Bound Binary Search
-Maintain two pointers `low` and `high`. At each step, test the midpoint `mid`:
-- If `nums[mid] == target`, return `mid` immediately.
-- If `nums[mid] < target`, the target must be placed to the right: set `low = mid + 1`. This guarantees every element to the left of `low` is strictly smaller than `target`.
-- If `nums[mid] > target`, the target must be placed to the left: set `high = mid - 1`. This guarantees every element to the right of `high` is strictly greater than `target`.
-
-When `low > high`, the search window has closed. The pointers have crossed, and `low` points to the first element strictly greater than `target` (or `len(nums)` if `target` exceeds all elements). Inserting at index `low` preserves sorted order.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [1, 3, 5, 6]` with `target = 2`:
-
-| Step | `low` | `high` | `mid` | `nums[mid]` | Comparison | Action Taken | Search Window |
-| :---: | :---: | :---: | :---: | :---: | :---: | :--- | :---: |
-| **1** | `0` | `3` | `1` | `3` | `3 > 2` | Target is to the left: `high = mid - 1` | `[0, 0]` |
-| **2** | `0` | `0` | `0` | `1` | `1 < 2` | Target is to the right: `low = mid + 1` | Terminate (`low > high`) |
-
-At termination, `low = 1` and `high = 0`. The algorithm returns `low = 1`, the exact insertion index.
+So one question answers both halves of the problem, and there is no need to treat "found" and "not found" separately at all.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Search Bounds:** Set `low = 0` and `high = len(nums) - 1`.
-2. **Execute Binary Search:** While `low <= high`:
-   - Compute midpoint: `mid = low + (high - low) // 2`.
-   - If `nums[mid] == target`, the value already exists: return `mid`.
-   - If `nums[mid] < target`, shift right: `low = mid + 1`.
-   - If `nums[mid] > target`, shift left: `high = mid - 1`.
-3. **Return Lower Bound Index:** When `low > high`, return `low`.
+Finding that count is a binary search for the **first element that is not too small**, meaning the first one greater than or equal to the target. Its position is exactly the number of elements below it.
+
+This variant is written slightly differently from the plain search, and the differences matter:
+
+**The range runs to `len(nums)`, not `len(nums) - 1`.** The answer can legitimately be "past the end", when the target is larger than everything. Position `len(nums)` has to be reachable.
+
+**The loop is `low < high`.** The range is being narrowed to a single surviving position rather than hunting for a value, so it ends when the two markers meet.
+
+**`high = mid`, not `mid - 1`.** When the middle element is big enough, it is itself a candidate for the answer, so it must stay in the range. Only `low` gets the `+ 1`, because an element that is too small is definitively ruled out.
+
+When the markers meet, that position is the answer, and nothing needs to be compared afterwards.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Lower Bound Binary Search" default>
+Take `nums = [1, 3, 5, 6]` with `target = 2`. The range runs from `0` to `4`.
+
+1. **The middle is position 2, holding `5`.** It is not too small, so it stays a candidate and everything to its right is ruled out. The range becomes `0` to `2`.
+2. **The middle is position 1, holding `3`.** Also not too small, so the range becomes `0` to `1`.
+3. **The middle is position 0, holding `1`.** That is smaller than `2`, so it is ruled out and `low` moves to `1`.
+
+The markers meet at `1`, which is the answer: inserting `2` there gives `[1, 2, 3, 5, 6]`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def searchInsert(self, nums: list[int], target: int) -> int:
-        low, high = 0, len(nums) - 1
+        low, high = 0, len(nums)   # len(nums) is a valid answer
 
-        while low <= high:
-            mid = low + (high - low) // 2
+        while low < high:
+            mid = (low + high) // 2
 
-            if nums[mid] == target:
-                return mid
-            elif nums[mid] < target:
-                low = mid + 1
+            if nums[mid] < target:
+                low = mid + 1   # too small, so it cannot be the answer
             else:
-                high = mid - 1
+                high = mid      # big enough, so it might be the answer
 
-        # Invariant: when low > high, low points precisely to the lower bound
-        # (the first element >= target, or len(nums) if target is the largest).
         return low
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Linear Scan">
+---
 
-```python
-class Solution:
-    def searchInsert(self, nums: list[int], target: int) -> int:
-        for i, val in enumerate(nums):
-            if val >= target:
-                return i
-        return len(nums)
-```
+### Time and space complexity
 
-  </TabItem>
-</Tabs>
+#### Time: $O(\log n)$
+
+The range halves every step, exactly as in a plain binary search. Ending at a meeting point rather than on a match does not change that.
+
+#### Space: $O(1)$
+
+Two markers and a midpoint.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Linear Scan** | $O(n)$ | $O(1)$ | Scans sequentially until finding an element $\ge \text{target}$. Avoids binary search logic, but takes linear time. |
-| **Lower Bound Binary Search** | $O(\log n)$ | $O(1)$ | Halves candidate range each step. Relies on the pointer crossover invariant to return the insertion index in logarithmic time. |
-
----
-
-### Common Pitfall: Returning high Instead of low
-
-A frequent mistake is returning `high` instead of `low` upon loop termination. When `low <= high` terminates, `high` has decremented past `low`, pointing to the last element strictly smaller than `target`. Returning `high` produces an off-by-one index (or `-1` if the target is smaller than every element). The correct insertion index is always `low`.
-
----
-
-### Concise Interview Takeaway
-
-When binary search terminates without an exact match, the pointers cross such that `low > high`. At that exact moment, `low` points to the first element strictly greater than `target` (or the length of the array), making `low` the natural insertion position.
+Both halves of the question are the same number: how many elements are strictly smaller than the target. Search for the first element that is not too small. Let the range reach `len(nums)` so "past the end" is expressible, loop while `low < high`, and keep the middle in play with `high = mid` when it qualifies. $O(\log n)$ time, $O(1)$ space.

@@ -1,165 +1,118 @@
 ---
 id: 10-split-array-largest-sum
 title: "410. Split Array Largest Sum"
-description: "Binary search on minimax subarray sum with greedy partition check"
+description: "Guess the largest allowed piece and count how many pieces that forces"
 sidebar_position: 10
 sidebar_class_name: sidebar-hard
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Binary Search</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Minimax Partition</span>
 
-> **Problem Statement:** Given an integer array `nums` and an integer `k`, split `nums` into `k` non-empty contiguous subarrays such that the largest sum of any subarray is minimized. Return this minimized largest sum.
+> **Problem Statement:** You are given an array and a number `k`. Cut the array into `k` neighbouring pieces so that the largest piece sum is as small as possible, and return that sum.
 
 ```text
 Input:  nums = [7, 2, 5, 10, 8], k = 2
 Output: 18
-Explanation: The best split is [7, 2, 5] and [10, 8], where the largest subarray sum is max(14, 18) = 18.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Directly determining where to place partition cuts leads to an expensive $O(n^2 \cdot k)$ dynamic programming formulation. Instead of searching over partition indices, invert the problem by binary searching the answer itself: the minimized maximum subarray sum.
+Trying every way to cut the array is hopeless, and the wording tempts you into it: there is a choice at every gap, and the choices interact.
 
-#### Brute Force: Dynamic Programming
-Define `dp[i][j]` as the minimum largest sum obtained by partitioning the first $i$ elements into $j$ subarrays. Testing every transition requires $O(n^2 \cdot k)$ time and $O(n \cdot k)$ memory, which becomes prohibitive on larger constraints.
+Turn the question inside out. Instead of asking "where do the cuts go", ask:
 
-#### Optimal Approach: Binary Search on Minimax Answer Space
-Notice the monotonic structure of the answer space:
-- If a target maximum sum `mid` allows partitioning `nums` into $k$ or fewer subarrays, any larger maximum sum will also work.
-- If a target maximum sum `mid` requires more than $k$ subarrays, any smaller sum is impossible.
+> If no piece were allowed to exceed `L`, how many pieces would I be forced into?
 
-We bound the search space tightly:
-- **Lower bound (`low = max(nums)`):** The largest subarray sum cannot be smaller than the largest individual element in `nums`.
-- **Upper bound (`high = sum(nums)`):** If $k = 1$, the entire array forms one single subarray with sum $\sum \text{nums}$.
+That is a much easier question, and it has only one answer for any given `L`. Walk the array, keep adding to the current piece, and start a new piece whenever the next value would push past `L`. Count the pieces.
 
-For each candidate `mid`, greedily accumulate numbers. When adding the next number exceeds `mid`, start a new subarray. If the total subarrays required is $\le k$, search for a smaller maximum sum (`high = mid - 1`); otherwise increase the allowance (`low = mid + 1`).
+And the counts behave predictably. A generous limit forces few pieces; a mean one forces many:
 
-#### Execution Walkthrough
+```text
+limit L:    ... 16  17  18  19  20 ...
+pieces:          3   3   2   2   2
+```
 
-Let us trace `nums = [7, 2, 5, 10, 8]` with `k = 2` (`low = 10`, `high = 32`):
+So "can it be done within `k` pieces" flips from no to yes exactly once as `L` grows, and the answer is the smallest `L` where it is yes. That is a binary search over limits.
 
-| Step | `low` | `high` | `mid` (Max Sum) | Subarray Partitions | Subarrays Needed | Feasible? ($\le 2$) | Action Taken | Search Window |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- | :---: |
-| **1** | `10` | `32` | `21` | `[7, 2, 5]`, `[10, 8]` | 2 | Yes | Try smaller: `high = mid - 1` | `[10, 20]` |
-| **2** | `10` | `20` | `15` | `[7, 2, 5]`, `[10]`, `[8]` | 3 | No | Allow larger: `low = mid + 1` | `[16, 20]` |
-| **3** | `16` | `20` | `18` | `[7, 2, 5]`, `[10, 8]` | 2 | Yes | Try smaller: `high = mid - 1` | `[16, 17]` |
-| **4** | `16` | `17` | `16` | `[7, 2, 5]`, `[10]`, `[8]` | 3 | No | Allow larger: `low = mid + 1` | `[17, 17]` |
-| **5** | `17` | `17` | `17` | `[7, 2, 5]`, `[10]`, `[8]` | 3 | No | Allow larger: `low = mid + 1` | `[18, 17]` |
-
-Loop terminates with `low = 18`. The optimal minimized maximum sum is 18.
+This is the same machinery as shipping packages within a number of days. Capacity has become the piece limit, and days have become pieces.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Establish Search Boundaries:** Set `low = max(nums)` and `high = sum(nums)`.
-2. **Execute Binary Search:** While `low <= high`:
-   - Compute midpoint: `mid = low + (high - low) // 2`.
-   - Greedily test partition count:
-     - Set `subarrays_needed = 1` and `current_sum = 0`.
-     - For each `num` in `nums`:
-       - If `current_sum + num <= mid`, update `current_sum += num`.
-       - Else, start new subarray: `subarrays_needed += 1`, reset `current_sum = num`.
-   - If `subarrays_needed <= k`:
-     - Valid partition: try smaller maximum with `high = mid - 1`.
-   - Else:
-     - Exceeded $k$ subarrays: increase threshold with `low = mid + 1`.
-3. **Return Answer:** When the search concludes, return `low`.
+**The test.** For a limit `L`, count the forced pieces greedily. Filling each piece as much as `L` allows is optimal for the same reason as in the shipping problem: the order is fixed, so cutting earlier than necessary only burdens what follows.
+
+**The range.** The limit can never be below the **largest single value**, since that value has to sit in some piece on its own at worst. It never needs to exceed the **total**, which is one piece containing everything.
+
+**The comparison.** The test passes when the forced count is at most `k`, not exactly `k`. If a generous limit needs only two pieces but `k` is four, that is still fine: a piece can always be split further into smaller pieces, and splitting never increases the largest sum. So "at most" is the right test, and it also keeps the yes and no answers in one clean boundary.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Binary Search on Minimax Answer" default>
+Take `nums = [7, 2, 5, 10, 8]` with `k = 2`. The largest value is `10` and the total is `32`, so limits from `10` to `32` are in play.
+
+1. **Try limit 21.** Pieces: `7 + 2 + 5 = 14`, adding `10` would make `24` so cut; then `10 + 8 = 18`. That is 2 pieces, within `k`. It works, so look lower. The range becomes `10` to `21`.
+2. **Try limit 15.** Pieces: `7 + 2 + 5 = 14`, adding `10` overflows so cut; then `10`, adding `8` overflows so cut; then `8`. That is 3 pieces, more than `k`. Too mean. The range becomes `16` to `21`.
+3. **Try limit 18.** Pieces: `7 + 2 + 5 = 14`, cut; then `10 + 8 = 18`, which exactly fits. That is 2 pieces. It works. The range becomes `16` to `18`.
+4. **Try limit 17.** Pieces: `14`, cut; then `10`, adding `8` gives `18` which overflows, so cut; then `8`. That is 3 pieces. Too mean. The range becomes `18` to `18`.
+
+The markers meet at `18`, from the split `[7, 2, 5]` and `[10, 8]`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def splitArray(self, nums: list[int], k: int) -> int:
-        # Minimum possible answer is the largest single element
-        low = max(nums)
-        # Maximum possible answer is the sum of all elements (k = 1)
-        high = sum(nums)
+        def pieces_needed(limit: int) -> int:
+            count, running = 1, 0
 
-        def can_split(max_sum_allowed: int) -> bool:
-            subarrays_needed = 1
-            current_sum = 0
+            for value in nums:
+                # adding this would overflow the limit, so start a new piece
+                if running + value > limit:
+                    count += 1
+                    running = 0
+                running += value
 
-            for num in nums:
-                if current_sum + num <= max_sum_allowed:
-                    current_sum += num
-                else:
-                    # Current subarray full; start a new one
-                    subarrays_needed += 1
-                    current_sum = num
+            return count
 
-            return subarrays_needed <= k
+        # the limit cannot be below the largest single value
+        low, high = max(nums), sum(nums)
 
-        while low <= high:
-            mid = low + (high - low) // 2
+        while low < high:
+            mid = (low + high) // 2
 
-            if can_split(mid):
-                # Valid partition; try to find a smaller maximum sum
-                high = mid - 1
+            # fewer pieces than k is fine, since a piece can always be split
+            if pieces_needed(mid) <= k:
+                high = mid
             else:
-                # Exceeded k subarrays; must allow a larger sum
                 low = mid + 1
 
         return low
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Dynamic Programming">
+---
 
-```python
-class Solution:
-    def splitArray(self, nums: list[int], k: int) -> int:
-        n = len(nums)
-        prefix = [0] * (n + 1)
-        for i in range(n):
-            prefix[i + 1] = prefix[i] + nums[i]
+### Time and space complexity
 
-        # dp[i][j] = min largest sum splitting first i elements into j subarrays
-        dp = [[float("inf")] * (k + 1) for _ in range(n + 1)]
-        dp[0][0] = 0
+#### Time: $O(n \log S)$
 
-        for j in range(1, k + 1):
-            for i in range(1, n + 1):
-                for p in range(i):
-                    largest = max(dp[p][j - 1], prefix[i] - prefix[p])
-                    if largest < dp[i][j]:
-                        dp[i][j] = largest
+`n` is the length of the array and `S` is the sum of its values. The binary search runs about $\log S$ times, and each test is one walk of the array.
 
-        return int(dp[n][k])
-```
+The dynamic programming solution to this problem is $O(n^2 k)$, so searching the answer space is dramatically better as well as shorter to write.
 
-  </TabItem>
-</Tabs>
+#### Space: $O(1)$
+
+Two counters inside the test and a few markers outside it.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Dynamic Programming** | $O(n^2 \cdot k)$ | $O(n \cdot k)$ | Tests split locations recursively. High computational overhead and quadratic table storage. |
-| **Binary Search on Answer** | $O(n \log(\sum \text{nums}))$ | $O(1)$ | Tests maximum sum bounds logarithmically with an $O(n)$ greedy check. Achieves optimal speed and constant memory. |
-
----
-
-### Common Pitfall: Underestimating the Initial Subarray Count
-
-When simulating greedy partitions, initializing `subarrays_needed = 0` causes an off-by-one bug because the first subarray is already actively accumulating values. The counter must begin at 1. Additionally, setting `low` below `max(nums)` allows the midpoint to be smaller than an individual number, breaking the greedy invariant.
-
----
-
-### Concise Interview Takeaway
-
-Minimize the maximum subarray sum by binary searching the answer space $[\max(\text{nums}), \sum \text{nums}]$. At each candidate sum, greedily pack elements into subarrays in $O(n)$ time. This delivers an $O(n \log(\sum \text{nums}))$ solution with $O(1)$ space, vastly outperforming $O(n^2 k)$ dynamic programming.
+Do not search for the cuts, search for the limit. For any limit, the number of forced pieces is fixed and easy to count greedily, and that count falls as the limit rises, which gives binary search its single boundary. Range from the largest single value to the total, and accept a count of **at most** `k`, since any piece can be split further without raising the maximum. $O(n \log S)$ time, $O(1)$ space.

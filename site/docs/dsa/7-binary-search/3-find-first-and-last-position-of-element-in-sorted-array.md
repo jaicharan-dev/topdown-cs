@@ -1,166 +1,112 @@
 ---
 id: 3-find-first-and-last-position-of-element-in-sorted-array
 title: "34. Find First and Last Position of Element in Sorted Array"
-description: "Twin binary searches with directional bias for range queries"
+description: "Find where the target starts, and where the next value starts"
 sidebar_position: 3
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Binary Search</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Directional Bisect</span>
 
-> **Problem Statement:** Given an array of integers `nums` sorted in non-decreasing order and a target value `target`, return the starting and ending indices of `target`. If `target` is not present, return `[-1, -1]`. The solution must run in $O(\log n)$ time.
+> **Problem Statement:** You are given a sorted array that may contain repeats, and a `target`. Return the first and last positions where the target appears, or `[-1, -1]` if it is absent. It has to run in $O(\log n)$ time.
 
 ```text
 Input:  nums = [5, 7, 7, 8, 8, 10], target = 8
 Output: [3, 4]
-Explanation: The target 8 first appears at index 3 and last appears at index 4.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Standard binary search stops immediately upon finding `nums[mid] == target`. However, when duplicates exist, the matched element could sit directly in the center of an extended run of identical values.
+A plain binary search lands on *some* occurrence of the target, and with repeats there is no telling which one. Walking outward from there to find the edges would be $O(n)$ in an array that is entirely one value, which breaks the requirement.
 
-#### Brute Force: Linear Scan or Window Expansion
-One intuitive approach is finding any match using binary search and then expanding outward to the left and right with pointers. However, if the array contains identical numbers such as `[8, 8, 8, 8, 8]`, expanding outward touches all $n$ elements, degrading the time complexity to $O(n)$ and violating the strict $O(\log n)$ requirement.
+So search for the **edges directly**, with two searches instead of one.
 
-#### Optimal Approach: Twin Directional Binary Searches
-Instead of terminating upon finding a match, record the match and continue searching:
-- **Left Boundary Search:** Record `mid` as a candidate answer, then assume an earlier occurrence may exist to the left. Force the search leftward by setting `high = mid - 1`.
-- **Right Boundary Search:** Record `mid` as a candidate answer, then assume a later occurrence may exist to the right. Force the search rightward by setting `low = mid + 1`.
+The first edge is the position where the target starts. The second is more cunning: instead of hunting for the last target, find where the **next value up** would start, and step back one. Those are the same place.
 
-By executing two independent binary searches with directional bias, both boundary indices are resolved in pure logarithmic time.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [5, 7, 7, 8, 8, 10]` with `target = 8`:
-
-| Pass | Step | `low` | `high` | `mid` | `nums[mid]` | Candidate `bound` | Action Taken |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **Pass 1 (Find First)** | 1 | `0` | `5` | `2` | `7` | `-1` | `7 < 8`: move right (`low = 3`) |
-| **Pass 1 (Find First)** | 2 | `3` | `5` | `4` | `8` | `4` | Match: record `bound = 4`, bias left (`high = 3`) |
-| **Pass 1 (Find First)** | 3 | `3` | `3` | `3` | `8` | `3` | Match: record `bound = 3`, bias left (`high = 2`) |
-| **Pass 2 (Find Last)** | 1 | `0` | `5` | `2` | `7` | `-1` | `7 < 8`: move right (`low = 3`) |
-| **Pass 2 (Find Last)** | 2 | `3` | `5` | `4` | `8` | `4` | Match: record `bound = 4`, bias right (`low = 5`) |
-| **Pass 2 (Find Last)** | 3 | `5` | `5` | `5` | `10` | `4` | `10 > 8`: move left (`high = 4`) |
-
-Pass 1 terminates with `first = 3`, and Pass 2 terminates with `last = 4`. Combining both outputs produces `[3, 4]`.
+```text
+[5, 7, 7, 8, 8, 10]
+          |     |
+          |     where 9 would start, so the 8s end just before it
+          where the 8s start
+```
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Define Directional Helper:** Construct a helper function `find_bound(find_first: bool) -> int`.
-2. **Execute Boundary Search Loop:**
-   - Initialize `low = 0`, `high = len(nums) - 1`, and `bound = -1`.
-   - While `low <= high`:
-     - Compute midpoint: `mid = low + (high - low) // 2`.
-     - If `nums[mid] == target`, update `bound = mid`. If `find_first` is `True`, set `high = mid - 1` to search left; otherwise set `low = mid + 1` to search right.
-     - If `nums[mid] < target`, set `low = mid + 1`.
-     - If `nums[mid] > target`, set `high = mid - 1`.
-   - Return `bound`.
-3. **Execute and Combine:**
-   - Call `first = find_bound(True)`.
-   - If `first == -1`, return `[-1, -1]` immediately.
-   - Call `last = find_bound(False)` and return `[first, last]`.
+Both searches are the same lower-bound routine from Search Insert Position: find the first position holding a value that is at least `x`. Write it once and call it twice.
+
+**The first position of the target** is `first_at_least(target)`.
+
+**The last position** is `first_at_least(target + 1) - 1`. Asking where `target + 1` would begin finds the boundary just past the final target, however many repeats there are, and stepping back one lands on the last of them.
+
+Then check whether the target is there at all. The lower-bound search always returns a position, even when the value is missing, so you have to confirm. Two things can be wrong: the position may be past the end of the array, or it may hold some different value. Test for running off the end first, or the array lookup itself will fail.
+
+The `target + 1` trick works here because the values are integers. For floating-point data you would write a second search that biases the other way instead.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Twin Directional Binary Searches" default>
+Take `nums = [5, 7, 7, 8, 8, 10]` with `target = 8`.
+
+**First search, for the first value at least `8`:** the middle holds `8` at position 2? No, position 2 holds `7`, which is too small, so the range moves right. The search settles on position `3`, the first `8`.
+
+**Check:** position `3` is inside the array and holds `8`, so the target is present.
+
+**Second search, for the first value at least `9`:** the `8`s are too small and `10` at position 5 is the first value big enough, so it settles on `5`. Stepping back one gives `4`, the last `8`.
+
+The answer is `[3, 4]`.
+
+If the target had been `6`, the first search would have returned position `1`, which holds `7`, not `6`. The mismatch means the target is absent, so the answer would be `[-1, -1]`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def searchRange(self, nums: list[int], target: int) -> list[int]:
-        def find_bound(find_first: bool) -> int:
-            low, high = 0, len(nums) - 1
-            bound = -1
-
-            while low <= high:
-                mid = low + (high - low) // 2
-
-                if nums[mid] == target:
-                    bound = mid
-                    # Bias direction: keep searching outward to find the outer edge
-                    if find_first:
-                        high = mid - 1  # Seek earlier occurrence to the left
-                    else:
-                        low = mid + 1   # Seek later occurrence to the right
-                elif nums[mid] < target:
+        def first_at_least(x: int) -> int:
+            low, high = 0, len(nums)
+            while low < high:
+                mid = (low + high) // 2
+                if nums[mid] < x:
                     low = mid + 1
                 else:
-                    high = mid - 1
+                    high = mid
+            return low
 
-            return bound
+        start = first_at_least(target)
 
-        first = find_bound(True)
-        # Early exit: if target is absent, right bound search is unnecessary
-        if first == -1:
+        # check the end of the array first, or the lookup itself fails
+        if start == len(nums) or nums[start] != target:
             return [-1, -1]
 
-        last = find_bound(False)
-        return [first, last]
+        # where target + 1 begins is one past where target ends
+        return [start, first_at_least(target + 1) - 1]
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Binary Search with Linear Expansion">
+---
 
-```python
-class Solution:
-    def searchRange(self, nums: list[int], target: int) -> list[int]:
-        low, high = 0, len(nums) - 1
-        found_idx = -1
+### Time and space complexity
 
-        while low <= high:
-            mid = low + (high - low) // 2
-            if nums[mid] == target:
-                found_idx = mid
-                break
-            elif nums[mid] < target:
-                low = mid + 1
-            else:
-                high = mid - 1
+#### Time: $O(\log n)$
 
-        if found_idx == -1:
-            return [-1, -1]
+Two binary searches, each halving the range every step. Two logarithms is still a logarithm, since the constant in front does not change the shape.
 
-        left, right = found_idx, found_idx
-        while left > 0 and nums[left - 1] == target:
-            left -= 1
-        while right < len(nums) - 1 and nums[right + 1] == target:
-            right += 1
+The approach this replaces, one search plus walking outward to the edges, is $O(n)$ on an array like `[8, 8, 8, 8, 8]`, which is exactly the case the problem is testing for.
 
-        return [left, right]
-```
+#### Space: $O(1)$
 
-  </TabItem>
-</Tabs>
+A few markers. The helper is a closure over `nums` rather than a copy of it.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Linear Expansion** | $O(n)$ | $O(1)$ | Finds one instance via binary search, then expands linearly. Degrades to $O(n)$ when duplicates dominate the array. |
-| **Twin Directional Binary Searches** | $O(\log n)$ | $O(1)$ | Runs two logarithmic sweeps with left and right biases. Guarantees $O(\log n)$ performance regardless of duplicate density. |
-
----
-
-### Common Pitfall: Linear Expansion Degradation
-
-A common trap is locating an arbitrary match with binary search and expanding outward using while loops. If an array consists of millions of identical numbers equal to the target, the initial binary search completes in 20 steps, but the linear expansion takes millions of operations, degrading the solution to $O(n)$ and timing out on interview benchmarks.
-
----
-
-### Concise Interview Takeaway
-
-When duplicates exist in a sorted array, never stop upon finding `nums[mid] == target`. Record `mid` as a candidate and continue halving: bias left with `high = mid - 1` for the first occurrence, and bias right with `low = mid + 1` for the last. This guarantees strict $O(\log n)$ runtime in all cases.
+Search for the edges rather than for the value. The first position is a lower-bound search for the target; the last is a lower-bound search for `target + 1`, minus one. Because a lower-bound search returns a position even when the value is absent, confirm the result, checking for the end of the array before reading it. $O(\log n)$ time, $O(1)$ space.

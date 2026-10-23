@@ -1,81 +1,63 @@
 ---
 id: 7-search-in-rotated-sorted-array
 title: "33. Search in Rotated Sorted Array"
-description: "Single-pass binary search identifying the sorted half"
+description: "One half is always properly sorted, so decide whether the target lives in it"
 sidebar_position: 7
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Binary Search</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Rotated Array</span>
 
-> **Problem Statement:** Given an integer array `nums` sorted in ascending order with distinct values, which has possibly been rotated at an unknown pivot index, and an integer `target`, return the index of `target` if it is in `nums`, or `-1` if it is not. The algorithm must run in $O(\log n)$ time.
+> **Problem Statement:** A sorted array of distinct numbers has been rotated at some unknown point. Given a `target`, return its position or `-1`, in $O(\log n)$ time.
 
 ```text
 Input:  nums = [4, 5, 6, 7, 0, 1, 2], target = 0
 Output: 4
-Explanation: 0 is located at index 4 in the rotated array.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-In a rotated array, the global ordering is disrupted by a pivot cliff. However, a rotated sorted array possesses a key structural property: wherever you choose `mid`, at least one of the two resulting halves is guaranteed to be sorted in standard ascending order.
+Cut a rotated array anywhere and look at the two pieces. Because there is only **one** drop in the whole array, that drop can only land in one of the pieces. The other piece has no drop in it at all, which means it is plainly sorted.
 
-#### Brute Force: Two-Pass Pivot Search
-First run a binary search to find the minimum pivot element, dividing the array into two sorted intervals. Then run a second binary search on the interval where the target belongs. While this achieves $O(\log n)$ runtime, it requires managing two separate binary searches, multiple boundary conditions, and redundant code.
+```text
+4, 5, 6, 7, | 0, 1, 2      cut in the middle
+~~~~~~~~~~    ~~~~~~~
+sorted        sorted (this time both are, but at least one always is)
+```
 
-#### Optimal Approach: Single-Pass Half-Identification
-Instead of finding the pivot first, evaluate which half is normally sorted directly at each step:
-- **Case 1: Left half is sorted (`nums[low] <= nums[mid]`):**
-  Check if `target` falls inside the left half range: `nums[low] <= target < nums[mid]`.
-  - If yes, the target is trapped inside the left segment: search left (`high = mid - 1`).
-  - If no, the target can only exist in the right segment: search right (`low = mid + 1`).
-- **Case 2: Right half is sorted (`nums[low] > nums[mid]`):**
-  Check if `target` falls inside the right half range: `nums[mid] < target <= nums[high]`.
-  - If yes, search right (`low = mid + 1`).
-  - If no, search left (`high = mid - 1`).
-
-This eliminates half of the search space on each iteration in a single unified loop.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [4, 5, 6, 7, 0, 1, 2]` with `target = 0`:
-
-| Step | `low` | `high` | `mid` | `nums[mid]` | Sorted Half | In Range? | Action Taken | Search Window |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- | :---: |
-| **1** | `0` | `6` | `3` | `7` | Left `[4..7]` | $0 \notin [4, 7)$ | Target in right half: `low = mid + 1` | `[4, 6]` |
-| **2** | `4` | `6` | `5` | `1` | Left `[0..1]` | $0 \in [0, 1)$ | Target in left half: `high = mid - 1` | `[4, 4]` |
-| **3** | `4` | `4` | `4` | `0` | - | $0 == 0$ | Match found! Return index `4` | `[4, 4]` |
+That is the lever. At every step, one half is ordinary sorted data, and in a sorted half you can tell instantly whether the target could be inside it, just by checking it against the two ends. If it could be, search there. If it could not, search the other half.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Search Bounds:** Set `low = 0` and `high = len(nums) - 1`.
-2. **Execute Single-Pass Search:** While `low <= high`:
-   - Compute midpoint: `mid = low + (high - low) // 2`.
-   - If `nums[mid] == target`, return `mid`.
-   - **Determine sorted half:**
-     - If `nums[low] <= nums[mid]` (left half is sorted):
-       - If `nums[low] <= target < nums[mid]`, target lies in the left half: `high = mid - 1`.
-       - Else, target lies in the right half: `low = mid + 1`.
-     - Else (right half is sorted):
-       - If `nums[mid] < target <= nums[high]`, target lies in the right half: `low = mid + 1`.
-       - Else, target lies in the left half: `high = mid - 1`.
-3. **Return Fallback:** If `low > high`, return `-1`.
+Each step, check the middle for the target first and return if it matches. Otherwise work out which half is the sorted one.
+
+**If the first element of the range is not greater than the middle**, the left half is sorted. Then ask whether the target sits between those two values. If it does, keep the left half, otherwise keep the right.
+
+**Otherwise the right half is sorted.** Ask whether the target sits between the middle and the last element of the range. If it does, keep the right half, otherwise keep the left.
+
+Note what the comparison is doing. The sorted half is where you can be **certain**, so the decision is always phrased as "is the target definitely inside this sorted stretch". The messy half, the one containing the drop, is never reasoned about directly. It is simply where you go when the clean answer is no.
+
+The boundary comparisons have to be the right strictness. The middle has already been checked and rejected, so it is excluded on whichever side it falls, while the outer end of the range is still a live candidate and is included.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Single-Pass Binary Search" default>
+Take `nums = [4, 5, 6, 7, 0, 1, 2]` with `target = 0`.
+
+1. **The middle is position 3, holding `7`.** Not the target. The first element in range is `4`, which is not greater than `7`, so the left half `4, 5, 6, 7` is the sorted one. Is `0` between `4` and `7`? No. So discard the left half and keep positions `4` to `6`.
+2. **The middle is position 5, holding `1`.** Not the target. The first element in range is `0`, which is not greater than `1`, so the left half is sorted again. Is `0` between `0` and `1`, including the lower end? Yes. Keep positions `4` to `4`.
+3. **The middle is position 4, holding `0`.** That is the target, so return `4`.
+
+---
+
+### The code
 
 ```python
 class Solution:
@@ -83,21 +65,19 @@ class Solution:
         low, high = 0, len(nums) - 1
 
         while low <= high:
-            mid = low + (high - low) // 2
+            mid = (low + high) // 2
 
             if nums[mid] == target:
                 return mid
 
-            # Check if the left half is normally sorted
+            # the left half has no drop in it, so it is plain sorted data
             if nums[low] <= nums[mid]:
-                # Target lies within the sorted left half
                 if nums[low] <= target < nums[mid]:
                     high = mid - 1
                 else:
                     low = mid + 1
-            # Otherwise, the right half must be normally sorted
+            # otherwise the right half is the sorted one
             else:
-                # Target lies within the sorted right half
                 if nums[mid] < target <= nums[high]:
                     low = mid + 1
                 else:
@@ -106,61 +86,20 @@ class Solution:
         return -1
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Two-Pass Pivot Search">
+---
 
-```python
-class Solution:
-    def search(self, nums: list[int], target: int) -> int:
-        # Step 1: Find index of the minimum element (pivot)
-        low, high = 0, len(nums) - 1
-        while low < high:
-            mid = low + (high - low) // 2
-            if nums[mid] > nums[high]:
-                low = mid + 1
-            else:
-                high = mid
-        pivot = low
+### Time and space complexity
 
-        # Step 2: Determine which sorted segment contains target
-        if target >= nums[pivot] and target <= nums[-1]:
-            low, high = pivot, len(nums) - 1
-        else:
-            low, high = 0, pivot - 1
+#### Time: $O(\log n)$
 
-        # Step 3: Standard binary search on that segment
-        while low <= high:
-            mid = low + (high - low) // 2
-            if nums[mid] == target:
-                return mid
-            elif nums[mid] < target:
-                low = mid + 1
-            else:
-                high = mid - 1
+Every step rejects half the range, exactly as in a plain binary search. Working out which half is sorted costs a couple of comparisons, which does not change the count of steps.
 
-        return -1
-```
+#### Space: $O(1)$
 
-  </TabItem>
-</Tabs>
+Three numbers.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Two-Pass Pivot Search** | $O(\log n)$ | $O(1)$ | Finds pivot first, then searches the appropriate segment. Clean conceptually, but requires two loops and more code. |
-| **Single-Pass Binary Search** | $O(\log n)$ | $O(1)$ | Tests sorted half containment directly each iteration. Halves the search range in a single concise loop. |
-
----
-
-### Common Pitfall: Non-Strict Inequality on Boundaries
-
-When checking if `target` lies within the sorted half, forgetting the inclusive boundary is a frequent bug. For the left sorted half, the condition must be `nums[low] <= target < nums[mid]`. Because `nums[mid] == target` is already checked, the upper bound is strict (`<`). But the lower bound must be inclusive (`<=`), otherwise targets located exactly at `nums[low]` are skipped.
-
----
-
-### Concise Interview Takeaway
-
-At least one half of a rotated sorted array is always sorted. Determine which half is sorted using `nums[low] <= nums[mid]`, then check whether `target` falls between that half's endpoints. If so, search within it; otherwise, search the opposite half. This resolves searches in a single $O(\log n)$ pass with $O(1)$ space.
+A single rotation means a single drop, so after any cut at least one half is cleanly sorted. Identify that half, ask whether the target lies between its two ends, and go there if it does or to the other half if it does not. Always reason about the sorted half, never the one holding the drop. $O(\log n)$ time, $O(1)$ space.

@@ -1,170 +1,111 @@
 ---
 id: 9-capacity-to-ship-packages-within-d-days
 title: "1011. Capacity To Ship Packages Within D Days"
-description: "Binary search on conveyor ship capacity with greedy day simulation"
+description: "Search the capacity, and test each one by filling ships greedily"
 sidebar_position: 9
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Binary Search</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Answer Space</span>
 
-> **Problem Statement:** A conveyor belt carries packages that must be shipped from one port to another within `days` days. The $i$-th package has weight `weights[i]`. Packages must be loaded in the order given, and each ship cannot exceed a maximum weight capacity. Return the minimum ship capacity required to ship all packages within `days` days.
+> **Problem Statement:** Packages come off a belt in a fixed order and must all ship within a given number of days. Each day one ship takes the next packages in order, up to its weight capacity. Find the smallest capacity that gets everything shipped in time.
 
 ```text
 Input:  weights = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10], days = 5
 Output: 15
-Explanation: A ship capacity of 15 allows packages to be shipped in 5 days as:
-- Day 1: 1, 2, 3, 4, 5 (total weight 15)
-- Day 2: 6, 7 (total weight 13)
-- Day 3: 8 (total weight 8)
-- Day 4: 9 (total weight 9)
-- Day 5: 10 (total weight 10)
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Because the packages must be shipped in strict sequential order without rearranging, we do not binary search the input array. Instead, we binary search the continuous answer space of possible ship capacities.
+This is **Koko Eating Bananas** wearing different clothes. Speed has become capacity, hours have become days, and the question is still "what is the smallest number that gets the job done in time".
 
-#### Brute Force: Linear Capacity Scan
-Begin testing candidate capacities sequentially starting from $\max(\text{weights})$ up to $\sum \text{weights}$. For each capacity, simulate packing packages greedily to check if the schedule finishes within `days`. When package weights are large, checking every integer capacity takes $O(n \cdot (\sum \text{weights} - \max(\text{weights})))$ operations, triggering a Time Limit Exceeded error.
+The same one-way property holds. A bigger ship can carry anything a smaller ship could, so if some capacity finishes in time, every larger capacity does too:
 
-#### Optimal Approach: Binary Search on Monotonic Capacity
-Feasibility is monotonic:
-- If a ship capacity can deliver all cargo within `days`, any larger capacity can also do so.
-- If a ship capacity takes more than `days`, any smaller capacity will require even more days.
+```text
+capacity:  ... 13  14  15  16  17 ...
+in time?       no  no  yes yes yes
+```
 
-We establish sharp lower and upper bounds:
-- **Lower bound (`low = max(weights)`):** The ship must at least carry the heaviest individual package, otherwise that package can never be loaded.
-- **Upper bound (`high = sum(weights)`):** A ship capable of carrying all packages at once completes delivery in 1 day.
-
-For each candidate capacity `mid`, a greedy linear pass verifies whether `mid` allows shipment within `days`. If feasible, we search for a smaller capacity (`high = mid - 1`); otherwise, we increase capacity (`low = mid + 1`).
-
-#### Execution Walkthrough
-
-Let us trace `weights = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]` with `days = 5` (`low = 10`, `high = 55`):
-
-| Step | `low` | `high` | `mid` (Capacity) | Daily Allocations | Days Needed | Feasible? ($\le 5$) | Action Taken | Search Window |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- | :---: |
-| **1** | `10` | `55` | `32` | `[28, 27]` | 2 | Yes | Try smaller: `high = mid - 1` | `[10, 31]` |
-| **2** | `10` | `31` | `20` | `[15, 13, 17, 10]` | 4 | Yes | Try smaller: `high = mid - 1` | `[10, 19]` |
-| **3** | `10` | `19` | `14` | `[10, 11, 13, 11, 10]` | 6 | No | Increase capacity: `low = mid + 1` | `[15, 19]` |
-| **4** | `15` | `19` | `17` | `[15, 13, 17, 10]` | 4 | Yes | Try smaller: `high = mid - 1` | `[15, 16]` |
-| **5** | `15` | `16` | `15` | `[15, 13, 8, 9, 10]` | 5 | Yes | Try smaller: `high = mid - 1` | `[15, 14]` |
-
-When `low > high`, the loop terminates. The algorithm returns `low = 15`.
+One boundary, and the answer is the first `yes`. Binary search over capacities.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Establish Feasibility Interval:** Set `low = max(weights)` and `high = sum(weights)`.
-2. **Execute Binary Search on Capacity:** While `low <= high`:
-   - Compute midpoint capacity: `mid = low + (high - low) // 2`.
-   - Greedily simulate package loading:
-     - Set `days_needed = 1` and `current_weight = 0`.
-     - For each package `w` in `weights`:
-       - If `current_weight + w <= mid`, add weight: `current_weight += w`.
-       - Else, advance day: `days_needed += 1`, and reset `current_weight = w`.
-   - If `days_needed <= days`:
-     - Feasible: seek smaller capacity with `high = mid - 1`.
-   - Else:
-     - Infeasible: increase capacity with `low = mid + 1`.
-3. **Return Lower Bound:** When the search completes, return `low`.
+**The test.** Given a capacity, how many days does it take? Walk the packages in order, adding each to the current ship. When the next package would push the ship over its capacity, that ship sails and a new day begins with that package as its first item. Count the days.
+
+Being greedy is correct here, and it is worth knowing why. The packages must go in the given order, so the only decision ever available is where to end each day. Loading every ship as full as it will go can never cost you a day, because stopping earlier only pushes more weight onto the days that follow.
+
+**The range.** The smallest conceivable capacity is the **heaviest single package**, since no ship smaller than that could ever carry it, and no amount of extra days helps. The largest worth considering is the **total of all weights**, which ships everything in one day.
+
+Then binary search between them for the first capacity that passes.
+
+Starting the range at the heaviest package rather than at `1` is not just an optimisation. A capacity below it makes the test loop forever or report nonsense, because a package that cannot fit on any ship has nowhere to go.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Binary Search on Capacity" default>
+Take `weights = [1, 2, ..., 10]` and `days = 5`. The heaviest package is `10` and the total is `55`, so capacities from `10` to `55` are in play.
+
+1. **Try capacity 32.** Filling greedily: `1+2+3+4+5+6` is 21, adding 7 gives 28, adding 8 gives 36 which is over, so day one carries up to 7. Day two takes 8, 9, 10. That is 2 days, within 5. It works, so look lower. The range becomes `10` to `32`.
+2. **Try capacity 21.** Day one carries 1 through 6, totalling 21. Day two carries 7 and 8, totalling 15, since adding 9 would reach 24. Day three carries 9 and 10. That is 3 days, which works. The range becomes `10` to `21`.
+3. **Try capacity 15.** Day one carries 1 through 5, totalling 15. Day two carries 6 and 7. Day three carries 8. Day four carries 9. Day five carries 10. That is 5 days, exactly in time. It works, so the range narrows further.
+4. **Lower capacities fail.** At `14`, day one stops after 1 through 4, and the extra day pushes the total past 5.
+
+The markers settle on `15`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def shipWithinDays(self, weights: list[int], days: int) -> int:
-        # Minimum capacity must at least hold the heaviest package
-        low = max(weights)
-        # Maximum capacity loads all packages in a single day
-        high = sum(weights)
-
-        def can_ship(capacity: int) -> bool:
-            days_needed = 1
-            current_weight = 0
+        def days_needed(capacity: int) -> int:
+            used, load = 1, 0
 
             for w in weights:
-                if current_weight + w <= capacity:
-                    current_weight += w
-                else:
-                    # Current ship is full; rollover to the next day
-                    days_needed += 1
-                    current_weight = w
+                # this one does not fit, so the ship sails and a new day starts
+                if load + w > capacity:
+                    used += 1
+                    load = 0
+                load += w
 
-            return days_needed <= days
+            return used
 
-        while low <= high:
-            mid = low + (high - low) // 2
+        # no ship smaller than the heaviest package could ever work
+        low, high = max(weights), sum(weights)
 
-            if can_ship(mid):
-                # Capacity is sufficient; try finding an even smaller valid capacity
-                high = mid - 1
+        while low < high:
+            mid = (low + high) // 2
+
+            if days_needed(mid) <= days:
+                high = mid      # in time, so this might be the answer
             else:
-                # Took too many days; must increase ship capacity
-                low = mid + 1
+                low = mid + 1   # too small, rule it out
 
         return low
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Linear Capacity Search">
+---
 
-```python
-class Solution:
-    def shipWithinDays(self, weights: list[int], days: int) -> int:
-        capacity = max(weights)
+### Time and space complexity
 
-        def can_ship(cap: int) -> bool:
-            days_needed = 1
-            current_weight = 0
-            for w in weights:
-                if current_weight + w <= cap:
-                    current_weight += w
-                else:
-                    days_needed += 1
-                    current_weight = w
-            return days_needed <= days
+#### Time: $O(n \log S)$
 
-        while not can_ship(capacity):
-            capacity += 1
+`n` is the number of packages and `S` is their total weight. The binary search runs about $\log S$ times, and each test walks the packages once.
 
-        return capacity
-```
+#### Space: $O(1)$
 
-  </TabItem>
-</Tabs>
+A handful of counters.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Linear Capacity Search** | $O(n \cdot (\sum W - \max W))$ | $O(1)$ | Tests capacities sequentially. Inefficient when total package weight is large. |
-| **Binary Search on Capacity** | $O(n \log(\sum W))$ | $O(1)$ | Halves candidate capacities logarithmically. Evaluates each capacity with an $O(n)$ greedy scan. |
-
----
-
-### Common Pitfall: Setting Lower Bound Below Maximum Element Weight
-
-Setting `low` to 1 or the average weight rather than `max(weights)` is a frequent bug. If candidate capacity `mid` is smaller than an individual package weight, that package can never fit onto any ship, causing the simulator to fail or enter infinite day increments. Initializing `low = max(weights)` guarantees that every package fits within the capacity bounds.
-
----
-
-### Concise Interview Takeaway
-
-Binary search the capacity range $[\max(\text{weights}), \sum \text{weights}]$. At each trial capacity, greedily load packages until the ship fills, counting days in $O(n)$ time. This yields an optimal $O(n \log(\sum \text{weights}))$ runtime with $O(1)$ space.
+Same shape as Koko: the answer is a number, bigger always works, so binary search the range of capacities. The lower end of that range is the heaviest single package, not `1`, because nothing smaller can carry it. Test a capacity by filling each ship as full as the order allows, which is optimal precisely because the order is fixed. $O(n \log S)$ time, $O(1)$ space.
