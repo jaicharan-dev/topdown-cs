@@ -1,202 +1,137 @@
 ---
 id: 11-lru-cache
 title: "146. LRU Cache"
-description: "Hash map + doubly linked list with dummy sentinels for O(1) get and put"
+description: "A map to find things instantly, a linked list to remember the order"
 sidebar_position: 11
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Linked Lists</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Doubly Linked List + Map</span>
 
-> **Problem Statement:** Design a data structure that follows the constraints of a Least Recently Used (LRU) cache. Implement the `LRUCache` class with `get(key)` and `put(key, value)`, both running in average $O(1)$ time complexity.
+> **Problem Statement:** Build a cache with a fixed capacity. Reading a key or writing one counts as using it. When the cache is full and a new key arrives, throw out whichever key was used least recently. Both operations must take constant time.
 
 ```text
-Input:
-["LRUCache", "put", "put", "get", "put", "get", "put", "get", "get", "get"]
-[[2], [1, 1], [2, 2], [1], [3, 3], [2], [4, 4], [1], [3], [4]]
-Output:
-[null, null, null, 1, null, -1, null, -1, 3, 4]
-Explanation:
-LRUCache lRUCache = new LRUCache(2);
-lRUCache.put(1, 1); // cache is {1=1}
-lRUCache.put(2, 2); // cache is {1=1, 2=2}
-lRUCache.get(1);    // return 1
-lRUCache.put(3, 3); // LRU key was 2, evicts key 2, cache is {1=1, 3=3}
-lRUCache.get(2);    // returns -1 (not found)
-lRUCache.put(4, 4); // LRU key was 1, evicts key 1, cache is {4=4, 3=3}
-lRUCache.get(1);    // return -1 (not found)
-lRUCache.get(3);    // return 3
-lRUCache.get(4);    // return 4
+capacity 2
+put(1, 1), put(2, 2), get(1) -> 1, put(3, 3) evicts key 2
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-An LRU Cache operates like a desk with space for only a few books:
-- Whenever you inspect or update a book, you place it on the very top of the pile (Most Recently Used).
-- When the desk is full and a new book arrives, you discard the book at the very bottom of the pile (Least Recently Used).
+Two demands pull in opposite directions.
 
-#### Brute Force: Array or List Scanning
-Using a singly linked list or a dynamic array allows maintaining ordering, but finding an element requires an $O(n)$ linear scan. A hash map alone provides $O(1)$ lookups, but does not track the relative access order of its keys.
+**Find any key instantly.** That is a dictionary.
 
-#### Optimal Approach: Hash Map + Doubly Linked List with Sentinels
-By pairing a Hash Map with a Doubly Linked List (DLL), we achieve constant time for every operation:
-1. **Hash Map:** Maps each `key` to its corresponding DLL `Node` pointer, providing $O(1)$ lookup.
-2. **Doubly Linked List:** Maintains temporal ordering. Because each node has bidirectional pointers (`prev` and `next`), any node can be unlinked in $O(1)$ without traversing predecessor nodes.
-3. **Sentinel Head and Tail:** Connecting permanent dummy `head` and `tail` nodes eliminates all null checks. The Most Recently Used node is always `head.next`, and the Least Recently Used node is always `tail.prev`.
+**Know which key was used longest ago, and change that order constantly.** A dictionary cannot answer this, and keeping timestamps would mean scanning everything to find the oldest.
 
-#### Execution Walkthrough
+So use both structures at once, each for what it is good at.
 
-Let us trace capacity = 2 with consecutive operations:
+Picture the entries in a row, most recently used at the front and least recently used at the back. Using an entry moves it to the front. Evicting takes whatever has drifted to the back.
 
-| Step | Operation | Evicted Key | DLL Order (MRU to LRU) | Map State (`cache`) | Return Value |
-| :---: | :---: | :---: | :--- | :--- | :---: |
-| **1** | `put(1, 1)` | None | `head <-> [1] <-> tail` | `{1: Node(1)}` | `None` |
-| **2** | `put(2, 2)` | None | `head <-> [2] <-> [1] <-> tail` | `{1: Node(1), 2: Node(2)}` | `None` |
-| **3** | `get(1)` | None | `head <-> [1] <-> [2] <-> tail` | `{1: Node(1), 2: Node(2)}` | `1` |
-| **4** | `put(3, 3)` | `2` | `head <-> [3] <-> [1] <-> tail` | `{1: Node(1), 3: Node(3)}` | `None` |
-| **5** | `get(2)` | None | `head <-> [3] <-> [1] <-> tail` | `{1: Node(1), 3: Node(3)}` | `-1` |
+The dictionary does not hold values. It holds **the node in that row**, which is what lets you jump straight to the middle of the row without walking it.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Define Doubly Linked Node:** Each node stores `key`, `val`, `prev`, and `next`. Storing `key` inside the node enables constant-time removal from the hash map during eviction.
-2. **Initialize Sentinel Bounds:** In `__init__`, instantiate dummy `head` and `tail` nodes and link them together: `head.next = tail` and `tail.prev = head`.
-3. **Helper Methods:**
-   - `_remove(node)`: Unlink node by setting `node.prev.next = node.next` and `node.next.prev = node.prev`.
-   - `_insert(node)`: Splice node immediately after `head` to mark it Most Recently Used.
-4. **Implement `get(key)`:**
-   - If `key` is absent from `cache`, return `-1`.
-   - If present, refresh recency by unlinking the node with `_remove(node)` and moving it to the front with `_insert(node)`. Return `node.val`.
-5. **Implement `put(key, value)`:**
-   - If `key` already exists, remove the stale node with `_remove(self.cache[key])`.
-   - Instantiate a new node, record it in `cache[key]`, and insert it via `_insert(new_node)`.
-   - If `len(self.cache) > self.capacity`, identify the LRU node `tail.prev`, unlink it, and remove its key from `cache`.
+The row has to be a **doubly** linked list. Removing a node from the middle means stitching its neighbours together, which needs the node before it. A singly linked list would have to be walked to find that, which is the $O(n)$ you are trying to avoid. With backward links, a removal is two assignments.
+
+**Two sentinel nodes**, one at each end, carry their weight here. With a permanent head and tail that never hold data, every real node is guaranteed to have a neighbour on both sides, so no insertion or removal ever has to check for a missing one. The code becomes two small helpers with no branches in them at all.
+
+Then the operations are short:
+
+- **get:** missing key returns `-1`. Otherwise unlink the node, push it to the front, return its value.
+- **put:** if the key already exists, unlink the old node. Create the new node, record it in the dictionary, push it to the front. If the dictionary now exceeds capacity, take the node just before the tail sentinel, unlink it, and delete its key.
+
+**Each node stores its own key**, which looks redundant since the key is also the dictionary entry pointing at it. It is what makes eviction possible: you reach the doomed node through the list, and without the key stored on it you could not find the dictionary entry to delete.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Hash Map + Doubly Linked List" default>
+Capacity `2`.
+
+1. **put(1, 1).** The row is `1`. The dictionary holds key `1`.
+2. **put(2, 2).** Pushed to the front, so the row is `2, 1`. Key `1` is now the older one.
+3. **get(1).** Found, so unlink it and push it to the front. The row is `1, 2`, and `2` is now the least recently used. Returns `1`.
+4. **put(3, 3).** Pushed to the front, so the row is `3, 1, 2` and the size is `3`, over capacity. The node before the tail sentinel is `2`, so unlink it and delete key `2`. The row is `3, 1`.
+
+Had step 3 not happened, key `1` would have been the one evicted. Reading it was enough to save it, which is what "use" means here.
+
+---
+
+### The code
 
 ```python
 class Node:
-    def __init__(self, key: int = 0, val: int = 0):
-        self.key = key
-        self.val = val
-        self.prev: Node | None = None
-        self.next: Node | None = None
+    def __init__(self, key=0, value=0):
+        self.key = key       # stored so eviction can find the dictionary entry
+        self.value = value
+        self.prev = None
+        self.next = None
+
 
 class LRUCache:
     def __init__(self, capacity: int):
         self.capacity = capacity
-        self.cache: dict[int, Node] = {}
+        self.index = {}                 # key -> its node in the row
 
-        # Dummy sentinels to eliminate null boundary checks
-        self.head = Node()
-        self.tail = Node()
+        # sentinels, so no insert or remove ever meets a missing neighbour
+        self.head = Node()              # most recently used side
+        self.tail = Node()              # least recently used side
         self.head.next = self.tail
         self.tail.prev = self.head
 
-    def _remove(self, node: Node) -> None:
-        """Detach an existing node from the doubly linked list."""
-        prev_node = node.prev
-        next_node = node.next
-        if prev_node:
-            prev_node.next = next_node
-        if next_node:
-            next_node.prev = prev_node
+    def _unlink(self, node: Node) -> None:
+        node.prev.next = node.next
+        node.next.prev = node.prev
 
-    def _insert(self, node: Node) -> None:
-        """Insert node right after head (Most Recently Used position)."""
-        node.prev = self.head
+    def _push_front(self, node: Node) -> None:
         node.next = self.head.next
-        if self.head.next:
-            self.head.next.prev = node
+        node.prev = self.head
+        self.head.next.prev = node
         self.head.next = node
 
     def get(self, key: int) -> int:
-        if key not in self.cache:
+        if key not in self.index:
             return -1
 
-        node = self.cache[key]
-        # Refresh position to MRU
-        self._remove(node)
-        self._insert(node)
-        return node.val
+        node = self.index[key]
+        self._unlink(node)
+        self._push_front(node)   # reading counts as using
+        return node.value
 
     def put(self, key: int, value: int) -> None:
-        if key in self.cache:
-            self._remove(self.cache[key])
+        if key in self.index:
+            self._unlink(self.index[key])
 
-        new_node = Node(key, value)
-        self.cache[key] = new_node
-        self._insert(new_node)
+        node = Node(key, value)
+        self.index[key] = node
+        self._push_front(node)
 
-        # Evict LRU node if capacity is exceeded
-        if len(self.cache) > self.capacity:
-            lru_node = self.tail.prev
-            if lru_node and lru_node != self.head:
-                self._remove(lru_node)
-                del self.cache[lru_node.key]
+        if len(self.index) > self.capacity:
+            oldest = self.tail.prev
+            self._unlink(oldest)
+            del self.index[oldest.key]
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Python OrderedDict">
+---
 
-```python
-from collections import OrderedDict
+### Time and space complexity
 
-class LRUCache:
-    def __init__(self, capacity: int):
-        self.capacity = capacity
-        self.cache: OrderedDict[int, int] = OrderedDict()
+#### Time: $O(1)$ for both operations
 
-    def get(self, key: int) -> int:
-        if key not in self.cache:
-            return -1
-        # Mark key as most recently used
-        self.cache.move_to_end(key)
-        return self.cache[key]
+A dictionary lookup is constant. Unlinking is two assignments, and pushing to the front is four. Eviction reaches the victim through the tail sentinel rather than searching for it. Nothing walks the row.
 
-    def put(self, key: int, value: int) -> None:
-        if key in self.cache:
-            self.cache.move_to_end(key)
-        self.cache[key] = value
+#### Space: $O(\text{capacity})$
 
-        # Evict least recently used (first inserted) item
-        if len(self.cache) > self.capacity:
-            self.cache.popitem(last=False)
-```
-
-  </TabItem>
-</Tabs>
+One node and one dictionary entry per key held, plus the two sentinels.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Hash Map + DLL** | $O(1)$ get / put | $O(C)$ | Standard production architecture with explicit pointer rewiring and dummy bounds. |
-| **Python OrderedDict** | $O(1)$ get / put | $O(C)$ | Highly concise standard library solution wrapping C-level hash table and linked list. |
-
----
-
-### Common Pitfall: Storing Only Values in Doubly Linked Nodes
-
-A subtle design flaw is omitting the `key` field from the `Node` class. When the cache exceeds capacity, we identify the LRU node via `tail.prev`. To purge its entry from the hash map, we must execute `del self.cache[lru_node.key]`. If the node only preserves `val`, searching for its corresponding key in the dictionary degenerates into an $O(n)$ scan, violating the $O(1)$ requirement.
-
----
-
-### Concise Interview Takeaway
-
-For **LRU Cache**, combine a Hash Map (for $O(1)$ key-to-node lookups) with a Doubly Linked List bounded by sentinel `head` and `tail` nodes (for $O(1)$ arbitrary node detachment and re-insertion). Store both key and value within each node to enable constant-time hash map deletions during eviction.
+Neither structure can do this alone, so use both: a dictionary for instant lookup, a doubly linked list for the use order, and the dictionary stores **nodes** rather than values. Double links make middle removal constant, sentinels at both ends remove every missing-neighbour check, and each node carries its own key so eviction can clear the dictionary. $O(1)$ per operation.

@@ -1,155 +1,111 @@
 ---
 id: 9-add-two-numbers
 title: "2. Add Two Numbers"
-description: "Column addition simulation with carry propagation and dummy head"
+description: "The digits are already reversed, which is exactly the order you add in"
 sidebar_position: 9
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Linked Lists</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Math Simulation</span>
 
-> **Problem Statement:** You are given two non-empty linked lists representing two non-negative integers. The digits are stored in reverse order, where each node contains a single digit. Add the two numbers and return the sum as a linked list.
+> **Problem Statement:** You are given two numbers stored as linked lists, one digit per node, with the smallest place value first. Add them and return the sum in the same form.
 
 ```text
 Input:  l1 = [2, 4, 3], l2 = [5, 6, 4]
 Output: [7, 0, 8]
-Explanation: 342 + 465 = 807. In reversed linked list representation: [7, 0, 8].
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Because the digits are stored in reverse order, the heads represent the least significant digits (the ones place $10^0$). Subsequent nodes represent increasing powers of ten ($10^1, 10^2, \dots$). This arrangement mirrors grade-school column addition from right to left.
+The reversed storage looks like an obstacle and is actually a gift.
 
-#### Brute Force: Full Integer Conversion
-A naive strategy is to convert both linked lists into integer values, add them together, convert the resulting sum to digits, and reconstruct a new linked list. While Python supports arbitrary-precision integers, in languages like Java or C++ this overflows 64-bit integer limits when lists contain hundreds of digits.
+Adding numbers on paper starts at the units column, on the right, and carries leftward. These lists put the units digit **first**, so walking them from the head is already walking from the units column. No reversing, no counting, no alignment.
 
-#### Optimal Approach: Digit-by-Digit Addition Simulation
-Instead of converting the full numbers, simulate column addition directly on the nodes:
-1. At each position, sum the digits plus any incoming carry: $\text{total} = \text{val}_1 + \text{val}_2 + \text{carry}$.
-2. The digit stored in the new node is $\text{total} \pmod{10}$.
-3. The new carry forwarded to the next position is $\lfloor\text{total} / 10\rfloor$.
-4. Use a dummy head node to attach each result node cleanly.
+```text
+  3 4 2        (the list 2 -> 4 -> 3 is the number 342)
++ 4 6 5
+-------
+  8 0 7        so the answer list is 7 -> 0 -> 8
+```
 
-Crucially, the loop must continue while `l1 or l2 or carry` is true so that an incoming carry from the final column (such as $99 + 1 = 100$) produces its own node.
-
-#### Execution Walkthrough
-
-Let us trace `l1 = [2, 4, 3]` and `l2 = [5, 6, 4]`:
-
-| Step | Column Digit 1 | Column Digit 2 | Incoming Carry | Sum (`total`) | New Digit (`total % 10`) | Outgoing Carry (`total // 10`) | Result List State |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **0** | - | - | - | - | - | `0` | `dummy` (0) |
-| **1** | `2` | `5` | `0` | $2 + 5 + 0 = 7$ | `7` | `0` | `dummy -> 7` |
-| **2** | `4` | `6` | `0` | $4 + 6 + 0 = 10$ | `0` | `1` | `dummy -> 7 -> 0` |
-| **3** | `3` | `4` | `1` | $3 + 4 + 1 = 8$ | `8` | `0` | `dummy -> 7 -> 0 -> 8` |
-| **End** | `None` | `None` | `0` | - | - | `0` | Return `dummy.next` (`[7, 0, 8]`) |
+So this is column addition, one node at a time, carrying as you go.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Sentinel and Carry:** Create `dummy = ListNode(0)`, track position with `curr = dummy`, and initialize `carry = 0`.
-2. **Iterate Across Columns:** While `l1` is not `None`, or `l2` is not `None`, or `carry != 0`:
-   - Extract digit values: `val1 = l1.val if l1 else 0` and `val2 = l2.val if l2 else 0`.
-   - Calculate total sum: `total = val1 + val2 + carry`.
-   - Update carry: `carry = total // 10`.
-   - Create node with digit: `curr.next = ListNode(total % 10)` and advance `curr = curr.next`.
-   - Advance list pointers: `l1 = l1.next if l1 else None` and `l2 = l2.next if l2 else None`.
-3. **Return Sum Head:** Return `dummy.next`.
+At each step, add up to three things: the digit from the first list if it still has one, the digit from the second if it does, and the carry from the previous column.
+
+That total is at most `9 + 9 + 1 = 19`, so the digit to store is the total modulo ten and the new carry is the total divided by ten, which is always `0` or `1`. In Python, `divmod` gives both at once.
+
+Build the answer with a dummy node and a tail, as in Merge Two Sorted Lists, so there is no special case for the first digit.
+
+Two conditions in the loop deserve attention, and they are where most bugs live.
+
+**The lists can be different lengths.** Test each list separately before reading from it, rather than requiring both.
+
+**The carry can outlive both lists.** Adding `5 -> 5` gives `0 -> 1`, so the loop has to keep going while there is a carry left, even after both lists are exhausted. Writing the condition as "while either list has a digit **or** a carry is pending" handles the final carry inside the normal loop instead of as an afterthought.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Iterative Simulation" default>
+Take `l1 = 2 -> 4 -> 3` and `l2 = 5 -> 6 -> 4`, which are `342` and `465`.
+
+1. **Units:** `2 + 5 + 0 = 7`. Store `7`, carry `0`.
+2. **Tens:** `4 + 6 + 0 = 10`. Store `0`, carry `1`.
+3. **Hundreds:** `3 + 4 + 1 = 8`. Store `8`, carry `0`.
+
+Both lists are empty and the carry is zero, so the loop ends. The answer is `7 -> 0 -> 8`, which reads as `807`, and `342 + 465` is indeed `807`.
+
+---
+
+### The code
 
 ```python
-# Definition for singly-linked list.
-# class ListNode:
-#     def __init__(self, val: int = 0, next: ListNode | None = None):
-#         self.val = val
-#         self.next = next
-
 class Solution:
-    def addTwoNumbers(self, l1: ListNode | None, l2: ListNode | None) -> ListNode | None:
-        dummy = ListNode(0)
-        curr = dummy
+    def addTwoNumbers(self, l1: ListNode, l2: ListNode) -> ListNode:
+        dummy = ListNode()
+        tail = dummy
         carry = 0
 
-        # Loop as long as there is a digit to add or a carry to propagate
+        # keep going while either list has digits, or a carry is still pending
         while l1 or l2 or carry:
-            val1 = l1.val if l1 else 0
-            val2 = l2.val if l2 else 0
-            total = val1 + val2 + carry
-
-            carry = total // 10
-            curr.next = ListNode(total % 10)
-            curr = curr.next
+            total = carry
 
             if l1:
+                total += l1.val
                 l1 = l1.next
             if l2:
+                total += l2.val
                 l2 = l2.next
+
+            carry, digit = divmod(total, 10)
+
+            tail.next = ListNode(digit)
+            tail = tail.next
 
         return dummy.next
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Recursive Simulation">
+---
 
-```python
-# Definition for singly-linked list.
-# class ListNode:
-#     def __init__(self, val: int = 0, next: ListNode | None = None):
-#         self.val = val
-#         self.next = next
+### Time and space complexity
 
-class Solution:
-    def addTwoNumbers(self, l1: ListNode | None, l2: ListNode | None, carry: int = 0) -> ListNode | None:
-        if not l1 and not l2 and carry == 0:
-            return None
+#### Time: $O(\max(m, n))$
 
-        val1 = l1.val if l1 else 0
-        val2 = l2.val if l2 else 0
-        total = val1 + val2 + carry
+One pass, running as long as the longer list, plus at most one extra step for a final carry. Each step is a couple of additions and one new node.
 
-        next_l1 = l1.next if l1 else None
-        next_l2 = l2.next if l2 else None
+#### Space: $O(\max(m, n))$
 
-        result_node = ListNode(total % 10)
-        result_node.next = self.addTwoNumbers(next_l1, next_l2, total // 10)
-
-        return result_node
-```
-
-  </TabItem>
-</Tabs>
+The answer list, which is the output rather than working memory. Beyond it, only the carry and a few references are kept, so no scratch space grows with the input.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Iterative Simulation** | $O(\max(m, n))$ | $O(\max(m, n))$ | Allocates output list of length $\max(m, n) + 1$ with $O(1)$ auxiliary work per column. |
-| **Recursive Simulation** | $O(\max(m, n))$ | $O(\max(m, n))$ | Elegant recursive code, but uses $O(\max(m, n))$ call stack frames. |
-
----
-
-### Common Pitfall: Omitting the Final Trailing Carry
-
-Consider adding `99` and `1` (`[9, 9]` and `[1]`). When both lists reach `None`, an outstanding `carry = 1` remains. If the loop condition is written strictly as `while l1 or l2:`, the calculation halts with `[0, 0]` ($0$) instead of `[0, 0, 1]` ($100$). Using `while l1 or l2 or carry:` guarantees the final carry node is properly appended.
-
----
-
-### Concise Interview Takeaway
-
-For **Add Two Numbers**, simulate elementary column addition using a sentinel `dummy` head. Process nodes with the condition `while l1 or l2 or carry:` to seamlessly accommodate unequal list lengths and trailing carry-overs without integer overflow risks. Runs in optimal $O(\max(m, n))$ time.
+Digits stored smallest-first means walking from the head is walking from the units column, so this is column addition with no preparation. Use `divmod(total, 10)` for the digit and the carry, build with a dummy and a tail, test each list separately since they may differ in length, and keep looping while a carry is pending so the final one is not dropped. $O(\max(m, n))$ time.

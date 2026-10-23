@@ -1,113 +1,92 @@
 ---
 id: 6-palindrome-linked-list
 title: "234. Palindrome Linked List"
-description: "Find midpoint, reverse second half in-place, and compare"
+description: "Find the middle, reverse the back half, then walk the two halves together"
 sidebar_position: 6
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Linked Lists</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Fast & Slow Pointers</span>
 
-> **Problem Statement:** Given the `head` of a singly linked list, return `true` if it is a palindrome or `false` otherwise.
+> **Problem Statement:** You are given the head of a linked list. Return `true` if its values read the same forwards and backwards.
 
 ```text
 Input:  head = [1, 2, 2, 1]
 Output: true
-Explanation: Reading the list forward yields 1 -> 2 -> 2 -> 1; reading backward yields the same sequence.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Testing whether an array is a palindrome is straightforward because you can place two pointers at opposite ends and walk inward. In a singly linked list, nodes only link forward, preventing backward traversal from the tail.
+Checking a palindrome means comparing the first value with the last, the second with the second to last, and so on. On an array that is two fingers walking inward. On a linked list it is impossible, because there is no way to walk backwards.
 
-#### Brute Force: Array Value Extraction
-The simplest approach copies all node values into a Python list and checks whether the list equals its reverse (`vals == vals[::-1]`). While this runs in linear time $O(n)$, it consumes $O(n)$ auxiliary space to store the values.
+Copying the values into a list and comparing is the easy answer, and it is $O(n)$ memory. The interesting version does it with none.
 
-#### Optimal Approach: Midpoint Reversal and Inward Scan
-We can achieve strict $O(1)$ space by structuring the solution into three distinct phases:
-1. **Find Midpoint:** Advance a slow pointer by 1 step and a fast pointer by 2 steps. When `fast` reaches the end, `slow` rests at the start of the second half.
-2. **Reverse the Second Half:** Invert the `.next` pointers of the second half in-place, creating a chain pointing backward from the original tail.
-3. **Compare Halves:** Advance two pointers, one from `head` and one from the reversed tail `prev`. If all values match until the reversed chain runs out, the list is a valid palindrome.
+The way in is to notice that you can make the second half walkable backwards by **reversing it**. Then you have two forward-walkable halves, one starting at the original head and one starting at the original tail, and comparing them is a straight walk.
 
-#### Execution Walkthrough
+```text
+1 -> 2 -> 2 -> 1
 
-Let us trace `head = [1, 2, 2, 1]`:
-
-| Step | Action | Left Pointer (`left.val`) | Right Pointer (`right.val`) | Values Match? | Notes |
-| :---: | :---: | :---: | :---: | :---: | :--- |
-| **1** | Find Midpoint | - | - | - | Fast/slow pointers place `slow` at second `2` |
-| **2** | Reverse Second Half | - | - | - | Reverses `2 -> 1` into `1 -> 2 -> None` (`prev` at `1`) |
-| **3** | Compare Nodes | `1` | `1` | **Yes** | Advance both pointers |
-| **4** | Compare Nodes | `2` | `2` | **Yes** | Advance both pointers |
-| **5** | Termination | `2` | `None` | - | `right` reaches `None`; palindrome verified |
+front half:            1 -> 2
+back half reversed:    1 -> 2
+```
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Find Midpoint:**
-   - Initialize `slow = head` and `fast = head`.
-   - While `fast` and `fast.next` are not `None`:
-     - Advance `slow = slow.next`.
-     - Advance `fast = fast.next.next`.
-2. **Reverse Second Half:**
-   - Initialize `prev = None` and `curr = slow`.
-   - While `curr`:
-     - Cache next node: `nxt = curr.next`.
-     - Reverse link: `curr.next = prev`.
-     - Advance `prev = curr` and `curr = nxt`.
-3. **Compare Both Halves:**
-   - Initialize `left = head` and `right = prev`.
-   - While `right` is not `None`:
-     - If `left.val != right.val`, return `False`.
-     - Advance `left = left.next` and `right = right.next`.
-4. **Return Result:** If no mismatches are encountered, return `True`.
+Three steps, and each one is a problem you already know.
+
+**Find the middle** with the fast and slow pointers from Middle of the Linked List.
+
+**Reverse from the middle onward**, which is Reverse Linked List applied to a tail rather than a whole list.
+
+**Walk the two halves together**, comparing values as you go. Stop as soon as one of them runs out.
+
+Stopping on the **reversed half** is what makes odd lengths work without a special case. With an odd number of nodes the middle node belongs to both halves, and the comparison of it against itself is harmless.
+
+Worth saying out loud in an interview: this modifies the input list. If that matters, you either restore it by reversing the second half back, or you accept the $O(n)$ copy instead. Knowing the trade is more valuable than the trick.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: In-Place Midpoint Reversal" default>
+Take `1 -> 2 -> 2 -> 1`.
+
+1. **Find the middle.** Fast and slow set off together; slow ends on the third node, the first of the two `2`-then-`1` pairs.
+2. **Reverse from there.** The tail `2 -> 1` becomes `1 -> 2`, and the reversed head is the node holding `1`.
+3. **Compare.** The front half starts at the original head: `1`, then `2`. The reversed half gives `1`, then `2`. Both match, and the reversed half runs out.
+
+The answer is `true`.
+
+For `1 -> 2 -> 3 -> 2 -> 1`, the middle `3` ends up at the end of the reversed half and gets compared against itself, which costs nothing and keeps the loop free of special cases.
+
+---
+
+### The code
 
 ```python
-# Definition for singly-linked list.
-# class ListNode:
-#     def __init__(self, val: int = 0, next: ListNode | None = None):
-#         self.val = val
-#         self.next = next
-
 class Solution:
-    def isPalindrome(self, head: ListNode | None) -> bool:
-        if not head or not head.next:
-            return True
-
-        # Phase 1: Locate midpoint using fast and slow pointers
-        slow = head
-        fast = head
+    def isPalindrome(self, head: ListNode) -> bool:
+        # 1. find the middle
+        slow = fast = head
         while fast and fast.next:
             slow = slow.next
             fast = fast.next.next
 
-        # Phase 2: Reverse second half in-place starting from slow
+        # 2. reverse everything from the middle onward
         prev = None
-        curr = slow
-        while curr:
-            nxt = curr.next
-            curr.next = prev
-            prev = curr
-            curr = nxt
+        while slow:
+            ahead = slow.next
+            slow.next = prev
+            prev = slow
+            slow = ahead
 
-        # Phase 3: Compare first half with reversed second half
-        left = head
-        right = prev  # Head of reversed second half
+        # 3. walk both halves; the reversed one is never the longer
+        left, right = head, prev
         while right:
             if left.val != right.val:
                 return False
@@ -117,48 +96,20 @@ class Solution:
         return True
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Array Conversion">
+---
 
-```python
-# Definition for singly-linked list.
-# class ListNode:
-#     def __init__(self, val: int = 0, next: ListNode | None = None):
-#         self.val = val
-#         self.next = next
+### Time and space complexity
 
-class Solution:
-    def isPalindrome(self, head: ListNode | None) -> bool:
-        vals: list[int] = []
-        curr = head
+#### Time: $O(n)$
 
-        while curr:
-            vals.append(curr.val)
-            curr = curr.next
+Three passes, none nested: half a pass to find the middle, half to reverse, half to compare. Three halves of a list is still linear.
 
-        return vals == vals[::-1]
-```
+#### Space: $O(1)$
 
-  </TabItem>
-</Tabs>
+A handful of references. Everything happens by relinking the existing nodes, which is the entire reason to go through the reversal rather than copying the values into an array.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **In-Place Midpoint Reversal** | $O(n)$ | $O(1)$ | Finds midpoint, reverses half the list, and compares values with constant auxiliary memory. |
-| **Array Conversion** | $O(n)$ | $O(n)$ | Simplest to implement, but allocates extra memory proportional to the list size. |
-
----
-
-### Common Pitfall: Asymmetric Odd-Length Handling
-
-In odd-length lists (such as `1 -> 2 -> 3 -> 2 -> 1`), the midpoint node `3` becomes the tail of the reversed half (`1 -> 2 -> 3 -> None`). If you loop while `left and right:`, you might wonder if the middle element requires special-casing. By looping strictly `while right:`, the comparison naturally finishes when the reversed second half runs out, safely ignoring the unpaired central node.
-
----
-
-### Concise Interview Takeaway
-
-For **Palindrome Linked List**, locate the midpoint using fast and slow pointers, reverse the second half in-place, and compare the two halves inward toward the center. This solves the problem in $O(n)$ time and $O(1)$ auxiliary space without extra array allocations.
+A linked list cannot be walked backwards, so make the back half walkable forwards by reversing it in place. Find the middle with fast and slow pointers, reverse from there, then compare the two halves and stop when the reversed one ends, which handles odd lengths for free. Mention that it mutates the input, and that reversing back restores it. $O(n)$ time, $O(1)$ space.

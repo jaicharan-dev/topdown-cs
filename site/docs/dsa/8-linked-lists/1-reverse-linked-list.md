@@ -1,148 +1,102 @@
 ---
 id: 1-reverse-linked-list
 title: "206. Reverse Linked List"
-description: "Iterative pointer redirection with prev, curr, and nxt"
+description: "Turn each arrow around, saving the next node before you destroy the link"
 sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Linked Lists</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Pointer Reversal</span>
 
-> **Problem Statement:** Given the `head` of a singly linked list, reverse the list and return the reversed list's new head.
+> **Problem Statement:** You are given the head of a singly linked list. Reverse it and return the new head.
 
 ```text
 Input:  head = [1, 2, 3, 4, 5]
 Output: [5, 4, 3, 2, 1]
-Explanation: The direction of all pointers is reversed, making node 5 the new head.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine a line of people where each person points to the person ahead of them. To reverse the direction of the line, every person must turn around and point to the person behind them.
+Nothing moves in this problem. The nodes stay exactly where they are in memory; only the arrows between them turn around.
 
-#### Brute Force: Collecting Values in an Array
-The naive approach is to traverse the linked list, extract all node values into an array, reverse the array, and then reconstruct a brand-new linked list or overwrite the existing node values. While this works in $O(n)$ time, it allocates $O(n)$ auxiliary memory and fails to modify the pointer topology directly in-place.
+```text
+before:  1 -> 2 -> 3 -> 4 -> 5 -> None
+after:   None <- 1 <- 2 <- 3 <- 4 <- 5
+```
 
-#### Optimal Approach: In-Place Pointer Redirection
-Instead of allocating auxiliary memory, we can reverse the pointers directly in-place using three pointers: `prev`, `curr`, and `nxt`.
-
-The golden rule of pointer manipulation is to never break a link before saving where it leads. At each step:
-1. Cache the next node (`nxt = curr.next`) so the remainder of the list is not lost.
-2. Redirect `curr.next` to point backwards to `prev`.
-3. Shift `prev` forward to `curr`.
-4. Shift `curr` forward to `nxt`.
-
-When `curr` reaches `None`, `prev` rests on the final node of the original list, which is now the new head of the reversed list.
-
-#### Execution Walkthrough
-
-Let us trace `head = [1, 2, 3]` to `[3, 2, 1]`:
-
-| Step | Current Node (`curr`) | Next Node (`nxt`) | Action Taken | Reversed Link | Previous Node (`prev`) |
-| :---: | :---: | :---: | :--- | :--- | :--- |
-| **0** | `1` | `2` | Initial state | None | `None` |
-| **1** | `1` | `2` | Point `1.next` to `None`, advance pointers | `1 -> None` | `1` |
-| **2** | `2` | `3` | Point `2.next` to `1`, advance pointers | `2 -> 1 -> None` | `2` |
-| **3** | `3` | `None` | Point `3.next` to `2`, advance pointers | `3 -> 2 -> 1 -> None` | `3` |
-| **End** | `None` | `None` | Loop terminates (`curr is None`) | Return `prev` (`3`) | `3` |
+Walk the list and flip each arrow to point at the node you just came from. The node that used to be last ends up with nothing pointing away from it, which makes it the new head, and the old head now points at nothing, which makes it the new tail.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Pointers:** Set `prev = None` and `curr = head`.
-2. **Traverse the List:** Loop while `curr` is not `None`:
-   - **Save Next Node:** Store `nxt = curr.next` to preserve access to the remaining nodes.
-   - **Reverse Link:** Point `curr.next = prev`.
-   - **Advance Previous:** Move `prev = curr`.
-   - **Advance Current:** Move `curr = nxt`.
-3. **Return New Head:** Return `prev` as the new head of the reversed list.
+Flipping an arrow destroys the only route to the rest of the list. The moment you set a node's `next` to point backwards, whatever it used to point at is unreachable, because a singly linked list has no way to go forwards from anywhere else.
+
+So the order of operations is the whole problem: **save the next node before rewriting the link**.
+
+Keep three references:
+
+- **`prev`**, the node already reversed, which the current node should now point at. It starts as `None`, because the old head must end up pointing at nothing.
+- **`curr`**, the node being rewired right now.
+- **`ahead`**, a temporary hold on the rest of the list, saved before the link is cut.
+
+Each step saves, rewires, and shifts both markers forward. When `curr` falls off the end, `prev` is sitting on the last node it handled, which is the new head.
+
+Returning `curr` at the end is a classic slip. By then it is `None`.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Iterative In-Place Reversal" default>
+Take `1 -> 2 -> 3 -> 4 -> 5`, with `prev` as `None` and `curr` on node `1`.
+
+1. **At node 1.** Save `2`. Point `1` at `None`. Now `prev` is `1`, `curr` is `2`. The reversed part is `1`.
+2. **At node 2.** Save `3`. Point `2` at `1`. The reversed part is `2 -> 1`.
+3. **At node 3.** Save `4`. Point `3` at `2`. The reversed part is `3 -> 2 -> 1`.
+4. **At node 4.** Save `5`. Point `4` at `3`.
+5. **At node 5.** Save `None`. Point `5` at `4`. Now `prev` is `5` and `curr` is `None`, so the loop ends.
+
+`prev` holds `5`, the new head of `5 -> 4 -> 3 -> 2 -> 1`.
+
+---
+
+### The code
 
 ```python
-# Definition for singly-linked list.
-# class ListNode:
-#     def __init__(self, val: int = 0, next: ListNode | None = None):
-#         self.val = val
-#         self.next = next
-
 class Solution:
-    def reverseList(self, head: ListNode | None) -> ListNode | None:
+    def reverseList(self, head: ListNode) -> ListNode:
         prev = None
         curr = head
 
         while curr:
-            # 1. Save the next node before breaking the forward pointer
-            nxt = curr.next
-            # 2. Reverse the link to point backward
+            ahead = curr.next   # save it before the link is destroyed
             curr.next = prev
-            # 3. Slide prev and curr forward by one position
             prev = curr
-            curr = nxt
+            curr = ahead
 
-        # When curr is None, prev rests on the new head of the reversed list
-        return prev
+        return prev   # curr is None by now, prev is the new head
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Recursive Reversal">
+---
 
-```python
-# Definition for singly-linked list.
-# class ListNode:
-#     def __init__(self, val: int = 0, next: ListNode | None = None):
-#         self.val = val
-#         self.next = next
+### Time and space complexity
 
-class Solution:
-    def reverseList(self, head: ListNode | None) -> ListNode | None:
-        # Base case: empty list or single node is already reversed
-        if not head or not head.next:
-            return head
+#### Time: $O(n)$
 
-        # Recursively reverse the rest of the list
-        new_head = self.reverseList(head.next)
+One pass, with a fixed amount of pointer work at each node.
 
-        # Make the next node point back to the current node
-        head.next.next = head
-        head.next = None
+#### Space: $O(1)$
 
-        return new_head
-```
+Three references, no matter how long the list is. Nothing is copied and no new nodes are created.
 
-  </TabItem>
-</Tabs>
+The recursive version is elegant but costs $O(n)$ stack frames, one per node, which can overflow on a long list. The loop is the better answer when memory comes up.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Iterative In-Place** | $O(n)$ | $O(1)$ | Reverses pointers directly in a single pass using constant extra memory. |
-| **Recursive Reversal** | $O(n)$ | $O(n)$ | Elegant recursive formulation, but consumes $O(n)$ stack frames. |
-
----
-
-### Common Pitfall: Severing the Forward Link
-
-The most frequent error is updating `curr.next = prev` before caching `curr.next`. The moment `curr.next` is overwritten, the reference to the remainder of the list is lost permanently, resulting in unreachable nodes or broken loops. Always assign `nxt = curr.next` before redirecting the current pointer.
-
----
-
-### Concise Interview Takeaway
-
-For **Reverse Linked List**, use the classic four-step pointer slide: save `nxt = curr.next`, redirect `curr.next = prev`, advance `prev = curr`, and advance `curr = nxt`. Once `curr` runs into `None`, `prev` points directly to the head of the reversed list, running in $O(n)$ time and $O(1)$ space.
+Reversing a list is rewriting arrows, not moving nodes. Save the next node before you overwrite the link, or the rest of the list is lost. Keep `prev`, `curr` and a temporary, and return `prev` at the end, because `curr` has already run off the end. $O(n)$ time, $O(1)$ space.

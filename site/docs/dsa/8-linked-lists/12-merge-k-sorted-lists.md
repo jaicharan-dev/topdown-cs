@@ -1,183 +1,109 @@
 ---
 id: 12-merge-k-sorted-lists
 title: "23. Merge k Sorted Lists"
-description: "Min-heap priority queue vs divide-and-conquer pairwise merge"
+description: "A heap holds the front of every list, so the next smallest is always on top"
 sidebar_position: 12
 sidebar_class_name: sidebar-hard
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Linked Lists</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Min-Heap</span>
 
-> **Problem Statement:** You are given an array of `k` linked-lists `lists`, each linked-list is sorted in ascending order. Merge all the linked-lists into one sorted linked-list and return it.
+> **Problem Statement:** You are given `k` sorted linked lists. Merge them all into one sorted list and return its head.
 
 ```text
 Input:  lists = [[1, 4, 5], [1, 3, 4], [2, 6]]
 Output: [1, 1, 2, 3, 4, 4, 5, 6]
-Explanation: The linked-lists are:
-[
-  1->4->5,
-  1->3->4,
-  2->6
-]
-merging them into one sorted list: 1->1->2->3->4->4->5->6.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Merging two sorted lists requires only comparing two head elements. When merging $k$ lists, comparing all $k$ heads simultaneously via linear scan requires $O(k)$ time per node, leading to $O(N \cdot k)$ overall time.
+Merging two lists is easy: compare two heads, take the smaller. With `k` lists you are comparing `k` heads and taking the smallest, which is the same idea with a harder question in the middle.
 
-#### Brute Force: Collect All Values and Sort
-The naive route extracts all $N$ values across all $k$ lists into a Python array, sorts them using Timsort ($O(N \log N)$), and builds a newly linked list. While simple, it allocates $O(N)$ auxiliary memory and ignores the existing sorted ordering of each list.
+Checking all `k` heads every time works, and it costs `k` comparisons per node produced. With many lists that is most of the running time, and all of it is repeated work: taking one node only changes **one** of the `k` heads, yet you re-examine all of them.
 
-#### Optimal Approach: Min-Heap of Size k
-We can optimize candidate selection by maintaining a Min-Heap of size at most $k$:
-1. Seed the heap with the initial head of each non-empty list.
-2. In each iteration, extract the global minimum node in $O(\log k)$ time and append it to our merged list.
-3. Advance that specific list to its `.next` node and push it back into the heap in $O(\log k)$ time.
-4. When the heap is exhausted, all $N$ nodes have been processed in strict sorted order.
+A heap is built for exactly this. It keeps a collection where the smallest item is always on top, and both removing that item and adding a new one cost about $\log k$ rather than `k`.
 
-#### Tuple Tie-Breaker Handling
-In Python, if two nodes possess identical values, `heapq` compares the next element in the tuple. If we push `(node.val, node)`, Python attempts `node1 < node2`, raising `TypeError: '<' not supported between instances of 'ListNode'`. Pushing a three-element tuple `(node.val, tie_breaker_id, node)` ensures the unique integer breaks ties before Python attempts to compare node objects.
-
-#### Execution Walkthrough
-
-Let us trace `L1: [1, 4]`, `L2: [1, 3]`, and `L3: [2, 6]`:
-
-| Step | Extracted Node | Origin List | Merged Chain Tail | Heap State After Insertion |
-| :---: | :---: | :---: | :---: | :--- |
-| **0** | - | - | `dummy` (0) | `[(1, L1), (1, L2), (2, L3)]` |
-| **1** | `1` | L1 | `dummy -> 1` | `[(1, L2), (2, L3), (4, L1)]` |
-| **2** | `1` | L2 | `... -> 1 -> 1` | `[(2, L3), (4, L1), (3, L2)]` |
-| **3** | `2` | L3 | `... -> 1 -> 2` | `[(3, L2), (4, L1), (6, L3)]` |
-| **4** | `3` | L2 | `... -> 2 -> 3` | `[(4, L1), (6, L3)]` |
-| **5** | `4` | L1 | `... -> 3 -> 4` | `[(6, L3)]` |
-| **6** | `6` | L3 | `... -> 4 -> 6` | `[]` (Heap Empty) |
+So: put the head of every list into a heap. Repeatedly take the smallest, attach it to the result, and push that node's successor in its place.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Sentinel and Min-Heap:** Create sentinel `dummy = ListNode(0)`, tracker `curr = dummy`, and empty heap `min_heap = []`.
-2. **Seed Initial Heads:** Iterate over `lists` and push `(node.val, index, node)` for every non-empty list head.
-3. **Extract and Replenish:** While `min_heap` is non-empty:
-   - Pop `val, _, node = heapq.heappop(min_heap)`.
-   - Append `curr.next = node` and advance `curr = curr.next`.
-   - If `node.next` exists, push `(node.next.val, counter, node.next)` into the heap and increment `counter`.
-4. **Return Head:** Return `dummy.next`.
+The heap never holds more than `k` nodes, one per list, because taking a node from a list immediately offers its successor and nothing else.
+
+**Python's heap cannot compare nodes.** It compares tuples element by element, so when two nodes have equal values it tries to compare the nodes themselves and raises an error. Since equal values are guaranteed to show up in this problem, insert a tiebreaker: `(value, list index, node)`. The index is unique per list, so the comparison always settles before reaching the node.
+
+Skip empty lists when seeding the heap. The input can contain them, including a list that is entirely empty.
+
+Build the output with a dummy node and a tail, as in the two-list merge.
+
+**The other good answer** is to merge the lists in pairs: merge them two at a time, halving the number of lists each round, until one is left. That is also $O(N \log k)$, using the two-list merge you already have and no heap at all. If an interviewer asks for a version without a priority queue, that is the one to reach for.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Min-Heap Priority Queue" default>
+Take `[1, 4, 5]`, `[1, 3, 4]` and `[2, 6]`.
+
+1. **Seed the heap** with the three heads: `1` from list 0, `1` from list 1, and `2` from list 2.
+2. **Take the smallest**, the `1` from list 0, since the list index breaks the tie. Attach it and push its successor `4`. The heap holds `1`, `2`, `4`.
+3. **Take `1`** from list 1. Attach it and push `3`. The heap holds `2`, `3`, `4`.
+4. **Take `2`** from list 2. Attach it and push `6`. The heap holds `3`, `4`, `6`.
+5. **Carry on** taking `3`, then `4`, then `4`, then `5`, then `6`, each time pushing the successor if there is one.
+
+The result is `1 -> 1 -> 2 -> 3 -> 4 -> 4 -> 5 -> 6`.
+
+---
+
+### The code
 
 ```python
 import heapq
 
-# Definition for singly-linked list.
-# class ListNode:
-#     def __init__(self, val: int = 0, next: ListNode | None = None):
-#         self.val = val
-#         self.next = next
-
 class Solution:
-    def mergeKLists(self, lists: list[ListNode | None]) -> ListNode | None:
-        dummy = ListNode(0)
-        curr = dummy
-        min_heap: list[tuple[int, int, ListNode]] = []
+    def mergeKLists(self, lists: list[ListNode]) -> ListNode:
+        heap = []
 
-        # Seed heap with the head of each non-empty list
+        # the list index breaks ties, because nodes cannot be compared
         for i, node in enumerate(lists):
             if node:
-                heapq.heappush(min_heap, (node.val, i, node))
+                heapq.heappush(heap, (node.val, i, node))
 
-        # Counter guarantees unique tie-breakers for duplicate values
-        tie_breaker = len(lists)
+        dummy = ListNode()
+        tail = dummy
 
-        while min_heap:
-            val, _, node = heapq.heappop(min_heap)
-            curr.next = node
-            curr = curr.next
+        while heap:
+            _, i, node = heapq.heappop(heap)
 
-            # If extracted node has a next element, push it into the heap
+            tail.next = node
+            tail = node
+
             if node.next:
-                heapq.heappush(min_heap, (node.next.val, tie_breaker, node.next))
-                tie_breaker += 1
+                heapq.heappush(heap, (node.next.val, i, node.next))
 
         return dummy.next
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Divide-and-Conquer Pairwise Merge">
+---
 
-```python
-# Definition for singly-linked list.
-# class ListNode:
-#     def __init__(self, val: int = 0, next: ListNode | None = None):
-#         self.val = val
-#         self.next = next
+### Time and space complexity
 
-class Solution:
-    def mergeKLists(self, lists: list[ListNode | None]) -> ListNode | None:
-        if not lists:
-            return None
+#### Time: $O(N \log k)$
 
-        # Pairwise merge lists until a single merged list remains
-        while len(lists) > 1:
-            merged_lists: list[ListNode | None] = []
-            for i in range(0, len(lists), 2):
-                l1 = lists[i]
-                l2 = lists[i + 1] if (i + 1) < len(lists) else None
-                merged_lists.append(self._merge_two(l1, l2))
-            lists = merged_lists
+`N` is the total number of nodes across all the lists, and `k` is how many lists there are. Every node is pushed once and popped once, and each of those costs about $\log k$ because the heap never holds more than `k` items.
 
-        return lists[0]
+Scanning all `k` heads each time would be $O(N k)$. With a thousand lists that is the difference between about ten operations per node and a thousand.
 
-    def _merge_two(self, l1: ListNode | None, l2: ListNode | None) -> ListNode | None:
-        dummy = ListNode(0)
-        curr = dummy
+#### Space: $O(k)$
 
-        while l1 and l2:
-            if l1.val <= l2.val:
-                curr.next = l1
-                l1 = l1.next
-            else:
-                curr.next = l2
-                l2 = l2.next
-            curr = curr.next
-
-        curr.next = l1 or l2
-        return dummy.next
-```
-
-  </TabItem>
-</Tabs>
+The heap, one entry per list. The result reuses the original nodes rather than copying them.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Min-Heap Priority Queue** | $O(N \log k)$ | $O(k)$ | Extracts the minimal element among $k$ candidates dynamically in $O(\log k)$ time. |
-| **Divide-and-Conquer Merge** | $O(N \log k)$ | $O(1)$ auxiliary | Merges pairs hierarchically in $\log k$ levels without auxiliary heap data structures. |
-
----
-
-### Common Pitfall: Direct Node Comparisons in Heap Tuples
-
-When pushing tuples of the form `(node.val, node)` to `heapq`, identical node values force Python to compare the second tuple element. Because `ListNode` does not implement the `<` comparison operator, this throws a `TypeError: '<' not supported between instances of 'ListNode'`. Always include an integer counter `(node.val, index, node)` as a tie-breaker.
-
----
-
-### Concise Interview Takeaway
-
-For **Merge k Sorted Lists**, maintain a Min-Heap of size at most $k$ holding the active heads of each list. Each heap pop and push costs $O(\log k)$, processing all $N$ nodes in $O(N \log k)$ time and $O(k)$ auxiliary space. Use a unique integer index in tuple entries to avoid comparator collisions on duplicate values.
+The question is always "which of the `k` heads is smallest", and a heap answers it in $\log k$ instead of `k`. Seed it with every non-empty head, and each time you take a node push its successor. In Python, include the list index in the tuple so equal values never force a comparison between nodes. The pairwise merge is the heap-free alternative with the same complexity. $O(N \log k)$ time, $O(k)$ space.

@@ -1,139 +1,95 @@
 ---
 id: 3-linked-list-cycle
 title: "141. Linked List Cycle"
-description: "Floyd's Tortoise and Hare two-pointer cycle detection"
+description: "Two walkers at different speeds: on a loop, the faster one catches up"
 sidebar_position: 3
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Linked Lists</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Fast & Slow Pointers</span>
 
-> **Problem Statement:** Given `head`, the head of a singly linked list, determine if the linked list contains a cycle. A cycle exists if some node in the list can be reached again by continuously following the `next` pointer. Return `true` if there is a cycle in the linked list; otherwise, return `false`.
+> **Problem Statement:** You are given the head of a linked list. Decide whether following the links forever gets you back somewhere you have already been.
 
 ```text
-Input:  head = [3, 2, 0, -4], pos = 1
+Input:  head = [3, 2, 0, -4], with the last node linking back to the second
 Output: true
-Explanation: There is a cycle in the linked list, where the tail connects to the 1st node (0-indexed).
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine two runners starting at the same starting mark on a track:
-- **The Tortoise (`slow`):** Advances 1 node per iteration.
-- **The Hare (`fast`):** Advances 2 nodes per iteration.
+Two runners set off on a track. One jogs, one sprints at twice the speed.
 
-#### Brute Force: Hash Set of Visited Nodes
-A straightforward approach is to record every node object visited in a hash set. At each step, we check if the current node is already in the set. If it is, a cycle exists. While this takes linear time, storing node references requires $O(n)$ extra memory.
+If the track is a straight line, the sprinter reaches the end and that is that. They never meet again.
 
-#### Optimal Approach: Floyd's Tortoise and Hare
-Instead of recording visited nodes, let the two runners race:
-1. **Linear Track (No Cycle):** The hare reaches the end of the road (`fast is None` or `fast.next is None`). If the hare hits the boundary, there is no loop.
-2. **Circular Loop (Cycle Exists):** Both runners eventually enter the cycle. Because the hare moves 1 step faster than the tortoise each round, the gap between them closes by exactly 1 node per step ($2 - 1 = 1$). A gap of length $k$ shrinks to $k-1, k-2, \dots, 0$. The hare is mathematically guaranteed to collide with the tortoise without jumping over it.
+If the track is a loop, the sprinter comes round and catches the jogger from behind. It has to happen, and the reason is simple: once both are going round the loop, the gap between them closes by exactly one step each time. A gap that shrinks by one every step eventually reaches zero, so they land on the same node.
 
-#### Execution Walkthrough
-
-Let us trace `head = [3, 2, 0, -4]` where `-4` loops back to `2`:
-
-| Step | Slow Pointer (`slow.val`) | Fast Pointer (`fast.val`) | Fast Can Advance? | Collision Detected? |
-| :---: | :---: | :---: | :---: | :---: |
-| **0** | `3` (Head) | `3` (Head) | Yes | Initial state |
-| **1** | `2` | `0` | Yes | No (`2 != 0`) |
-| **2** | `0` | `2` (looped back) | Yes | No (`0 != 2`) |
-| **3** | `-4` | `-4` (caught up) | Yes | **Yes** (`slow == fast`) |
+That is the whole test. Run two pointers at different speeds and see whether they ever meet.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Pointers:** Set `slow = head` and `fast = head`.
-2. **Iterate with Unequal Speeds:** While `fast` and `fast.next` are not `None`:
-   - Advance `slow = slow.next` (1 step).
-   - Advance `fast = fast.next.next` (2 steps).
-   - Check if `slow == fast`. If they reference the exact same node, return `True`.
-3. **Handle List End:** If `fast` or `fast.next` evaluates to `None`, the list is acyclic; return `False`.
+Move `slow` one node at a time and `fast` two. If they ever point at the same node, there is a cycle.
+
+The loop condition is where the care goes. The fast pointer needs two nodes ahead of it to be safe, so check both `fast` and `fast.next` before each move. If either is missing, the list has an end, which means no cycle, so return `false`.
+
+Compare the **nodes themselves**, not their values. Two different nodes can easily hold the same number, and that is not a cycle. This is the one place in these problems where identity rather than equality is the point.
+
+The obvious alternative is to record every node you visit in a set and watch for a repeat. It works and it is easy to explain, but it costs $O(n)$ memory. Two pointers do the same job with none, which is why this technique is worth knowing by name.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Floyd's Cycle Detection" default>
+Take `3 -> 2 -> 0 -> -4`, where `-4` links back to `2`.
+
+1. **Start.** Both pointers are on `3`.
+2. **Step one.** Slow moves to `2`. Fast moves two, to `0`.
+3. **Step two.** Slow moves to `0`. Fast moves two: to `-4`, then round the link to `2`.
+4. **Step three.** Slow moves to `-4`. Fast moves two: to `0`, then to `-4`.
+
+Both are on `-4`, so the answer is `true`.
+
+On a list with no cycle, say `1 -> 2 -> 3`, fast reaches `3` and then `fast.next` is missing, so the loop ends and the answer is `false`.
+
+---
+
+### The code
 
 ```python
-# Definition for singly-linked list.
-# class ListNode:
-#     def __init__(self, x: int):
-#         self.val = x
-#         self.next = None
-
 class Solution:
-    def hasCycle(self, head: ListNode | None) -> bool:
-        slow = head
-        fast = head
+    def hasCycle(self, head: ListNode) -> bool:
+        slow = fast = head
 
-        # Advance while fast runner has valid road ahead
+        # fast needs two nodes ahead of it to take a step
         while fast and fast.next:
             slow = slow.next
             fast = fast.next.next
 
-            # Collision indicates fast runner lapped slow runner in a cycle
-            if slow == fast:
+            if slow is fast:   # the same node, not merely the same value
                 return True
 
         return False
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Hash Set Lookup">
+---
 
-```python
-# Definition for singly-linked list.
-# class ListNode:
-#     def __init__(self, x: int):
-#         self.val = x
-#         self.next = None
+### Time and space complexity
 
-class Solution:
-    def hasCycle(self, head: ListNode | None) -> bool:
-        seen: set[ListNode] = set()
-        curr = head
+#### Time: $O(n)$
 
-        while curr:
-            if curr in seen:
-                return True
-            seen.add(curr)
-            curr = curr.next
+With no cycle, fast reaches the end after about half as many steps as there are nodes. With a cycle, the slow pointer enters the loop and the fast one closes the gap by one per step, so they meet within the length of the loop. Either way the work grows with the size of the list.
 
-        return False
-```
+#### Space: $O(1)$
 
-  </TabItem>
-</Tabs>
+Two references. The set-based approach would need $O(n)$.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Floyd's Fast & Slow** | $O(n)$ | $O(1)$ | Traverses nodes in linear time with zero extra memory allocation. |
-| **Hash Set Lookup** | $O(n)$ | $O(n)$ | Intuitive identity tracking, but requires linear auxiliary storage for node references. |
-
----
-
-### Common Pitfall: Comparing Node Values Instead of References
-
-Never compare node values using `slow.val == fast.val`. A valid, cycle-free list can have identical values across distinct nodes (e.g. `1 -> 2 -> 2 -> None`). To reliably detect a cycle, compare the node identities directly (`slow == fast`), verifying whether both pointers reference the exact same memory address.
-
----
-
-### Concise Interview Takeaway
-
-For **Linked List Cycle**, use Floyd's cycle-finding algorithm: advance `slow` by 1 node and `fast` by 2 nodes. If `fast` or `fast.next` reaches `None`, the list terminates naturally without cycles. If `slow == fast`, the two pointers collided within a loop. Runs in $O(n)$ time and $O(1)$ space.
+Run one pointer at single speed and another at double. On a loop the gap closes by one each step, so they are guaranteed to meet; on a straight list the fast one simply runs out of track. Guard with `fast and fast.next` before stepping, and compare node identity rather than values. $O(n)$ time, $O(1)$ space.
