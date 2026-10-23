@@ -1,157 +1,113 @@
 ---
 id: 8-candy
 title: "135. Candy"
-description: "Distribute minimum candies to children using two-pass left-right greedy rating comparison"
+description: "Two rules pull in opposite directions, so satisfy one in each direction"
 sidebar_position: 8
 sidebar_class_name: sidebar-hard
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Greedy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Two-Pass Array</span>
 
-> **Problem Statement:** There are `n` children standing in a line, each assigned a rating value given in an integer array `ratings`. You must give candies to these children adhering to two rules: each child must receive at least one candy, and children with a strictly higher rating than their immediate neighbors must receive more candies than those neighbors. Return the minimum total number of candies required.
+> **Problem Statement:** Children stand in a line, each with a rating. Every child gets at least one sweet, and any child rated higher than a neighbour must get more sweets than that neighbour. Return the smallest total number of sweets.
 
 ```text
 Input:  ratings = [1, 0, 2]
 Output: 5
-Explanation: You can allocate to the first, second, and third child with 2, 1, and 2 candies respectively.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Each child has two simultaneous constraints: their left neighbor and their right neighbor. Attempting to balance both directions in a single forward pass is difficult because deciding how many candies child $i$ requires often depends on how far a descending valley extends to the right.
+The difficulty is that each child is constrained from **both sides**, and the two constraints fight each other. Deciding a child's sweets by looking left can break the rule on the right, and fixing that can break the rule on the left again.
 
-#### Brute Force: Iterative Relaxation
+The way out is to stop trying to satisfy both at once. Handle them **one direction at a time**:
 
-A brute-force simulation initializes every child with 1 candy. It then repeatedly sweeps through the entire array, bumping a child's candy count whenever a neighbor with a lower rating has equal or greater candies. In the worst case (such as a strictly decreasing ratings array of length $n$), updates propagate by only one index per sweep, leading to $O(n^2)$ time.
+```text
+pass one, left to right:   fix every "higher than the child on my left"
+pass two, right to left:   fix every "higher than the child on my right"
+```
 
-#### Optimal Approach: Two-Pass Directional Decoupling
-
-The key insight is to decouple bilateral constraints into two independent directional sweeps:
-
-1. **Initial State:** Every child must receive at least one candy. Initialize `candies = [1] * n`.
-2. **Left-to-Right Pass:** Ensure every child with a higher rating than their left neighbor receives strictly more candies:
-   $$\text{if } \text{ratings}[i] > \text{ratings}[i - 1], \quad \text{candies}[i] = \text{candies}[i - 1] + 1$$
-   This pass guarantees that the left-neighbor condition is fully satisfied everywhere.
-3. **Right-to-Left Pass:** Ensure every child with a higher rating than their right neighbor receives strictly more candies:
-   $$\text{if } \text{ratings}[i] > \text{ratings}[i + 1], \quad \text{candies}[i] = \max(\text{candies}[i], \text{candies}[i + 1] + 1)$$
-   The `max()` operation is essential: if child $i$ already received a higher candy count during the left pass due to an uphill climb from the left, taking the maximum ensures we satisfy the right neighbor without violating the already established left-neighbor condition.
-
-#### Execution Walkthrough
-
-Let us trace `ratings = [1, 2, 87, 87, 87, 2, 1]`:
-
-Start with `candies = [1, 1, 1, 1, 1, 1, 1]`.
-
-| Index ($i$) | Rating (`ratings[i]`) | Left Pass Rule | Candies after Left Pass | Right Pass Rule | Final Candies |
-| :---: | :---: | :---: | :---: | :---: | :---: |
-| **0** | 1 | Base ($i = 0$) | 1 | No right neighbor condition ($1 \le 2$) | 1 |
-| **1** | 2 | $2 > 1 \implies 1 + 1 = 2$ | 2 | No right neighbor condition ($2 \le 87$) | 2 |
-| **2** | 87 | $87 > 2 \implies 2 + 1 = 3$ | 3 | Equal ratings ($87 \le 87$) | 3 |
-| **3** | 87 | Equal ratings ($87 \le 87$) | 1 | Equal ratings ($87 \le 87$) | 1 |
-| **4** | 87 | Equal ratings ($87 \le 87$) | 1 | $87 > 2 \implies \max(1, 2 + 1) = 3$ | 3 |
-| **5** | 2 | $2 \le 87$ | 1 | $2 > 1 \implies \max(1, 1 + 1) = 2$ | 2 |
-| **6** | 1 | $1 \le 2$ | 1 | Base ($i = n - 1$) | 1 |
-
-Total candies distributed: $1 + 2 + 3 + 1 + 3 + 2 + 1 = 13$.
+Then combine. For each child, take the larger of the two demands, because a number that satisfies the bigger requirement automatically satisfies the smaller one.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Candies:** Create `candies = [1] * len(ratings)` so that every child receives at least one candy.
-2. **Left-to-Right Pass:**
-   - Loop `i` from `1` to `len(ratings) - 1`.
-   - If `ratings[i] > ratings[i - 1]`, set `candies[i] = candies[i - 1] + 1`.
-3. **Right-to-Left Pass:**
-   - Loop `i` from `len(ratings) - 2` down to `0`.
-   - If `ratings[i] > ratings[i + 1]`, set `candies[i] = max(candies[i], candies[i + 1] + 1)`.
-4. **Aggregate:** Return `sum(candies)`.
+Give everyone one sweet to start, which satisfies the at-least-one rule.
+
+**Pass one, walking right.** If a child is rated higher than the one on their left, they must get more than that child, so set their count to the left neighbour's plus one. If not, leave them alone: the rule says nothing about equal or lower ratings.
+
+**Pass two, walking left.** If a child is rated higher than the one on their right, they need more than that child too. Now take the **larger** of what they already have and the right neighbour's plus one, rather than overwriting. Overwriting is the classic bug: it would throw away the left-hand requirement that pass one established.
+
+Adding up the final counts gives the answer.
+
+**Why this is minimal**, which is the part an interviewer will press on: every increase made was forced by a rule, so no child ends up with more than some constraint demanded. And no constraint is left unsatisfied, since each pass covers one direction completely and the `max` preserves the other. Forced plus complete means minimal.
+
+Note that equal ratings carry no obligation at all. Two neighbours with the same rating may both hold one sweet, which is a case people often over-constrain.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Two-Pass Greedy" default>
+Take `ratings = [1, 0, 2]`, starting with `[1, 1, 1]`.
+
+**Pass one, left to right:**
+
+- Child `1` has rating `0`, not higher than the `1` on its left, so it stays at `1`.
+- Child `2` has rating `2`, higher than the `0` on its left, so it gets `1 + 1 = 2`.
+
+The counts are `[1, 1, 2]`.
+
+**Pass two, right to left:**
+
+- Child `1` has rating `0`, not higher than the `2` on its right, so it stays at `1`.
+- Child `0` has rating `1`, higher than the `0` on its right, so it needs at least `1 + 1 = 2`. It currently holds `1`, so take the larger: `2`.
+
+The counts are `[2, 1, 2]`, totalling `5`.
+
+That is exactly right: the middle child has the lowest rating and holds the fewest sweets, and both neighbours hold more.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def candy(self, ratings: list[int]) -> int:
         n = len(ratings)
-        candies = [1] * n
+        sweets = [1] * n   # everyone gets at least one
 
-        # Pass 1: Left-to-right to satisfy left neighbor inequalities
+        # left to right: satisfy "higher than my left neighbour"
         for i in range(1, n):
             if ratings[i] > ratings[i - 1]:
-                candies[i] = candies[i - 1] + 1
+                sweets[i] = sweets[i - 1] + 1
 
-        # Pass 2: Right-to-left to satisfy right neighbor inequalities
+        # right to left: satisfy "higher than my right neighbour"
         for i in range(n - 2, -1, -1):
             if ratings[i] > ratings[i + 1]:
-                candies[i] = max(candies[i], candies[i + 1] + 1)
+                # max, not assignment, or the left-hand rule is undone
+                sweets[i] = max(sweets[i], sweets[i + 1] + 1)
 
-        return sum(candies)
+        return sum(sweets)
 ```
 
-  </TabItem>
-  <TabItem value="slope" label="Alternative: Single-Pass Slope Tracking">
+---
 
-```python
-class Solution:
-    def candy(self, ratings: list[int]) -> int:
-        n = len(ratings)
-        if n <= 1:
-            return n
+### Time and space complexity
 
-        candies = 1
-        up = down = peak = 0
+#### Time: $O(n)$
 
-        for i in range(1, n):
-            if ratings[i] > ratings[i - 1]:
-                up += 1
-                down = 0
-                peak = up
-                candies += 1 + up
-            elif ratings[i] == ratings[i - 1]:
-                up = down = peak = 0
-                candies += 1
-            else:
-                up = 0
-                down += 1
-                candies += 1 + down - (1 if peak >= down else 0)
+Three passes: one each way and one to total.
 
-        return candies
-```
+#### Space: $O(n)$
 
-  </TabItem>
-</Tabs>
+The array of counts. There is a cleverer $O(1)$ solution that counts the lengths of rising and falling runs as it goes, which is worth naming as a follow-up, but it is considerably harder to get right.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Single-Pass Slope Tracking** | $O(n)$ | $O(1)$ | Tracks uphill, downhill, and peak sequences in a single pass. Zero extra memory, but tricky edge cases. |
-| **Two-Pass Greedy** | $O(n)$ | $O(n)$ | Decouples left and right neighbor constraints into two simple passes. Clear, robust, and standard in interviews. |
-
----
-
-### Common Pitfall: Over-allocating for Equal Ratings
-
-The problem statement requires giving more candies only to children with a *strictly higher* rating than their neighbor. When adjacent children share the exact same rating (for example, `ratings = [1, 2, 2]`), the second `2` is not required to receive more candies than the first `2`.
-
-In this scenario, assigning candies `[1, 2, 1]` is completely valid. Incrementing candy counts on equal ratings is a common mistake that violates the minimum-candies requirement.
-
----
-
-### Concise Interview Takeaway
-
-For Candy, decouple the bilateral neighbor constraints into two directional sweeps. Initialize each child with 1 candy. Sweep left-to-right to satisfy the left neighbor condition, then sweep right-to-left using `candies[i] = max(candies[i], candies[i + 1] + 1)` to satisfy the right neighbor condition without invalidating earlier gains. This solves the problem in $O(n)$ time and $O(n)$ auxiliary space.
+Two rules pulling in opposite directions become easy once they are handled separately: one left-to-right pass for the left-hand rule, one right-to-left pass for the right-hand rule, combined with `max` so neither undoes the other. Using assignment instead of `max` in the second pass is the standard bug. Every increase is forced and every rule is covered, which is why the total is minimal. $O(n)$ time and space.

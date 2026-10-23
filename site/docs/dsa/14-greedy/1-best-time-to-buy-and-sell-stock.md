@@ -1,138 +1,102 @@
 ---
 id: 1-best-time-to-buy-and-sell-stock
 title: "121. Best Time to Buy and Sell Stock"
-description: "Running minimum price tracking with single-pass profit maximization"
+description: "Remember the cheapest day so far and ask what selling today would make"
 sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Greedy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">One-Pass Tracking</span>
 
-> **Problem Statement:** You are given an array `prices` where `prices[i]` is the price of a given stock on the $i$-th day. You want to maximize your profit by choosing a single day to buy one stock and choosing a different day in the future to sell that stock. Return the maximum profit you can achieve. If you cannot achieve any profit, return `0`.
+> **Problem Statement:** You are given daily prices for a stock. Buy on one day and sell on a later day to make the most profit. Return that profit, or `0` if no profit is possible.
 
 ```text
 Input:  prices = [7, 1, 5, 3, 6, 4]
 Output: 5
-Explanation: Buy on day 1 (price = 1) and sell on day 4 (price = 6), profit = 6 - 1 = 5. Note that buying on day 1 and selling on day 0 is not allowed because you must buy before you sell.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine looking at a historical price chart for a stock. You are allowed to make a single purchase and a single sale. Crucially, time flows in only one direction: your sell day must occur strictly after your buy day.
+Walk forward through the days, and on each one ask a single question:
 
-#### Brute Force: Checking Every Buy-Sell Pair
+> If I sold today, what is the most I could have made?
 
-The most direct approach is testing every possible transaction:
-- Pick day `i` as the buy day.
-- Iterate through every subsequent day `j > i` as the sell day.
-- Calculate `prices[j] - prices[i]` and track the maximum profit observed.
+The answer depends on one thing only: the **cheapest price seen before today**. You would have bought then, because no earlier day was better and no later day is available to you yet.
 
-Because there are $\frac{n(n - 1)}{2}$ potential pairs, this requires $O(n^2)$ time. For arrays with tens of thousands of elements, checking every pair is far too slow and will exceed runtime limits.
+So carry two numbers as you go. The cheapest price so far, and the best profit so far. Each day, work out today's profit against the cheapest, keep it if it beats the record, then see whether today is the new cheapest.
 
-#### Optimal Approach: Tracking the Running Minimum
-
-Instead of looking backwards or checking all pairs, what if we walk forward through the timeline just once?
-
-As you progress day by day, you make two constant-time decisions:
-1. **Is today's price cheaper than any price seen before?** If so, update your baseline purchase price: `min_price = min(min_price, price)`.
-2. **If I bought at that historical minimum and sold today, what would my profit be?** Calculate `price - min_price` and update `max_profit = max(max_profit, price - min_price)`.
-
-Because the best day to sell must be paired with the lowest price that occurred prior to it, maintaining a running minimum guarantees that we always evaluate the optimal purchase price for the current day.
-
-#### Execution Walkthrough
-
-Let us trace `prices = [7, 1, 5, 3, 6, 4]`:
-
-| Day ($i$) | Price (`prices[i]`) | Current Minimum (`min_price`) | Potential Profit (`price - min_price`) | Max Profit (`max_profit`) | Action Taken |
-| :---: | :---: | :---: | :---: | :---: | :--- |
-| **0** | 7 | 7 | $7 - 7 = 0$ | 0 | Initialize `min_price` to 7 |
-| **1** | 1 | 1 | $1 - 1 = 0$ | 0 | New historical minimum found (update `min_price = 1`) |
-| **2** | 5 | 1 | $5 - 1 = 4$ | 4 | Update `max_profit` to 4 |
-| **3** | 3 | 1 | $3 - 1 = 2$ | 4 | Profit lower than record; keep `max_profit = 4` |
-| **4** | 6 | 1 | $6 - 1 = 5$ | 5 | Update `max_profit` to 5 (Global Best) |
-| **5** | 4 | 1 | $4 - 1 = 3$ | 5 | Profit lower than record; keep `max_profit = 5` |
+Nothing has to be remembered about the days in between.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State:** Set `min_price = float('inf')` to capture the cheapest buying opportunity, and `max_profit = 0`.
-2. **Scan Prices Forward:** Iterate through each `price` in `prices`:
-   - If `price < min_price`, update `min_price = price`.
-   - Else if `price - min_price > max_profit`, update `max_profit = price - min_price`.
-3. **Return Result:** After the single pass completes, return `max_profit`.
+Checking every pair of days is the direct reading of the problem and it is $O(n^2)$. The observation that collapses it is that the buy day is **never a free choice**: for any sell day, the best buy is simply the minimum before it, and that minimum is easy to carry forward.
+
+The order inside the loop matters.
+
+```text
+work out today's profit first, using the cheapest from BEFORE today
+then update the cheapest to include today
+```
+
+Updating first would let the same day serve as both the buy and the sell, giving a profit of zero. That is harmless here but wrong in spirit, and it becomes a real bug in variants where same-day trading changes the answer.
+
+A falling market needs no special case. The profit on every day comes out negative, never beats the starting record of zero, and the answer stays `0`, which is exactly what the problem asks for.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: One-Pass Tracking" default>
+Take `prices = [7, 1, 5, 3, 6, 4]`, with the cheapest starting at infinity and the best profit at `0`.
+
+1. **Day price `7`.** No cheaper price exists yet, so no profit. The cheapest becomes `7`.
+2. **Price `1`.** Selling at `1` after buying at `7` loses money, so the record stays `0`. The cheapest becomes `1`.
+3. **Price `5`.** Selling now makes `5 - 1 = 4`, a new record.
+4. **Price `3`.** Selling makes `2`, which does not beat `4`.
+5. **Price `6`.** Selling makes `5`, a new record.
+6. **Price `4`.** Selling makes `3`, no improvement.
+
+The answer is `5`, from buying at `1` and selling at `6`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def maxProfit(self, prices: list[int]) -> int:
-        min_price = float('inf')
-        max_profit = 0
+        cheapest = float("inf")
+        best = 0
 
         for price in prices:
-            # Track the cheapest buying opportunity seen so far
-            if price < min_price:
-                min_price = price
-            # Evaluate profit if selling today
-            elif price - min_price > max_profit:
-                max_profit = price - min_price
+            # today's profit uses the cheapest price from before today
+            best = max(best, price - cheapest)
 
-        return max_profit
+            # only then does today become a candidate buy
+            cheapest = min(cheapest, price)
+
+        return best
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Brute Force: Pairwise Comparison">
+---
 
-```python
-class Solution:
-    def maxProfit(self, prices: list[int]) -> int:
-        n = len(prices)
-        max_profit = 0
+### Time and space complexity
 
-        for i in range(n):
-            for j in range(i + 1, n):
-                profit = prices[j] - prices[i]
-                if profit > max_profit:
-                    max_profit = profit
+#### Time: $O(n)$
 
-        return max_profit
-```
+One pass, with two comparisons per day. Testing every buy and sell pair would be $O(n^2)$.
 
-  </TabItem>
-</Tabs>
+#### Space: $O(1)$
+
+Two numbers, whatever the length of the input.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force** | $O(n^2)$ | $O(1)$ | Checks all pairs $(i, j)$ with $j > i$. Memory-efficient but computationally prohibitive on large inputs. |
-| **One-Pass Tracking** | $O(n)$ | $O(1)$ | Single linear scan maintaining the minimum seen so far. Optimal time and constant auxiliary memory. |
-
----
-
-### Common Pitfall: Finding Global Extremes Separately
-
-A common mistake is attempting to find the global minimum `min(prices)` and global maximum `max(prices)` independently. If the overall maximum price occurs *before* the overall minimum (for instance, in `prices = [7, 6, 4, 3, 1]`), the transaction would require selling before buying, which violates temporal causality.
-
-By updating `min_price` strictly as we advance left to right, we ensure that every profit calculation uses a buy day strictly preceding the current sell day.
-
----
-
-### Concise Interview Takeaway
-
-For Best Time to Buy and Sell Stock, maintain a running minimum of the purchase price as you iterate forward through the array. On each day, greedily evaluate the profit if selling today (`price - min_price`) and update the maximum profit recorded. This single-pass greedy scan achieves optimal $O(n)$ time and $O(1)$ auxiliary space.
+For any sell day the best buy is just the cheapest price before it, so carry that minimum and the best profit and never look back. Compute today's profit **before** folding today into the minimum, so one day cannot be both the buy and the sell. A market that only falls returns `0` with no special case. $O(n)$ time, $O(1)$ space.
