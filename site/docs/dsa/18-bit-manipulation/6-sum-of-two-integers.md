@@ -1,150 +1,106 @@
 ---
 id: 6-sum-of-two-integers
 title: "371. Sum of Two Integers"
-description: "Add two integers without + or - operators using half-adder logic and 32-bit masking"
+description: "XOR adds without carrying, AND finds the carries, so repeat until none are left"
 sidebar_position: 6
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Bit Manipulation</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Bitwise Adder</span>
 
-> **Problem Statement:** Given two integers `a` and `b`, return the sum of the two integers without using the operators `+` and `-`.
+> **Problem Statement:** Add two integers without using `+` or `-`.
 
 ```text
 Input:  a = 2, b = 3
 Output: 5
-Explanation: 2 + 3 = 5, evaluated purely via bitwise logic.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Adding two numbers without arithmetic operators requires simulating how an Arithmetic Logic Unit (ALU) performs addition at the hardware transistor level using digital logic gates.
+Addition on paper has two halves: adding the digits in each column, and carrying into the next column when a column overflows. Binary addition is the same, and each half has its own bitwise operator.
 
-#### Brute Force: Successor and Predecrement Sequences
-One could theoretically model addition without `+` by using increment and decrement steps (shifting values along the number line). However, this takes $O(|b|)$ operations, scales poorly for large inputs, and typically relies on built-in arithmetic successor functions.
+**XOR is addition without carrying.** In each position, `0 + 1` gives `1` and `1 + 1` gives `0`, which is exactly what XOR does.
 
-#### Optimal Approach: Digital Half-Adder Circuit Simulation
-A hardware half-adder separates addition into two independent bitwise components:
+**AND finds where the carries are.** A carry happens precisely where both bits are `1`, and it lands one position to the left, so shift the result left by one.
 
-1. **Sum Without Carry:**
-   Single-bit addition without carrying behaves identically to Bitwise XOR ($\oplus$):
-   - $0 \oplus 0 = 0$
-   - $1 \oplus 0 = 1$
-   - $0 \oplus 1 = 1$
-   - $1 \oplus 1 = 0$ (the sum bit is 0, generating a carry bit)
-   $$\text{sum} = a \oplus b$$
+```text
+a = 0101
+b = 0011
 
-2. **Carry Calculation:**
-   A carry bit is generated if and only if both bits are 1 ($1 + 1$). This corresponds to Bitwise AND ($\&$). Because carries propagate to the next higher-order bit position (leftward), we shift the carry left by 1 bit:
-   $$\text{carry} = (a \, \& \, b) \ll 1$$
+a ^ b        = 0110     the sum, ignoring carries
+(a & b) << 1 = 0010     the carries, moved into place
+```
 
-3. **Loop Until No Carry:**
-   By updating $a = \text{sum}$ and $b = \text{carry}$, we repeat the addition until $b = 0$, at which point all carry bits have fully propagated and settled.
-
-#### Handling Python's Arbitrary-Precision Integers
-In statically typed languages like C++ or Java, 32-bit signed integers overflow naturally and terminate. In Python, integers have arbitrary precision (unbounded bit length). A negative number in Python has an infinite sequence of leading sign bits (`...11111111`), which causes carry propagation to continue indefinitely.
-
-To prevent an infinite loop in Python:
-- Mask each calculation with `0xFFFFFFFF` (32 ones) to force 32-bit two's complement behavior.
-- When $b = 0$, check if $a > \text{0x7FFFFFFF}$. If true, the 32nd bit is set, indicating a negative number in two's complement. We convert it back to Python's negative format using `~(a ^ mask)`.
-
-#### Execution Walkthrough
-
-Let us trace $a = 2$ (`0010_2`) and $b = 3$ (`0011_2`):
-
-| Step | `a` (Binary) | `b` (Binary) | Partial Sum (`(a ^ b) & mask`) | Carry (`((a & b) << 1) & mask`) | Next `a` | Next `b` | Explanation |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **1** | `2` (`0010_2`) | `3` (`0011_2`) | `0001_2` (`1`) | `0100_2` (`4`) | `1` | `4` | $2 \oplus 3 = 1$; carry at bit 1 shifts left to bit 2 |
-| **2** | `1` (`0001_2`) | `4` (`0100_2`) | `0101_2` (`5`) | `0000_2` (`0`) | `5` | `0` | $1 \oplus 4 = 5$; no overlapping bits, carry becomes 0 |
-
-Because $b = 0$, the loop terminates. Since $a = 5 \le \text{0x7FFFFFFF}$, the function returns `5`.
+Neither alone is the answer. But adding those two together is a smaller version of the same problem, so repeat: take the partial sum and the carries as the new pair, and keep going until there are no carries left.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Define 32-Bit Bitmask:** Set `mask = 0xFFFFFFFF` to clamp numbers within a 32-bit boundary.
-2. **Execute Half-Adder Loop:** While carry `b != 0`:
-   - Compute the partial sum without carry: `sum_without_carry = (a ^ b) & mask`.
-   - Compute the carry bits: `carry = ((a & b) << 1) & mask`.
-   - Update `a = sum_without_carry` and `b = carry`.
-3. **Format Two's Complement Output:**
-   - If $a \le \text{0x7FFFFFFF}$, the result is positive: return `a`.
-   - Otherwise, convert 32-bit two's complement to Python signed integer: return `~(a ^ mask)`.
+Loop while the carry is non-zero:
+
+1. **The carry** is `(a & b) << 1`.
+2. **`a`** becomes `a ^ b`, the carry-free sum.
+3. **`b`** becomes the carry.
+
+When `b` reaches zero, `a` holds the answer. The loop terminates because each round pushes the carries further left, and they eventually fall off the end.
+
+**Python needs extra care**, and this is the part that makes an otherwise tidy problem fiddly. Its integers are unbounded and negative numbers behave as though they have infinitely many leading `1`s, so the carry never dies and the loop spins forever.
+
+The fix is to work inside a 32-bit window: mask both values to 32 bits after each round, and at the end decide whether the result should be read as negative. If the sign bit is set, convert it back by flipping the bits within the mask and negating.
+
+In C or Java none of this is needed, because the arithmetic is already 32-bit. Saying that out loud is worth as much as the code, since it shows you know the masking is a language workaround rather than part of the algorithm.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Iterative Half-Adder with 32-Bit Mask" default>
+Add `2` and `3`, which are `010` and `011`.
+
+1. **Round one.** The carry-free sum is `010 ^ 011 = 001`. The carries are `(010 & 011) << 1 = 010 << 1 = 100`. So the new pair is `001` and `100`.
+2. **Round two.** The sum is `001 ^ 100 = 101`. The carries are `(001 & 100) << 1 = 0`. No carries remain.
+
+The loop ends with `101`, which is `5`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def getSum(self, a: int, b: int) -> int:
-        # 32-bit integer mask to simulate fixed-width integer overflow in Python
-        mask = 0xFFFFFFFF
+        MASK = 0xFFFFFFFF
+        LIMIT = 0x7FFFFFFF   # the largest positive 32-bit value
 
-        while b != 0:
-            # XOR computes addition without carry
-            # AND shifted left computes carry bits
-            sum_without_carry = (a ^ b) & mask
-            carry = ((a & b) << 1) & mask
+        a, b = a & MASK, b & MASK
 
-            a = sum_without_carry
+        while b:
+            carry = ((a & b) << 1) & MASK   # where both bits are 1
+            a = (a ^ b) & MASK              # the sum without carries
             b = carry
 
-        # If a is within positive 32-bit signed range, return directly
-        # Otherwise, reconstruct Python's arbitrary-precision negative representation
-        return a if a <= 0x7FFFFFFF else ~(a ^ mask)
+        # read the result back as a signed 32-bit number
+        return a if a <= LIMIT else ~(a ^ MASK)
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Recursive Half-Adder">
+---
 
-```python
-class Solution:
-    def getSum(self, a: int, b: int) -> int:
-        mask = 0xFFFFFFFF
+### Time and space complexity
 
-        def add(x: int, y: int) -> int:
-            if y == 0:
-                return x
-            return add((x ^ y) & mask, ((x & y) << 1) & mask)
+#### Time: $O(1)$
 
-        res = add(a & mask, b & mask)
-        return res if res <= 0x7FFFFFFF else ~(res ^ mask)
-```
+Each round moves every carry one place left, and a 32-bit value runs out of places after at most 32 rounds. That is a fixed ceiling, so it counts as constant.
 
-  </TabItem>
-</Tabs>
+#### Space: $O(1)$
+
+Three numbers.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Iterative Half-Adder** | $O(1)$ | $O(1)$ | Loops at most 32 times because the carry bit shifts left by 1 bit in each iteration. Zero heap allocations. |
-| **Recursive Half-Adder** | $O(1)$ | $O(1)$ auxiliary | Clean recursive formulation; consumes at most 32 call frames on the call stack. |
-
----
-
-### Common Pitfall: Infinite Loops from Python's Unbounded Integers
-
-In languages with fixed 32-bit integers like C++ or Java, integer overflow naturally wraps around and carry bits eventually clear to zero within 32 steps.
-
-In Python, integers have arbitrary precision (unbounded bit length). A negative number in Python has an infinite sequence of leading sign bits (`...11111111`), which causes carry propagation to continue leftward indefinitely. Without clamping each step using `mask = 0xFFFFFFFF`, operations involving negative numbers (such as $a = -1, b = 1$) cause an infinite loop.
-
----
-
-### Concise Interview Takeaway
-
-For **Sum of Two Integers**, simulate a hardware half-adder: calculate sum without carry using `a ^ b` and carry using `(a & b) << 1`. In Python, clamp intermediate values to 32 bits with `0xFFFFFFFF` to ensure termination on negative numbers, completing addition in $O(1)$ time with $O(1)$ auxiliary memory.
+Split addition into its two halves: XOR is the sum ignoring carries, and `(a & b) << 1` is the carries put where they belong. Feed those back as the new pair and repeat until no carries remain. In Python the loop needs a 32-bit mask and a signed conversion at the end, because unbounded integers never let a negative carry die; in a fixed-width language the plain loop is enough.

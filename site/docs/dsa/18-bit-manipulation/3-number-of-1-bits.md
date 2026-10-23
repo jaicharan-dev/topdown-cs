@@ -1,129 +1,101 @@
 ---
 id: 3-number-of-1-bits
 title: "191. Number of 1 Bits"
-description: "Count set bits using Brian Kernighan's bit clearing algorithm in O(k) time"
+description: "n AND n minus one erases the lowest set bit, so count how often you can do it"
 sidebar_position: 3
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Bit Manipulation</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Brian Kernighan's Algorithm</span>
 
-> **Problem Statement:** Given a positive integer `n`, write a function that returns the number of set bits (1s) in its binary representation (also known as the Hamming weight).
+> **Problem Statement:** Given a positive integer, count the `1`s in its binary form.
 
 ```text
 Input:  n = 11
 Output: 3
-Explanation: The input binary string 1011 has a total of three set bits.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Counting the set bits (1s) in a number requires inspecting its binary representation.
+The obvious method checks all 32 bit positions, counting the ones that are set. That works and always costs 32 steps, even for a number with a single `1` in it.
 
-#### Brute Force: Iterative Right Shift
-The most straightforward approach inspects the least significant bit with `n & 1`, adds that bit to a running total, and right-shifts the integer with `n >>= 1`:
-- While this method is simple, it examines every single bit position sequentially.
-- For a 32-bit integer, this loop runs up to 32 iterations, regardless of whether the integer contains thirty 1s or only a single 1.
+There is a sharper tool. Subtracting one from a number does something very specific to its bits:
 
-#### Optimal Approach: Brian Kernighan's Bit Clearing Algorithm
-Instead of inspecting zeroes one by one, we can jump directly from one set bit to the next using an algebraic bit trick.
+```text
+n      = 1011000
+n - 1  = 1010111
+```
 
-Consider what happens in binary when you subtract `1` from an integer `n`:
-- Subtracting 1 flips the **least significant set bit** (the rightmost 1) to `0`.
-- All trailing zeros to the right of that bit flip to `1`s.
-- For example, if $n = 12$ (`1100_2`), then $n - 1 = 11$ (`1011_2`).
+The lowest `1` becomes `0`, and every `0` below it becomes `1`. Everything above is untouched.
 
-Now compute the bitwise AND between $n$ and $n - 1$:
-$$n \, \& \, (n - 1) = 1100_2 \, \& \, 1011_2 = 1000_2$$
+Now AND the two together. Above the lowest `1` the bits agree, so they survive. At the lowest `1` the two differ, so it is wiped. Below it they are opposites everywhere, so all of them vanish:
 
-The expression `n & (n - 1)` clears the rightmost set bit to 0 in a single step, leaving all higher bits intact. By repeatedly applying `n &= n - 1` until $n$ becomes `0`, the number of iterations equals exactly the number of set bits $k$.
+```text
+n & (n - 1) = 1010000
+```
 
-#### Execution Walkthrough
-
-Let us trace $n = 11$ (`1011_2`), starting with `count = 0`:
-
-| Step | Current `n` (Binary) | `n - 1` (Binary) | Bitwise AND (`n & (n - 1)`) | New `n` | Count | Explanation |
-| :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **0** | `11` (`1011_2`) | - | - | `11` | `0` | Initial state with 3 set bits |
-| **1** | `11` (`1011_2`) | `10` (`1010_2`) | `1011_2 & 1010_2 = 1010_2` | `10` | `1` | Clears rightmost set bit at position 0 |
-| **2** | `10` (`1010_2`) | `9` (`1001_2`) | `1010_2 & 1001_2 = 1000_2` | `8` | `2` | Clears rightmost set bit at position 1 |
-| **3** | `8` (`1000_2`) | `7` (`0111_2`) | `1000_2 & 0111_2 = 0000_2` | `0` | `3` | Clears rightmost set bit at position 3 |
-
-Because `n` is now `0`, the loop terminates and returns `count = 3`.
+The effect is to **erase exactly one `1`**, the lowest. So count how many times you can do it before nothing is left, and that count is the number of `1`s.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Counter:** Set `count = 0` to record the number of set bits.
-2. **Clear Rightmost Set Bit:** While `n > 0`, perform `n &= n - 1` to clear the lowest set bit.
-3. **Increment Count:** Add `1` to `count` on each iteration.
-4. **Return Result:** When `n` reaches `0`, return `count`.
+Loop while the number is not zero, applying `n = n & (n - 1)` and counting each time.
+
+The loop runs once per `1` bit rather than once per bit position. For a number with three `1`s it takes three steps regardless of how wide the number is, which is the gain over checking every position.
+
+This is Brian Kernighan's algorithm, and the identity is worth keeping because it shows up elsewhere. Counting Bits uses it, and Power of Two uses the fact that it leaves zero when there is only one `1`.
+
+In Python, `bin(n).count("1")` gets the answer in a line, and it is fine to mention. Write the loop anyway, since the question is really asking whether you know the trick.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Brian Kernighan's Algorithm" default>
+Take `n = 11`, which is `1011` in binary.
+
+1. **`1011 & 1010 = 1010`.** The lowest `1`, the final bit, is erased. Count `1`.
+2. **`1010 & 1001 = 1000`.** The lowest remaining `1` is erased. Count `2`.
+3. **`1000 & 0111 = 0000`.** The last `1` is erased. Count `3`.
+
+The number is zero, so the loop ends. The answer is `3`.
+
+Three steps for three `1`s, where checking every position would have taken 32.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def hammingWeight(self, n: int) -> int:
         count = 0
 
-        # Each iteration clears the lowest set bit
         while n:
-            n &= n - 1
+            n &= n - 1   # erases the lowest 1, and nothing else
             count += 1
 
         return count
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Iterative Bit Shift">
+---
 
-```python
-class Solution:
-    def hammingWeight(self, n: int) -> int:
-        count = 0
+### Time and space complexity
 
-        while n > 0:
-            count += n & 1
-            n >>= 1
+#### Time: $O(k)$, where `k` is the number of `1`s
 
-        return count
-```
+Checking every position is $O(32)$, or $O(w)$ for a width of `w`. This loop runs only as many times as there are `1`s, so it is faster whenever the number is sparse and never slower.
 
-  </TabItem>
-</Tabs>
+#### Space: $O(1)$
+
+A counter.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brian Kernighan's Algorithm** | $O(k)$ | $O(1)$ | Runs in time proportional to the number of set bits $k \le 32$. Skips all zero bits entirely. |
-| **Iterative Bit Shift** | $O(b)$ | $O(1)$ | Shifts through every bit position until $n = 0$. Incurs up to 32 iterations regardless of bit sparsity. |
-
----
-
-### Common Pitfall: Infinite Loops on Signed Numbers
-
-In statically typed languages like C++ or Java, performing an arithmetic right shift (`>>`) on a signed negative integer shifts in `1`s from the left to preserve the sign. A loop conditioned on `while n > 0` or shifting negative values without an unsigned logical shift (`>>>`) can lead to infinite loops.
-
-Brian Kernighan's algorithm avoids shifting altogether by directly masking bits with `n &= n - 1`, making it both cleaner and less prone to language-specific shifting quirks.
-
----
-
-### Concise Interview Takeaway
-
-For **Number of 1 Bits**, apply Brian Kernighan's trick: `n &= n - 1` clears the rightmost set bit in a single bitwise operation. The loop executes in $O(k)$ time, where $k$ is strictly the count of set bits, avoiding unnecessary iterations over zero bits.
+`n & (n - 1)` erases the lowest `1` bit and leaves everything above it alone, because subtracting one flips that bit and everything below it. Loop until the number is zero, counting the erasures, which costs one step per `1` rather than one per bit position. The same identity reappears in Counting Bits and Power of Two. $O(k)$ time, $O(1)$ space.

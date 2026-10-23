@@ -1,135 +1,96 @@
 ---
 id: 1-single-number
 title: "136. Single Number"
-description: "Find the unique element in an array of pairs using XOR cancellation identity"
+description: "XOR cancels a number against its twin, so the loner is what survives"
 sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Bit Manipulation</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">XOR Cancellation</span>
 
-> **Problem Statement:** Given a non-empty array of integers `nums`, every element appears twice except for one. Find that single one. You must implement a solution with linear runtime complexity and use only constant extra space.
+> **Problem Statement:** Every value in the array appears twice except one. Find it, in linear time and constant extra memory.
 
 ```text
 Input:  nums = [4, 1, 2, 1, 2]
 Output: 4
-Explanation: Every element appears twice except 4, which appears once.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine you have an array where almost every number has an identical twin, and exactly one number stands alone without a partner.
+A set or a count would find the loner easily, and both cost memory the problem forbids. What is needed is an operation that makes pairs **disappear**.
 
-#### Brute Force: Frequency Map or Set Tallying
-The most direct approach is tracking how many times each number appears using a hash table or set:
-- As you scan each number, increment its count in a dictionary, or insert it into a set and remove it when seen a second time.
-- The remaining element in the set (or the key with count 1) is the solitary number.
+That operation is XOR, written `^`, which compares two numbers bit by bit and keeps a `1` only where the bits differ. Three facts about it do all the work:
 
-Alternatively, sorting the array places identical elements next to each other, allowing you to scan pairs in steps of two. However, hash set tallying requires $O(n)$ auxiliary memory, violating the strict $O(1)$ space requirement. Sorting avoids extra space but takes $O(n \log n)$ time, violating the linear time constraint.
+```text
+x ^ x = 0        a number cancels itself
+x ^ 0 = x        zero leaves a number alone
+order does not matter
+```
 
-#### Optimal Approach: XOR Cancellation Identity
-Instead of allocating memory to remember seen elements, we can exploit the algebraic properties of the bitwise XOR operation ($\oplus$):
-
-1. **Self-Inverse Identity:** Any number XORed with itself cancels out to zero:
-   $$x \oplus x = 0$$
-2. **Identity Element:** Any number XORed with zero remains unchanged:
-   $$x \oplus 0 = x$$
-3. **Commutative and Associative Properties:** The order and grouping of operations do not change the outcome:
-   $$a \oplus b \oplus c \oplus a = (a \oplus a) \oplus b \oplus c = 0 \oplus b \oplus c = b \oplus c$$
-
-By initializing an accumulator to `0` and XORing every number in the array into it:
-$$\text{res} = 0 \oplus \text{nums}[0] \oplus \text{nums}[1] \oplus \dots \oplus \text{nums}[n-1]$$
-Every duplicate pair cancels itself out to $0$ regardless of their positions in the array. The only value that survives is the single unique number!
-
-#### Execution Walkthrough
-
-Let us trace `nums = [4, 1, 2, 1, 2]` starting with `res = 0`:
-
-| Step | Element (`num`) | Binary Representation | XOR Operation | Accumulator State (`res`) | Explanation |
-| :---: | :---: | :---: | :---: | :---: | :--- |
-| **0** | Initial | - | - | `0` (`0000_2`) | Initialized to neutral identity value |
-| **1** | `4` | `0100_2` | `0 ^ 4` | `4` (`0100_2`) | First appearance of `4` |
-| **2** | `1` | `0001_2` | `4 ^ 1` | `5` (`0101_2`) | First appearance of `1` |
-| **3** | `2` | `0010_2` | `5 ^ 2` | `7` (`0111_2`) | First appearance of `2` |
-| **4** | `1` | `0001_2` | `7 ^ 1` | `6` (`0110_2`) | Duplicate `1` cancels previous `1` |
-| **5** | `2` | `0010_2` | `6 ^ 2` | `4` (`0100_2`) | Duplicate `2` cancels previous `2` |
-
-At the end of the pass, `res = 4`, which is the solitary element.
+Put those together and XOR-ing the whole array collapses it. Every value that appears twice cancels against its twin, whatever the order they appear in, leaving zeros. Those zeros do nothing to the loner, which is therefore what remains.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Accumulator:** Set `res = 0`, the neutral identity element for bitwise XOR.
-2. **Iterate and Accumulate:** Loop through each integer `num` in `nums` and compute `res ^= num`.
-3. **Return Result:** Once the loop completes, all paired numbers have cancelled to zero, leaving only the solitary number in `res`. Return `res`.
+Start a running total at `0` and XOR every value into it.
+
+The reason order does not matter is worth being able to state: XOR is commutative and associative, so the array can be mentally rearranged to put each pair together. Each pair collapses to `0`, those zeros collapse into each other, and the lone value passes through untouched.
+
+No comparisons, no bookkeeping, one pass.
+
+Worth knowing that this generalises in two directions, which is where follow-ups go. If every value appeared **three** times except one, XOR would not help, since three copies leave one behind; that variant counts the `1`s at each bit position modulo three. And if **two** numbers were single, XOR-ing everything gives the XOR of those two, which can then be split apart using any bit where they differ.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Bitwise XOR Cancellation" default>
+Take `nums = [4, 1, 2, 1, 2]`, with a running total of `0`.
+
+1. **XOR 4.** The total is `4`.
+2. **XOR 1.** The total is `5`.
+3. **XOR 2.** The total is `7`.
+4. **XOR 1.** The `1` cancels the earlier `1`, so the total is back to `6`.
+5. **XOR 2.** The `2` cancels the earlier `2`, so the total is `4`.
+
+The answer is `4`.
+
+Reading it as cancellation rather than arithmetic: the two `1`s cancel each other, the two `2`s cancel each other, and `4` is left.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def singleNumber(self, nums: list[int]) -> int:
-        res = 0
+        total = 0
 
-        # Every duplicate pair cancels itself out via x ^ x = 0
-        for num in nums:
-            res ^= num
+        # pairs cancel, whatever order they appear in
+        for value in nums:
+            total ^= value
 
-        return res
+        return total
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Hash Set Tallying">
+---
 
-```python
-class Solution:
-    def singleNumber(self, nums: list[int]) -> int:
-        seen: set[int] = set()
+### Time and space complexity
 
-        for num in nums:
-            if num in seen:
-                seen.remove(num)
-            else:
-                seen.add(num)
+#### Time: $O(n)$
 
-        # The remaining item in the set is the single number
-        return seen.pop()
-```
+One XOR per value, which is a single machine instruction.
 
-  </TabItem>
-</Tabs>
+#### Space: $O(1)$
+
+One running total. A set or a counter would be $O(n)$, which the problem rules out.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Bitwise XOR Accumulator** | $O(n)$ | $O(1)$ | Scans the array in a single linear pass. Uses zero auxiliary memory while achieving optimal runtime. |
-| **Hash Set Tallying** | $O(n)$ | $O(n)$ | Tracks elements by inserting and removing from a set. Simple logic, but consumes linear auxiliary memory. |
-
----
-
-### Common Pitfall: Non-Bitwise Operators and Odd Repetitions
-
-A frequent mistake is assuming XOR cancellation works when numbers appear an odd number of times (such as three times). Because $x \oplus x \oplus x = x$, XOR cannot isolate unique elements when duplicates appear in odd frequencies. The cancellation property strictly relies on duplicate values appearing in even multiples (namely, exactly twice).
-
-Additionally, do not confuse Python's exponentiation operator `**` with the bitwise XOR operator `^`. Writing `res = res ^ num` is correct; writing `res ** num` computes exponentiation and quickly causes integer overflow or incorrect calculations.
-
----
-
-### Concise Interview Takeaway
-
-For **Single Number**, exploit the XOR identity $x \oplus x = 0$ and $x \oplus 0 = x$. By accumulating XOR over the entire array, duplicate pairs cancel out regardless of order, isolating the solitary number in $O(n)$ time and $O(1)$ extra space.
+XOR cancels a number against itself and leaves anything else alone, so XOR-ing the whole array wipes out every pair and leaves the loner. Order does not matter, which is what lets a single pass work without sorting or grouping. For the three-times variant, count bits modulo three instead; for two loners, split the combined result on a bit where they differ. $O(n)$ time, $O(1)$ space.
