@@ -1,171 +1,110 @@
 ---
 id: 4-find-all-anagrams-in-a-string
 title: "438. Find All Anagrams in a String"
-description: "Fixed-size sliding window with O(1) rolling frequency updates"
+description: "A window of fixed width, updated by one letter in and one letter out"
 sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Sliding Window</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Fixed Window</span>
 
-> **Problem Statement:** Given two strings `s` and `p`, return an array of all starting indices of `p`'s anagrams in `s`. The answer may be returned in any order.
+> **Problem Statement:** You are given two strings `s` and `p`. Find every position in `s` where an anagram of `p` begins, and return those positions in any order.
 
 ```text
 Input:  s = "cbaebabacd", p = "abc"
 Output: [0, 6]
-Explanation:
-The substring with start index = 0 is "cba", which is an anagram of "abc".
-The substring with start index = 6 is "bac", which is an anagram of "abc".
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-An anagram is a rearrangement of characters. Two strings of equal length are anagrams if and only if they possess identical character frequency profiles. Because every anagram of `p` must match the length of `p` exactly, this problem requires a **fixed-size sliding window** of width $k = \text{len}(p)$.
+An anagram of `p` has exactly the same letters in the same quantities as `p`, so it also has exactly the same **length**. That is the detail that shapes the whole solution: the window never changes size.
 
-#### Brute Force: Sorting Every Window
-The brute force method inspects every substring of length $k$ in `s`. For every index $i$ from $0$ to $\text{len}(s) - k$, it slices $s[i \dots i + k - 1]$ and sorts it, comparing the result with the sorted characters of `p`. Sorting each substring takes $O(k \log k)$ time, resulting in an overall time complexity of $O((n - k + 1) \cdot k \log k)$. When $n$ and $k$ are large, this redundant work causes unnecessary latency.
+Lay a window of width `len(p)` over the start of `s`, count the letters inside it, and compare those counts with the counts of `p`. Match means you have found an anagram. Then shove the window one step right and compare again.
 
-#### Optimal Approach: Fixed-Size Window with Rolling Frequency Array
-Instead of inspecting each window from scratch, slide a frame of length $k$ across `s`:
-- Maintain a 26-slot frequency array for `p` and a matching array for the active window of `s`.
-- As the window slides one index to the right:
-  - Add the new incoming character on the right: increment `s_count[s[i]]`.
-  - Evict the outgoing character falling off the left: decrement `s_count[s[i - k]]`.
-- After each slide, compare the two 26-slot frequency profiles. Because the alphabet size is constant ($26$), the comparison takes $O(1)$ time.
-
-#### Execution Walkthrough
-
-Let us trace `s = "cbaebabacd"` with `p = "abc"` ($k = 3$).  
-Target frequency inventory: `{'a': 1, 'b': 1, 'c': 1}`.
-
-| Step | Index Span | Active Window | Incoming Char | Outgoing Char | Frequency Match? | Action Taken | Result (`res`) |
-| :---: | :---: | :---: | :---: | :---: | :---: | :--- | :---: |
-| **0** | `[0, 2]` | `"cba"` | Initial seed | None | **Yes** | Match found at index 0 | `[0]` |
-| **1** | `[1, 3]` | `"bae"` | `'e'` | `'c'` | No | No match | `[0]` |
-| **2** | `[2, 4]` | `"aeb"` | `'b'` | `'b'` | No | No match | `[0]` |
-| **3** | `[3, 5]` | `"eba"` | `'a'` | `'a'` | No | No match | `[0]` |
-| **4** | `[4, 6]` | `"bab"` | `'b'` | `'e'` | No | No match | `[0]` |
-| **5** | `[5, 7]` | `"aba"` | `'a'` | `'b'` | No | No match | `[0]` |
-| **6** | `[6, 8]` | `"bac"` | `'c'` | `'a'` | **Yes** | Match found at index 6 | `[0, 6]` |
-| **7** | `[7, 9]` | `"acd"` | `'d'` | `'b'` | No | No match | `[0, 6]` |
-
-The resulting list of starting indices is `[0, 6]`.
+The only question is how to keep the window's letter counts up to date without recounting them from scratch each time.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Edge Case Filter:** If $\text{len}(s) < \text{len}(p)$, no anagram can fit inside `s`; return `[]`.
-2. **Initialize Frequency Arrays:** Allocate two 26-element lists, `p_count` and `s_count`, initialized to zeros.
-3. **Seed Initial Window:** Iterate over the first $k = \text{len}(p)$ characters, tallying counts for both `p` and the prefix of `s`.
-4. **Evaluate Starting Position:** If `s_count == p_count`, append index `0` to the result list `res`.
-5. **Slide Window Across String:** Iterate $i$ from $k$ to $\text{len}(s) - 1$:
-   - Increment `s_count[ord(s[i]) - ord('a')]` for the incoming character.
-   - Decrement `s_count[ord(s[i - k]) - ord('a')]` for the evicted character.
-   - If `s_count == p_count`, append the new start index $i - k + 1$ to `res`.
-6. **Return Result:** Return `res`.
+Sliding one step changes exactly two things. One letter enters on the right, and one letter leaves on the left. Everything between them is untouched.
+
+So maintain the counts incrementally: add one for the entering letter, subtract one for the leaving letter. That is two updates per position rather than a fresh count of the whole window, which is the difference between a fast solution and a slow one.
+
+**Remove counts that fall to zero.** When a letter's count drops to zero, delete the entry rather than leaving a zero behind. A counter holding "zero `e`" is not necessarily considered equal to one with no `e` at all, depending on the version of Python, and deleting it keeps the comparison honest everywhere.
+
+The comparison itself looks expensive but is not. Two counters over lowercase letters can differ in at most 26 entries, so each comparison is a fixed amount of work no matter how long the strings are.
+
+If `p` is longer than `s` there is nowhere for a window to sit, so return an empty list straight away.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Fixed Frequency Array" default>
+Take `s = "cbaebabacd"` and `p = "abc"`, so the window is three wide and the target counts are one each of `a`, `b` and `c`.
 
-```python
-class Solution:
-    def findAnagrams(self, s: str, p: str) -> list[int]:
-        if len(s) < len(p):
-            return []
+1. **Window `cba` at position `0`.** One each of `a`, `b`, `c`. That matches, so record position `0`.
+2. **Slide:** `e` enters, `c` leaves. The window is `bae`, which has an `e` and no `c`. No match.
+3. **Slide:** `b` enters, `b` leaves. The window is `aeb`. Still an `e` in there. No match.
+4. **The next few slides** keep carrying that `e` or dropping letters the target needs, so nothing matches.
+5. **Window `bac` at position `6`.** One each again, so record position `6`.
+6. **The last slides** bring in `d`, which `p` does not contain at all, so they fail.
 
-        p_count = [0] * 26
-        s_count = [0] * 26
-        res: list[int] = []
-        k = len(p)
+The answer is `[0, 6]`.
 
-        # Seed target frequencies and the first window
-        for i in range(k):
-            p_count[ord(p[i]) - ord('a')] += 1
-            s_count[ord(s[i]) - ord('a')] += 1
+---
 
-        if s_count == p_count:
-            res.append(0)
-
-        # Slide the fixed window across the remainder of s
-        for i in range(k, len(s)):
-            s_count[ord(s[i]) - ord('a')] += 1
-            s_count[ord(s[i - k]) - ord('a')] -= 1
-
-            # Compare the 26-slot frequency profiles in O(1)
-            if s_count == p_count:
-                res.append(i - k + 1)
-
-        return res
-```
-
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Hash Map Window">
+### The code
 
 ```python
 from collections import Counter
 
 class Solution:
     def findAnagrams(self, s: str, p: str) -> list[int]:
-        if len(s) < len(p):
+        width = len(p)
+        if width > len(s):
             return []
 
-        p_count = Counter(p)
-        window = Counter(s[:len(p)])
-        res: list[int] = []
-        k = len(p)
+        need = Counter(p)
+        window = Counter(s[:width])
+        out = [0] if window == need else []
 
-        if window == p_count:
-            res.append(0)
+        for right in range(width, len(s)):
+            # one letter in on the right
+            window[s[right]] += 1
 
-        for i in range(k, len(s)):
-            # Add incoming character
-            window[s[i]] += 1
-            
-            # Evict outgoing character
-            outgoing = s[i - k]
-            window[outgoing] -= 1
-            if window[outgoing] == 0:
-                del window[outgoing]
+            # one letter out on the left
+            leaving = s[right - width]
+            window[leaving] -= 1
+            if window[leaving] == 0:
+                del window[leaving]
 
-            if window == p_count:
-                res.append(i - k + 1)
+            if window == need:
+                out.append(right - width + 1)
 
-        return res
+        return out
 ```
 
-  </TabItem>
-</Tabs>
+---
+
+### Time and space complexity
+
+#### Time: $O(n)$
+
+The window slides `n` times, and each slide is two counter updates plus one comparison. The comparison touches at most 26 letters, which is a constant, so the work per step does not grow with the input.
+
+Recounting the whole window at each position instead would multiply everything by the width of `p`, which is the version to avoid.
+
+#### Space: $O(1)$
+
+Two counters, each holding at most one entry per letter of the alphabet. Neither grows with the length of `s`.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Substring Sorting** | $O(n \cdot k \log k)$ | $O(k)$ | Slices and sorts each window. Extremely slow for large windows. |
-| **Hash Map Window** | $O(n)$ | $O(|\Sigma|)$ | Uses `collections.Counter`. Clean syntax, but dictionary hashing adds minor overhead compared to flat arrays. |
-| **Fixed Frequency Array** | $O(n)$ | $O(1)$ | Fixed 26-element integer lists with $O(1)$ rolling updates and direct array comparisons. |
-
----
-
-### Common Pitfall: Recomputing Window Frequencies
-
-A common pitfall is reconstructing a frequency map or slicing a new substring on every step inside the loop, leading to an accidental $O(n \cdot k)$ runtime. A fixed-size sliding window only requires two updates per step: incrementing the incoming right character and decrementing the outgoing left character.
-
----
-
-### Concise Interview Takeaway
-
-Because anagrams require identical lengths and identical character counts, maintain a fixed-size window of length `len(p)`. Update the 26-element frequency profile in $O(1)$ by incrementing the incoming character and decrementing the outgoing character, solving the problem in optimal $O(n)$ time and $O(1)$ space.
+An anagram has the same length as the pattern, so the window is fixed width and only ever slides. Update the counts with one letter in and one letter out rather than recounting, and delete counts that reach zero so the comparison stays reliable. $O(n)$ time, $O(1)$ space.

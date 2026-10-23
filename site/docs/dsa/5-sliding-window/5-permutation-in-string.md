@@ -1,180 +1,114 @@
 ---
 id: 5-permutation-in-string
 title: "567. Permutation in String"
-description: "Fixed-size sliding window with O(1) match counter optimization"
+description: "A permutation is an anagram, so slide a fixed window and stop at the first match"
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Sliding Window</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Fixed Window</span>
 
-> **Problem Statement:** Given two strings `s1` and `s2`, return `true` if `s2` contains a permutation of `s1`, or `false` otherwise. In other words, return `true` if one of `s1`'s permutations is the substring of `s2`.
+> **Problem Statement:** You are given two strings `s1` and `s2`. Return `true` if any rearrangement of `s1` appears as a stretch inside `s2`.
 
 ```text
 Input:  s1 = "ab", s2 = "eidbaooo"
 Output: true
-Explanation: s2 contains one permutation of s1 ("ba").
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-A permutation of a string is simply an anagram: it requires the **exact same length** and the **exact same character frequencies**.
+Strip the wording back. A permutation of `s1` is a rearrangement of its letters, which is exactly what an anagram is. And for one to appear *inside* `s2`, it has to occupy a stretch of `s2` of exactly the same length as `s1`.
 
-The problem directly translates to:
+So the question is: does any window of width `len(s1)` in `s2` hold the same letters, in the same quantities, as `s1`?
 
-**"Does string `s2` contain any substring of length `len(s1)` with identical character counts to `s1`?"**
-
-Because the window size is constant ($k = \text{len}(s1)$), we can slide a fixed-size frame across `s2`:
-- At each step, one character enters the right side of the window, and one character leaves from the left side.
-- Comparing two 26-element arrays (`s1_count == s2_count`) at every shift takes 26 operations.
-- We can optimize this further to strict $O(1)$ operations per shift by maintaining a `matches` counter that records how many of the 26 lowercase English letters currently share equal counts between `s1` and the active window.
-
-#### Brute Force: Generating All Permutations
-Generating all $O(k!)$ permutations of `s1` and searching for each within `s2` is intractable. Even extracting every substring of length $k$ from `s2` and sorting it takes $O((n - k + 1) \cdot k \log k)$ time, which creates significant performance overhead when strings are large.
-
-#### Optimal Approach: Fixed-Size Window with Rolling Matches Tracker
-Instead of recomputing window frequencies or comparing entire arrays on every shift:
-- Initialize two 26-slot frequency arrays, `s1_count` and `s2_count`.
-- Initialize `matches` as the number of letters among the 26 English characters whose counts in `s1_count` and `s2_count` are identical.
-- When sliding the window by one position:
-  - Update `s2_count` for the incoming character. If its count now equals `s1_count`, increment `matches`. If it was previously equal and now diverges, decrement `matches`.
-  - Update `s2_count` for the outgoing character similarly.
-- If `matches == 26`, all character frequencies match, and we can immediately return `True`.
-
-#### Execution Walkthrough
-
-Let us trace `s1 = "ab"` and `s2 = "eidbaooo"` ($k = 2$):
-
-| Step | Index Span | Active Window | Incoming Char | Outgoing Char | Matches (out of 26) | Action Taken | Result |
-| :---: | :---: | :---: | :---: | :---: | :---: | :--- | :---: |
-| **0** | `[0, 1]` | `"ei"` | Initial seed | None | 22 | Compare initial window | Continue |
-| **1** | `[1, 2]` | `"id"` | `'d'` | `'e'` | 22 | Slide window | Continue |
-| **2** | `[2, 3]` | `"db"` | `'b'` | `'i'` | 23 | Slide window | Continue |
-| **3** | `[3, 4]` | `"ba"` | `'a'` | `'d'` | 26 | Exact match found! | Return `True` |
-
-Because all 26 character slots match at index span `[3, 4]`, the algorithm terminates early and returns `True`.
+That is a fixed-width window being dragged along `s2`, with a letter count compared at each stop. Unlike the "find all anagrams" version of this problem, you are not collecting positions, so you can stop at the first match and return.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Check String Lengths:** If $\text{len}(s1) > \text{len}(s2)$, string `s2` is too short to contain a permutation; return `False`.
-2. **Initialize Frequency Arrays:** Allocate two 26-slot lists `s1_count` and `s2_count` initialized to zeros.
-3. **Seed Initial Window:** Populate counts for `s1` and the first $k = \text{len}(s1)$ characters of `s2`.
-4. **Compute Initial Matches:** Calculate `matches = sum(1 for i in range(26) if s1_count[i] == s2_count[i])`.
-5. **Slide the Window Across `s2`:** Iterate $i$ from $k$ to $\text{len}(s2) - 1$:
-   - If `matches == 26`, return `True` immediately.
-   - **Process Incoming Character (`s2[i]`):** Increment its count in `s2_count`. If its count now matches `s1_count`, increment `matches`. If its count previously matched and now exceeds it, decrement `matches`.
-   - **Process Outgoing Character (`s2[i - k]`):** Decrement its count in `s2_count`. If its count now matches `s1_count`, increment `matches`. If its count previously matched and now falls below, decrement `matches`.
-6. **Check Final State:** Return `matches == 26`.
+Count the letters of `s1` once. That is the target and it never changes.
+
+Count the letters of the first window of `s2`. Then drag the window one step at a time. Each step adds the letter arriving on the right and removes the letter leaving on the left, which keeps the counts current with two updates instead of a recount.
+
+Compare after every step. The first time the counts match, return `true`. If the window runs off the end without a match, return `false`.
+
+Two practical points:
+
+**Delete zero counts.** When a letter's count reaches zero, remove the entry instead of leaving a zero sitting there, so the comparison between the two counters is reliable across Python versions.
+
+**Return early if `s1` is longer than `s2`.** There is no window to place, so the answer is immediately `false`.
+
+There is a further refinement interviewers sometimes want: rather than comparing the counters at each step, keep a tally of how many letters currently have exactly the right count, and nudge that tally as the two updates happen. The window matches when all 26 letters agree. It makes each step genuinely constant rather than a 26-way comparison, though for this input size the difference is small.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: O(1) Rolling Matches Window" default>
+Take `s1 = "ab"` and `s2 = "eidbaooo"`, so the window is two wide and the target is one `a` and one `b`.
 
-```python
-class Solution:
-    def checkInclusion(self, s1: str, s2: str) -> bool:
-        if len(s1) > len(s2):
-            return False
+1. **Window `ei`.** No `a`, no `b`. No match.
+2. **Slide:** `d` in, `e` out. Window `id`. No match.
+3. **Slide:** `b` in, `i` out. Window `db`. It has the `b` but not the `a`. No match.
+4. **Slide:** `a` in, `d` out. Window `ba`. One `a` and one `b`, which matches the target exactly. Return `true`.
 
-        s1_count = [0] * 26
-        s2_count = [0] * 26
-        k = len(s1)
+The remaining `ooo` is never examined, because the answer was already settled.
 
-        # Seed initial window counts
-        for i in range(k):
-            s1_count[ord(s1[i]) - ord('a')] += 1
-            s2_count[ord(s2[i]) - ord('a')] += 1
+---
 
-        # Count how many characters out of 26 currently match
-        matches = sum(1 for i in range(26) if s1_count[i] == s2_count[i])
-
-        # Slide the window across s2
-        for i in range(k, len(s2)):
-            if matches == 26:
-                return True
-
-            # Process incoming character (right boundary)
-            in_idx = ord(s2[i]) - ord('a')
-            s2_count[in_idx] += 1
-            if s2_count[in_idx] == s1_count[in_idx]:
-                matches += 1
-            elif s2_count[in_idx] == s1_count[in_idx] + 1:
-                matches -= 1
-
-            # Process outgoing character (left boundary)
-            out_idx = ord(s2[i - k]) - ord('a')
-            s2_count[out_idx] -= 1
-            if s2_count[out_idx] == s1_count[out_idx]:
-                matches += 1
-            elif s2_count[out_idx] == s1_count[out_idx] - 1:
-                matches -= 1
-
-        return matches == 26
-```
-
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Fixed Window Array Equality">
+### The code
 
 ```python
+from collections import Counter
+
 class Solution:
     def checkInclusion(self, s1: str, s2: str) -> bool:
-        if len(s1) > len(s2):
+        width = len(s1)
+        if width > len(s2):
             return False
 
-        s1_count = [0] * 26
-        s2_count = [0] * 26
-        k = len(s1)
+        need = Counter(s1)
+        window = Counter(s2[:width])
 
-        for i in range(k):
-            s1_count[ord(s1[i]) - ord('a')] += 1
-            s2_count[ord(s2[i]) - ord('a')] += 1
-
-        if s1_count == s2_count:
+        if window == need:
             return True
 
-        for i in range(k, len(s2)):
-            s2_count[ord(s2[i]) - ord('a')] += 1
-            s2_count[ord(s2[i - k]) - ord('a')] -= 1
+        for right in range(width, len(s2)):
+            # one letter in on the right
+            window[s2[right]] += 1
 
-            if s1_count == s2_count:
+            # one letter out on the left
+            leaving = s2[right - width]
+            window[leaving] -= 1
+            if window[leaving] == 0:
+                del window[leaving]
+
+            if window == need:
                 return True
 
         return False
 ```
 
-  </TabItem>
-</Tabs>
+---
+
+### Time and space complexity
+
+#### Time: $O(n)$
+
+The window makes one pass along `s2`, and each stop costs two counter updates and a comparison over at most 26 letters. That is a constant per position, so the total tracks the length of `s2`.
+
+Returning at the first match often makes it far less in practice, though the worst case is a string with no permutation anywhere in it.
+
+#### Space: $O(1)$
+
+Two counters, each capped at one entry per letter of the alphabet.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Substring Sorting** | $O(n \cdot k \log k)$ | $O(k)$ | Slices and sorts every substring of size $k$. Impractical for long strings. |
-| **Array Equality Comparison** | $O(26 \cdot n)$ | $O(1)$ | Compares 26-element arrays directly on each shift. Simple and practical. |
-| **Rolling Matches Window** | $O(n)$ | $O(1)$ | Tracks individual matches with zero array rescan overhead. Strictly $O(1)$ operations per shift. |
-
----
-
-### Common Pitfall: Desynchronizing the Matches Counter
-
-When tracking a running `matches` counter, it is easy to mishandle the boundary conditions. For incoming characters, incrementing `s2_count` can either establish equality (`s2_count == s1_count`) or break existing equality (`s2_count == s1_count + 1`). Similarly, evicting an outgoing character can restore equality or create a shortfall. Tracking these transitions explicitly prevents desynchronizing the match counter.
-
----
-
-### Concise Interview Takeaway
-
-Because a permutation preserves length and character frequencies, maintain a fixed-size sliding window of length `len(s1)`. Tracking an integer `matches` variable allows evaluating whether the window is a valid permutation in strict $O(1)$ operations per shift, achieving early termination and an optimal $O(n)$ total runtime with $O(1)$ space.
+A permutation is an anagram, and an anagram has the same length, so this is a fixed-width window dragged along `s2`. Update the counts with one letter in and one out, compare, and return at the first match. Delete counts that reach zero. $O(n)$ time, $O(1)$ space.

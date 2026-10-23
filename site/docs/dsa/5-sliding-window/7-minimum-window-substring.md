@@ -1,204 +1,127 @@
 ---
 id: 7-minimum-window-substring
 title: "76. Minimum Window Substring"
-description: "Dynamic sliding window with have/need inventory matching in O(m + n)"
+description: "Count how many letters are fully stocked, and squeeze while the window still has them all"
 sidebar_position: 7
 sidebar_class_name: sidebar-hard
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Sliding Window</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Dynamic Window</span>
 
-> **Problem Statement:** Given two strings `s` and `t` of lengths `m` and `n` respectively, return the minimum window substring of `s` such that every character in `t` (including duplicates) is included in the window. If there is no such substring, return the empty string `""`.
+> **Problem Statement:** You are given strings `s` and `t`. Find the shortest stretch of `s` that contains every character of `t`, including repeats. If no such stretch exists, return an empty string.
 
 ```text
 Input:  s = "ADOBECODEBANC", t = "ABC"
 Output: "BANC"
-Explanation: The minimum window substring "BANC" includes 'A', 'B', and 'C' from string t.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Think of string `t` as a **grocery shopping list**. If `t = "ABC"`, your list requires 1 `'A'`, 1 `'B'`, and 1 `'C'`. The number of unique items that must be satisfied is `need = 3`.
+Think of `t` as a shopping list, with quantities. If `t` is `"AABC"` then you need two `A`, one `B`, one `C`.
 
-String `s` represents a supermarket aisle:
-- **Fill the Cart (`right`):** Walk forward through `s`, tossing characters into your shopping cart (`window`). Track how many distinct item requirements are fully satisfied (`have`).
-- **Prune Excess Items (`left`):** The moment `have == need`, your cart satisfies the entire grocery list. Now contract from the left:
-  - If a character is not on your list, discard it immediately.
-  - If a character is a redundant duplicate beyond what is needed, discard it.
-  - Record the window length and indices if this is the shortest valid window seen so far.
-  - The moment discarding an essential item causes `have < need`, stop contracting and resume walking `right`.
+Now drag a window along `s`. Everything inside the window is your basket. The window is **valid** when the basket covers the whole shopping list. Extra items are fine, they just make the window longer than it needs to be.
 
-#### Brute Force: Testing Every Substring
-The naive approach generates all $O(m^2)$ possible substrings $s[i \dots j]$. For each candidate substring, it counts character frequencies and verifies whether every character in `t` appears with the required frequency. Checking each substring takes $O(m)$ time, producing an $O(m^3)$ algorithm (or $O(m^2)$ if maintained incrementally). On strings of length up to $10^5$, this quadratic or cubic runtime times out.
-
-#### Optimal Approach: Dynamic Sliding Window with Have/Need Counters
-Instead of rescanning character counts, maintain a rolling frequency dictionary `window` and track progress using two integers:
-- `need = len(count_t)`: The number of distinct characters in `t` that must meet their target frequencies.
-- `have`: The number of distinct characters whose counts in `window` currently meet or exceed their target frequencies in `count_t`.
-
-When `have == need`, the current window is valid. We then contract `left` in a `while` loop to find the tightest possible boundary for that window. Because each character in `s` is visited at most twice (once by `right` and once by `left`), the entire process runs in $O(m + n)$ time.
-
-#### Execution Walkthrough
-
-Let us trace `s = "ADOBECODEBANC"` with `t = "ABC"` (`need = 3`):
-
-| Step | Pointer `right` | `s[right]` | Action | Window State | `have` / `need` | Valid? | Action Taken | Best Window |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- | :---: |
-| **1** | `0` | `'A'` | Expand | `{'A': 1}` | 1 / 3 | No | Continue | None |
-| **2** | `3` | `'B'` | Expand | `{'A': 1, 'B': 1}` | 2 / 3 | No | Continue | None |
-| **3** | `5` | `'C'` | Expand | `{'A': 1, 'B': 1, 'C': 1}` | 3 / 3 | **Yes** | Record `"ADOBEC"`, evict `'A'` | `"ADOBEC"` (len 6) |
-| **4** | `9` | `'B'` | Expand | `{'B': 2, 'C': 1}` | 2 / 3 | No | Continue | `"ADOBEC"` (len 6) |
-| **5** | `10` | `'A'` | Expand | `{'A': 1, 'B': 2, 'C': 1}` | 3 / 3 | **Yes** | Evict non-essentials up to index 9 | `"ADOBEC"` (len 6) |
-| **6** | `12` | `'C'` | Expand | `{'A': 1, 'B': 1, 'C': 1}` | 3 / 3 | **Yes** | Tighten window to `[9, 12]` | `"BANC"` (len 4) |
-
-The minimal valid substring found is `"BANC"` with length 4.
+So: reach forward until the basket is complete, then start putting things back from the left for as long as the list is still covered. Every time you have a complete basket, note how wide the window is. The narrowest one wins.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Edge Case Filter:** If `not s`, `not t`, or $\text{len}(s) < \text{len}(t)$, return `""`.
-2. **Build Target Frequency Map:** Create a frequency map `count_t` from `t`. Set `need = len(count_t)` and `have = 0`.
-3. **Initialize Window State:** Create an empty dictionary `window`, set `left = 0`, `min_len = float('inf')`, and `best_range = (-1, -1)`.
-4. **Expand Right Boundary:** Iterate `right, char` across `enumerate(s)`:
-   - If `char` is present in `count_t`:
-     - Increment `window[char] += 1`.
-     - If `window[char] == count_t[char]`, increment `have += 1`.
-5. **Contract Left Boundary:** While `have == need`:
-   - If `right - left + 1 < min_len`, update `min_len = right - left + 1` and `best_range = (left, right)`.
-   - Evict `s[left]`:
-     - If `s[left]` is in `count_t`:
-       - Decrement `window[s[left]] -= 1`.
-       - If `window[s[left]] < count_t[s[left]]`, decrement `have -= 1`.
-     - Increment `left += 1`.
-6. **Return Result:** If `min_len == float('inf')`, return `""`; otherwise return `s[best_range[0] : best_range[1] + 1]`.
+The expensive-looking part is checking "is the basket complete" at every step. Comparing two counts of letters each time would work but is wasteful.
+
+Instead keep a single number: **how many distinct letters are currently fully stocked**. Call it `have`, and compare it with `required`, the number of distinct letters on the list.
+
+It only changes at precise moments:
+
+- **A letter enters** and its count in the window becomes *exactly* what the list asks for. That letter just became fully stocked, so `have` goes up. If its count rises past what is needed, nothing changes, because it was already stocked.
+- **A letter leaves** and its count drops *below* what the list asks for. That letter is no longer stocked, so `have` goes down.
+
+When `have` equals `required` the window is valid, and that test is a single comparison.
+
+The structure is then the same two moods as the minimum-subarray problem. Expand on the right until valid, then shrink on the left while still valid, recording the best window on every shrink. Record the window's start and length rather than slicing the string each time, because slicing inside the loop quietly makes the whole thing much slower.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Have/Need Sliding Window" default>
+Take `s = "ADOBECODEBANC"` and `t = "ABC"`, so the list needs one each of `A`, `B` and `C`, and `required` is `3`.
+
+1. **Expand** through `A`, `D`, `O`, `B`, `E`, `C`. At the `C`, all three letters are stocked, so `have` reaches `3`. The window is `ADOBEC`, length `6`. Best so far.
+2. **Shrink:** drop the `A`. Now `A` is understocked, `have` falls to `2`, and the window is invalid again. Stop shrinking.
+3. **Expand** through `O`, `D`, `E`, `B`, `A`. At that `A`, all three are stocked again. The window is `DOBECODEBA`, length `10`, which is worse than `6`.
+4. **Shrink** from the left: `D`, `O`, `B`, `E`, `C` come out one by one. Dropping the `C` makes `C` understocked, so shrinking stops. Along the way the window `CODEBA` of length `6` was seen, which ties but does not beat the best.
+5. **Expand** to the final `C`. All three stocked again, and the window is `BANC`, length `4`. New best.
+6. **Shrink:** dropping `B` breaks it, so the walk ends.
+
+The answer is `BANC`.
+
+---
+
+### The code
 
 ```python
-from collections import Counter
+from collections import Counter, defaultdict
 
 class Solution:
     def minWindow(self, s: str, t: str) -> str:
-        if not s or not t or len(s) < len(t):
+        if not s or not t:
             return ""
 
-        count_t: dict[str, int] = Counter(t)
-        window: dict[str, int] = {}
+        need = Counter(t)
+        required = len(need)
 
+        window = defaultdict(int)
         have = 0
-        need = len(count_t)
-        best_range = (-1, -1)
-        min_len = float('inf')
+
+        best_len = len(s) + 1
+        best_start = 0
         left = 0
 
-        for right, char in enumerate(s):
-            # Add character to active window
-            if char in count_t:
-                window[char] = window.get(char, 0) + 1
-                if window[char] == count_t[char]:
-                    have += 1
+        for right, ch in enumerate(s):
+            window[ch] += 1
 
-            # Contract window from left while all requirements are met
-            while have == need:
-                # Update candidate minimum window
-                if (right - left + 1) < min_len:
-                    min_len = right - left + 1
-                    best_range = (left, right)
-
-                # Evict character from left
-                left_char = s[left]
-                if left_char in count_t:
-                    window[left_char] -= 1
-                    if window[left_char] < count_t[left_char]:
-                        have -= 1
-
-                left += 1
-
-        start, end = best_range
-        return s[start : end + 1] if min_len != float('inf') else ""
-```
-
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Filtered Character Window">
-
-```python
-from collections import Counter
-
-class Solution:
-    def minWindow(self, s: str, t: str) -> str:
-        if not s or not t or len(s) < len(t):
-            return ""
-
-        count_t: dict[str, int] = Counter(t)
-        # Store only indices and characters that appear in target t
-        filtered_s: list[tuple[int, str]] = [
-            (i, char) for i, char in enumerate(s) if char in count_t
-        ]
-
-        window: dict[str, int] = {}
-        have = 0
-        need = len(count_t)
-        best_range = (-1, -1)
-        min_len = float('inf')
-        left = 0
-
-        for right in range(len(filtered_s)):
-            char = filtered_s[right][1]
-            window[char] = window.get(char, 0) + 1
-            if window[char] == count_t[char]:
+            # this letter has just reached the amount the list asks for
+            if ch in need and window[ch] == need[ch]:
                 have += 1
 
-            while have == need:
-                end = filtered_s[right][0]
-                start = filtered_s[left][0]
-                if (end - start + 1) < min_len:
-                    min_len = end - start + 1
-                    best_range = (start, end)
+            while have == required:
+                if right - left + 1 < best_len:
+                    best_len = right - left + 1
+                    best_start = left
 
-                evict_char = filtered_s[left][1]
-                window[evict_char] -= 1
-                if window[evict_char] < count_t[evict_char]:
+                leaving = s[left]
+                window[leaving] -= 1
+
+                # dropping below the needed amount breaks the window
+                if leaving in need and window[leaving] < need[leaving]:
                     have -= 1
+
                 left += 1
 
-        start, end = best_range
-        return s[start : end + 1] if min_len != float('inf') else ""
+        if best_len > len(s):
+            return ""
+
+        return s[best_start:best_start + best_len]
 ```
 
-  </TabItem>
-</Tabs>
+---
+
+### Time and space complexity
+
+#### Time: $O(m + n)$
+
+Building the shopping list reads `t` once. Then each character of `s` is added by the right edge once and removed by the left edge at most once, with constant work at each step because validity is a single integer comparison rather than a counter comparison.
+
+#### Space: $O(m + n)$
+
+Two dictionaries. The list holds one entry per distinct character of `t`, and the basket holds one per distinct character seen in `s`. Over a fixed alphabet both are capped, so this is often quoted as $O(1)$.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force** | $O(m^2)$ | $O(|\Sigma|)$ | Evaluates all substrings. Impractical for strings with length $> 1000$. |
-| **Filtered Window** | $O(m + n)$ | $O(m + |\Sigma|)$ | Skips irrelevant characters via indexed filtering. Beneficial when $m \gg n$. |
-| **Have/Need Sliding Window** | $O(m + n)$ | $O(|\Sigma|)$ | Single linear scan with two pointers and frequency hash maps. Optimal time and space. |
-
----
-
-### Common Pitfall: Premature Decrementing of Satisfied Counts
-
-When evicting characters with pointer `left`, only decrement `have` when `window[char] < count_t[char]`. If `t` requires one `'A'` and the active window holds three `'A'`s, evicting the first duplicate leaves two `'A'`s, which still satisfies the quota. Decrementing `have` on redundant duplicates prematurely breaks the valid state and causes the algorithm to miss tighter windows.
-
----
-
-### Concise Interview Takeaway
-
-Model the target string as an inventory requirement and track satisfaction using `have` and `need`. Expand `right` until `have == need`, then contract `left` in a `while` loop to prune redundant duplicates and non-essential characters, recording the minimal valid window. Both pointers visit each character at most once, securing an optimal $O(m + n)$ runtime and $O(|\Sigma|)$ auxiliary space.
+Treat `t` as a shopping list with quantities and the window as a basket. Track `have`, the count of letters that are fully stocked, and nudge it only when a count reaches the needed amount or falls below it, so checking validity is one comparison. Expand until valid, shrink while still valid, and record the best start and length rather than slicing as you go. $O(m + n)$ time.

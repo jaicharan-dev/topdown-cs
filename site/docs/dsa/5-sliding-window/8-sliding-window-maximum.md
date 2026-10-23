@@ -1,161 +1,112 @@
 ---
 id: 8-sliding-window-maximum
 title: "239. Sliding Window Maximum"
-description: "Monotonic decreasing deque tracking window maximums in O(n)"
+description: "Keep a queue of candidates, and let every new value evict the smaller ones waiting behind it"
 sidebar_position: 8
 sidebar_class_name: sidebar-hard
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Sliding Window</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Monotonic Queue</span>
 
-> **Problem Statement:** You are given an array of integers `nums`, and a sliding window of size `k` moving from the very left of the array to the very right. You can only see the `k` numbers in the window. Each time the sliding window moves right by one position, return the max sliding window.
+> **Problem Statement:** You are given an array `nums` and a window of width `k` that slides from the left end to the right end, one step at a time. Report the largest value in the window at each of its positions.
 
 ```text
 Input:  nums = [1, 3, -1, -3, 5, 3, 6, 7], k = 3
 Output: [3, 3, 5, 5, 6, 7]
-Explanation:
-Window position                Max
----------------               -----
-[1  3  -1] -3  5  3  6  7       3
- 1 [3  -1  -3] 5  3  6  7       3
- 1  3 [-1  -3  5] 3  6  7       5
- 1  3  -1 [-3  5  3] 6  7       5
- 1  3  -1  -3 [5  3  6] 7       6
- 1  3  -1  -3  5 [3  6  7]      7
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-As a window of length $k$ moves across `nums`, rescanning all $k$ elements on every shift requires $O(k)$ operations per step, leading to $O(n \cdot k)$ runtime. For inputs where $n = 100,000$ and $k = 50,000$, this approach exceeds typical time limits.
+Recomputing the maximum at every position is the obvious approach, and it rereads the same values over and over. The useful question is: which values could ever be the answer in future?
 
-#### Brute Force: Linear Window Rescan
-The brute force method slides through every starting position $i$ from $0$ to $n - k$ and scans all $k$ items in $nums[i \dots i + k - 1]$ to identify the maximum. Across all $n - k + 1$ windows, this requires $O(n \cdot k)$ time. Using a balanced binary search tree or max-heap reduces lookup time to $O(\log k)$, but involves heap maintenance or lazy deletion overhead.
+Suppose the window holds `3` and then a `5` arrives to its right. The `3` is now worthless. While the `5` is in the window, the `3` can never be the maximum; and the `5` will outlive the `3`, because it arrived later and therefore leaves later. The `3` has no future at all, so it can be thrown away the moment the `5` turns up.
 
-#### Optimal Approach: Monotonic Decreasing Deque
-Consider this observation: if a newly arrived element is both younger (arrives later) and stronger (greater or equal value) than existing elements in the window, those older and smaller elements will never become the maximum of any future window. They can be eliminated immediately.
-
-We maintain a double-ended queue (deque) storing **indices** in strictly decreasing order of their corresponding values:
-- **The Leader (`q[0]`):** The front of the deque always holds the index of the absolute maximum value in the active window.
-- **Evict smaller elements from the back:** When a new element `nums[i]` enters, pop all indices from the back whose values are $\le nums[i]$.
-- **Evict expired elements from the front:** If the leader index `q[0]` falls outside the window boundary ($q[0] \le i - k$), pop it from the left.
-- Each index enters the deque once and is removed at most once, yielding strict $O(n)$ amortized runtime.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [1, 3, -1, -3, 5, 3, 6, 7]` with $k = 3$:
-
-| Step (`i`) | Element `nums[i]` | Expired Check (`q[0] <= i - 3`) | Popped from Back | Deque Indices `q` | Values in Deque | Window Ready (`i >= 2`) | Recorded Max (`nums[q[0]]`) |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **0** | `1` | None | None | `[0]` | `[1]` | No | None |
-| **1** | `3` | None | `0` (val 1 $\le$ 3) | `[1]` | `[3]` | No | None |
-| **2** | `-1` | None | None | `[1, 2]` | `[3, -1]` | **Yes** | 3 |
-| **3** | `-3` | None ($1 > 0$) | None | `[1, 2, 3]` | `[3, -1, -3]` | **Yes** | 3 |
-| **4** | `5` | Pop `1` ($1 \le 1$) | `3, 2` (vals $-3, -1 \le 5$) | `[4]` | `[5]` | **Yes** | 5 |
-| **5** | `3` | None ($4 > 2$) | None | `[4, 5]` | `[5, 3]` | **Yes** | 5 |
-| **6** | `6` | None ($4 > 3$) | `5, 4` (vals $3, 5 \le 6$) | `[6]` | `[6]` | **Yes** | 6 |
-| **7** | `7` | None ($6 > 4$) | `6` (val $6 \le 7$) | `[7]` | `[7]` | **Yes** | 7 |
-
-The resulting list of sliding window maximums is `[3, 3, 5, 5, 6, 7]`.
+Apply that rule to everything you hold and you end up with a queue of candidates whose values are always in decreasing order: the current maximum at the front, then the value that takes over when it expires, and so on.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State:** Create an empty double-ended queue `q = deque()` to store indices and an empty output list `res = []`.
-2. **Iterate with Index and Value:** Traverse `nums` using `enumerate(nums)` with pointer `i` and element `num`.
-3. **Evict Expired Index:** If `q` is non-empty and `q[0] <= i - k`, pop the left element via `q.popleft()`.
-4. **Maintain Monotonicity:** While `q` is non-empty and `nums[q[-1]] <= num`, remove the back index via `q.pop()`.
-5. **Append Current Index:** Add the incoming index `i` to the back of `q`.
-6. **Record Window Maximum:** Once `i >= k - 1`, append `nums[q[0]]` to `res`.
-7. **Return Result:** Return `res`.
+Keep a double-ended queue holding **positions**, not values. Positions are what let you tell when something has slid out of the window.
+
+At each new element, three things happen:
+
+1. **Evict from the back.** While the value at the back of the queue is no larger than the new value, remove it. Those values are the worthless ones from the picture above.
+2. **Add the new position** to the back.
+3. **Expire from the front.** If the position at the front has fallen outside the window, remove it.
+
+After that, the front of the queue is the maximum of the current window, because everything bigger that is still in range would have evicted it, and everything smaller sits behind it.
+
+Once the window is actually full, meaning you have seen at least `k` elements, record that front value.
+
+Storing positions rather than values is the detail that makes step three possible. With values alone you could not tell whether the maximum you are holding is still inside the window.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Monotonic Decreasing Deque" default>
+Take `nums = [1, 3, -1, -3, 5, 3, 6, 7]` with `k = 3`. The queue below is shown as values for readability.
+
+1. **`1`** goes in. The queue is `[1]`.
+2. **`3`** arrives and evicts the `1`, which can never win again. The queue is `[3]`.
+3. **`-1`** is smaller than `3`, so it waits behind it. The queue is `[3, -1]`. The window is full, so record `3`.
+4. **`-3`** waits behind too. The queue is `[3, -1, -3]`. Record `3`.
+5. **`5`** evicts `-3`, then `-1`, then `3` itself. The queue is `[5]`. Record `5`.
+6. **`3`** waits behind. The queue is `[5, 3]`. Record `5`.
+7. **`6`** evicts `3` and then `5`. The queue is `[6]`. Record `6`.
+8. **`7`** evicts `6`. The queue is `[7]`. Record `7`.
+
+The output is `[3, 3, 5, 5, 6, 7]`.
+
+---
+
+### The code
 
 ```python
 from collections import deque
 
 class Solution:
     def maxSlidingWindow(self, nums: list[int], k: int) -> list[int]:
-        q: deque[int] = deque()  # Stores indices in monotonically decreasing value order
-        res: list[int] = []
+        candidates = deque()  # positions, with values in decreasing order
+        out = []
 
-        for i, num in enumerate(nums):
-            # Step 1: Evict index that has expired past the left window boundary
-            if q and q[0] <= i - k:
-                q.popleft()
+        for i, value in enumerate(nums):
+            # anything no larger than the newcomer can never win again
+            while candidates and nums[candidates[-1]] <= value:
+                candidates.pop()
 
-            # Step 2: Evict all smaller values from the back
-            while q and nums[q[-1]] <= num:
-                q.pop()
+            candidates.append(i)
 
-            # Step 3: Add current index to the back
-            q.append(i)
+            # the front may have slid out of the window
+            if candidates[0] <= i - k:
+                candidates.popleft()
 
-            # Step 4: Record current window maximum once window size reaches k
             if i >= k - 1:
-                res.append(nums[q[0]])
+                out.append(nums[candidates[0]])
 
-        return res
+        return out
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Max-Heap with Lazy Deletion">
+---
 
-```python
-import heapq
+### Time and space complexity
 
-class Solution:
-    def maxSlidingWindow(self, nums: list[int], k: int) -> list[int]:
-        # Heap stores (-value, index) tuples to simulate a max-heap
-        heap: list[tuple[int, int]] = []
-        res: list[int] = []
+#### Time: $O(n)$
 
-        for i, num in enumerate(nums):
-            heapq.heappush(heap, (-num, i))
+The eviction loop makes this look quadratic, and again the answer is to count the work rather than the loops. Each position is appended to the queue exactly once and removed exactly once, whether from the back by an eviction or from the front by expiry. That is at most `2n` queue operations across the entire run.
 
-            # Once the window reaches size k, record the valid top element
-            if i >= k - 1:
-                # Lazily remove elements that fall outside the current window
-                while heap[0][1] <= i - k:
-                    heapq.heappop(heap)
-                res.append(-heap[0][0])
+The naive approach of scanning each window is $O(n k)$, which for a large window is dramatically worse.
 
-        return res
-```
+#### Space: $O(k)$
 
-  </TabItem>
-</Tabs>
+The queue never holds more than one position per slot in the window, since anything that falls out of range is dropped from the front.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force** | $O(n \cdot k)$ | $O(1)$ | Scans all $k$ items per window. Exceeds time limit on large inputs. |
-| **Max-Heap (Lazy Deletion)** | $O(n \log n)$ | $O(n)$ | Pushes all items into a heap and lazily pops expired leaders. Simple but incurs logarithmic overhead. |
-| **Monotonic Deque** | $O(n)$ | $O(k)$ | Discards non-candidate elements in $O(1)$ amortized time. Strictly optimal time and space. |
-
----
-
-### Common Pitfall: Storing Values Instead of Indices in the Deque
-
-Storing element values instead of their indices makes it impossible to check in $O(1)$ whether the maximum element at the front of the deque has expired past the left boundary of the window. Storing indices allows instant verification of window expiration (`q[0] <= i - k`) while still enabling value lookups via `nums[q[0]]`.
-
----
-
-### Concise Interview Takeaway
-
-Maintain a monotonic decreasing deque of indices: pop expired indices from the front when $q[0] \le i - k$, and pop smaller elements from the back because a newer, larger value makes them obsolete. The active window maximum is always at `q[0]`, delivering an optimal $O(n)$ time and $O(k)$ auxiliary space solution.
+A value is worthless the moment a larger one arrives to its right, because the newcomer is both bigger and longer-lived. Keep a queue of positions whose values decrease from front to back: evict smaller values from the back, expire out-of-range positions from the front, and the front is always the window's maximum. $O(n)$ time, $O(k)$ space.

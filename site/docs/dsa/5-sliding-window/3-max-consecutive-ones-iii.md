@@ -1,155 +1,103 @@
 ---
 id: 3-max-consecutive-ones-iii
 title: "1004. Max Consecutive Ones III"
-description: "Sliding window with zero-token budget allocation"
+description: "The window may hold k zeros, so count zeros and shrink when you overspend"
 sidebar_position: 3
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Sliding Window</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Dynamic Window</span>
 
-> **Problem Statement:** Given a binary array `nums` and an integer `k`, return the maximum number of consecutive `1`'s in the array if you are allowed to flip at most `k` `0`'s to `1`'s.
+> **Problem Statement:** You are given an array of `0`s and `1`s and a budget `k`. You may flip up to `k` zeros into ones. Find the longest run of consecutive ones you can end up with.
 
 ```text
 Input:  nums = [1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0], k = 2
 Output: 6
-Explanation: Flipping two zeros at indices 5 and 10 forms a consecutive sequence of six 1s: [1, 1, 1, 0, 0, 1, 1, 1, 1, 1, 1].
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Although the problem is framed as flipping at most $k$ zeros, you never need to mutate any elements. Reframe the question from first principles:
+Reword the question and it becomes much easier.
 
-**"What is the longest contiguous subarray that contains at most $k$ zeros?"**
+"The longest run of ones after flipping at most `k` zeros" is the same thing as "the longest stretch of the array that contains at most `k` zeros". If a stretch holds two zeros and you are allowed two flips, you can turn that whole stretch into ones. The flipping never has to be simulated at all.
 
-Think of $k$ as your **zero-token budget**:
-- Expanding `right` pulls in new elements.
-- Encountering a `1` is free and costs nothing.
-- Encountering a `0` costs 1 token from your budget.
-- When `zero_count > k`, your budget is depleted. You must advance `left` to evict elements until an older zero is discarded, refunding a token back to your balance.
-
-#### Brute Force: Testing Every Subarray
-The naive approach generates all possible subarrays `nums[i...j]`. For each subarray, we count how many zeros it contains. If the count is at most $k$, the subarray is valid and its length $j - i + 1$ is considered. Checking all $O(n^2)$ subarrays requires $O(n^2)$ time. For an array of size $10^5$, $10^{10}$ operations will exceed time limits.
-
-#### Optimal Approach: Sliding Window with Zero Budget Allocation
-Instead of re-evaluating subarrays, we slide a dynamic window across `nums`:
-- Expand `right` element by element.
-- If `nums[right] == 0`, increment `zero_count`.
-- While `zero_count > k`, evict elements from `left`. If `nums[left] == 0`, decrement `zero_count` and increment `left`.
-- At all times when the loop condition holds, the window between `left` and `right` contains at most $k$ zeros. Its length `right - left + 1` is a valid candidate for the answer.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0]` with $k = 2$:
-
-| Step | Pointer `right` | `nums[right]` | `zero_count` Before Shrink | Condition (`zero_count > 2`) | Action Taken | Pointer `left` | Window Length | `max_len` | Active Window |
-| :---: | :---: | :---: | :---: | :---: | :--- | :---: | :---: | :---: | :---: |
-| **1** | `0` | `1` | 0 | False | Expand | `0` | 1 | 1 | `[1]` |
-| **2** | `1` | `1` | 0 | False | Expand | `0` | 2 | 2 | `[1, 1]` |
-| **3** | `2` | `1` | 0 | False | Expand | `0` | 3 | 3 | `[1, 1, 1]` |
-| **4** | `3` | `0` | 1 | False | Expand (cost 1) | `0` | 4 | 4 | `[1, 1, 1, 0]` |
-| **5** | `4` | `0` | 2 | False | Expand (cost 1) | `0` | 5 | 5 | `[1, 1, 1, 0, 0]` |
-| **6** | `5` | `0` | 3 | True | Shrink until zero evicted | `4` | 2 | 5 | `[0, 0]` |
-| **7** | `6` | `1` | 2 | False | Expand | `4` | 3 | 5 | `[0, 0, 1]` |
-| **8** | `7` | `1` | 2 | False | Expand | `4` | 4 | 5 | `[0, 0, 1, 1]` |
-| **9** | `8` | `1` | 2 | False | Expand | `4` | 5 | 5 | `[0, 0, 1, 1, 1]` |
-| **10** | `9` | `1` | 2 | False | Expand | `4` | 6 | 6 | `[0, 0, 1, 1, 1, 1]` |
-| **11** | `10` | `0` | 3 | True | Evict zero at index 4 | `5` | 6 | 6 | `[0, 1, 1, 1, 1, 0]` |
-
-The maximum consecutive sequence of ones achievable is 6.
+So slide a window and keep one number: how many zeros are inside it. That count is your spending. While it is within budget the window is legal, and you want the longest legal window.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State:** Set pointers `left = 0`, `zero_count = 0`, and `max_len = 0`.
-2. **Expand Right Boundary:** Iterate pointer `right` through `range(len(nums))`.
-3. **Account for Zeros:** If `nums[right] == 0`, increment `zero_count += 1`.
-4. **Contract Left Boundary:** While `zero_count > k`, check if `nums[left] == 0`. If so, decrement `zero_count -= 1`. Increment `left += 1`.
-5. **Update Maximum Window:** Calculate `right - left + 1` and update `max_len = max(max_len, right - left + 1)`.
-6. **Return Result:** Return `max_len`.
+Stretch the right edge forward. If the value arriving is a zero, the spending goes up by one.
+
+If the spending has gone over `k`, the window is illegal and has to be repaired by pulling the left edge forward. Each value that leaves is either a one, which refunds nothing, or a zero, which refunds a flip. Keep pulling until the spending is back within budget.
+
+Record the window size at every step, and the largest one is the answer.
+
+Two details worth noticing:
+
+**The shrink is a `while`, not an `if`.** After a zero arrives you may need to discard several ones before reaching the zero that actually refunds your budget.
+
+**You never need to know which zeros you flipped.** Only how many are in the window. That is the whole reason this is a counting problem rather than a search.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Dynamic Shrinking Window" default>
+Take `nums = [1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0]` with `k = 2`.
+
+1. **The first three ones** cost nothing. The window is length `3`.
+2. **A zero arrives.** Spending is `1`, inside budget. Length `4`.
+3. **Another zero.** Spending is `2`, exactly the budget. Length `5`.
+4. **A third zero.** Spending is `3`, over budget. Pull the left edge in, discarding ones until the first zero leaves and refunds a flip. The window now starts after that zero, and its length is back to `3`.
+5. **Four ones arrive in a row.** They cost nothing, so the window grows to length `6`. That is the best seen.
+6. **The final zero** pushes the spending over again, and the repair leaves the window smaller.
+
+The answer is `6`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def longestOnes(self, nums: list[int], k: int) -> int:
         left = 0
-        zero_count = 0
-        max_len = 0
+        zeros = 0
+        best = 0
 
-        for right in range(len(nums)):
-            # Consume 1 budget token if a zero enters the window
-            if nums[right] == 0:
-                zero_count += 1
+        for right, value in enumerate(nums):
+            if value == 0:
+                zeros += 1
 
-            # Evict from left until zero count is within budget
-            while zero_count > k:
+            # over budget, so give flips back from the left
+            while zeros > k:
                 if nums[left] == 0:
-                    zero_count -= 1
+                    zeros -= 1
                 left += 1
 
-            # Window is guaranteed to contain at most k zeros
-            max_len = max(max_len, right - left + 1)
+            best = max(best, right - left + 1)
 
-        return max_len
+        return best
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Non-Shrinking Window">
+---
 
-```python
-class Solution:
-    def longestOnes(self, nums: list[int], k: int) -> int:
-        left = 0
-        zero_count = 0
+### Time and space complexity
 
-        for right in range(len(nums)):
-            if nums[right] == 0:
-                zero_count += 1
+#### Time: $O(n)$
 
-            # Never shrink window below its historical maximum size
-            if zero_count > k:
-                if nums[left] == 0:
-                    zero_count -= 1
-                left += 1
+The right edge moves `n` times. The left edge only ever moves forward and can never pass the right edge, so across the whole run it also moves at most `n` times. The nested `while` does not make this quadratic, because every step it takes is a step the left edge will never take again.
 
-        return len(nums) - left
-```
+#### Space: $O(1)$
 
-  </TabItem>
-</Tabs>
+Two indices and a counter.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force** | $O(n^2)$ | $O(1)$ | Tests every subarray and counts zeros. Quadratic runtime times out on large arrays. |
-| **Dynamic Shrinking Window** | $O(n)$ | $O(1)$ | Each pointer traverses each element at most once. Highly intuitive standard sliding window. |
-| **Non-Shrinking Window** | $O(n)$ | $O(1)$ | Shifts `left` by at most 1 per step, maintaining the maximum window size without a nested while loop. |
-
----
-
-### Common Pitfall: Physically Flipping Bits
-
-A common mistake is attempting to mutate values in `nums` or using backtracking to simulate flipping zeros. Bit flipping is only a metaphor in the problem description. Mutating the input complicates the algorithm and leads to $O(n^2)$ or exponential branching. The problem is purely equivalent to finding the longest subarray containing at most $k$ zeros.
-
----
-
-### Concise Interview Takeaway
-
-Never flip bits. Reframe the problem as identifying the longest subarray containing at most $k$ zeros. Treat $k$ as a quota: expand with `right`, consume tokens on zeros, and increment `left` to refund tokens whenever the count exceeds $k$. This achieves an optimal $O(n)$ time and $O(1)$ space solution.
+"Flip at most `k` zeros" is really "the window may contain at most `k` zeros", so nothing has to be flipped. Count zeros in the window, shrink from the left while the count is over budget, and track the widest legal window. $O(n)$ time, $O(1)$ space.
