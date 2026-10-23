@@ -1,173 +1,112 @@
 ---
 id: 5-task-scheduler
 title: "621. Task Scheduler"
-description: "Greedy max-heap cooldown simulation vs idle slot frame math"
+description: "The most common task sets the skeleton, and everything else fills its gaps"
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Heaps & Priority Queues</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Greedy / Max-Heap Simulation</span>
 
-> **Problem Statement:** Given a character array `tasks` representing CPU tasks and a non-negative integer cooldown interval `n`, return the minimum number of CPU time units required to finish all tasks. Identical tasks must be separated by at least `n` units of time (filled by executing other tasks or staying idle).
+> **Problem Statement:** You are given a list of tasks and a cooldown `n`. Two runs of the same task must be at least `n` time units apart, and the processor can idle. Return the shortest total time to run them all.
 
 ```text
 Input:  tasks = ["A", "A", "A", "B", "B", "B"], n = 2
 Output: 8
-Explanation: A possible sequence is A -> B -> idle -> A -> B -> idle -> A -> B.
-This requires 8 intervals of CPU time.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-The bottleneck of CPU scheduling is always dictated by the most frequent task. If you have 10 instances of task `'A'` and only 1 instance of task `'B'`, you must prioritize scheduling `'A'` immediately. If you delay `'A'`, you burn through alternative tasks early, leaving an unavoidable sequence of idle gaps at the end.
+The task that appears most often is the bottleneck, because it is the one most constrained by the cooldown. Lay that task out first and it builds a skeleton:
 
-Two complementary approaches solve this:
-
-```
-tasks = ["A", "A", "A", "B", "B", "B"], n = 2
-max_freq = 3, num_max_freq = 2 ('A' and 'B')
-
-Frame 1:  [ A | B | idle ]    (size n + 1 = 3)
-Frame 2:  [ A | B | idle ]    (size n + 1 = 3)
-Final:    [ A | B ]           (num_max_freq = 2)
-
-Total Time = (max_freq - 1) * (n + 1) + num_max_freq
-           = (3 - 1) * 3 + 2 = 8
+```text
+A _ _ A _ _ A        with cooldown 2, the As need two gaps between them
 ```
 
-#### Brute Force: Max-Heap Simulation with Cooldown Queue
+With the most common task appearing `m` times, there are `m - 1` gaps, each `n` slots wide. Everything else then drops into those gaps, and only if the gaps run out does the schedule need to grow.
 
-A Max-Heap stores tasks currently available to execute, ordered by remaining frequency. A waiting queue tracks tasks cooling down, storing `[remaining_count, time_available]`.
+So the total time is either:
 
-At each clock cycle:
-1. Pop the most frequent task from the heap, decrement its count, and if remaining instances exist, enqueue it with `ready_time = current_time + n`.
-2. If the task at the head of the queue finishes cooling down, release it back into the heap.
-3. If no task is ready, the CPU sits idle.
+- **The skeleton**, if the gaps are big enough to hold every other task, counting any leftover space as idling, or
+- **The number of tasks**, if there is so much other work that the gaps overflow. Once the gaps are full there is never an idle moment, so the answer is simply the count of tasks.
 
-While intuitive, simulation requires ticking time cycle by cycle.
-
-#### Optimal Approach: Idle Slot Frame Math
-
-Visualize the schedule as structured chunks determined by the most frequent task:
-- Let `max_freq` be the highest occurrence count among all tasks.
-- There are `max_freq - 1` complete frames between the first and last execution of that task.
-- Each frame has length `n + 1` (1 unit for the task itself plus `n` cooling slots).
-- The final group executes all tasks that share the maximum frequency (`num_max_freq`).
-
-If there are so many distinct tasks that all idle slots are filled without leftover cooling gaps, the CPU runs continuously with zero idle cycles. In that scenario, total time is simply `len(tasks)`.
-
-Therefore, the formula is:
-
-$$\text{Minimum Time} = \max(\text{len}(tasks), (\text{max\_freq} - 1) \cdot (n + 1) + \text{num\_max\_freq})$$
-
-#### Execution Walkthrough
-
-Let `tasks = ["A", "A", "A", "B", "B", "B"]` with cooldown $n = 2$:
-
-| Time Slot | Scheduled Action | Remaining Counts | Cooldown Queue State (`(task, ready_time)`) | Available in Heap |
-| :---: | :---: | :--- | :--- | :--- |
-| **1** | Execute `'A'` | `{'A': 2, 'B': 3}` | `[('A', 4)]` | `['B']` |
-| **2** | Execute `'B'` | `{'A': 2, 'B': 2}` | `[('A', 4), ('B', 5)]` | `[]` |
-| **3** | CPU Idle | `{'A': 2, 'B': 2}` | `[('A', 4), ('B', 5)]` | `[]` |
-| **4** | Execute `'A'` | `{'A': 1, 'B': 2}` | `[('B', 5), ('A', 7)]` | `[]` |
-| **5** | Execute `'B'` | `{'A': 1, 'B': 1}` | `[('A', 7), ('B', 8)]` | `[]` |
-| **6** | CPU Idle | `{'A': 1, 'B': 1}` | `[('A', 7), ('B', 8)]` | `[]` |
-| **7** | Execute `'A'` | `{'A': 0, 'B': 1}` | `[('B', 8)]` | `[]` |
-| **8** | Execute `'B'` | `{'A': 0, 'B': 0}` | `[]` | `[]` |
+The answer is the larger of those two.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Count Frequencies:** Count occurrences of each task using `Counter(tasks)`.
-2. **Find Maximum Frequency:** Compute `max_freq = max(counts.values())`.
-3. **Count Maximum Frequency Ties:** Determine how many tasks appear with `max_freq`: `num_max_freq = sum(1 for c in counts.values() if c == max_freq)`.
-4. **Calculate Minimum Intervals:** Compute `min_intervals = (max_freq - 1) * (n + 1) + num_max_freq`.
-5. **Return Result:** Return `max(len(tasks), min_intervals)`.
+Count how often each task appears, and take `m`, the largest count.
+
+The skeleton has `m - 1` gaps, each of length `n`, plus the `m` runs of the busiest task themselves:
+
+```text
+(m - 1) * (n + 1) + (number of tasks tied at the top count)
+```
+
+The last term handles ties. If two tasks both appear `m` times, each row of the skeleton ends with both of them, so each row is one slot longer.
+
+Then take the larger of that number and the total number of tasks. The second case covers a schedule packed so densely that no idling is ever needed, where the cooldown stops binding at all.
+
+**Why the larger of the two is always right:** the skeleton is a genuine lower bound, since the busiest task's runs cannot be squeezed closer than the cooldown allows. And the task count is a lower bound too, since every task needs a slot. Whichever is bigger is achievable, because the remaining tasks can always be spread round-robin into the gaps without breaking any cooldown.
+
+**The heap simulation** is the other standard answer: repeatedly take the available task with the highest remaining count, run it, and put it on a cooldown list until it becomes available again. It produces the same number and shows the actual schedule, which is useful if an interviewer asks for the order rather than just the length. It is $O(\text{total time} \cdot \log 26)$, more work for the same result.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Idle Slot Math" default>
+Take `["A", "A", "A", "B", "B", "B"]` with `n = 2`.
+
+1. **Counts:** `A` three times and `B` three times, so `m` is `3` and two tasks are tied at the top.
+2. **Skeleton:** `(3 - 1) * (2 + 1) + 2 = 6 + 2 = 8`.
+3. **Task count:** `6`.
+4. **The larger** is `8`.
+
+The schedule that achieves it is `A B idle A B idle A B`: three rows, the first two of length `n + 1`, and a final row holding the last `A` and `B`.
+
+Now add four `C` tasks. The counts become `A` and `B` at three and `C` at four, so `m` is `4` with one task at the top: the skeleton gives `(4 - 1) * 3 + 1 = 10`, and the task count is `10`, so the answer is `10` and there is no idling.
+
+---
+
+### The code
 
 ```python
 from collections import Counter
 
-
 class Solution:
     def leastInterval(self, tasks: list[str], n: int) -> int:
         counts = Counter(tasks)
-        max_freq = max(counts.values())
-        num_max_freq = sum(1 for count in counts.values() if count == max_freq)
+        busiest = max(counts.values())
 
-        # Total slots dictated by the most frequent tasks
-        min_intervals = (max_freq - 1) * (n + 1) + num_max_freq
+        # how many tasks are tied at that top count
+        tied = sum(1 for c in counts.values() if c == busiest)
 
-        # If there are more tasks than empty slots, no idle time is needed
-        return max(len(tasks), min_intervals)
+        # the skeleton: gaps between the busiest task's runs, plus its own slots
+        skeleton = (busiest - 1) * (n + 1) + tied
+
+        # if there is enough other work, the gaps fill and nothing idles
+        return max(skeleton, len(tasks))
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Max-Heap Simulation">
+---
 
-```python
-from collections import Counter, deque
-import heapq
+### Time and space complexity
 
+#### Time: $O(n)$
 
-class Solution:
-    def leastInterval(self, tasks: list[str], n: int) -> int:
-        counts = Counter(tasks)
-        # Max-heap storing negated frequencies
-        max_heap = [-cnt for cnt in counts.values()]
-        heapq.heapify(max_heap)
+One pass to count the tasks, then a constant amount of arithmetic. The heap simulation would instead cost about the length of the schedule it produces.
 
-        time = 0
-        cooldown_queue: deque[tuple[int, int]] = deque()  # (remaining_count, available_time)
+#### Space: $O(1)$
 
-        while max_heap or cooldown_queue:
-            time += 1
-
-            if max_heap:
-                cnt = 1 + heapq.heappop(max_heap)  # Increment negative count towards 0
-                if cnt != 0:
-                    cooldown_queue.append((cnt, time + n))
-
-            if cooldown_queue and cooldown_queue[0][1] == time:
-                heapq.heappush(max_heap, cooldown_queue.popleft()[0])
-
-        return time
-```
-
-  </TabItem>
-</Tabs>
+The counter holds at most one entry per distinct task, which is bounded by the alphabet rather than by the input size.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Max-Heap Simulation** | $O(N \cdot n)$ | $O(1)$ | Simulates execution cycle by cycle. Handles dynamic online task queues, but executes loop cycles for every single clock tick. |
-| **Idle Slot Math** | $O(N)$ | $O(1)$ | Counts frequencies and evaluates the closed-form geometry equation in strict $O(N)$ time and constant memory. |
-
----
-
-### Common Pitfall: Overlooking the Case Where len(tasks) Exceeds Calculated Slots
-
-When the task set contains many varied tasks with low frequencies, other tasks completely fill all cooling gaps between the most frequent tasks without needing any idle cycles. In that scenario, `(max_freq - 1) * (n + 1) + num_max_freq` can evaluate to a value smaller than `len(tasks)`. Omitting `max(len(tasks), min_intervals)` leads to undercounting the true minimum time.
-
----
-
-### Concise Interview Takeaway
-
-The most frequent tasks dictate schedule geometry. Frame boundaries require `(max_freq - 1) * (n + 1) + num_max_freq` slots. Taking the maximum of this formula and `len(tasks)` guarantees the correct answer in $O(N)$ time and $O(1)$ space.
+The most frequent task sets the skeleton, `(m - 1) * (n + 1)`, plus one slot for each task tied at that top count. Compare it with the total number of tasks and take the larger: the skeleton wins when there is idling, the task count wins when the gaps are already full. Name the max-heap simulation as the way to produce the actual order. $O(n)$ time, $O(1)$ space.

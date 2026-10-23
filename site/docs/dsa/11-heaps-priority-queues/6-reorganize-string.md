@@ -1,194 +1,116 @@
 ---
 id: 6-reorganize-string
 title: "767. Reorganize String"
-description: "Max-heap greedy character interleaving with single-step cooldown"
+description: "Fill the even positions first, so identical letters can never touch"
 sidebar_position: 6
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Heaps & Priority Queues</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Greedy / Max-Heap</span>
 
-> **Problem Statement:** Given a string `s`, rearrange its characters so that no two adjacent characters are identical. Return any valid rearrangement, or return `""` if no such arrangement is possible.
+> **Problem Statement:** Rearrange a string so that no two neighbouring characters are the same. Return any valid arrangement, or an empty string if none exists.
 
 ```text
 Input:  s = "aab"
 Output: "aba"
-Explanation: Alternating characters ensures no two adjacent characters are identical.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine laying tiles on a checkered board. To prevent identical colors from touching, you must prioritize placing your most dominant color first, interleaving it with other colors.
+First work out when it is impossible, because that bound also shows how to build the answer.
 
-#### The Impossibility Threshold (Pigeonhole Principle)
+The most common letter has to be spread out with something between each pair of its copies. In a string of length `n` there are only so many positions that can hold it before two are forced to touch:
 
-If any single character appears strictly more than `(len(s) + 1) // 2` times, no valid arrangement exists. For example, in a string of length 4 (`"aaab"`), the maximum slots `'a'` can occupy without touching is $\lceil 4 / 2 \rceil = 2$. Having 3 `'a'`s guarantees at least two must sit adjacent, so we can return `""` immediately.
-
-#### Brute Force: Generating Permutations
-
-A naive approach generates all permutations of the string and scans each for adjacent duplicates. Because a string of length $N$ has $N!$ permutations, this brute-force approach requires $O(N! \cdot N)$ time, which becomes infeasible for strings longer than 10 characters.
-
-#### Optimal Approach: Max-Heap with Single-Step Cooldown
-
-To interleave characters greedily:
-1. Maintain a Max-Heap of character frequencies `[-freq, char]`.
-2. Pop the character with the highest remaining frequency and append it to the result.
-3. Crucially, do not push it back into the heap immediately. If its frequency is still highest, it would be popped right back on the next cycle, creating adjacent duplicates.
-4. Instead, hold it in a temporary `prev` cooldown variable.
-5. On the subsequent iteration, pop a different character from the heap, and only then return `prev` to the heap.
-
-```
-s = "aab"
-Counts: {'a': 2, 'b': 1}
-Max-Heap: [(-2, 'a'), (-1, 'b')]
-
-Iteration 1:
-  Pop 'a' (remaining: 1) -> Append 'a' -> Result: ['a']
-  Hold in cooldown: prev = (-1, 'a')
-
-Iteration 2:
-  Pop 'b' (remaining: 0) -> Append 'b' -> Result: ['a', 'b']
-  Push prev (-1, 'a') back into heap!
-  prev = None (since 'b' reached 0)
-
-Iteration 3:
-  Pop 'a' (remaining: 0) -> Append 'a' -> Result: ['a', 'b', 'a']
-  prev = None
-
-Output: "aba"
+```text
+a _ a _ a       three copies need the string to be at least five long
 ```
 
-#### Execution Walkthrough
+So the most frequent letter can appear at most `(n + 1) / 2` times, rounded down. Any more and no arrangement works.
 
-Let `s = "aab"` with character counts `{'a': 2, 'b': 1}`:
-
-| Step | Popped Character | Action Taken | Result String | Cooldown State (`prev`) | Next Heap State |
-| :---: | :---: | :--- | :--- | :--- | :--- |
-| **1** | `'a'` (count 2) | Append `'a'`, hold remaining 1 in `prev` | `"a"` | `(-1, 'a')` | `[(-1, 'b')]` |
-| **2** | `'b'` (count 1) | Append `'b'`, re-enqueue `prev`, count for `'b'` reaches 0 | `"ab"` | `None` | `[(-1, 'a')]` |
-| **3** | `'a'` (count 1) | Append `'a'`, count reaches 0 | `"aba"` | `None` | `[]` |
+That bound hints at the construction. The positions `0, 2, 4, ...` are exactly the ones that never touch each other. Fill those first with the most common letter, and it can never collide with itself.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Count Frequencies:** Compute `counts = Counter(s)`.
-2. **Impossibility Guard:** Check if `max(counts.values()) > (len(s) + 1) // 2`. If so, return `""`.
-3. **Build Max-Heap:** Construct `max_heap = [[-freq, char] for char, freq in counts.items()]` and call `heapq.heapify(max_heap)`.
-4. **Interleave via Cooldown:**
-   - Initialize `prev = None` and `result = []`.
-   - While `max_heap`:
-     - Pop `freq, char = heapq.heappop(max_heap)`.
-     - Append `char` to `result`.
-     - If `prev` is not `None`: push `prev` back into `max_heap` and set `prev = None`.
-     - Decrement the count (by incrementing negative `freq += 1`). If `freq != 0`, set `prev = [freq, char]`.
-5. **Return Result:** Return `"".join(result)`.
+Count the letters and find the most frequent. If its count exceeds `(n + 1) // 2`, return an empty string immediately.
+
+Otherwise, lay the letters into the **even positions first**, then the odd ones, writing each letter's copies consecutively as you go:
+
+1. Start at position `0`.
+2. Place every copy of the most frequent letter, stepping forward by two each time.
+3. When the index runs off the end, continue from position `1`.
+4. Carry on with the other letters, most frequent first, using the same stepping.
+
+Why this never puts two identical letters together: a letter's copies land two apart as long as they are all on the same parity, so they never touch. The only risk is a letter that straddles the switch from even to odd positions, putting a copy at the last even slot and another at position `1`. Placing the most frequent letter first is exactly what prevents that, because the count bound guarantees it fits within the even positions alone, so any letter that does straddle has few enough copies to stay apart.
+
+Sorting the letters by count descending is what makes "most frequent first" true.
+
+**The heap version** does the same thing differently: repeatedly take the two most frequent remaining letters, append one of each, and push them back with their counts reduced. Taking two at a time is what guarantees the next character differs from the last. It is the more common answer in this block, at $O(n \log 26)$.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Max-Heap with Cooldown" default>
+Take `s = "aab"`, so `n = 3`.
 
-```python
-from collections import Counter
-import heapq
+1. **Counts:** `a` twice, `b` once. The limit is `(3 + 1) // 2 = 2`, and `a` has exactly two, so an arrangement exists.
+2. **Place `a`**, the most frequent, at position `0`, then at position `2`. The string so far is `a _ a`.
+3. **Next index** would be `4`, which is past the end, so continue from position `1`.
+4. **Place `b`** at position `1`.
 
+The result is `aba`.
 
-class Solution:
-    def reorganizeString(self, s: str) -> str:
-        counts = Counter(s)
-        max_freq = max(counts.values())
+Had the input been `"aaab"` with `n = 4`, the limit would be `2` while `a` appears three times, so the answer is an empty string.
 
-        # Mathematical impossibility check
-        if max_freq > (len(s) + 1) // 2:
-            return ""
+---
 
-        # Max-heap storing [-frequency, character]
-        max_heap: list[list] = [[-freq, char] for char, freq in counts.items()]
-        heapq.heapify(max_heap)
-
-        prev: list | None = None
-        result: list[str] = []
-
-        while max_heap:
-            freq, char = heapq.heappop(max_heap)
-            result.append(char)
-
-            # Re-enqueue the previously held character back into circulation
-            if prev:
-                heapq.heappush(max_heap, prev)
-                prev = None
-
-            # Decrement usage (freq is negative, so adding 1 moves towards 0)
-            freq += 1
-            if freq != 0:
-                prev = [freq, char]
-
-        return "".join(result)
-```
-
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Parity Bucket Placement">
+### The code
 
 ```python
 from collections import Counter
 
-
 class Solution:
     def reorganizeString(self, s: str) -> str:
+        n = len(s)
         counts = Counter(s)
-        max_freq = max(counts.values())
 
-        if max_freq > (len(s) + 1) // 2:
+        # the most frequent letter cannot need more slots than exist
+        if max(counts.values()) > (n + 1) // 2:
             return ""
 
-        # Sort characters by frequency descending
-        sorted_chars = sorted(counts.keys(), key=lambda c: counts[c], reverse=True)
+        out = [""] * n
+        i = 0
 
-        res = [""] * len(s)
-        idx = 0
+        # most frequent first, which is what keeps a letter off both parities
+        for ch, count in counts.most_common():
+            for _ in range(count):
+                if i >= n:
+                    i = 1      # even positions are full, start on the odds
+                out[i] = ch
+                i += 2
 
-        # Place the most frequent characters on even indices first, then odd
-        for char in sorted_chars:
-            for _ in range(counts[char]):
-                if idx >= len(s):
-                    idx = 1
-                res[idx] = char
-                idx += 2
-
-        return "".join(res)
+        return "".join(out)
 ```
 
-  </TabItem>
-</Tabs>
+---
+
+### Time and space complexity
+
+#### Time: $O(n \log 26)$
+
+Counting is one pass. Sorting the counts touches at most 26 entries, which is effectively constant. Placing the letters writes each position once.
+
+#### Space: $O(n)$
+
+The output array. The counter is bounded by the alphabet.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Permutation Search** | $O(N! \cdot N)$ | $O(N)$ | Evaluates all permutations. Factorial complexity is completely impractical. |
-| **Max-Heap Interleaving** | $O(N \log K)$ | $O(K) = O(1)$ | Greedily pops highest frequency elements with a 1-step delay. For 26 English letters, $\log 26 \le 5$, running in linear time. |
-| **Parity Placement** | $O(N)$ | $O(N)$ | Sorts character frequencies and populates even positions followed by odd positions in a single pass. |
-
----
-
-### Common Pitfall: Pushing Characters Directly Back Into the Heap
-
-A common mistake is pushing a decremented character back onto the heap immediately. If that character had a high count, it will immediately float back to the root of the heap and be popped on the very next cycle, producing consecutive duplicate characters. Stashing it in a 1-step `prev` buffer guarantees that an alternative character must be selected before this character can be chosen again.
-
----
-
-### Concise Interview Takeaway
-
-Verify feasibility up front using the pigeonhole condition `max_freq <= (len(s) + 1) // 2`. Greedily extract the most frequent character using a Max-Heap while buffering the previous character in a 1-step cooldown variable to prevent adjacent collisions in $O(N)$ time.
+Check feasibility first: the most frequent letter may appear at most `(n + 1) // 2` times. Then fill the even positions before the odd ones, placing the most frequent letter first, which guarantees it stays within one parity and so never touches itself. The two-at-a-time max-heap is the other standard answer. $O(n)$ time in practice, $O(n)$ space.
