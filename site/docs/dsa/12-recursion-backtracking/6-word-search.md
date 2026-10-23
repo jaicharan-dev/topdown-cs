@@ -1,205 +1,119 @@
 ---
 id: 6-word-search
 title: "79. Word Search"
-description: "2D grid backtracking with in-place cell masking and frequency pruning"
+description: "Mark the cell on the way in, restore it on the way out"
 sidebar_position: 6
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Recursion & Backtracking</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">2D Grid DFS</span>
 
-> **Problem Statement:** Given an $m \times n$ grid of characters `board` and a string `word`, return `true` if `word` exists in the grid. The word can be constructed from letters of sequentially adjacent cells (horizontally or vertically neighboring). The same letter cell may not be used more than once in a single word.
+> **Problem Statement:** Given a grid of letters and a word, say whether the word can be spelled by stepping between neighbouring cells, up, down, left or right, without reusing a cell within that word.
 
 ```text
 Input:  board = [["A","B","C","E"],["S","F","C","S"],["A","D","E","E"]], word = "ABCCED"
 Output: true
-Explanation: The path A -> B -> C -> C -> E -> D exists sequentially in adjacent cells.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine navigating an escape room labyrinth looking for a specific sequence of letters:
-1. **Find a starting door:** Scan the grid to find any cell matching the first character `word[0]`.
-2. **Leave a breadcrumb:** Because you cannot reuse the same cell twice along a single path, temporarily drop a breadcrumb on the cell by setting `board[r][c] = '#'`. This prevents walking in cycles.
-3. **Explore four directions:** From `(r, c)`, step Up, Down, Left, and Right looking for `word[i + 1]`.
-4. **Pick up the breadcrumb (Backtrack):** If none of the four directions succeed, restore the original character `board[r][c] = temp` so subsequent paths starting from other cells can still use it.
+Start on any cell holding the word's first letter and try to walk the rest of the word out from there. At each step, look at the four neighbours and step into whichever one carries the next letter. If none do, this attempt has failed and you back up.
 
-#### Brute Force: Visited Coordinate Set
-Maintain a hash set of `(r, c)` tuples to track cells visited on the current path. At every step, check whether the neighbor coordinate is in the set. While functionally correct, hashing coordinates incurs significant overhead, and allocating a set uses $O(L)$ auxiliary memory.
+The new ingredient compared with the earlier problems is the **no reuse** rule. While building one attempt, a cell already standing on the path is off limits, otherwise a word like `"AA"` could be spelled by bouncing between one `A` and its neighbour forever.
 
-#### Optimal Approach: In-Place Masking with Frequency Pruning
-Modify the board in-place: overwrite `board[r][c] = '#'` before recursing, and restore it afterward. This uses zero auxiliary memory beyond the call stack. 
-
-Furthermore, apply two fast pre-checks:
-1. **Character Count Guard:** If any character in `word` appears more times than it exists across the entire board, return `False` immediately.
-2. **Search Inversion:** If the last letter `word[-1]` occurs less frequently on the board than `word[0]`, reverse the word (`word = word[::-1]`). Searching from the rarer character dramatically prunes the branching factor at the root of the search.
-
-#### Execution Walkthrough
-
-Let us trace searching for `"SEE"` on a $3 \times 4$ board starting at `(1, 3)` where `board[1][3] = 'S'`:
-
-| Step | Cell `(r, c)` | Character | Target `word[i]` | Action Taken | Board Mutation |
-| :---: | :---: | :---: | :---: | :--- | :--- |
-| **1** | `(1, 3)` | `'S'` | `'S'` (`i = 0`) | Match: mask cell, explore neighbors | `board[1][3] = '#'` |
-| **2** | `(0, 3)` | `'E'` | `'E'` (`i = 1`) | Match: mask cell, explore neighbors | `board[0][3] = '#'` |
-| **3** | `(0, 2)` | `'C'` | `'E'` (`i = 2`) | Mismatch: return `False` | Unchanged |
-| **4** | `(0, 3)` | `'#'` | - | Backtrack: restore cell | `board[0][3] = 'E'` |
-| **5** | `(2, 3)` | `'E'` | `'E'` (`i = 1`) | Match: mask cell, explore neighbors | `board[2][3] = '#'` |
-| **6** | `(2, 2)` | `'E'` | `'E'` (`i = 2`) | Match: `i == len(word) - 1`, target complete! | Return `True` |
+But "off limits" is only true for the **current** path. A cell rejected by one attempt must be free for a completely different attempt starting somewhere else. That is exactly what backtracking handles: mark on the way in, restore on the way out.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Count Frequencies:** Count all characters on the board using a hash map or `Counter`. If the board has fewer occurrences of any character than required by `word`, return `False`.
-2. **Direction Inversion:** If `count(word[0]) > count(word[-1])`, reverse `word` to minimize starting branches.
-3. **Define Recursive DFS:** Define helper `dfs(r, c, i)`:
-   - **Base Case:** If `i == len(word)`, all characters have been matched; return `True`.
-   - **Boundary and Mismatch Check:** If `r < 0`, `r >= rows`, `c < 0`, `c >= cols`, or `board[r][c] != word[i]`, return `False`.
-   - **Mask Cell:** Save `temp = board[r][c]` and set `board[r][c] = '#'`.
-   - **Explore Neighbors:** Recurse across all four directions: `(r+1, c)`, `(r-1, c)`, `(r, c+1)`, `(r, c-1)` with `i + 1`.
-   - **Backtrack:** Restore `board[r][c] = temp`.
-   - **Return Result:** Return `True` if any directional branch returned `True`, else `False`.
-4. **Iterate Grid:** Loop through every cell `(r, c)`. If `board[r][c] == word[0]` and `dfs(r, c, 0)` returns `True`, return `True`.
-5. **Fallback:** If all starting cells are exhausted without finding the word, return `False`.
+Run a depth-first search from every cell, looking for the word's first letter.
+
+Inside the search, carry the position in the word:
+
+1. **If the whole word has been matched**, succeed.
+2. **If the cell is outside the grid, or its letter is wrong**, fail.
+3. **Mark the cell as used.**
+4. **Try all four neighbours** for the next letter. Succeed as soon as any of them does.
+5. **Restore the cell** before returning, whatever the outcome.
+
+Step five is the one to get right. Restoring only on success leaves a trail of marked cells behind every failed attempt, which silently blocks later searches and produces wrong `false` answers that are miserable to debug.
+
+Marking can be done in the board itself, by replacing the letter with a character that matches nothing and putting it back afterwards. That avoids a separate visited grid. If mutating the input is unacceptable, a set of visited positions does the same job with the same add-and-remove discipline.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: In-Place Masking with Pruning" default>
+Looking for `"ABCCED"`.
 
-```python
-from collections import Counter
+1. **Start at the `A` in the top-left corner**, matching the first letter. Mark it.
+2. **`B` is to its right**, matching the second letter. Mark it.
+3. **`C` is next along.** Mark it.
+4. **The next letter is another `C`.** Right is `E`, which is wrong, so try below: the cell holds `C`. Mark it.
+5. **The next letter is `E`.** Below that `C` is `E`. Mark it.
+6. **The last letter is `D`.** To the left of that `E` is `D`. The word is complete, so the answer is `true`.
 
+Had step 4 gone right into the `E` instead, the following letters would not have matched, that branch would have returned false, and the `E` would have been restored before the search tried below.
 
-class Solution:
-    def exist(self, board: list[list[str]], word: str) -> bool:
-        rows, cols = len(board), len(board[0])
+---
 
-        # Optimization 1: Frequency validation check
-        board_counts = Counter(char for row in board for char in row)
-        word_counts = Counter(word)
-        for char, count in word_counts.items():
-            if board_counts[char] < count:
-                return False
-
-        # Optimization 2: Reverse word if tail character is rarer than head
-        if board_counts[word[0]] > board_counts[word[-1]]:
-            word = word[::-1]
-
-        def dfs(r: int, c: int, i: int) -> bool:
-            # Base case: all characters matched successfully
-            if i == len(word):
-                return True
-
-            # Out of bounds or character mismatch (including '#' visited markers)
-            if (
-                r < 0
-                or r >= rows
-                or c < 0
-                or c >= cols
-                or board[r][c] != word[i]
-            ):
-                return False
-
-            # Mark visited in-place
-            temp = board[r][c]
-            board[r][c] = "#"
-
-            # Explore all 4 orthogonal directions
-            found = (
-                dfs(r + 1, c, i + 1)
-                or dfs(r - 1, c, i + 1)
-                or dfs(r, c + 1, i + 1)
-                or dfs(r, c - 1, i + 1)
-            )
-
-            # Backtrack cell state
-            board[r][c] = temp
-            return found
-
-        for r in range(rows):
-            for c in range(cols):
-                if board[r][c] == word[0] and dfs(r, c, 0):
-                    return True
-
-        return False
-```
-
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Visited Coordinate Set">
+### The code
 
 ```python
 class Solution:
     def exist(self, board: list[list[str]], word: str) -> bool:
         rows, cols = len(board), len(board[0])
-        visited: set[tuple[int, int]] = set()
 
-        def dfs(r: int, c: int, i: int) -> bool:
+        def search(r: int, c: int, i: int) -> bool:
             if i == len(word):
                 return True
 
-            if (
-                r < 0
-                or r >= rows
-                or c < 0
-                or c >= cols
-                or (r, c) in visited
-                or board[r][c] != word[i]
-            ):
+            if not (0 <= r < rows and 0 <= c < cols):
                 return False
 
-            visited.add((r, c))
-            found = (
-                dfs(r + 1, c, i + 1)
-                or dfs(r - 1, c, i + 1)
-                or dfs(r, c + 1, i + 1)
-                or dfs(r, c - 1, i + 1)
+            if board[r][c] != word[i]:
+                return False
+
+            board[r][c] = "#"   # used by this path only
+
+            found = any(
+                search(r + dr, c + dc, i + 1)
+                for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1))
             )
-            visited.remove((r, c))
+
+            board[r][c] = word[i]   # restore, whatever happened
+
             return found
 
         for r in range(rows):
             for c in range(cols):
-                if board[r][c] == word[0] and dfs(r, c, 0):
+                if search(r, c, 0):
                     return True
 
         return False
 ```
 
-  </TabItem>
-</Tabs>
+---
+
+### Time and space complexity
+
+#### Time: $O(m \cdot n \cdot 4^{L})$ in the worst case
+
+Where `L` is the length of the word. Every cell can start a search, and each step has up to four directions, three after the first since you never go straight back.
+
+That is pessimistic. Most branches die on the very first letter comparison.
+
+#### Space: $O(L)$
+
+The recursion depth, which is the length of the word. Marking happens in the board itself, so no separate visited structure grows.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Visited Coordinate Set** | $O(m \cdot n \cdot 3^L)$ | $O(L)$ | Uses a set of `(r, c)` tuples to avoid in-place board modification. Slower due to set hashing overhead. |
-| **In-Place Masking with Pruning** | $O(m \cdot n \cdot 3^L)$ | $O(L)$ | Temporarily masks cells with `'#'` and inverts search direction based on character rarity. Faster in practice. |
-
-*(Where $m \times n$ is the grid size and $L$ is the length of `word`. After the initial step, the branching factor is at most 3 because the search never immediately steps back to the predecessor cell.)*
-
----
-
-### Common Pitfall: Mutating Cell Without Restoring on Backtrack
-
-If you overwrite `board[r][c] = '#'` but fail to restore `board[r][c] = temp` when all child branches return `False`, that cell remains permanently marked as `'#'`. Any subsequent path starting from another grid location that needs that letter will fail, causing incorrect false-negative outputs.
-
-Always place the backtrack restoration `board[r][c] = temp` after evaluating all directional branches.
-
----
-
-### Concise Interview Takeaway
-
-For **Word Search**, traverse the 2D grid using DFS while masking visited cells in-place with `'#'` to avoid allocating an extra visited structure. Restore the original character during backtrack. In production interviews, mention reversing the target word when its tail character is rarer than its head character to dramatically prune the search tree.
+Walk the grid depth-first, matching one letter per step, and mark the current cell so the path cannot reuse it. Restore it before returning on **every** path, not just the successful one, or failed attempts leave the board littered with blocked cells. $O(m \cdot n \cdot 4^L)$ worst case, $O(L)$ space.

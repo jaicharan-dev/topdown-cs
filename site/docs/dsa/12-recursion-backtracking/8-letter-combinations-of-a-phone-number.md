@@ -1,173 +1,123 @@
 ---
 id: 8-letter-combinations-of-a-phone-number
 title: "17. Letter Combinations of a Phone Number"
-description: "Digit-to-letter keypad mapping expansion via recursive backtracking"
+description: "One digit per position, and every letter on that key is a branch"
 sidebar_position: 8
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Recursion & Backtracking</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">State Space Tree</span>
 
-> **Problem Statement:** Given a string containing digits from `2` to `9` inclusive, return all possible letter combinations that the number could represent using the traditional telephone keypad mapping. Return the answer in any order.
+> **Problem Statement:** Given a string of digits from `2` to `9`, return every letter combination the number could spell on an old telephone keypad.
 
 ```text
 Input:  digits = "23"
 Output: ["ad", "ae", "af", "bd", "be", "bf", "cd", "ce", "cf"]
-Explanation: Digit '2' maps to "abc" and digit '3' maps to "def". All pairwise combinations are formed.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine texting on a vintage mobile phone with a 12-key numeric keypad:
-- Pressing button `'2'` gives access to letters `'a'`, `'b'`, `'c'`.
-- Pressing button `'3'` gives access to letters `'d'`, `'e'`, `'f'`.
+Each digit contributes exactly one letter to the answer, and the choice is which of that key's letters to use.
 
-If the user enters `"23"`, you must explore every combination formed by picking one letter from the first button followed by one letter from the second button:
-- Choose `'a'`, then pick from `('d', 'e', 'f')`: `"ad"`, `"ae"`, `"af"`.
-- Choose `'b'`, then pick from `('d', 'e', 'f')`: `"bd"`, `"be"`, `"bf"`.
-- Choose `'c'`, then pick from `('d', 'e', 'f')`: `"cd"`, `"ce"`, `"cf"`.
+The `2` key offers `a`, `b` or `c`. The `3` key offers `d`, `e` or `f`. So there are `3 × 3 = 9` combinations, which is the length of the expected output.
 
-The depth of our decision tree corresponds directly to the length of `digits`. Every leaf node at depth `len(digits)` represents one complete, valid word combination.
+As a tree, each level is one digit and each branch is one of that key's letters:
 
-#### Brute Force: Iterative Cartesian Product
-Start with a list containing `[""]`. For each digit in `digits`, create a new list by appending each mapped letter to all current string prefixes. While simple, creating brand-new intermediate string lists at each step consumes extra heap memory.
+```text
+            ""
+     a/     b|     \c
+    "a"     "b"    "c"
+   d/|\e,f  ...     ...
+ "ad" "ae" "af"
+```
 
-#### Optimal Approach: Depth-First Search Backtracking
-Maintain a single mutable character list `path` and advance through `digits` index by index. At each depth, iterate over the mapped characters for `digits[index]`, append the character to `path`, recurse to `index + 1`, and pop upon return. When `index == len(digits)`, join `path` into a string and store it in `result`. This limits auxiliary space strictly to $O(n)$ for the recursion stack.
-
-#### Execution Walkthrough
-
-Let us trace `digits = "23"`:
-
-| Step | Digit Index | Keypad Letters | Candidate Chosen | Path State (`path`) | Action Taken | Result Collected |
-| :---: | :---: | :---: | :---: | :---: | :--- | :--- |
-| **1** | `0` (`'2'`) | `"abc"` | `'a'` | `['a']` | Recurse to `index = 1` | `[]` |
-| **2** | `1` (`'3'`) | `"def"` | `'d'` | `['a', 'd']` | Recurse to `index = 2` | `[]` |
-| **3** | `2` | - | - | `['a', 'd']` | Base case: collect `"ad"` | `["ad"]` |
-| **4** | `1` (`'3'`) | `"def"` | `'e'` | `['a', 'e']` | Recurse to `index = 2` | `["ad"]` |
-| **5** | `2` | - | - | `['a', 'e']` | Base case: collect `"ae"` | `["ad", "ae"]` |
-| **6** | `1` (`'3'`) | `"def"` | `'f'` | `['a', 'f']` | Recurse to `index = 2` | `["ad", "ae"]` |
-| **7** | `2` | - | - | `['a', 'f']` | Base case: collect `"af"` | `["ad", "ae", "af"]` |
-| **8** | `0` (`'2'`) | `"abc"` | `'b'` | `['b']` | Recurse to `index = 1` | `["ad", "ae", "af"]` |
+Walk to the bottom and every leaf is a combination.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Handle Empty Input:** If `not digits`, return `[]` immediately.
-2. **Define Keypad Map:** Map each digit character `'2'` through `'9'` to its corresponding string of letters in a dictionary `keyboard`.
-3. **Initialize Containers:** Create `result = []` and `path = []`.
-4. **Define Backtrack Helper:** Define `backtrack(index)` where `index` is the current position in `digits`.
-5. **Check Base Case:** If `index == len(digits)`, append `"".join(path)` to `result` and return.
-6. **Iterate Mapped Letters:** Look up `keyboard[digits[index]]`. For each `letter`:
-   - Append `letter` to `path`.
-   - Recurse: `backtrack(index + 1)`.
-   - Backtrack: pop from `path`.
-7. **Trigger and Return:** Call `backtrack(0)` and return `result`.
+Keep a map from digit to its letters, then recurse over the positions of the input.
+
+**When the partial string is as long as the digits**, it is complete, so record it.
+
+**Otherwise**, look up the letters for the current digit and try each in turn: append it, recurse to the next digit, remove it.
+
+Two things to notice about how this differs from the other problems in this block.
+
+**There is no pruning.** Every branch leads to a valid answer, because any letter from any key is allowed. That makes it the purest example of the shape: a plain walk of the decision tree with nothing rejected.
+
+**The branching factor is not the input size.** Each level offers three or four options, set by the key rather than by how many digits there are. So the tree is wide and shallow rather than growing with `n` in both directions.
+
+The one case to handle explicitly is an **empty input**, which should give an empty list rather than a list containing the empty string. Without a guard the recursion immediately records `""` and returns the wrong thing.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Recursive Backtracking" default>
+Take `digits = "23"`.
+
+1. **First digit is `2`**, offering `a`, `b`, `c`.
+2. **Take `a`.** Move to the second digit, `3`, offering `d`, `e`, `f`.
+   - Take `d` for `"ad"`, then back up and take `e` for `"ae"`, then `f` for `"af"`.
+3. **Back up to the first digit and take `b`.** The same three branches give `"bd"`, `"be"`, `"bf"`.
+4. **Take `c`** for `"cd"`, `"ce"`, `"cf"`.
+
+Nine combinations, in the order shown in the expected output.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def letterCombinations(self, digits: str) -> list[str]:
         if not digits:
-            return []
+            return []   # not a list holding the empty string
 
-        keyboard = {
-            "2": "abc",
-            "3": "def",
-            "4": "ghi",
-            "5": "jkl",
-            "6": "mno",
-            "7": "pqrs",
-            "8": "tuv",
-            "9": "wxyz",
+        keys = {
+            "2": "abc", "3": "def", "4": "ghi", "5": "jkl",
+            "6": "mno", "7": "pqrs", "8": "tuv", "9": "wxyz",
         }
 
-        result: list[str] = []
-        path: list[str] = []
+        out = []
+        partial = []
 
-        def backtrack(index: int) -> None:
-            # Reached full word length
-            if index == len(digits):
-                result.append("".join(path))
+        def build(i: int) -> None:
+            if i == len(digits):
+                out.append("".join(partial))
                 return
 
-            # Explore all candidate letters mapped to current digit
-            for letter in keyboard[digits[index]]:
-                path.append(letter)
-                backtrack(index + 1)
-                path.pop()  # Backtrack
+            # every letter on this key is a branch, and none can be pruned
+            for ch in keys[digits[i]]:
+                partial.append(ch)
+                build(i + 1)
+                partial.pop()
 
-        backtrack(0)
-        return result
+        build(0)
+        return out
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Iterative BFS Expansion">
+---
 
-```python
-class Solution:
-    def letterCombinations(self, digits: str) -> list[str]:
-        if not digits:
-            return []
+### Time and space complexity
 
-        keyboard = {
-            "2": "abc",
-            "3": "def",
-            "4": "ghi",
-            "5": "jkl",
-            "6": "mno",
-            "7": "pqrs",
-            "8": "tuv",
-            "9": "wxyz",
-        }
+#### Time: $O(4^n \cdot n)$
 
-        result: list[str] = [""]
-        for digit in digits:
-            result = [
-                prefix + char
-                for prefix in result
-                for char in keyboard[digit]
-            ]
+Where `n` is the number of digits. Each digit multiplies the number of combinations by three or four, and joining each finished combination costs `n`.
 
-        return result
-```
+As with Subsets and Permutations, the output is that large, so no method avoids it.
 
-  </TabItem>
-</Tabs>
+#### Space: $O(n)$ beyond the answer
+
+The recursion depth and the partial string, both one entry per digit.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Iterative BFS Expansion** | $O(4^n \cdot n)$ | $O(4^n \cdot n)$ | Expands strings iteratively level-by-level. Allocates new intermediate lists for every digit. |
-| **Recursive Backtracking** | $O(4^n \cdot n)$ | $O(n)$ | Reuses a single mutable list buffer across calls. Uses minimal $O(n)$ auxiliary recursion memory. |
-
-*(Where $n$ is the number of digits. Digits 7 and 9 have 4 corresponding letters, creating a maximum branching factor of 4. Building each string of length $n$ at the leaves takes $O(n)$ time. The output stores up to $4^n$ strings.)*
-
----
-
-### Common Pitfall: Handling the Empty String Edge Case
-
-When `digits = ""`, returning `[""]` instead of `[]` is a frequent bug. An empty string contains zero digits and represents zero telephone button presses, so it must return an empty list `[]`. Always handle `if not digits: return []` as a guard condition before initializing your search.
-
----
-
-### Concise Interview Takeaway
-
-For **Letter Combinations of a Phone Number**, map digits to keypad character strings and traverse depth-first. At each digit index, iterate through its assigned letters, append to a shared path buffer, recurse to `index + 1`, and pop during backtrack. This bounds auxiliary memory strictly to the recursion stack depth of $O(n)$.
+One digit per level, one branch per letter on that key, and nothing to prune because every path is valid. Record when the partial string matches the input length. Guard the empty input explicitly, or the recursion returns a list containing an empty string instead of an empty list. $O(4^n \cdot n)$ time, $O(n)$ extra space.

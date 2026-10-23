@@ -1,172 +1,101 @@
 ---
 id: 2-subsets-ii
 title: "90. Subsets II"
-description: "Sorting and skipping duplicate sibling elements in the exclusion branch"
+description: "Sort so equal values sit together, then let only the first of them start a branch"
 sidebar_position: 2
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Recursion & Backtracking</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Duplicate Pruning</span>
 
-> **Problem Statement:** Given an integer array `nums` that may contain duplicate elements, return all possible subsets (the power set). The solution set must not contain duplicate subsets. Return the solution in any order.
+> **Problem Statement:** Given an array that may contain repeated values, return every distinct subset. The answer must not list the same subset twice.
 
 ```text
 Input:  nums = [1, 2, 2]
 Output: [[], [1], [1, 2], [1, 2, 2], [2], [2, 2]]
-Explanation: Duplicate elements are grouped together so that duplicate subsets like [1, 2] are not generated twice.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine packing for a trip where your checklist contains duplicate items: `[1, 2, 2]`. If you apply a standard include/exclude decision tree naively, multiple branches produce the exact same outcome:
-- Include `1`, include the first `2`, exclude the second `2`: results in `[1, 2]`.
-- Include `1`, exclude the first `2`, include the second `2`: results in `[1, 2]`.
+Run the previous problem on `[1, 2, 2]` and it produces eight subsets, but two pairs are identical. Picking the first `2` alone and picking the second `2` alone both give `[2]`, and they are the same subset even though they came from different positions.
 
-Both paths produce identical subsets. To prevent duplicate subsets at their root, we enforce an exclusion rule: whenever you choose to leave an element behind at a particular decision level, you must refuse to pick any subsequent copy of that exact same value at that same level.
+So the generated subsets are fine; the trouble is that **different choices produce the same result**.
 
-#### Brute Force: Hash Set Deduplication
-Generate every possible subset naively, sort each subset, convert it into an immutable tuple, and insert it into a hash set. While this filters out duplicates, it explores completely redundant subtrees, wastes time generating identical paths, and requires extra memory to store every tuple in a hash set.
-
-#### Optimal Approach: Sort and Prune Siblings
-By sorting the array first, identical elements are guaranteed to sit next to each other. When traversing the state tree:
-1. **Include branch:** Take `nums[i]` and advance to `i + 1`.
-2. **Exclude branch:** Undo the inclusion with `pop()`. Then fast-forward the index `i` past all identical neighbors: `while i + 1 < len(nums) and nums[i] == nums[i + 1]: i += 1`.
-3. Finally, advance to `i + 1` from the last duplicate's position.
-
-This prunes redundant sibling branches before they ever execute, ensuring every generated branch is unique.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [1, 2, 2]` after sorting:
-
-| Step | Index `i` | Choice Made | Path State (`subset`) | Action Taken | Result Collected |
-| :---: | :---: | :---: | :---: | :--- | :--- |
-| **1** | `0` | Include `1` | `[1]` | Recurse to `i = 1` | `[]` |
-| **2** | `1` | Include `2` (first) | `[1, 2]` | Recurse to `i = 2` | `[]` |
-| **3** | `2` | Include `2` (second) | `[1, 2, 2]` | Recurse to `i = 3` | `[]` |
-| **4** | `3` | Base case reached | `[1, 2, 2]` | Snapshot `[1, 2, 2]` | `[[1, 2, 2]]` |
-| **5** | `2` | Backtrack, skip dups | `[1, 2]` | Recurse to `i = 3` | `[[1, 2, 2]]` |
-| **6** | `3` | Base case reached | `[1, 2]` | Snapshot `[1, 2]` | `[[1, 2, 2], [1, 2]]` |
-| **7** | `1` | Backtrack, skip dups | `[1]` | `nums[1] == nums[2]`, fast-forward `i` to `2` | `[[1, 2, 2], [1, 2]]` |
-| **8** | `2` | Exclude branch | `[1]` | Recurse to `i = 3` | `[[1, 2, 2], [1, 2]]` |
-| **9** | `3` | Base case reached | `[1]` | Snapshot `[1]` | `[[1, 2, 2], [1, 2], [1]]` |
-| **10** | `0` | Backtrack | `[]` | Recurse to `i = 1` | `[[1, 2, 2], [1, 2], [1]]` |
-| **11** | `1` | Include `2` (first) | `[2]` | Recurse to `i = 2` | `[[1, 2, 2], [1, 2], [1]]` |
-| **12** | `2` | Include `2` (second) | `[2, 2]` | Recurse to `i = 3` | `[[1, 2, 2], [1, 2], [1]]` |
-| **13** | `3` | Base case reached | `[2, 2]` | Snapshot `[2, 2]` | `[[...], [2, 2]]` |
-| **14** | `2` | Backtrack, skip dups | `[2]` | Recurse to `i = 3` | `[[...], [2, 2]]` |
-| **15** | `3` | Base case reached | `[2]` | Snapshot `[2]` | `[[...], [2, 2], [2]]` |
-| **16** | `1` | Backtrack, skip dups | `[]` | `nums[1] == nums[2]`, fast-forward `i` to `2` | `[[...], [2, 2], [2]]` |
-| **17** | `2` | Exclude branch | `[]` | Recurse to `i = 3` | `[[...], [2, 2], [2]]` |
-| **18** | `3` | Base case reached | `[]` | Snapshot `[]` | `[[...], [2, 2], [2], []]` |
+The fix is to stop those choices being made rather than to filter the output afterwards. Sorting puts equal values next to each other, and then one rule does it: among equal values being considered at the same point, only the **first** may start a branch.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Sort Input:** Sort `nums` in ascending order so identical values are contiguous.
-2. **Initialize State:** Create `result = []` and `subset = []`.
-3. **Define Recursive DFS:** Define `dfs(i)` to evaluate the element at index `i`.
-4. **Base Case Check:** If `i == len(nums)`, all elements have been evaluated. Append a copy of `subset` to `result` and return.
-5. **Include Branch:** Append `nums[i]` to `subset`, then call `dfs(i + 1)`.
-6. **Backtrack and Prune:** Pop `nums[i]` from `subset`. Advance `i` past all identical neighbors:
-   ```python
-   while i + 1 < len(nums) and nums[i] == nums[i + 1]:
-       i += 1
-   ```
-7. **Exclude Branch:** Call `dfs(i + 1)` using the updated index.
-8. **Trigger and Return:** Call `dfs(0)` and return `result`.
+Switch to the index-and-loop shape of the recursion, because it makes "the same point" meaningful. At each call, record the current partial subset, then loop over the candidates from the current index onward, choosing each in turn.
+
+Inside that loop, skip a candidate when it equals the one before it **and** it is not the first of the loop. The second condition matters enormously: the first candidate at this level is the branch you want to keep, and only its repeats need pruning.
+
+The effect is that equal values can still both appear in a subset, as long as they are taken **consecutively**. Taking `2` and then the next `2` builds `[2, 2]`, which is a genuine subset. What the rule prevents is skipping the first `2` and then taking the second one alone, since that reproduces a subset the first `2` already made.
+
+Comparing against the previous candidate only works because the array is sorted. Without sorting, equal values can sit anywhere and the test means nothing.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Backtracking with Duplicate Pruning" default>
+Sorting gives `[1, 2, 2]`.
+
+1. **Record the empty subset.**
+2. **Take `1`.** Record `[1]`.
+   - **Take the first `2`.** Record `[1, 2]`.
+     - **Take the second `2`.** Record `[1, 2, 2]`. The two `2`s are consecutive, so this is allowed.
+   - **Back up. Consider the second `2` on its own**, as a sibling branch. It equals the previous candidate and is not first in the loop, so it is skipped. That is what stops a second `[1, 2]`.
+3. **Back up. Take the first `2`** at the top level. Record `[2]`, then `[2, 2]`.
+4. **Consider the second `2`** at the top level. Skipped for the same reason, which is what stops a second `[2]`.
+
+Six distinct subsets, exactly the expected answer.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def subsetsWithDup(self, nums: list[int]) -> list[list[int]]:
-        result: list[list[int]] = []
-        subset: list[int] = []
+        nums.sort()   # equal values must sit together for the check to work
+        out = []
+        partial = []
 
-        # Sort upfront to cluster identical elements together
-        nums.sort()
+        def build(start: int) -> None:
+            out.append(partial[:])
 
-        def dfs(i: int) -> None:
-            # Base case: choices made for all elements
-            if i >= len(nums):
-                result.append(subset.copy())
-                return
+            for i in range(start, len(nums)):
+                # only the first of a run may start a branch at this level
+                if i > start and nums[i] == nums[i - 1]:
+                    continue
 
-            # Decision 1: INCLUDE nums[i]
-            subset.append(nums[i])
-            dfs(i + 1)
+                partial.append(nums[i])
+                build(i + 1)
+                partial.pop()
 
-            # Decision 2: EXCLUDE nums[i] (backtrack)
-            subset.pop()
-
-            # Skip all identical sibling values to avoid duplicate subsets
-            while i + 1 < len(nums) and nums[i] == nums[i + 1]:
-                i += 1
-
-            dfs(i + 1)
-
-        dfs(0)
-        return result
+        build(0)
+        return out
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Hash Set Deduplication">
+---
 
-```python
-class Solution:
-    def subsetsWithDup(self, nums: list[int]) -> list[list[int]]:
-        nums.sort()
-        seen: set[tuple[int, ...]] = set()
-        subset: list[int] = []
+### Time and space complexity
 
-        def dfs(i: int) -> None:
-            if i >= len(nums):
-                seen.add(tuple(subset))
-                return
+#### Time: $O(n \cdot 2^n)$
 
-            subset.append(nums[i])
-            dfs(i + 1)
-            subset.pop()
-            dfs(i + 1)
+The worst case is an array with no repeats at all, which produces the full `2^n` subsets. Repeats only prune work, so this bound is never exceeded. Sorting adds $O(n \log n)$, which is swallowed.
 
-        dfs(0)
-        return [list(t) for t in seen]
-```
+#### Space: $O(n)$ beyond the answer
 
-  </TabItem>
-</Tabs>
+The recursion depth and the partial subset.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Hash Set Deduplication** | $O(n \cdot 2^n)$ | $O(n \cdot 2^n)$ | Explores redundant branches and hashes each subset into a set. High auxiliary memory overhead. |
-| **Backtracking with Duplicate Pruning** | $O(n \cdot 2^n)$ | $O(n)$ | Sorts upfront in $O(n \log n)$ and prunes duplicate sibling branches in-flight. Minimal $O(n)$ auxiliary stack space. |
-
----
-
-### Common Pitfall: Forgetting to Sort Before Pruning
-
-The sibling skipping logic `nums[i] == nums[i + 1]` relies entirely on duplicate numbers being adjacent. If `nums = [2, 1, 2]` is not sorted first, the two `2` values are separated by `1`. The adjacent comparison fails to detect the relationship, and both branches will be explored, causing `[2, 1]` to appear twice in the output. Always sort the input array as the very first step.
-
----
-
-### Concise Interview Takeaway
-
-For **Subsets II**, sort the array first so identical values are clustered together. When taking an element, advance normally to the next index. When leaving an element, fast-forward past all identical adjacent values before exploring the exclusion branch. This prunes duplicate subtrees at the root and preserves optimal $O(n)$ auxiliary stack space.
+Duplicate subsets come from different choices producing the same result, so block the choice rather than filtering afterwards. Sort to group equal values, then at each level skip a candidate that equals the previous one unless it is the first of the loop. Equal values still appear together, because taking them consecutively is a different branch from restarting on a later copy. $O(n \cdot 2^n)$ time.

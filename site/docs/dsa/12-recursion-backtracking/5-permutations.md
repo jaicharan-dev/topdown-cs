@@ -1,168 +1,113 @@
 ---
 id: 5-permutations
 title: "46. Permutations"
-description: "State tracking with boolean visited array vs in-place element swapping"
+description: "Order matters here, so every unused element is a candidate at every position"
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Recursion & Backtracking</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Permutations</span>
 
-> **Problem Statement:** Given an array `nums` of distinct integers, return all the possible permutations. You may return the answer in any order.
+> **Problem Statement:** Given an array of distinct numbers, return every possible ordering of them.
 
 ```text
 Input:  nums = [1, 2, 3]
 Output: [[1, 2, 3], [1, 3, 2], [2, 1, 3], [2, 3, 1], [3, 1, 2], [3, 2, 1]]
-Explanation: All 3! = 6 unique orderings are returned.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine assigning medal placements on an Olympic podium for $n$ runners. In combinations, `[1, 2, 3]` and `[3, 2, 1]` are considered the same group. In permutations, ordering is paramount: `[1, 2, 3]` is completely different from `[3, 2, 1]`.
+Everything else in this block has been about **combinations**, where order does not matter and the recursion only ever moves forward to stop reorderings appearing twice.
 
-For an array of length $n$, there are mathematically $n!$ unique permutations:
-- For the first podium position, you have $n$ available runners.
-- For the second position, you have $n - 1$ remaining runners.
-- For the final position, you have only $1$ runner left.
-- Total permutations: $n \times (n - 1) \times \dots \times 1 = n!$.
+Permutations are the opposite. Here `[1, 2, 3]` and `[2, 1, 3]` are different answers, so moving forward only would be wrong: it would produce just one ordering instead of all of them.
 
-To explore every possibility without reusing the same runner twice in a single arrangement:
-- Maintain a boolean mask `used` of size $n$.
-- At each step, iterate through all $n$ candidates: if `used[i]` is `False`, pick `nums[i]`, mark `used[i] = True`, and recurse.
-- Upon returning, unmark `used[i] = False` and pop `nums[i]` so subsequent sibling branches can use that candidate.
+So the rule flips. At each position, any element that has **not already been used** is a candidate, whether it sits before or after the previous choice. The only thing being tracked is what is already in the partial arrangement.
 
-#### Brute Force: Slicing Remaining Elements
-At each recursion step, create a new sliced array containing all elements except the chosen one: `permute(nums[:i] + nums[i+1:])`. While functionally correct, copying sub-arrays at every tree node creates significant memory allocation overhead and increases runtime by an extra factor of $O(n)$.
-
-#### Optimal Approach: Visited Array Backtracking
-Use a preallocated boolean array `used = [False] * n` alongside a single mutable `path` list. State checks and updates happen in $O(1)$ time per transition. Alternatively, in-place element swapping can eliminate auxiliary boolean tracking altogether.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [1, 2, 3]` using a visited array to generate the first branches:
-
-| Step | Current Path | Visited Mask (`used`) | Next Candidate | Action Taken | Result Collected |
-| :---: | :---: | :---: | :---: | :--- | :--- |
-| **1** | `[]` | `[F, F, F]` | `nums[0] = 1` | Choose `1`, mark `used[0] = T` | `[]` |
-| **2** | `[1]` | `[T, F, F]` | `nums[1] = 2` | Choose `2`, mark `used[1] = T` | `[]` |
-| **3** | `[1, 2]` | `[T, T, F]` | `nums[2] = 3` | Choose `3`, mark `used[2] = T` | `[]` |
-| **4** | `[1, 2, 3]` | `[T, T, T]` | - | Base case: collect snapshot | `[[1, 2, 3]]` |
-| **5** | `[1, 2]` | `[T, T, F]` | - | Backtrack: pop `3`, unmark `used[2]` | `[[1, 2, 3]]` |
-| **6** | `[1]` | `[T, F, F]` | - | Backtrack: pop `2`, unmark `used[1]` | `[[1, 2, 3]]` |
-| **7** | `[1]` | `[T, F, F]` | `nums[2] = 3` | Choose `3`, mark `used[2] = T` | `[[1, 2, 3]]` |
-| **8** | `[1, 3]` | `[T, F, T]` | `nums[1] = 2` | Choose `2`, mark `used[1] = T` | `[[1, 2, 3]]` |
-| **9** | `[1, 3, 2]` | `[T, T, T]` | - | Base case: collect snapshot | `[[1, 2, 3], [1, 3, 2]]` |
+That gives `3` choices for the first slot, `2` for the second and `1` for the last, which is `3 × 2 × 1 = 6` arrangements, matching the output.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State:** Create `result = []`, `path = []`, and `used = [False] * len(nums)`.
-2. **Define Recursive DFS:** Define helper `dfs()`.
-3. **Base Case Check:** If `len(path) == len(nums)`, all elements are assigned. Append a copy of `path` to `result` and return.
-4. **Iterate Candidates:** Loop index `i` from `0` to `len(nums) - 1`:
-   - If `used[i]` is `True`, continue to the next candidate.
-   - **Choose:** Append `nums[i]` to `path` and mark `used[i] = True`.
-   - **Explore:** Recurse with `dfs()`.
-   - **Backtrack:** Pop `nums[i]` from `path` and reset `used[i] = False`.
-5. **Trigger and Return:** Call `dfs()` and return `result`.
+Build the arrangement one position at a time.
+
+**When the partial arrangement is as long as the input**, it is complete, so record a copy.
+
+**Otherwise**, loop over every element and skip the ones already used. For each available one: mark it used, add it, recurse, then unmark and remove it.
+
+Tracking "used" is the new ingredient. A set of used values is the clearest way when the values are distinct, as they are here. A parallel array of booleans indexed by position is the version that still works when values repeat.
+
+There is also a swap-based version that avoids the extra tracking entirely: at each position, swap each remaining element into place, recurse, then swap it back. It uses no extra memory beyond the recursion, which is worth naming, but it scrambles the order the answers come out in and is easier to get wrong.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Visited Array Backtracking" default>
+Take `nums = [1, 2, 3]`.
+
+1. **First slot takes `1`.**
+   - **Second slot takes `2`**, since `1` is used. Third slot can only take `3`, giving `[1, 2, 3]`.
+   - **Back up. Second slot takes `3`.** Third takes `2`, giving `[1, 3, 2]`.
+2. **Back to the start. First slot takes `2`.** Note this reaches back to an element that comes *before* nothing, which combination problems forbade and this one requires.
+   - Second takes `1`, third takes `3`: `[2, 1, 3]`.
+   - Second takes `3`, third takes `1`: `[2, 3, 1]`.
+3. **First slot takes `3`**, producing `[3, 1, 2]` and `[3, 2, 1]` the same way.
+
+Six arrangements.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def permute(self, nums: list[int]) -> list[list[int]]:
-        result: list[list[int]] = []
-        path: list[int] = []
-        used = [False] * len(nums)
+        out = []
+        partial = []
+        used = set()
 
-        def dfs() -> None:
-            # Base case: full permutation formed
-            if len(path) == len(nums):
-                result.append(path.copy())
+        def build() -> None:
+            if len(partial) == len(nums):
+                out.append(partial[:])
                 return
 
-            for i in range(len(nums)):
-                if used[i]:
+            # every unused element is a candidate, in either direction
+            for value in nums:
+                if value in used:
                     continue
 
-                # Choose
-                path.append(nums[i])
-                used[i] = True
+                used.add(value)
+                partial.append(value)
 
-                # Explore
-                dfs()
+                build()
 
-                # Backtrack
-                path.pop()
-                used[i] = False
+                partial.pop()
+                used.remove(value)
 
-        dfs()
-        return result
+        build()
+        return out
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: In-Place Swapping">
+---
 
-```python
-class Solution:
-    def permute(self, nums: list[int]) -> list[list[int]]:
-        result: list[list[int]] = []
+### Time and space complexity
 
-        def backtrack(start: int) -> None:
-            # Base case: current arrangement is complete
-            if start == len(nums):
-                result.append(nums.copy())
-                return
+#### Time: $O(n \cdot n!)$
 
-            for i in range(start, len(nums)):
-                # Swap candidate into the start position
-                nums[start], nums[i] = nums[i], nums[start]
-                backtrack(start + 1)
-                # Swap back to restore state
-                nums[start], nums[i] = nums[i], nums[start]
+There are `n!` arrangements, and copying each into the answer costs `n`. As with Subsets, the output itself is this large, so nothing can do better.
 
-        backtrack(0)
-        return result
-```
+The factorial is worth a moment of respect: ten elements give about 3.6 million arrangements, and thirteen give over six billion. Any problem whose answer is every permutation is only tractable for small inputs.
 
-  </TabItem>
-</Tabs>
+#### Space: $O(n)$ beyond the answer
+
+Recursion depth, the partial arrangement and the used set, all bounded by `n`.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Slicing Subarrays** | $O(n^2 \cdot n!)$ | $O(n \cdot n!)$ | Creates sliced copies of remaining candidates at every recursion frame. High allocation overhead. |
-| **Visited Array Backtracking** | $O(n \cdot n!)$ | $O(n)$ | Uses a single mutable path and boolean array with $O(1)$ state updates. Standard interview pattern. |
-| **In-Place Swapping** | $O(n \cdot n!)$ | $O(n)$ | Swaps elements in the original list without allocating a visited array. Saves auxiliary memory. |
-
-*(Note: Output storage requires $O(n \cdot n!)$ space across all implementations.)*
-
----
-
-### Common Pitfall: Forgetting to Reset the Visited Flag
-
-If you append to `path` and set `used[i] = True`, but forget to reset `used[i] = False` during the backtrack phase, that element remains locked for subsequent sibling branches. The search tree runs out of valid candidates prematurely, resulting in missing or incomplete permutations.
-
-Always ensure the state restoration (`used[i] = False`) mirrors the state change (`used[i] = True`) directly after the recursive call.
-
----
-
-### Concise Interview Takeaway
-
-For **Permutations**, explore all $n$ candidates from index $0$ at every level while tracking assigned positions with a boolean `used` mask. Upon returning from recursion, unmark the visited flag and pop the element to restore state. This constructs all $n!$ orderings in $O(n \cdot n!)$ time using $O(n)$ auxiliary recursion space.
+Order matters, so the forward-only rule from the combination problems is dropped and every unused element is a candidate at every position. Track what is used, and unmark on the way out as part of the un-choose step. $O(n \cdot n!)$ time, which grows fast enough that only small inputs are realistic.

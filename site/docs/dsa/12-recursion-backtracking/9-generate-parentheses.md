@@ -1,172 +1,117 @@
 ---
 id: 9-generate-parentheses
 title: "22. Generate Parentheses"
-description: "Guided backtracking with opening and closing bracket balance invariants"
+description: "Two counters decide what may be added next, so nothing invalid is ever built"
 sidebar_position: 9
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Recursion & Backtracking</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Guided Pruning</span>
 
-> **Problem Statement:** Given `n` pairs of parentheses, write a function to generate all combinations of well-formed (valid) parentheses.
+> **Problem Statement:** Given `n` pairs of brackets, generate every well-formed arrangement of them.
 
 ```text
 Input:  n = 3
 Output: ["((()))", "(()())", "(())()", "()(())", "()()()"]
-Explanation: All 5 valid combinations of 3 balanced pairs of parentheses are generated.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine constructing an archway of matching brackets. Every opening bracket `'('` creates a debt that must eventually be repaid by a closing bracket `')'`.
+The obvious plan is to generate every string of `n` opening and `n` closing brackets and keep the valid ones. For `n = 3` that means building 20 strings to keep 5, and the waste grows quickly with `n`.
 
-Instead of generating arbitrary strings and validating them after the fact, we use **Guided Backtracking**: we never place a character that violates well-formedness rules. Every valid placement follows two rules:
-1. **Rule 1 (Add `(`):** You can add an opening bracket at any time as long as you have not exhausted your quota: `open_count < n`.
-2. **Rule 2 (Add `)`):** You can only add a closing bracket if there is an unmatched opening bracket currently waiting for it: `close_count < open_count`. If `close_count >= open_count`, placing `')'` would close a bracket that was never opened, permanently ruining the string.
+Better: never build an invalid one. At every step there are only two possible characters, and simple rules say whether each is allowed.
 
-When the path length reaches $2n$, both counts have reached $n$, and the resulting string is guaranteed to be well-formed.
+**An opening bracket** is allowed whenever fewer than `n` have been used. There is no other way for it to be wrong, since a bracket opened now can always be closed later.
 
-#### Brute Force: Generate All Sequences and Validate
-Generate all $2^{2n}$ possible strings of length $2n$ using `'('` and `')'`, then validate each candidate using a balance counter. This wastes exponential time constructing invalid prefixes like `"))(("`.
+**A closing bracket** is allowed only when it would close something already open, which means fewer closing brackets used so far than opening ones.
 
-#### Optimal Approach: Guided Backtracking Invariants
-Branch only when an invariant is satisfied. By never exploring invalid prefixes, every single path that reaches length $2n$ is guaranteed to be a valid, well-formed combination.
-
-#### Execution Walkthrough
-
-Let us trace `n = 2`:
-
-| Step | `open_count` | `close_count` | Condition Met | Action / Added | Path State (`path`) | Result Collected |
-| :---: | :---: | :---: | :---: | :--- | :---: | :--- |
-| **1** | `0` | `0` | `open < 2` | Add `'('` | `['(']` | `[]` |
-| **2** | `1` | `0` | `open < 2` | Add `'('` | `['(', '(']` | `[]` |
-| **3** | `2` | `0` | `close < open` | Add `')'` | `['(', '(', ')']` | `[]` |
-| **4** | `2` | `1` | `close < open` | Add `')'` | `['(', '(', ')', ')']` | `[]` |
-| **5** | `2` | `2` | Base case ($2n = 4$) | Collect `"(())"` | `['(', '(', ')', ')']` | `["(())"]` |
-| **6** | `1` | `0` | `close < open` | Add `')'` | `['(', ')']` | `["(())"]` |
-| **7** | `1` | `1` | `open < 2` | Add `'('` | `['(', ')', '(']` | `["(())"]` |
-| **8** | `2` | `1` | `close < open` | Add `')'` | `['(', ')', '(', ')']` | `["(())"]` |
-| **9** | `2` | `2` | Base case ($2n = 4$) | Collect `"()()"` | `['(', ')', '(', ')']` | `["(())", "()()"]` |
+Those two counters are all the state needed, and together they make every string built valid by construction.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Containers:** Create `result = []` and `path = []`.
-2. **Define Backtrack Helper:** Define `backtrack(open_cnt, close_cnt)` to track counts of opening and closing parentheses placed so far.
-3. **Base Case Check:** If `len(path) == 2 * n`, all $n$ pairs are placed. Append `"".join(path)` to `result` and return.
-4. **Branch Open:** If `open_cnt < n`:
-   - Append `'('` to `path`.
-   - Recurse: `backtrack(open_cnt + 1, close_cnt)`.
-   - Backtrack: pop from `path`.
-5. **Branch Close:** If `close_cnt < open_cnt`:
-   - Append `')'` to `path`.
-   - Recurse: `backtrack(open_cnt, close_cnt + 1)`.
-   - Backtrack: pop from `path`.
-6. **Trigger and Return:** Call `backtrack(0, 0)` and return `result`.
+Carry two numbers: how many opening brackets have been used, and how many closing ones.
+
+**When both reach `n`**, the string is complete, so record it.
+
+**Otherwise**, try each allowed character:
+
+- If `opened` is below `n`, add an opening bracket and recurse.
+- If `closed` is below `opened`, add a closing bracket and recurse.
+
+Remove the character afterwards, as always.
+
+The second condition deserves attention. Comparing closing against **opening**, rather than against `n`, is what enforces well-formedness: a closing bracket can only appear when something is waiting to be closed. It is the same balance rule as in Valid Parentheses, applied while building instead of while checking.
+
+This is the clearest example of **pruning as prevention** in the block. Nothing is generated and rejected; invalid branches simply do not exist, which is why the walk visits only valid strings and a few partial ones.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Guided Backtracking" default>
+Take `n = 3`, following the first branch down.
+
+1. **Add `(`.** Opened `1`, closed `0`. A closing bracket is now allowed, as is another opening one.
+2. **Add `(`.** Opened `2`.
+3. **Add `(`.** Opened `3`, which is `n`, so no more opening brackets are allowed.
+4. **Only closing brackets remain possible.** Add three of them to reach `((()))`, which is recorded.
+5. **Back up to opened `2`, closed `0`.** Add `)` instead, giving `(()`, then continue, eventually reaching `(()())` and `(())()`.
+6. **Back up further to opened `1`, closed `0`.** Add `)` for `()`, which leads to `()(())` and `()()()`.
+
+Five strings, and at no point was an invalid one constructed. Note that a closing bracket was never even attempted at the very start, because `closed` was not below `opened`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def generateParenthesis(self, n: int) -> list[str]:
-        result: list[str] = []
-        path: list[str] = []
+        out = []
+        partial = []
 
-        def backtrack(open_cnt: int, close_cnt: int) -> None:
-            # All n pairs placed
-            if len(path) == 2 * n:
-                result.append("".join(path))
+        def build(opened: int, closed: int) -> None:
+            if opened == n and closed == n:
+                out.append("".join(partial))
                 return
 
-            # Can place '(' as long as open quota remains
-            if open_cnt < n:
-                path.append("(")
-                backtrack(open_cnt + 1, close_cnt)
-                path.pop()  # Backtrack
+            # an opening bracket is fine until all n are used
+            if opened < n:
+                partial.append("(")
+                build(opened + 1, closed)
+                partial.pop()
 
-            # Can only place ')' if there is an unmatched '('
-            if close_cnt < open_cnt:
-                path.append(")")
-                backtrack(open_cnt, close_cnt + 1)
-                path.pop()  # Backtrack
+            # a closing bracket needs something open to close
+            if closed < opened:
+                partial.append(")")
+                build(opened, closed + 1)
+                partial.pop()
 
-        backtrack(0, 0)
-        return result
+        build(0, 0)
+        return out
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Brute Force with Validation">
+---
 
-```python
-class Solution:
-    def generateParenthesis(self, n: int) -> list[str]:
-        result: list[str] = []
+### Time and space complexity
 
-        def is_valid(s: str) -> bool:
-            balance = 0
-            for char in s:
-                if char == "(":
-                    balance += 1
-                else:
-                    balance -= 1
-                if balance < 0:
-                    return False
-            return balance == 0
+#### Time: $O(4^n / \sqrt{n})$
 
-        def generate(current: list[str]) -> None:
-            if len(current) == 2 * n:
-                candidate = "".join(current)
-                if is_valid(candidate):
-                    result.append(candidate)
-                return
+That expression is the `n`-th Catalan number, which counts exactly how many well-formed arrangements exist. Since every string the walk completes is one of them and none are discarded, the work is proportional to the size of the output.
 
-            current.append("(")
-            generate(current)
-            current.pop()
+In plain terms: `n = 3` gives 5 strings, `n = 5` gives 42, and `n = 10` gives 16,796. It grows fast, but far slower than the `2^(2n)` strings the generate-and-filter approach would build.
 
-            current.append(")")
-            generate(current)
-            current.pop()
+#### Space: $O(n)$ beyond the answer
 
-        generate([])
-        return result
-```
-
-  </TabItem>
-</Tabs>
+The recursion goes `2n` levels deep, one per character, and the partial string holds at most `2n` characters.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force with Validation** | $O(2^{2n} \cdot n)$ | $O(n)$ | Generates all $2^{2n}$ binary combinations and tests validity in $O(n)$. Explores vast numbers of invalid branches. |
-| **Guided Backtracking** | $O\left(\frac{4^n}{\sqrt{n}}\right)$ | $O(n)$ | Generates only valid sequences directly using balance invariants. Matches the $n$-th Catalan number $C_n$. |
-
-*(The number of valid parentheses sequences of length $2n$ is given by the $n$-th Catalan number $C_n = \frac{1}{n + 1} \binom{2n}{n} \approx \frac{4^n}{n \sqrt{\pi n}}$. Constructing each sequence takes $O(n)$ time.)*
-
----
-
-### Common Pitfall: Allowing Closing Brackets Exceeding Opening Brackets
-
-A common bug is writing `if close_cnt < n` instead of `if close_cnt < open_cnt`. Allowing a closing bracket when `close_cnt >= open_cnt` immediately ruins bracket balance, producing illegal strings like `")("`. A closing bracket must only be placed when there is an active, open bracket waiting to be matched.
-
----
-
-### Concise Interview Takeaway
-
-For **Generate Parentheses**, guide the backtracking search with two invariants: place an opening bracket `'('` whenever `open_count < n`, and place a closing bracket `')'` only when `close_count < open_count`. This prevents invalid strings from ever being formed, generating all valid combinations in optimal Catalan time.
+Do not generate and filter. Two counters decide what is legal next: an opening bracket while fewer than `n` are used, a closing bracket only while fewer closings than openings have been used. That second comparison is the well-formedness rule, and it means every string the walk finishes is already valid.

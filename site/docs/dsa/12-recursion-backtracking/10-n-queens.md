@@ -1,206 +1,122 @@
 ---
 id: 10-n-queens
 title: "51. N-Queens"
-description: "Row-by-row queen placement with column and diagonal attack sets"
+description: "One queen per row, with three sets remembering every square already attacked"
 sidebar_position: 10
 sidebar_class_name: sidebar-hard
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Recursion & Backtracking</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Constraint Satisfaction</span>
 
-> **Problem Statement:** The $n$-queens puzzle is the challenge of placing $n$ queens on an $n \times n$ chessboard such that no two queens attack each other. Given an integer `n`, return all distinct solutions to the $n$-queens puzzle in any order. Each solution is represented as a distinct board configuration where `'Q'` denotes a queen and `'.'` denotes an empty space.
+> **Problem Statement:** Place `n` queens on an `n` by `n` board so that no two can attack each other, and return every distinct arrangement. Queens attack along rows, columns and both diagonals.
 
 ```text
 Input:  n = 4
-Output: [[".Q..","...Q","Q...","..Q."],["..Q.","Q...","...Q",".Q.."]]
-Explanation: There exist two distinct configurations of 4 non-attacking queens on a 4x4 board.
+Output: [[".Q..", "...Q", "Q...", "..Q."], ["..Q.", "Q...", "...Q", ".Q.."]]
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-In chess, a Queen can attack any square located in the same row, column, or diagonal.
+Two observations shrink this enormously before any code is written.
 
-Trying to place queens randomly across all $n^2$ cells produces an astronomical search space $\binom{n^2}{n}$. We eliminate this explosion by enforcing a structural invariant:
-> Because no two queens can share the same row, every single row must contain exactly one queen.
+**One queen per row.** Two queens sharing a row attack each other, so every solution has exactly one queen in each row. That turns "choose `n` squares from `n²`" into "choose a column for row 0, then row 1, and so on", which is a decision tree of depth `n` with `n` branches per level.
 
-We proceed row by row from top to bottom ($r = 0, 1, \dots, n - 1$):
-- Placing one queen per row guarantees zero row conflicts automatically.
-- We only need to ensure the candidate square `(r, c)` is not attacked by any previously placed queen in its column or either diagonal.
+**Rows are therefore free.** With one queen per row the row constraint can never be violated, so only columns and diagonals need checking.
 
-#### $O(1)$ Diagonal Detection Math
-How do we check if `(r, c)` shares a diagonal with an existing queen in $O(1)$ time without scanning the board?
-1. **Positive Diagonal ($\nearrow$):** Moving up-right increments $r$ while decrementing $c$, meaning the sum $r + c$ remains constant along the entire diagonal.
-2. **Negative Diagonal ($\searrow$):** Moving down-right increments both $r$ and $c$, meaning the difference $r - c$ remains constant along the entire diagonal.
-
-By maintaining three hash sets (`cols`, `pos_diag` tracking $r + c$, and `neg_diag` tracking $r - c$), we detect attacks in instant $O(1)$ time.
-
-#### Brute Force: Board-Scanning Queen Validation
-At each candidate square `(r, c)`, scan upward through all previous rows and both upper diagonals to verify safety. While correct, scanning the board takes $O(n)$ time per placement attempt, adding extra overhead to every node in the recursion tree.
-
-#### Optimal Approach: Hash Set Diagonal Tracking
-Maintain three sets: `cols`, `pos_diag` ($r + c$), and `neg_diag` ($r - c$). A square `(r, c)` is safe if and only if `c not in cols`, `(r + c) not in pos_diag`, and `(r - c) not in neg_diag`. Adding, checking, and removing values take $O(1)$ time.
-
-#### Execution Walkthrough
-
-Let us trace `n = 4` exploring the first valid branch:
-
-| Step | Row `r` | Col `c` | Conflict Check | Action Taken | Active Sets (`cols`, `pos_diag`, `neg_diag`) |
-| :---: | :---: | :---: | :---: | :--- | :--- |
-| **1** | `0` | `1` | None | Place Queen at `(0, 1)` | `cols={1}`, `pos={1}`, `neg={-1}` |
-| **2** | `1` | `0` | `pos_diag (1+0=1)` conflict | Skip `c = 0` | Unchanged |
-| **3** | `1` | `1` | `cols (1)` conflict | Skip `c = 1` | Unchanged |
-| **4** | `1` | `2` | `neg_diag (1-2=-1)` conflict | Skip `c = 2` | Unchanged |
-| **5** | `1` | `3` | None | Place Queen at `(1, 3)` | `cols={1, 3}`, `pos={1, 4}`, `neg={-1, -2}` |
-| **6** | `2` | `0` | None | Place Queen at `(2, 0)` | `cols={0, 1, 3}`, `pos={1, 2, 4}`, `neg={-1, -2, 2}` |
-| **7** | `3` | `2` | None | Place Queen at `(3, 2)` | All 4 queens placed! |
-| **8** | `4` | - | Base case reached | Record valid solution | `[".Q..", "...Q", "Q...", "..Q."]` |
+Then the work is: go row by row, try each column, and reject any square already attacked. When all `n` rows have a queen, record the board.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State:**
-   - Create sets: `cols = set()`, `pos_diag = set()`, and `neg_diag = set()`.
-   - Create chessboard: `board = [["."] * n for _ in range(n)]`.
-   - Create `result = []`.
-2. **Define Recursive DFS:** Define helper `dfs(r)` where `r` is the current row.
-3. **Base Case Check:** If `r == n`, all $n$ queens have been safely placed. Convert `board` into a list of strings (`["".join(row) for row in board]`), append to `result`, and return.
-4. **Iterate Columns:** Loop `c` from `0` to `n - 1`:
-   - If `c in cols` or `(r + c) in pos_diag` or `(r - c) in neg_diag`, `continue`.
-   - **Place Queen:**
-     - Add `c` to `cols`, `(r + c)` to `pos_diag`, and `(r - c)` to `neg_diag`.
-     - Set `board[r][c] = "Q"`.
-   - **Explore Next Row:** Recurse with `dfs(r + 1)`.
-   - **Backtrack:**
-     - Remove `c` from `cols`, `(r + c)` from `pos_diag`, and `(r - c)` from `neg_diag`.
-     - Reset `board[r][c] = "."`.
-5. **Trigger and Return:** Call `dfs(0)` and return `result`.
+The useful part is making "is this square attacked" instant.
+
+A **column** is attacked if some earlier queen used that column number. Keep a set of used columns.
+
+A **diagonal** needs a name. Every square on the same down-right diagonal has the same value of `row - col`, and every square on the same down-left diagonal has the same value of `row + col`:
+
+```text
+row - col  stays constant going down and to the right
+row + col  stays constant going down and to the left
+```
+
+So two more sets, keyed by those sums and differences, cover both diagonal directions. Three constant-time set lookups then replace any scanning of the board.
+
+The recursion is then the familiar rhythm: for each column in the current row, if none of the three sets claims it, add the queen and record it in all three sets, recurse to the next row, then remove it from all three. That removal is the backtracking, and missing one of the three sets is the usual bug.
+
+Rendering happens only at the leaves, so the board itself can be kept as a list of column positions and turned into strings once a full arrangement is found.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Hash Set Diagonal Tracking" default>
+For `n = 4`, following the branch that succeeds first.
+
+1. **Row 0.** Try column 0. It is free, so place a queen. The sets record column `0`, difference `0`, sum `0`.
+2. **Row 1.** Columns 0 and 1 are attacked, by the column set and by the diagonal respectively. Column 2 is free, so place a queen there.
+3. **Row 2.** Every column is attacked: 0 by the column set, 1 and 3 by diagonals from the queen in row 1, and 2 by the column set. Dead end, so back up.
+4. **Back at row 1**, try column 3 instead. Then row 2 allows column 1, but row 3 then has nothing. Back up all the way.
+5. **Row 0, column 1.** This branch leads to columns 3, 0 and 2 in the following rows, which is the first solution.
+
+Continuing finds the mirrored arrangement, giving the two solutions shown.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def solveNQueens(self, n: int) -> list[list[str]]:
-        result: list[list[str]] = []
-        board: list[list[str]] = [["."] * n for _ in range(n)]
+        out = []
+        columns = set()
+        down_right = set()   # row - col is constant along these
+        down_left = set()    # row + col is constant along these
+        placement = []       # the column chosen for each row
 
-        cols: set[int] = set()
-        pos_diag: set[int] = set()  # (r + c)
-        neg_diag: set[int] = set()  # (r - c)
-
-        def dfs(r: int) -> None:
-            # All n queens safely positioned across all rows
-            if r == n:
-                formatted_board = ["".join(row) for row in board]
-                result.append(formatted_board)
+        def place(row: int) -> None:
+            if row == n:
+                out.append(["." * c + "Q" + "." * (n - c - 1) for c in placement])
                 return
 
-            for c in range(n):
-                # Check column and diagonal attack paths in O(1)
-                if c in cols or (r + c) in pos_diag or (r - c) in neg_diag:
+            for col in range(n):
+                if col in columns or (row - col) in down_right or (row + col) in down_left:
                     continue
 
-                # Place queen and register attack lines
-                cols.add(c)
-                pos_diag.add(r + c)
-                neg_diag.add(r - c)
-                board[r][c] = "Q"
+                columns.add(col)
+                down_right.add(row - col)
+                down_left.add(row + col)
+                placement.append(col)
 
-                # Advance to next row
-                dfs(r + 1)
+                place(row + 1)
 
-                # Backtrack
-                cols.remove(c)
-                pos_diag.remove(r + c)
-                neg_diag.remove(r - c)
-                board[r][c] = "."
+                # undo all three, or later rows see phantom attacks
+                placement.pop()
+                down_left.remove(row + col)
+                down_right.remove(row - col)
+                columns.remove(col)
 
-        dfs(0)
-        return result
+        place(0)
+        return out
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Board-Scanning Validation">
+---
 
-```python
-class Solution:
-    def solveNQueens(self, n: int) -> list[list[str]]:
-        result: list[list[str]] = []
-        board: list[list[str]] = [["."] * n for _ in range(n)]
+### Time and space complexity
 
-        def is_safe(r: int, c: int) -> bool:
-            # Check column above
-            for i in range(r):
-                if board[i][c] == "Q":
-                    return False
+#### Time: $O(n!)$ roughly
 
-            # Check upper-left diagonal
-            i, j = r - 1, c - 1
-            while i >= 0 and j >= 0:
-                if board[i][j] == "Q":
-                    return False
-                i -= 1
-                j -= 1
+The first row has `n` choices, the second at most `n - 1` once a column is taken, and so on, which gives a factorial shape. The diagonal checks prune far more than that bound suggests, so real runs finish much sooner, but the growth is still brutal: `n = 8` has 92 solutions and is instant, while `n = 15` takes a serious amount of time.
 
-            # Check upper-right diagonal
-            i, j = r - 1, c + 1
-            while i >= 0 and j < n:
-                if board[i][j] == "Q":
-                    return False
-                i -= 1
-                j += 1
+#### Space: $O(n)$ beyond the answer
 
-            return True
-
-        def dfs(r: int) -> None:
-            if r == n:
-                result.append(["".join(row) for row in board])
-                return
-
-            for c in range(n):
-                if is_safe(r, c):
-                    board[r][c] = "Q"
-                    dfs(r + 1)
-                    board[r][c] = "."
-
-        dfs(0)
-        return result
-```
-
-  </TabItem>
-</Tabs>
+Three sets holding at most `n` entries each, the placement list, and `n` levels of recursion.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Board-Scanning Validation** | $O(n!)$ | $O(n^2)$ | Scans the board upward across diagonals in $O(n)$ time at each candidate square. |
-| **Hash Set Diagonal Tracking** | $O(n!)$ | $O(n^2)$ | Detects column and diagonal conflicts in $O(1)$ time using three sets (`cols`, `r + c`, and `r - c`). |
-
-*(There are $n$ choices on row 0, at most $n - 2$ choices on row 1, at most $n - 4$ on row 2, bounding total operations to $O(n!)$. Auxiliary memory is dominated by the $n \times n$ board and $O(n)$ recursion call stack.)*
-
----
-
-### Common Pitfall: Trying to Place Queens Cell-by-Cell Instead of Row-by-Row
-
-Attempting to evaluate all $n \times n$ chessboard cells individually creates an unmanageable search space of size $\binom{n^2}{n}$. By placing exactly one queen per row ($r = 0, 1, \dots, n - 1$), row conflicts are eliminated by design. The problem reduces to finding valid column choices for each row, bounding the branching factor strictly to $O(n!)$.
-
----
-
-### Concise Interview Takeaway
-
-For **N-Queens**, place queens row by row to eliminate row conflicts automatically. Use three hash sets (`cols`, `r + c`, and `r - c`) to detect column and diagonal attacks in $O(1)$ time. Reset sets and restore the board during backtracking to safely discover all valid board configurations.
+One queen per row removes the row constraint entirely and turns the problem into choosing a column per row. Name the diagonals with `row - col` and `row + col` so three sets make every attack check constant. Add to all three sets when placing and remove from all three when backing out, since forgetting one leaves phantom attacks that silently lose solutions.

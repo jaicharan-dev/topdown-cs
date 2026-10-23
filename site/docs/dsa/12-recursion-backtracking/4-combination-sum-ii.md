@@ -1,170 +1,121 @@
 ---
 id: 4-combination-sum-ii
 title: "40. Combination Sum II"
-description: "Single-use elements with sibling duplicate pruning and early loop termination"
+description: "Each number used once, and repeated values pruned at the level they repeat on"
 sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Recursion & Backtracking</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Duplicate Pruning</span>
 
-> **Problem Statement:** Given a collection of candidate numbers `candidates` (which may contain duplicates) and a target number `target`, find all unique combinations in `candidates` where the candidate numbers sum to `target`. Each number in `candidates` may only be used once in the combination. The solution set must not contain duplicate combinations.
+> **Problem Statement:** Given a list of numbers that may contain repeats, and a target, find every distinct combination adding to the target. Each position in the list may be used at most once, and the answer must not contain the same combination twice.
 
 ```text
 Input:  candidates = [10, 1, 2, 7, 6, 1, 5], target = 8
 Output: [[1, 1, 6], [1, 2, 5], [1, 7], [2, 6]]
-Explanation: Each number may only be used once. Duplicate combinations are not included.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Combination Sum II synthesizes two classic backtracking challenges:
-- Like Combination Sum, we aim to hit an exact sum `target` by deducting candidate values.
-- Like Subsets II, the input array contains duplicate numbers, and each individual element index can only be used once.
+This problem is the previous two stitched together, and recognising that is most of the work.
 
-For candidates `[1, 1, 2, 5, 6, 7, 10]` and target `8`:
-- We can legitimately form `[1, 1, 6]` because there are two distinct `'1'` elements in the input.
-- We must not form `[1, 7]` twice (once using the first `'1'` and once using the second `'1'`).
+**From Combination Sum:** carry a remaining target, record at zero, abandon below zero.
 
-#### Brute Force: Post-Processing with a Hash Set
-Generate all combinations by recursing with `i + 1`, sort each collected combination, and insert it into a hash set to eliminate duplicates. While functionally correct, this wastes substantial runtime exploring identical subtrees and consumes extra memory storing duplicate combinations in set collections.
+**From Subsets II:** the input has repeats, so sort it and let only the first of a run start a branch at any level.
 
-#### Optimal Approach: Sort and In-Flight Sibling Pruning
-Sort the candidates ascending upfront. This enables two critical optimizations:
-1. **Early loop termination:** If `candidates[i] > remain`, we can break immediately. Because the array is sorted, no subsequent candidate can possibly fit.
-2. **Sibling duplicate pruning:** In the choice loop, if `i > start and candidates[i] == candidates[i - 1]`, skip that candidate with `continue`. Exploring `candidates[i]` at this position would spawn an identical subtree of choices that was already evaluated when we processed `candidates[start]`.
-3. **Single-use advancement:** Recurse with `i + 1` so that each element index is consumed at most once.
+The one change from Combination Sum is that each position may now be used **once**, so the recursion moves to `i + 1` rather than staying at `i`.
 
-#### Execution Walkthrough
-
-Let us trace sorted `candidates = [1, 1, 2]`, `target = 3`:
-
-| Step | Remaining Target | `start` | Loop Index `i` | Candidate | Condition / Decision | Path (`combo`) | Result Collected |
-| :---: | :---: | :---: | :---: | :---: | :--- | :---: | :--- |
-| **1** | `3` | `0` | `0` | `1` (first) | Pick candidate | `[1]` | `[]` |
-| **2** | `2` | `1` | `1` | `1` (second) | Pick candidate | `[1, 1]` | `[]` |
-| **3** | `1` | `2` | `2` | `2` | $2 > 1$: break loop | `[1, 1]` | `[]` |
-| **4** | `2` | `1` | `1` | Backtrack | Pop second `1` | `[1]` | `[]` |
-| **5** | `2` | `1` | `2` | `2` | Pick candidate | `[1, 2]` | `[]` |
-| **6** | `0` | `3` | - | - | Base case: target hit! | `[1, 2]` | `[[1, 2]]` |
-| **7** | `3` | `0` | `0` | Backtrack | Pop first `1` | `[]` | `[[1, 2]]` |
-| **8** | `3` | `0` | `1` | `1` (second) | `i > start` and `1 == 1`: skip | `[]` | `[[1, 2]]` |
-| **9** | `3` | `0` | `2` | `2` | Pick candidate | `[2]` | `[[1, 2]]` |
-| **10** | `1` | `3` | - | - | Loop range exhausted | `[2]` | `[[1, 2]]` |
-| **11** | `3` | `0` | `2` | Backtrack | Pop `2` | `[]` | `[[1, 2]]` |
+The subtlety that confuses people is that `[1, 1, 6]` is a valid answer even though duplicates are being pruned. There are two separate `1`s in the input, so using both is legitimate. What is forbidden is using the *same position* twice, and what is pruned is a *second branch* starting from an equal value at the same level, since that would rebuild a combination the first one already produced.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Sort Upfront:** Sort `candidates` ascending to cluster duplicates and enable early breaks.
-2. **Initialize Containers:** Create `result = []` and `combo = []`.
-3. **Define Backtrack Helper:** Define `backtrack(remain, start)` where `remain` is the remaining target and `start` is the earliest eligible candidate index.
-4. **Base Case Check:** If `remain == 0`, append a copy of `combo` to `result` and return.
-5. **Iterate Eligible Candidates:** For `i` from `start` to `len(candidates) - 1`:
-   - If `candidates[i] > remain`, `break` out of the loop (all subsequent candidates are even larger).
-   - If `i > start and candidates[i] == candidates[i - 1]`, `continue` (skip sibling duplicates at the current recursion level).
-   - Append `candidates[i]` to `combo`.
-   - Recurse: `backtrack(remain - candidates[i], i + 1)` (advance to `i + 1` for single-use).
-   - Backtrack: pop `candidates[i]` from `combo`.
-6. **Trigger and Return:** Call `backtrack(target, 0)` and return `result`.
+Sort the candidates. Then at each level, loop forward from the start index and for each candidate:
+
+- **Skip it** if it equals the previous candidate and is not the first of this loop. Those are the repeated branches.
+- **Break** if it exceeds the remaining target, because sorting means everything after is too big as well.
+- Otherwise take it, recurse from `i + 1` with the reduced remainder, and put it back.
+
+Both rules depend on the sort, and they do different jobs: the skip prevents duplicate combinations, the break prunes hopeless ones.
+
+Contrast the two recursion targets across this block, which is the thing worth memorising:
+
+```text
+same index  i      reuse allowed       (Combination Sum)
+next index  i + 1  each position once  (this problem, Subsets II)
+```
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Backtracking with Duplicate Pruning" default>
+Sorting gives `[1, 1, 2, 5, 6, 7, 10]` and the target is `8`.
+
+1. **Take the first `1`**, remainder `7`, continuing from the next position.
+   - **Take the second `1`**, remainder `6`. It is allowed, because the loop here starts at that position so it is the first candidate of its level.
+     - **Take `6`**, remainder `0`. Record `[1, 1, 6]`.
+   - **Take `2`**, remainder `5`, then **take `5`** for `[1, 2, 5]`.
+   - **Take `7`**, remainder `0`. Record `[1, 7]`.
+2. **Consider the second `1` at the top level.** It equals the previous candidate and is not the first of this loop, so it is skipped. That is what prevents a second `[1, 7]` and a second `[1, 2, 5]`.
+3. **Take `2`** at the top, remainder `6`, then **take `6`** for `[2, 6]`.
+4. **`5`, `6`, `7` and `10`** at the top produce nothing that reaches `8` exactly using later candidates.
+
+The answer is the four combinations listed.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def combinationSum2(self, candidates: list[int], target: int) -> list[list[int]]:
-        result: list[list[int]] = []
-        combo: list[int] = []
-
-        # Sort upfront to cluster duplicates and enable early loop breaks
         candidates.sort()
+        out = []
+        partial = []
 
-        def backtrack(remain: int, start: int) -> None:
-            # Target reached
-            if remain == 0:
-                result.append(combo.copy())
+        def build(start: int, remaining: int) -> None:
+            if remaining == 0:
+                out.append(partial[:])
                 return
 
             for i in range(start, len(candidates)):
-                # Early break: all subsequent candidates will exceed remain
-                if candidates[i] > remain:
-                    break
-
-                # Sibling duplicate pruning: skip identical choices at the same depth
+                # a repeated value may not start a second branch at this level
                 if i > start and candidates[i] == candidates[i - 1]:
                     continue
 
-                combo.append(candidates[i])
-                # Advance to i + 1: each element instance can only be used once
-                backtrack(remain - candidates[i], i + 1)
-                combo.pop()
+                if candidates[i] > remaining:
+                    break   # sorted, so the rest are too big too
 
-        backtrack(target, 0)
-        return result
+                partial.append(candidates[i])
+
+                # next index: each position is used at most once
+                build(i + 1, remaining - candidates[i])
+
+                partial.pop()
+
+        build(0, target)
+        return out
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Hash Set Deduplication">
+---
 
-```python
-class Solution:
-    def combinationSum2(self, candidates: list[int], target: int) -> list[list[int]]:
-        candidates.sort()
-        seen: set[tuple[int, ...]] = set()
-        combo: list[int] = []
+### Time and space complexity
 
-        def backtrack(remain: int, start: int) -> None:
-            if remain == 0:
-                seen.add(tuple(combo))
-                return
+#### Time: $O(2^n)$ in the worst case
 
-            for i in range(start, len(candidates)):
-                if candidates[i] > remain:
-                    break
+Each position is either used or not, so the tree is bounded by the subsets of the input. The two prunes cut this heavily in practice: the break abandons branches that cannot reach the target, and the skip removes whole duplicate subtrees.
 
-                combo.append(candidates[i])
-                backtrack(remain - candidates[i], i + 1)
-                combo.pop()
+#### Space: $O(n)$ beyond the answer
 
-        backtrack(target, 0)
-        return [list(t) for t in seen]
-```
-
-  </TabItem>
-</Tabs>
+Recursion depth and the partial combination.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Hash Set Deduplication** | $O(2^n)$ | $O(2^n)$ | Explores redundant sibling branches and hashes combinations into a set. High auxiliary memory overhead. |
-| **Backtracking with Duplicate Pruning** | $O(2^n)$ | $O(n)$ | Sorts upfront in $O(n \log n)$ and skips sibling duplicates in-flight. Minimal $O(n)$ recursion stack space. |
-
----
-
-### Common Pitfall: Confusing i > start with i > 0
-
-A common mistake is writing `if i > 0 and candidates[i] == candidates[i - 1]: continue`. This incorrectly prunes identical elements across different recursion depths. For example, in `candidates = [1, 1, 2]`, it would prevent taking the second `1` as a child of the first `1`, missing the valid combination `[1, 1]`.
-
-The condition must be `i > start`. This ensures that identical values are allowed down the recursion tree (different depths), but skipped as parallel sibling choices at the same depth.
-
----
-
-### Concise Interview Takeaway
-
-For **Combination Sum II**, sort candidates upfront to enable both early loop termination via `break` and sibling deduplication via `if i > start and candidates[i] == candidates[i - 1]: continue`. Advance to `i + 1` on recursive calls to ensure each element is used at most once.
+This is Combination Sum with `i + 1` instead of `i`, plus the duplicate skip from Subsets II. Sort once and both rules work: skip a candidate equal to the previous one unless it starts the loop, and break when a candidate exceeds the remainder. Using two equal values from different positions is allowed; starting a second branch from an equal value at the same level is not.

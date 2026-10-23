@@ -1,88 +1,80 @@
 ---
 id: 7-palindrome-partitioning
 title: "131. Palindrome Partitioning"
-description: "Backtracking with prefix palindrome validation cuts"
+description: "Choose where the first piece ends, and only recurse when that piece is a palindrome"
 sidebar_position: 7
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Recursion & Backtracking</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Partition DFS</span>
 
-> **Problem Statement:** Given a string `s`, partition `s` such that every substring of the partition is a palindrome. Return all possible palindrome partitionings of `s`.
+> **Problem Statement:** Given a string, return every way of cutting it into pieces such that each piece reads the same forwards and backwards.
 
 ```text
 Input:  s = "aab"
 Output: [["a", "a", "b"], ["aa", "b"]]
-Explanation: Every substring in the partitions ["a", "a", "b"] and ["aa", "b"] is a palindrome.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine holding a knife and slicing a loaf of bread into pieces, under one strict rule: you may only make a cut if the piece to the left of your knife is a valid palindrome.
+The choice at each step is **where to put the next cut**.
 
-Start with your knife at index `start = 0`. Scan a potential cut position `end` from `start` to `len(s) - 1`:
-1. Check if the candidate slice `s[start : end + 1]` is a palindrome.
-2. **If invalid:** Do not cut here! A non-palindrome piece violates the problem constraint. Advance `end` to try a wider slice.
-3. **If valid:** Make the cut! Place `s[start : end + 1]` into your current basket `path`, and recursively hand the remaining suffix starting at `end + 1` to the next decision step.
-4. **Base Case:** When `start == len(s)`, the knife has reached the end of the string. Every slice accumulated in `path` has been validated, so record a snapshot into the final results.
+Standing at the start of what remains, the first piece could be one character, or two, or all of it. Try each length in turn. If that piece is a palindrome, keep it and carry on cutting whatever is left. If it is not, abandon that length and try the next one.
 
-#### Brute Force: Generating All Partitions First
-Generate all $2^{n - 1}$ possible partition configurations across string split points, then inspect each partition to see if all substrings are palindromes. This wastes exponential time constructing invalid partitions like `["a", "ab"]`.
+```text
+"aab"
+ |-> "a"   palindrome, continue with "ab"
+ |-> "aa"  palindrome, continue with "b"
+ |-> "aab" not a palindrome, abandon
+```
 
-#### Optimal Approach: In-Flight Palindrome Pruning
-Only branch when the candidate substring `s[start : end + 1]` is a verified palindrome. If the candidate slice is not a palindrome, prune the branch immediately. Checking with two pointers avoids extra string allocations, exploring only valid palindrome trajectories.
-
-#### Execution Walkthrough
-
-Let us trace `s = "aab"`:
-
-| Step | Cut `start` | Cut `end` | Substring Candidate | Is Palindrome? | Path State (`path`) | Action Taken |
-| :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **1** | `0` | `0` | `"a"` | Yes | `["a"]` | Recurse with `start = 1` |
-| **2** | `1` | `1` | `"a"` | Yes | `["a", "a"]` | Recurse with `start = 2` |
-| **3** | `2` | `2` | `"b"` | Yes | `["a", "a", "b"]` | Recurse with `start = 3` |
-| **4** | `3` | - | - | - | `["a", "a", "b"]` | Base case: collect snapshot |
-| **5** | `2` | `2` | Backtrack | - | `["a", "a"]` | Loop finished for `start = 2` |
-| **6** | `1` | `2` | `"ab"` | No | `["a"]` | Prune branch |
-| **7** | `0` | `1` | `"aa"` | Yes | `["aa"]` | Recurse with `start = 2` |
-| **8** | `2` | `2` | `"b"` | Yes | `["aa", "b"]` | Recurse with `start = 3` |
-| **9** | `3` | - | - | - | `["aa", "b"]` | Base case: collect snapshot |
-| **10** | `0` | `2` | `"aab"` | No | `[]` | Prune branch |
+When nothing is left to cut, every piece chosen along the way was a palindrome, so the arrangement is recorded.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Containers:** Create `result = []` and `path = []`.
-2. **Define Palindrome Checker:** Define helper `is_palindrome(left, right)` using two pointers moving inward toward the center.
-3. **Define Backtrack Helper:** Define `backtrack(start)` where `start` represents the index of the remaining suffix.
-4. **Base Case Check:** If `start >= len(s)`, the entire string has been partitioned. Append a copy of `path` to `result` and return.
-5. **Iterate Cut Positions:** Loop `end` from `start` to `len(s) - 1`:
-   - If `is_palindrome(start, end)` is `True`:
-     - Append `s[start : end + 1]` to `path`.
-     - Recurse: `backtrack(end + 1)`.
-     - Backtrack: pop from `path`.
-6. **Trigger and Return:** Call `backtrack(0)` and return `result`.
+The recursion carries a start position.
+
+**At the end of the string**, record a copy of the pieces collected so far.
+
+**Otherwise**, loop over every possible end position. Take the piece from the start to there, and if it is a palindrome, append it, recurse from just past it, then remove it.
+
+The palindrome test is the pruning. Without it the recursion would enumerate all `2^(n-1)` ways to cut a string and filter afterwards; testing before recursing kills whole subtrees the moment a piece fails.
+
+Checking a piece with two pointers from both ends is $O(\text{piece length})$. For a faster version, precompute a table saying whether each start-and-end pair is a palindrome, built from the fact that a piece is a palindrome when its ends match and its inside is one. That turns each test into a lookup, and it is the standard follow-up when asked to speed this up.
+
+The pieces are **substrings**, so they must be contiguous and in order. That is why only the cut position is ever chosen, and nothing is ever skipped.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Backtracking with Two-Pointer Check" default>
+Take `s = "aab"`.
+
+1. **First piece `"a"`**, a palindrome. Continue from position 1 with `"ab"` remaining.
+   - **Next piece `"a"`**, a palindrome. Continue with `"b"`.
+     - **Next piece `"b"`**, a palindrome. Nothing remains, so record `["a", "a", "b"]`.
+   - **Back up. Next piece `"ab"`**, not a palindrome, so abandon.
+2. **Back to the start. First piece `"aa"`**, a palindrome. Continue with `"b"`.
+   - **Next piece `"b"`.** Nothing remains, so record `["aa", "b"]`.
+3. **First piece `"aab"`**, not a palindrome, so abandon.
+
+Two arrangements, matching the expected answer.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def partition(self, s: str) -> list[list[str]]:
-        result: list[list[str]] = []
-        path: list[str] = []
+        out = []
+        pieces = []
 
         def is_palindrome(left: int, right: int) -> bool:
             while left < right:
@@ -92,79 +84,40 @@ class Solution:
                 right -= 1
             return True
 
-        def backtrack(start: int) -> None:
-            # Reached end of string: valid partitioning complete
-            if start >= len(s):
-                result.append(path.copy())
+        def cut(start: int) -> None:
+            if start == len(s):
+                out.append(pieces[:])
                 return
 
             for end in range(start, len(s)):
-                if is_palindrome(start, end):
-                    # Cut out the palindrome substring
-                    path.append(s[start : end + 1])
-                    # Recurse on the remaining suffix
-                    backtrack(end + 1)
-                    # Backtrack to try wider slices
-                    path.pop()
+                # test before recursing: this is the pruning
+                if not is_palindrome(start, end):
+                    continue
 
-        backtrack(0)
-        return result
+                pieces.append(s[start:end + 1])
+                cut(end + 1)
+                pieces.pop()
+
+        cut(0)
+        return out
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: DP Precomputed Palindromes">
+---
 
-```python
-class Solution:
-    def partition(self, s: str) -> list[list[str]]:
-        n = len(s)
-        # dp[i][j] is True if s[i..j] is a palindrome
-        dp = [[False] * n for _ in range(n)]
-        for i in range(n - 1, -1, -1):
-            for j in range(i, n):
-                if s[i] == s[j] and (j - i <= 2 or dp[i + 1][j - 1]):
-                    dp[i][j] = True
+### Time and space complexity
 
-        result: list[list[str]] = []
-        path: list[str] = []
+#### Time: $O(n \cdot 2^n)$ in the worst case
 
-        def backtrack(start: int) -> None:
-            if start == n:
-                result.append(path.copy())
-                return
+A string of `n` characters has `n - 1` possible cut positions, each taken or not, so there are up to `2^(n-1)` arrangements, and building each costs up to `n`. The worst case is a string like `"aaaa"`, where every piece is a palindrome and nothing prunes.
 
-            for end in range(start, n):
-                if dp[start][end]:
-                    path.append(s[start : end + 1])
-                    backtrack(end + 1)
-                    path.pop()
+For ordinary strings the palindrome test cuts most branches almost immediately.
 
-        backtrack(0)
-        return result
-```
+#### Space: $O(n)$ beyond the answer
 
-  </TabItem>
-</Tabs>
+Recursion depth and the list of pieces. The precomputed palindrome table, if used, is $O(n^2)$.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Two-Pointer Check** | $O(n \cdot 2^n)$ | $O(n)$ | Validates each substring on the fly using two pointers. Minimal $O(n)$ auxiliary stack space. |
-| **DP Precomputation** | $O(n \cdot 2^n)$ | $O(n^2)$ | Precomputes all palindrome substrings in $O(n^2)$ time and space. Lookups become $O(1)$ during backtracking. |
-
-*(Where $n$ is the length of `s`. There are $2^{n - 1}$ possible partition configurations, and copying each valid partition of length $n$ takes $O(n)$ time.)*
-
----
-
-### Common Pitfall: Slicing with End Instead of End + 1
-
-In Python, slice indices are half-open (`[start:stop]`). Writing `s[start:end]` excludes the character at `end`, which causes single-character substrings to be empty strings `""` when `start == end`. Always use `s[start : end + 1]` when extracting candidate substrings.
-
----
-
-### Concise Interview Takeaway
-
-For **Palindrome Partitioning**, model the solution as placing cuts between characters. Advance a cut index `end` from `start` to `len(s) - 1`. If the prefix `s[start : end + 1]` forms a valid palindrome, append it, recurse on `end + 1`, and pop during backtrack. This prunes invalid branches in-flight while bounding auxiliary space to $O(n)$.
+The decision is where the next cut goes, so loop over end positions and recurse from just past the piece you took. Test each piece for being a palindrome **before** recursing, which is what prunes the search rather than filtering at the end. Precompute the palindrome table when asked to make it faster.

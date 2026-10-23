@@ -1,147 +1,115 @@
 ---
 id: 1-subsets
 title: "78. Subsets"
-description: "Binary include/exclude decision tree generating the power set"
+description: "Every element faces one question: are you in or out?"
 sidebar_position: 1
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Recursion & Backtracking</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Decision Tree DFS</span>
 
-> **Problem Statement:** Given an integer array `nums` of unique elements, return all possible subsets (the power set). The solution set must not contain duplicate subsets. Return the solution in any order.
+> **Problem Statement:** Given an array of distinct numbers, return every possible subset, including the empty one and the whole array. Any order is fine.
 
 ```text
 Input:  nums = [1, 2, 3]
 Output: [[], [1], [2], [1, 2], [3], [1, 3], [2, 3], [1, 2, 3]]
-Explanation: The power set of 3 elements contains 2^3 = 8 possible subsets.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine packing a backpack for a day hike with a checklist of $n$ items: `[camera, jacket, umbrella]`. For every single item on your checklist, you face a binary choice:
-1. **Include it:** Place the item into your backpack.
-2. **Exclude it:** Leave the item at home.
+Go through the elements one at a time and ask each the same question: **are you in this subset or not?**
 
-This "take it or leave it" choice creates a binary decision tree of depth $n$:
-- At level 0, you decide on `nums[0]`.
-- At level 1, you decide on `nums[1]`.
-- At level $n$, you have reached a leaf of the decision tree where decisions for all elements are finalized. Take a snapshot copy of the current backpack contents and store it in your collection.
+Two answers per element, and the answers are independent, so three elements give `2 × 2 × 2 = 8` subsets. That is why the output has eight entries, and why the count is always two to the power of the array length.
 
-Because each of the $n$ items offers exactly 2 possibilities, the tree terminates at $2^n$ leaves, yielding the complete power set.
+Drawing those decisions out gives a tree. Each level is one element, each branch is in or out, and each leaf is a finished subset.
 
-#### Brute Force: Iterative Cascading
-Start with a list containing just the empty set: `[[]]`. For each number in `nums`, take every subset generated so far, duplicate it, append the current number, and add the new subset back to the list. While this runs in $O(n \cdot 2^n)$ time, it repeatedly copies intermediate lists and does not teach the recursive backtracking pattern essential for constrained state space problems.
+```text
+                 []
+          1 in /    \ 1 out
+            [1]      []
+        2/    \2    /    \
+     [1,2]  [1]  [2]     []
+```
 
-#### Optimal Approach: Backtracking Decision Tree
-Instead of allocating numerous intermediate lists, maintain a single mutable list `subset` across recursive calls. For each index `i`:
-1. **Include `nums[i]`:** Append `nums[i]` to `subset` and recurse to `i + 1`.
-2. **Exclude `nums[i]` (Backtrack):** Remove `nums[i]` via `pop()` to restore the original state, then recurse to `i + 1`.
-
-This explores every branch depth-first and consumes only $O(n)$ auxiliary memory for the call stack and path container.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [1, 2]`:
-
-| Step | Index `i` | Choice Made | Path State (`subset`) | Action Taken | Result Collected |
-| :---: | :---: | :---: | :---: | :--- | :--- |
-| **1** | `0` | Include `1` | `[1]` | Recurse to `i = 1` | `[]` |
-| **2** | `1` | Include `2` | `[1, 2]` | Recurse to `i = 2` | `[]` |
-| **3** | `2` | Base case reached | `[1, 2]` | Snapshot `[1, 2]` | `[[1, 2]]` |
-| **4** | `1` | Backtrack (pop `2`) | `[1]` | Recurse to `i = 2` | `[[1, 2]]` |
-| **5** | `2` | Base case reached | `[1]` | Snapshot `[1]` | `[[1, 2], [1]]` |
-| **6** | `0` | Backtrack (pop `1`) | `[]` | Recurse to `i = 1` | `[[1, 2], [1]]` |
-| **7** | `1` | Include `2` | `[2]` | Recurse to `i = 2` | `[[1, 2], [1]]` |
-| **8** | `2` | Base case reached | `[2]` | Snapshot `[2]` | `[[1, 2], [1], [2]]` |
-| **9** | `1` | Backtrack (pop `2`) | `[]` | Recurse to `i = 2` | `[[1, 2], [1], [2]]` |
-| **10** | `2` | Base case reached | `[]` | Snapshot `[]` | `[[1, 2], [1], [2], []]` |
+Backtracking is simply walking that tree: take a branch, explore everything below it, then undo the choice and take the other branch.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State:** Create `result = []` to store all subsets, and `subset = []` to hold the current decision path.
-2. **Define Recursive DFS:** Define a helper function `dfs(i)` where `i` represents the current element index in `nums`.
-3. **Check Base Case:** If `i == len(nums)`, all elements have been evaluated. Append a shallow copy `subset.copy()` to `result` and return.
-4. **Branch 1 (Include):** Append `nums[i]` to `subset`, then call `dfs(i + 1)`.
-5. **Branch 2 (Exclude / Backtrack):** Remove `nums[i]` by calling `subset.pop()`, then call `dfs(i + 1)`.
-6. **Trigger and Return:** Call `dfs(0)` and return `result`.
+Carry a partial subset as you walk, and at each step decide about one element.
+
+**Choose, explore, un-choose** is the rhythm, and it is the core of every problem in this block:
+
+1. Add the current element to the partial subset.
+2. Recurse to decide the remaining elements.
+3. Remove it again, so the next branch starts from a clean state.
+4. Recurse again, this time without it.
+
+That third step is the backtracking. Without it the partial subset keeps everything ever added and all the later answers are wrong.
+
+Record a **copy** of the partial subset when it is complete. Appending the list itself stores a reference to something that keeps changing, so every entry in the answer would end up identical and empty.
+
+An alternative framing starts the recursion at an index and loops over the remaining elements, recording at every node rather than only at the leaves. It produces the same set and is the version that generalises most easily to the combination problems later in this block.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Backtracking Decision Tree" default>
+Take `nums = [1, 2, 3]`.
+
+1. **Include 1.** Then **include 2**. Then include `3` to get `[1, 2, 3]`, and exclude it to get `[1, 2]`.
+2. **Back up**, exclude `2`. Then include `3` for `[1, 3]`, exclude it for `[1]`.
+3. **Back up to the start**, exclude `1`. Then include `2` and branch on `3` for `[2, 3]` and `[2]`.
+4. **Exclude 2 as well.** Branch on `3` for `[3]` and `[]`.
+
+Eight leaves, eight subsets.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def subsets(self, nums: list[int]) -> list[list[int]]:
-        result: list[list[int]] = []
-        subset: list[int] = []
+        out = []
+        partial = []
 
-        def dfs(i: int) -> None:
-            # Base case: choices made for all elements
-            if i >= len(nums):
-                result.append(subset.copy())
+        def decide(i: int) -> None:
+            if i == len(nums):
+                out.append(partial[:])   # a copy: partial keeps changing
                 return
 
-            # Decision 1: INCLUDE nums[i]
-            subset.append(nums[i])
-            dfs(i + 1)
+            # branch one: this element is in
+            partial.append(nums[i])
+            decide(i + 1)
 
-            # Decision 2: EXCLUDE nums[i] (backtrack)
-            subset.pop()
-            dfs(i + 1)
+            # undo, then branch two: this element is out
+            partial.pop()
+            decide(i + 1)
 
-        dfs(0)
-        return result
+        decide(0)
+        return out
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Iterative Cascading">
+---
 
-```python
-class Solution:
-    def subsets(self, nums: list[int]) -> list[list[int]]:
-        result: list[list[int]] = [[]]
-        
-        for num in nums:
-            # For each existing subset, create a new one containing num
-            result += [curr + [num] for curr in result]
-            
-        return result
-```
+### Time and space complexity
 
-  </TabItem>
-</Tabs>
+#### Time: $O(n \cdot 2^n)$
+
+There are `2^n` subsets, and copying each one into the answer costs up to `n`. No approach can do better, because the output itself is that large.
+
+#### Space: $O(n)$ beyond the answer
+
+The recursion goes `n` levels deep, one per element, and the partial subset holds at most `n` values. The answer list is the output rather than working memory.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Iterative Cascading** | $O(n \cdot 2^n)$ | $O(n \cdot 2^n)$ | Iteratively doubles existing subsets by copying. Simple to read, but allocates many intermediate arrays. |
-| **Backtracking Decision Tree** | $O(n \cdot 2^n)$ | $O(n)$ | Traverses a binary state tree with one mutable list. Uses optimal $O(n)$ auxiliary recursion stack space. |
-
----
-
-### Common Pitfall: Appending Mutable List Without Copying
-
-In Python, writing `result.append(subset)` stores a reference to the mutable list rather than a point-in-time snapshot. As subsequent recursive steps mutate and empty `subset` via `pop()`, every element previously appended into `result` mutates in place, resulting in an output filled entirely with empty lists `[[], [], ...]`.
-
-Always append a copy using `result.append(subset.copy())` or `result.append(list(subset))`.
-
----
-
-### Concise Interview Takeaway
-
-For **Subsets**, structure the state space as a binary decision tree where each level decides whether to include or exclude an element. By maintaining a single mutable path list and undoing additions with `pop()`, you generate all $2^n$ subsets while bounding auxiliary memory strictly to the recursion tree height of $O(n)$.
+Every element gets one yes-or-no decision, which makes a binary tree of depth `n` with `2^n` leaves. Walk it with choose, explore, un-choose, and the un-choose is what keeps the partial state honest. Append a copy of the partial subset, never the list itself. $O(n \cdot 2^n)$ time, $O(n)$ extra space.
