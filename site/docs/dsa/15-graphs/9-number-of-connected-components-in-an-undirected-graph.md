@@ -1,165 +1,123 @@
 ---
 id: 9-number-of-connected-components-in-an-undirected-graph
 title: "323. Number of Connected Components in an Undirected Graph"
-description: "Count connected components in an undirected edge list using Disjoint Set Union or DFS"
+description: "Start with everything apart, and every edge that joins two groups removes one"
 sidebar_position: 9
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Graphs</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Disjoint Set Union</span>
 
-> **Problem Statement:** You have a graph of `n` nodes labeled from `0` to `n - 1`. You are given an integer `n` and an array `edges` where `edges[i] = [a, b]` indicates that there is an undirected edge between `a` and `b` in the graph. Return the total number of connected components in the graph.
+> **Problem Statement:** You are given `n` nodes and a list of undirected edges. Count how many separate connected pieces the graph has.
 
 ```text
 Input:  n = 5, edges = [[0, 1], [1, 2], [3, 4]]
 Output: 2
-Explanation: Nodes 0, 1, and 2 form one connected component, while nodes 3 and 4 form a second component.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine a collection of islands in an archipelago where every island begins isolated from the rest. Each island initially represents its own autonomous component.
+A search would work: sweep the nodes, and each unvisited one starts a new piece. That is Number of Provinces again.
 
-#### Brute Force: Graph Traversal (DFS / BFS)
-The conventional way to count islands is to construct an explicit adjacency list and visit every node. We iterate from node $0$ to $n - 1$: whenever we encounter an unvisited node, we know we have stumbled upon an undiscovered component. We increment our component counter by 1 and launch a DFS or BFS traversal to mark all nodes reachable from that vertex as visited. While this takes linear $O(V + E)$ time, it requires pre-allocating an adjacency list with $2E$ entries and maintaining a traversal stack.
+This page uses the other tool, because the problem is the cleanest possible introduction to it.
 
-#### Optimal Approach: Disjoint Set Union (Union-Find)
-Instead of building a full graph, we can process the edges one by one in place using Disjoint Set Union (DSU):
-- **Initial State:** Before evaluating any edges, each node is its own representative root. We start with exactly $n$ independent components.
-- **Processing Connections:** For each edge `[u, v]`, we find the root representative for both endpoints: `root_u = find(u)` and `root_v = find(v)`.
-- **Merging Groups:** If `root_u != root_v`, the two nodes previously belonged to separate components. Unifying them merges the two components into a single set, allowing us to decrement our active component counter by 1.
-- **Cycle Detection:** If `root_u == root_v`, the two nodes were already connected. This edge is redundant and the component count remains unchanged.
-- **Tree Flattening:** By applying path compression during `find` and union by rank during `union`, the tree height stays nearly flat, delivering virtually constant $O(\alpha(n))$ time per edge.
+Start by assuming nothing is connected: `n` nodes, `n` separate groups. Then read the edges one at a time. Each edge either joins two nodes already in the same group, which changes nothing, or joins two different groups, which merges them and **reduces the count by one**.
 
-#### Execution Walkthrough
+```text
+5 nodes, so 5 groups
+edge 0-1  merges two groups  -> 4
+edge 1-2  merges two groups  -> 3
+edge 3-4  merges two groups  -> 2
+```
 
-Let us trace $n = 5$ with `edges = [[0, 1], [1, 2], [3, 4]]`:
-
-| Step | Edge `[u, v]` | Root $u$ | Root $v$ | Same Component? | Action Taken | Remaining Components |
-| :---: | :---: | :---: | :---: | :---: | :--- | :---: |
-| **Initial** | - | - | - | - | Nodes `{0}`, `{1}`, `{2}`, `{3}`, `{4}` are disjoint | 5 |
-| **1** | `[0, 1]` | 0 | 1 | No | Union roots 0 and 1; decrement count | 4 |
-| **2** | `[1, 2]` | 0 | 2 | No | Union roots 0 and 2; decrement count | 3 |
-| **3** | `[3, 4]` | 3 | 4 | No | Union roots 3 and 4; decrement count | 2 |
+The count left at the end is the answer. No traversal at all.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State:** Create a `parent` array where `parent[i] = i` for all $i \in [0, n - 1]$, an array `rank = [1] * n`, and set `components = n`.
-2. **Implement Find with Path Compression:** Function `find(node)` looks up the root of the component. If `parent[node] != node`, recursively point `parent[node] = find(parent[node])` to compress the path directly to the ultimate root.
-3. **Implement Union by Rank:** Function `union(u, v)` computes `root_u = find(u)` and `root_v = find(v)`.
-   - If `root_u == root_v`, return `False` as they already belong to the same component.
-   - If `rank[root_u] > rank[root_v]`, point `parent[root_v] = root_u`.
-   - Elif `rank[root_u] < rank[root_v]`, point `parent[root_u] = root_v`.
-   - Otherwise, point `parent[root_v] = root_u` and increment `rank[root_u] += 1`.
-   - Return `True`.
-4. **Iterate Edges:** For each edge `[u, v]` in `edges`, call `union(u, v)`. If it returns `True`, decrement `components` by 1.
-5. **Return Result:** Return `components`.
+This is **disjoint set union**, and it needs two operations.
+
+**Find** answers "which group is this node in?" Each node points at a parent, and following parents leads to the group's representative. A node that is its own parent is a representative.
+
+**Union** joins two groups by pointing one representative at the other.
+
+Done naively, the parent chains grow long and `find` becomes slow. Two refinements fix that, and both are one line:
+
+**Path compression.** While following the chain, point each node directly at the representative, so later lookups are short.
+
+**Union by size.** Always hang the smaller group under the larger, so chains stay shallow.
+
+With both, each operation costs effectively constant time. The exact bound involves the inverse Ackermann function, which is below five for any input that fits in a computer, so it is fair to call it constant.
+
+The key reason to reach for this rather than a search: it handles edges arriving **one at a time** without rebuilding anything, which is exactly what Redundant Connection needs next.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Disjoint Set Union" default>
+Five nodes, so five groups.
+
+1. **Edge 0-1.** Nodes `0` and `1` are in different groups, so merge them. The count drops to `4`.
+2. **Edge 1-2.** Node `1` is now in the group led by `0`, and node `2` is alone, so merge. The count drops to `3`.
+3. **Edge 3-4.** Two separate groups merge. The count drops to `2`.
+
+The answer is `2`: the piece holding `0, 1, 2` and the piece holding `3, 4`.
+
+If a fourth edge `0-2` arrived, both nodes would already share a representative, so nothing would merge and the count would stay at `2`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def countComponents(self, n: int, edges: list[list[int]]) -> int:
-        parent = list(range(n))
-        rank = [1] * n
-        components = n
+        parent = list(range(n))   # everyone starts in their own group
+        size = [1] * n
+        groups = n
 
-        def find(node: int) -> int:
-            # Path compression: point node directly to the tree's ultimate root
-            if parent[node] != node:
-                parent[node] = find(parent[node])
-            return parent[node]
+        def find(x: int) -> int:
+            while parent[x] != x:
+                parent[x] = parent[parent[x]]   # path compression
+                x = parent[x]
+            return x
 
-        def union(u: int, v: int) -> bool:
-            root_u = find(u)
-            root_v = find(v)
+        for a, b in edges:
+            ra, rb = find(a), find(b)
 
-            # Already in the same connected component
-            if root_u == root_v:
-                return False
+            if ra == rb:
+                continue   # already together, so this edge changes nothing
 
-            # Union by rank: attach shorter tree under taller tree
-            if rank[root_u] > rank[root_v]:
-                parent[root_v] = root_u
-            elif rank[root_u] < rank[root_v]:
-                parent[root_u] = root_v
-            else:
-                parent[root_v] = root_u
-                rank[root_u] += 1
+            # hang the smaller group under the larger
+            if size[ra] < size[rb]:
+                ra, rb = rb, ra
 
-            return True
+            parent[rb] = ra
+            size[ra] += size[rb]
+            groups -= 1
 
-        # Process every edge
-        for u, v in edges:
-            if union(u, v):
-                components -= 1
-
-        return components
+        return groups
 ```
 
-  </TabItem>
-  <TabItem value="dfs" label="Alternative: Adjacency List Traversal (DFS)">
+---
 
-```python
-class Solution:
-    def countComponents(self, n: int, edges: list[list[int]]) -> int:
-        adj: list[list[int]] = [[] for _ in range(n)]
-        for u, v in edges:
-            adj[u].append(v)
-            adj[v].append(u)
+### Time and space complexity
 
-        visited = [False] * n
-        components = 0
+#### Time: $O(V + E)$ for practical purposes
 
-        def dfs(node: int) -> None:
-            visited[node] = True
-            for neighbor in adj[node]:
-                if not visited[neighbor]:
-                    dfs(neighbor)
+Setting up is $O(V)$, and each edge costs two `find` calls plus a possible merge. With compression and union by size those are effectively constant, so the total tracks the number of edges.
 
-        # Explore all unvisited vertices
-        for i in range(n):
-            if not visited[i]:
-                components += 1
-                dfs(i)
+#### Space: $O(V)$
 
-        return components
-```
-
-  </TabItem>
-</Tabs>
+The parent and size arrays.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Disjoint Set Union** | $O(V + E \cdot \alpha(V))$ | $O(V)$ | Processes edge list directly without building an adjacency list. Path compression and rank union yield near-linear runtime. |
-| **Adjacency List (DFS / BFS)** | $O(V + E)$ | $O(V + E)$ | Requires building an explicit adjacency graph requiring $O(V + E)$ auxiliary memory, but runs in strict linear time. |
-
----
-
-### Common Pitfall: Forgetting Path Compression or Rank Balancing
-
-Omitting path compression and union by rank allows the DSU trees to degenerate into linear linked lists of height $O(V)$. Under that worst-case shape, every `find` query degrades to $O(V)$, causing the overall runtime across $E$ edges to balloon to $O(V \cdot E)$. Adding one line for path compression (`parent[node] = find(parent[node])`) ensures virtually flat trees and near-constant amortized time.
-
----
-
-### Concise Interview Takeaway
-
-Start with $n$ components and decrement the count upon each successful union of previously separated trees. Equipped with path compression and union by rank, Disjoint Set Union runs in near-linear $O(V + E \cdot \alpha(V))$ time without needing to allocate an explicit adjacency graph.
+Start with every node in its own group and let each edge merge two, reducing the count only when the two were genuinely apart. Keep `find` fast with path compression and union by size, which together make the operations effectively constant. Unlike a search, this needs no traversal and copes with edges arriving over time. $O(V + E)$ time, $O(V)$ space.

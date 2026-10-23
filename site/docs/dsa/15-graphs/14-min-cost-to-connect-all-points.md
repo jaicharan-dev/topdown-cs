@@ -1,86 +1,80 @@
 ---
 id: 14-min-cost-to-connect-all-points
 title: "1584. Min Cost to Connect All Points"
-description: "Find the Minimum Spanning Tree of 2D points using Prim's algorithm with a min-heap"
+description: "Grow one connected blob, always adding the cheapest edge that reaches somewhere new"
 sidebar_position: 14
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Graphs</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Minimum Spanning Tree</span>
 
-> **Problem Statement:** You are given an array `points` representing integer coordinates of some points on a 2D plane, where `points[i] = [xi, yi]`. The cost of connecting two points `[xi, yi]` and `[xj, yj]` is the Manhattan distance between them: $|xi - xj| + |yi - yj|$. Return the minimum cost to make all points connected. All points are connected if there is exactly one simple path between any two points.
+> **Problem Statement:** Given points on a plane, connect them all as cheaply as possible, where joining two points costs the Manhattan distance between them.
 
 ```text
-Input:  points = [[0, 0], [2, 2], [3, 10], [5, 2], [7, 0]]
+Input:  points = [[0,0], [2,2], [3,10], [5,2], [7,0]]
 Output: 20
-Explanation: Connecting the points with edges [0, 1] (cost 4), [1, 3] (cost 3), [3, 4] (cost 4), and [1, 2] (cost 9) yields a tree of total minimum cost 20.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Connecting $n$ points such that there is exactly one simple path between any two points while minimizing total edge weights is the canonical definition of a **Minimum Spanning Tree (MST)** on a complete graph with $n$ vertices.
+Every pair of points could be joined, so this is a graph where **every** node connects to every other, with the distance as the weight. Connecting everything as cheaply as possible is the minimum spanning tree.
 
-#### Brute Force: Kruskal's Algorithm with All $O(n^2)$ Edges
-The standard alternative is Kruskal's algorithm: generate all $n(n - 1) / 2$ pairs of points as explicit edge tuples `(cost, u, v)`, sort them by cost, and iterate through them using Disjoint Set Union (DSU) to connect vertices while skipping cycle-forming edges. While correct, generating and sorting all $O(n^2)$ edge tuples upfront introduces substantial memory and sorting overhead.
+Prim's algorithm builds it by growing a single blob. Start with any one point inside the blob and all the others outside. Then repeat: find the cheapest edge crossing from inside to outside, add it, and the point at its far end joins the blob. Stop when everything is inside.
 
-#### Optimal Approach: Prim's Algorithm (Greedy Frontier Expansion)
-Rather than pre-materializing all $O(n^2)$ explicit edge objects, **Prim's algorithm** grows the MST organically starting from an arbitrary seed node (such as node `0`):
-- Maintain a `visited` set to track points already incorporated into the tree.
-- Maintain a `min_heap` storing pairs `(edge_cost, point_index)`.
-- At each step, extract the cheapest available edge connecting an unvisited point to the growing tree (`cost, u = heapq.heappop(min_heap)`):
-  - If point `u` is already in `visited`, discard it as a stale heap entry.
-  - Otherwise, mark `u` as visited and accumulate `cost` into `total_cost`.
-  - For every point `v` not yet in `visited`, compute its Manhattan distance to `u` and push `(dist, v)` into the min-heap.
-- The algorithm terminates the moment `len(visited) == n`, guaranteeing that all $n$ vertices are connected with the minimum aggregate Manhattan distance.
+```text
+blob: {A}            cheapest edge out of A       -> add B
+blob: {A, B}         cheapest edge out of either  -> add C
+```
 
-#### Execution Walkthrough
-
-Let us trace `points = [[0, 0], [2, 2], [3, 10], [5, 2], [7, 0]]`:
-
-| Step | Added Node `u` | Edge Cost | Cumulative MST Cost | Newly Added Frontier Edges to Heap | Visited Nodes |
-| :---: | :---: | :---: | :---: | :--- | :--- |
-| **Initial** | 0 | 0 | 0 | `(4, 1), (13, 2), (7, 3), (7, 4)` | `{0}` |
-| **1** | 1 | 4 | 4 | `(9, 2), (3, 3), (7, 4)` | `{0, 1}` |
-| **2** | 3 | 3 | 7 | `(10, 2), (4, 4)` | `{0, 1, 3}` |
-| **3** | 4 | 4 | 11 | `(14, 2)` | `{0, 1, 3, 4}` |
-| **4** | 2 | 9 | 20 | Complete (all 5 nodes visited) | `{0, 1, 2, 3, 4}` |
-
-Total minimum connection cost = 20.
+Each step adds exactly one point, so `n - 1` steps connect everything, which is what a tree on `n` nodes has.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State:**
-   - Determine `n = len(points)`.
-   - Allocate `visited: set[int] = set()`.
-   - Seed `min_heap: list[tuple[int, int]] = [(0, 0)]` storing pairs of `(cost, point_index)`.
-   - Set `total_cost = 0`.
-2. **Execute Prim's MST Traversal:**
-   - While `len(visited) < n`:
-     - Pop `cost, u = heapq.heappop(min_heap)`.
-     - If `u in visited`, continue (stale heap entry).
-     - Add `u` to `visited` and add `cost` to `total_cost`.
-     - Extract coordinates `x1, y1 = points[u]`.
-     - For every candidate point `v` in range `n`:
-       - If `v not in visited`:
-         - Calculate Manhattan distance: `dist = abs(x1 - points[v][0]) + abs(y1 - points[v][1])`.
-         - Push `(dist, v)` into `min_heap`.
-3. **Return Total Cost:** Return `total_cost`.
+Keep a min-heap of candidate edges, holding the cost to reach a point and the point itself.
+
+Start by pushing the first point at cost zero. Then repeatedly pop the cheapest entry:
+
+- **Already in the blob?** Skip it. The heap collects stale entries, exactly as in Dijkstra.
+- **Otherwise** add it to the blob, add the cost to the total, and push an edge to every point still outside, costing the distance from this new point.
+
+When the blob holds every point, the total is the answer.
+
+The resemblance to Dijkstra is close enough to be worth separating clearly:
+
+```text
+Dijkstra:  the heap holds distance from the START    (a running total)
+Prim:      the heap holds distance from the BLOB     (a single edge)
+```
+
+That is the only difference, and it is the whole difference between shortest paths and a minimum spanning tree.
+
+Because every pair is connected, there is no edge list to build. Distances are computed on demand, which keeps the memory down.
+
+**Kruskal's algorithm** is the alternative: sort every edge by weight and add each one whose ends are not already connected, using disjoint set union to tell. It is a natural fit after Redundant Connection, though here it means generating and sorting all `n²` edges, so Prim is the better match for a dense graph like this one.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Prim's Algorithm (Min-Heap)" default>
+The points are `(0,0)`, `(2,2)`, `(3,10)`, `(5,2)`, `(7,0)`.
+
+1. **Start with `(0,0)`** at cost zero. Total `0`.
+2. **The cheapest edge out** goes to `(2,2)` at distance `4`. Total `4`.
+3. **From the blob**, the cheapest reach is `(5,2)` at distance `3` from `(2,2)`. Total `7`.
+4. **Next**, `(7,0)` at distance `4` from `(5,2)`. Total `11`.
+5. **Last**, `(3,10)` at distance `9` from `(2,2)`. Total `20`.
+
+All five points are connected for `20`.
+
+---
+
+### The code
 
 ```python
 import heapq
@@ -88,107 +82,43 @@ import heapq
 class Solution:
     def minCostConnectPoints(self, points: list[list[int]]) -> int:
         n = len(points)
-        visited: set[int] = set()
-        # Min-heap storing tuples of (edge_cost, point_index)
-        min_heap: list[tuple[int, int]] = [(0, 0)]
-        total_cost = 0
+        inside = set()
+        heap = [(0, 0)]   # (cost to reach it, point index)
+        total = 0
 
-        while len(visited) < n:
-            cost, u = heapq.heappop(min_heap)
+        while len(inside) < n:
+            cost, i = heapq.heappop(heap)
 
-            # Skip if node u is already part of the spanning tree
-            if u in visited:
-                continue
+            if i in inside:
+                continue   # a stale entry for a point already added
 
-            visited.add(u)
-            total_cost += cost
+            inside.add(i)
+            total += cost
 
-            # Calculate Manhattan distances from u to all remaining unvisited points
-            x1, y1 = points[u]
-            for v in range(n):
-                if v not in visited:
-                    x2, y2 = points[v]
-                    dist = abs(x1 - x2) + abs(y1 - y2)
-                    heapq.heappush(min_heap, (dist, v))
+            # offer an edge from the new point to everything still outside
+            xi, yi = points[i]
+            for j in range(n):
+                if j not in inside:
+                    xj, yj = points[j]
+                    heapq.heappush(heap, (abs(xi - xj) + abs(yi - yj), j))
 
-        return total_cost
+        return total
 ```
 
-  </TabItem>
-  <TabItem value="kruskal" label="Alternative: Kruskal's Algorithm (DSU)">
+---
 
-```python
-class Solution:
-    def minCostConnectPoints(self, points: list[list[int]]) -> int:
-        n = len(points)
-        edges: list[tuple[int, int, int]] = []
+### Time and space complexity
 
-        # Generate all pairwise edges
-        for i in range(n):
-            x1, y1 = points[i]
-            for j in range(i + 1, n):
-                x2, y2 = points[j]
-                dist = abs(x1 - x2) + abs(y1 - y2)
-                edges.append((dist, i, j))
+#### Time: $O(n^2 \log n)$
 
-        # Sort edges by increasing distance
-        edges.sort()
+Each point added pushes up to `n` candidate edges, so the heap sees about `n²` entries, each costing $\log n$ to push or pop.
 
-        parent = list(range(n))
-        rank = [1] * n
+#### Space: $O(n^2)$
 
-        def find(node: int) -> int:
-            if parent[node] != node:
-                parent[node] = find(parent[node])
-            return parent[node]
-
-        def union(u: int, v: int) -> bool:
-            root_u = find(u)
-            root_v = find(v)
-            if root_u == root_v:
-                return False
-            if rank[root_u] > rank[root_v]:
-                parent[root_v] = root_u
-            elif rank[root_u] < rank[root_v]:
-                parent[root_u] = root_v
-            else:
-                parent[root_v] = root_u
-                rank[root_u] += 1
-            return True
-
-        total_cost = 0
-        edges_used = 0
-
-        for cost, u, v in edges:
-            if union(u, v):
-                total_cost += cost
-                edges_used += 1
-                if edges_used == n - 1:
-                    break
-
-        return total_cost
-```
-
-  </TabItem>
-</Tabs>
+The heap in the worst case. A version that keeps only the best known cost per outside point, rather than every candidate, brings this down to $O(n)$ with $O(n^2)$ time, which is the better choice for a dense graph and worth naming.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Prim's Algorithm** | $O(n^2 \log n)$ | $O(n^2)$ | Grows tree frontier organically without pre-materializing all $O(n^2)$ edge tuples upfront. |
-| **Kruskal's Algorithm** | $O(n^2 \log n)$ | $O(n^2)$ | Explicitly materializes and sorts all $n(n - 1) / 2$ edges, using DSU to unite forest components. |
-
----
-
-### Common Pitfall: Prematurely Stopping Without Visiting All Vertices
-
-Stopping the heap loop when the heap is empty rather than tracking `len(visited) == n` or neglecting to check `if u in visited` upon popping leads to processing stale entries with outdated, suboptimal distances. Maintaining a strict `visited` set and skipping already-settled nodes guarantees that only valid minimum edges are credited.
-
----
-
-### Concise Interview Takeaway
-
-Model the coordinates as a complete graph where edge weights are Manhattan distances. Build the Minimum Spanning Tree using Prim's algorithm with a min-heap to greedily extract the lowest-cost frontier edge to an unvisited node until all $n$ coordinates are connected.
+Connecting everything as cheaply as possible is a minimum spanning tree. Grow one blob and always take the cheapest edge leaving it, skipping points already inside. The difference from Dijkstra is exactly what the heap stores: distance from the start for shortest paths, distance from the blob for a spanning tree. Kruskal with disjoint set union is the alternative, better suited to sparse graphs.

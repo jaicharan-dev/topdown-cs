@@ -1,84 +1,64 @@
 ---
 id: 12-network-delay-time
 title: "743. Network Delay Time"
-description: "Find time for signal to reach all nodes in weighted graph using Dijkstra's algorithm"
+description: "Always expand the nearest unsettled node, and its distance is already final"
 sidebar_position: 12
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Graphs</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Dijkstra's Algorithm</span>
 
-> **Problem Statement:** You are given a network of `n` nodes labeled from `1` to `n`. You are also given `times`, a list of travel times as directed edges `times[i] = [u, v, w]`, where `u` is the source node, `v` is the target node, and `w` is the time it takes for a signal to travel from source to target. We send a signal from a given node `k`. Return the minimum time it takes for all `n` nodes to receive the signal. If it is impossible for all `n` nodes to receive the signal, return `-1`.
+> **Problem Statement:** A signal starts at one node of a directed network and travels along edges that each take some time. Return how long until every node has received it, or `-1` if some node never does.
 
 ```text
 Input:  times = [[2, 1, 1], [2, 3, 1], [3, 4, 1]], n = 4, k = 2
 Output: 2
-Explanation: Node 2 sends signal to 1 and 3 in 1 unit of time, and node 3 forwards signal to 4 taking another 1 unit (total 2 units). All nodes receive the signal by time 2.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-We are tasked with finding the shortest travel time from a single source node `k` to all other nodes in a directed graph where all edge weights are non-negative ($w \ge 0$). This is the textbook scenario for **Dijkstra's Algorithm**.
+The answer is the time the **last** node receives the signal, which means working out the shortest travel time to every node and taking the largest.
 
-#### Brute Force: Bellman-Ford Iterative Edge Relaxation
-One could explore all simple paths from source $k$ to every node or execute the Bellman-Ford algorithm by relaxing all $E$ edges across $V - 1$ rounds. Because Bellman-Ford relaxes edges without prioritizing shorter paths, it runs in $O(V \cdot E)$ time. While simple, relaxing every edge indiscriminately incurs substantial overhead compared to greedy shortest-path expansion.
+Breadth-first search finds shortest paths when every edge costs the same, because then "fewest edges" and "shortest time" are the same thing. Here the edges have different weights, so that breaks down: a two-edge route can easily be quicker than a one-edge route.
 
-#### Optimal Approach: Dijkstra's Algorithm with Min-Heap
-Imagine the signal radiating outward like water flowing through interconnected pipes:
-- The signal reaches nearby nodes first before propagating further downstream.
-- A **Min-Heap (Priority Queue)** stores tuples of `(accumulated_travel_time, current_node)`. By always popping the node with the smallest cumulative delay, we ensure that the first time a node is popped from the heap, its absolute shortest arrival time has been determined.
-- When popping `(time, u)`:
-  - If `u` was already finalized in our `shortest_time` dictionary, we discard it as a stale heap entry.
-  - Otherwise, record `shortest_time[u] = time`.
-  - For each outgoing edge `(v, weight)` from `u`, push `(time + weight, v)` into the min-heap.
-- Because the signal propagates concurrently across all paths, the network delay is dictated by the slowest node: $\max(\text{shortest\_time.values()})$. If fewer than $n$ nodes were reached, at least one node is disconnected, so we return `-1`.
+Dijkstra's algorithm is breadth-first search repaired for weights. Instead of expanding in the order nodes were discovered, always expand the **nearest unsettled node**. Keep the frontier in a min-heap so the nearest one is always on top.
 
-#### Execution Walkthrough
-
-Let us trace `times = [[2, 1, 1], [2, 3, 1], [3, 4, 1]]`, $n = 4$, $k = 2$:
-
-| Step | Popped `(time, node)` | Action Taken | Min-Heap State | Finalized Distances (`shortest_time`) |
-| :---: | :---: | :---: | :---: | :--- |
-| **Initial** | - | Push source `(0, 2)` | `[(0, 2)]` | `{}` |
-| **1** | `(0, 2)` | Finalize node 2; push neighbors `(1, 1)`, `(1, 3)` | `[(1, 1), (1, 3)]` | `{2: 0}` |
-| **2** | `(1, 1)` | Finalize node 1; no outgoing edges | `[(1, 3)]` | `{2: 0, 1: 1}` |
-| **3** | `(1, 3)` | Finalize node 3; push neighbor `(2, 4)` | `[(2, 4)]` | `{2: 0, 1: 1, 3: 1}` |
-| **4** | `(2, 4)` | Finalize node 4; no outgoing edges | `[]` | `{2: 0, 1: 1, 3: 1, 4: 2}` |
-
-All 4 nodes finalized. Total network delay = $\max(0, 1, 1, 2) = 2$.
+The claim that makes it work: when a node comes off the heap with the smallest distance, that distance is final. Any other route to it would have to pass through some node still on the heap, and every one of those is at least as far away, so the route could only be longer. This needs edge weights to be non-negative, which is the assumption to state out loud.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Construct Adjacency List:** Create `adj: dict[int, list[tuple[int, int]]] = defaultdict(list)` mapping `u -> [(v, weight), ...]`.
-2. **Initialize Data Structures:**
-   - Seed `min_heap` with `[(0, k)]` storing tuples of `(accumulated_time, node)`.
-   - Allocate `shortest_time: dict[int, int] = {}` to store finalized arrival times.
-3. **Execute Dijkstra Traversal:**
-   - While `min_heap` is non-empty:
-     - Pop `curr_time, u = heapq.heappop(min_heap)`.
-     - If `u` is in `shortest_time`, continue (skip stale heap entry).
-     - Store `shortest_time[u] = curr_time`.
-     - For each neighbor `(v, weight)` in `adj[u]`:
-       - If `v not in shortest_time`, push `(curr_time + weight, v)` to `min_heap`.
-4. **Evaluate Network Reachability:**
-   - If `len(shortest_time) == n`, return `max(shortest_time.values())`.
-   - Otherwise, return `-1` because one or more nodes were unreachable.
+Build an adjacency list, then push the starting node at distance zero.
+
+Repeatedly pop the nearest node. If it has already been settled, skip it: the heap can hold several entries for the same node, and only the first one off is the real distance. Otherwise record its distance as final and push each neighbour at this distance plus the edge's weight.
+
+When the heap empties, the answer is the largest settled distance. If some node was never settled, it is unreachable, so return `-1`.
+
+Rather than updating an entry already in the heap, which standard heaps cannot do cheaply, just push another entry and skip stale ones on the way out. That is the usual implementation and it is why the settled check matters.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Dijkstra's Algorithm (Min-Heap)" default>
+Edges: `2 -> 1` taking `1`, `2 -> 3` taking `1`, `3 -> 4` taking `1`, starting from node `2`.
+
+1. **Pop node 2 at distance 0.** Settle it. Push node `1` at `1` and node `3` at `1`.
+2. **Pop node 1 at distance 1.** Settle it. It has no outgoing edges.
+3. **Pop node 3 at distance 1.** Settle it. Push node `4` at `2`.
+4. **Pop node 4 at distance 2.** Settle it.
+
+All four nodes are settled, and the largest distance is `2`, so the answer is `2`.
+
+Had there been no edge into node `4`, it would never have been settled, and the answer would be `-1`.
+
+---
+
+### The code
 
 ```python
 import heapq
@@ -86,76 +66,46 @@ from collections import defaultdict
 
 class Solution:
     def networkDelayTime(self, times: list[list[int]], n: int, k: int) -> int:
-        # Build adjacency list: u -> list of (v, weight)
-        adj: dict[int, list[tuple[int, int]]] = defaultdict(list)
+        graph = defaultdict(list)
         for u, v, w in times:
-            adj[u].append((v, w))
+            graph[u].append((v, w))
 
-        # Min-heap storing tuples of (accumulated_time, current_node)
-        min_heap: list[tuple[int, int]] = [(0, k)]
-        shortest_time: dict[int, int] = {}
+        settled = {}
+        heap = [(0, k)]   # (distance so far, node)
 
-        while min_heap:
-            curr_time, u = heapq.heappop(min_heap)
+        while heap:
+            distance, node = heapq.heappop(heap)
 
-            # Skip stale entries if node u was already finalized
-            if u in shortest_time:
+            # a stale entry for a node already finalised
+            if node in settled:
                 continue
 
-            shortest_time[u] = curr_time
+            settled[node] = distance
 
-            # Relax outgoing edges
-            for v, weight in adj[u]:
-                if v not in shortest_time:
-                    heapq.heappush(min_heap, (curr_time + weight, v))
+            for neighbour, weight in graph[node]:
+                if neighbour not in settled:
+                    heapq.heappush(heap, (distance + weight, neighbour))
 
-        # Return max propagation time if all n nodes received the signal, else -1
-        return max(shortest_time.values()) if len(shortest_time) == n else -1
+        if len(settled) < n:
+            return -1   # something never received the signal
+
+        return max(settled.values())
 ```
 
-  </TabItem>
-  <TabItem value="bellman-ford" label="Alternative: Bellman-Ford Algorithm">
+---
 
-```python
-class Solution:
-    def networkDelayTime(self, times: list[list[int]], n: int, k: int) -> int:
-        dist = [float("inf")] * (n + 1)
-        dist[k] = 0
+### Time and space complexity
 
-        # Relax all edges up to n - 1 times
-        for _ in range(n - 1):
-            updated = False
-            for u, v, w in times:
-                if dist[u] != float("inf") and dist[u] + w < dist[v]:
-                    dist[v] = dist[u] + w
-                    updated = True
-            if not updated:
-                break
+#### Time: $O(E \log V)$
 
-        max_dist = max(dist[1:])
-        return int(max_dist) if max_dist != float("inf") else -1
-```
+Each edge can push one entry onto the heap, and each push or pop costs about $\log V$.
 
-  </TabItem>
-</Tabs>
+#### Space: $O(V + E)$
+
+The adjacency list, the settled map and the heap.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Dijkstra's (Min-Heap)** | $O(E \log V)$ | $O(V + E)$ | Greedily expands the earliest-arriving signal paths first. Optimal for sparse to moderately dense graphs. |
-| **Bellman-Ford** | $O(V \cdot E)$ | $O(V)$ | Relaxes all edges iteratively without priority queue overhead, but performs redundant passes. |
-
----
-
-### Common Pitfall: Forgetting to Discard Stale Heap Entries
-
-A node can be inserted into the priority queue multiple times as alternative incoming paths are discovered. If you do not check `if u in shortest_time: continue` immediately upon popping from the min-heap, you will redundantly re-evaluate outgoing edges for already-finalized nodes, creating unnecessary work and slowing down execution.
-
----
-
-### Concise Interview Takeaway
-
-Run Dijkstra's algorithm with a min-heap from source $k$. Because edge weights are non-negative, the first time a node is popped from the heap, its shortest path is guaranteed. The total signal delay equals the maximum shortest path across all $n$ nodes, returning `-1` if any node remains unreached.
+Breadth-first search finds shortest paths only when all edges cost the same; with weights you need Dijkstra, which expands the nearest unsettled node instead of the oldest. A node popped with the smallest distance is final, because any other route runs through something at least as far away, and that argument requires non-negative weights. Push duplicates and skip settled nodes on the way out rather than updating the heap. $O(E \log V)$ time.

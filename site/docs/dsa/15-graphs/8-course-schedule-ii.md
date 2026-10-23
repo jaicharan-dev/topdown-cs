@@ -1,186 +1,105 @@
 ---
 id: 8-course-schedule-ii
 title: "210. Course Schedule II"
-description: "Construct a valid topological ordering of courses using Kahn's algorithm"
+description: "Same algorithm as the yes-or-no version, except you keep the order you took them in"
 sidebar_position: 8
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Graphs</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Topological Sort / Kahn's</span>
 
-> **Problem Statement:** There are a total of `numCourses` courses you have to take, labeled from `0` to `numCourses - 1`. You are given an array `prerequisites` where `prerequisites[i] = [a, b]` indicates that you must take course `b` first before taking course `a`. Return the ordering of courses you should take to finish all courses. If there are multiple valid answers, return any of them. If it is impossible to finish all courses, return an empty array.
+> **Problem Statement:** You have a number of courses and a list of prerequisite pairs, where `[a, b]` means `b` must be taken before `a`. Return an order in which all the courses can be taken, or an empty list if that is impossible.
 
 ```text
 Input:  numCourses = 4, prerequisites = [[1, 0], [2, 0], [3, 1], [3, 2]]
 Output: [0, 1, 2, 3]
-Explanation: Course 0 must be taken first. Courses 1 and 2 can follow in either order, followed by course 3. Both [0, 1, 2, 3] and [0, 2, 1, 3] are valid answers.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-While *Course Schedule I* simply asks for a boolean flag checking whether an ordering is possible, *Course Schedule II* requires outputting an actual valid schedule: a **Topological Sort**.
+Course Schedule already took the courses in a workable order. It simply threw that order away and counted them.
 
-#### Brute Force: Generating All Permutations
-A naive approach would generate all $n!$ possible permutations of course orderings and verify each permutation against the list of prerequisite constraints. This takes $O(n! \cdot (V + E))$ factorial time, which becomes completely infeasible even for modest values such as $n = 12$.
+So this problem needs one change: **keep the list** instead of the count. The order in which courses come out of the queue is already a valid schedule, because a course is only queued once every prerequisite it has is behind it.
 
-#### Optimal Approach: Kahn's Algorithm (BFS In-Degree Peeling)
-Kahn's algorithm naturally builds the schedule from front to back:
-1. **Identify Available Courses:** Compute the in-degree (number of unmet prerequisites) for each course. Any course with `in_degree == 0` has no prerequisites and is ready to take immediately.
-2. **Collect Sequence:** Initialize an empty list `order`.
-3. **Peel Dependencies Layer by Layer:**
-   - Pop a ready course `curr` from the queue and append it to `order`.
-   - For every downstream course `next_course` that requires `curr`, decrement its in-degree by 1.
-   - If `next_course` reaches an in-degree of 0, all its prerequisites are now satisfied; enqueue it.
-4. **Cycle Validation:**
-   - If `len(order) == numCourses`, all courses were successfully scheduled in valid order. Return `order`.
-   - If `len(order) < numCourses`, circular dependencies formed a deadlock, leaving some courses stuck. Return `[]`.
-
-#### Execution Walkthrough
-
-Consider `numCourses = 4` with `prerequisites = [[1, 0], [2, 0], [3, 1], [3, 2]]`:
-
-| Step | Course Popped | Action Taken | In-Degree Updates | Queue State | Order Accumulated |
-| :---: | :---: | :--- | :--- | :---: | :--- |
-| **0** | Initial State | Seed queue with in-degree 0 nodes | `in_degree = [0, 1, 1, 2]` | `[0]` | `[]` |
-| **1** | `0` | Pop `0`, append to order, decrement `1` and `2` | `in_degree[1] = 0`, `in_degree[2] = 0` | `[1, 2]` | `[0]` |
-| **2** | `1` | Pop `1`, append to order, decrement `3` | `in_degree[3] = 1` | `[2]` | `[0, 1]` |
-| **3** | `2` | Pop `2`, append to order, decrement `3` | `in_degree[3] = 0` | `[3]` | `[0, 1, 2]` |
-| **4** | `3` | Pop `3`, append to order, no outgoing edges | None | `[]` | `[0, 1, 2, 3]` |
-
-Since `len(order) == 4 == numCourses`, return `[0, 1, 2, 3]`.
+That list is a **topological order**, and producing one is what this family of problems is really about. The yes-or-no version was the same machine with its output discarded.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Construct Graph Representation:**
-   - Build an adjacency list `adj: list[list[int]] = [[] for _ in range(numCourses)]`.
-   - Initialize an array `in_degree = [0] * numCourses`.
-   - For each `course, prereq` in `prerequisites`:
-     - Append `course` to `adj[prereq]`.
-     - Increment `in_degree[course] += 1`.
-2. **Initialize Queue and Order List:**
-   - Seed `queue` with all courses where `in_degree[i] == 0`.
-   - Create an empty list `order: list[int] = []`.
-3. **Execute Kahn's Processing Loop:**
-   - While `queue` has items:
-     - Pop `curr = queue.popleft()`.
-     - Append `curr` to `order`.
-     - For each `next_course` in `adj[curr]`:
-       - Decrement `in_degree[next_course] -= 1`.
-       - If `in_degree[next_course] == 0`:
-         - Enqueue `next_course`.
-4. **Validate and Return:**
-   - Return `order` if `len(order) == numCourses` else `[]`.
+Build the same two structures: how many prerequisites each course is still waiting on, and which courses each one unlocks. Remember that `[a, b]` means `b` unlocks `a`.
+
+Queue everything with nothing outstanding, then repeatedly take a course, **append it to the order**, and reduce the counts of what it unlocks, queueing anything that reaches zero.
+
+At the end, check the length. If the order holds every course, return it. If it is short, the missing ones form a cycle, so return an empty list as the problem requires. Returning a partial order would be wrong, which is why the length check cannot be skipped.
+
+**Several valid answers usually exist.** When more than one course sits in the queue at once, they have no dependency between them and either can go first. Swapping the queue for a stack, or for a priority queue, gives a different valid order, which is a good thing to mention when asked for the lexicographically smallest one: a min-heap in place of the queue does exactly that.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Kahn's Algorithm (BFS)" default>
+Course `0` unlocks `1` and `2`; courses `1` and `2` both unlock `3`.
+
+Outstanding counts: `0` waits on nothing, `1` and `2` wait on one each, `3` waits on two.
+
+1. **Queue holds `0`.** Take it, so the order is `[0]`. Courses `1` and `2` drop to zero and are queued.
+2. **Take `1`.** The order is `[0, 1]`, and course `3` drops to one.
+3. **Take `2`.** The order is `[0, 1, 2]`, and course `3` drops to zero, so it is queued.
+4. **Take `3`.** The order is `[0, 1, 2, 3]`.
+
+All four courses are present, so that is the answer. Note that `[0, 2, 1, 3]` is equally valid: courses `1` and `2` were in the queue together and neither depends on the other.
+
+---
+
+### The code
 
 ```python
 from collections import deque
 
 class Solution:
     def findOrder(self, numCourses: int, prerequisites: list[list[int]]) -> list[int]:
-        adj: list[list[int]] = [[] for _ in range(numCourses)]
-        in_degree = [0] * numCourses
+        waiting_on = [0] * numCourses
+        unlocks = [[] for _ in range(numCourses)]
 
-        # Build directed graph: prereq -> course
         for course, prereq in prerequisites:
-            adj[prereq].append(course)
-            in_degree[course] += 1
+            unlocks[prereq].append(course)
+            waiting_on[course] += 1
 
-        # Seed queue with all courses having 0 prerequisites
-        queue: deque[int] = deque([i for i in range(numCourses) if in_degree[i] == 0])
-        order: list[int] = []
+        queue = deque(c for c in range(numCourses) if waiting_on[c] == 0)
+        order = []
 
-        # Process courses in valid topological order
         while queue:
-            curr = queue.popleft()
-            order.append(curr)
+            course = queue.popleft()
+            order.append(course)   # the only change: keep the order
 
-            for next_course in adj[curr]:
-                in_degree[next_course] -= 1
-                if in_degree[next_course] == 0:
+            for next_course in unlocks[course]:
+                waiting_on[next_course] -= 1
+                if waiting_on[next_course] == 0:
                     queue.append(next_course)
 
-        # Return sequence if complete, else empty array on cycle detection
+        # a short order means a cycle, and a partial answer is not allowed
         return order if len(order) == numCourses else []
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Post-Order DFS with Cycle Detection">
+---
 
-```python
-class Solution:
-    def findOrder(self, numCourses: int, prerequisites: list[list[int]]) -> list[int]:
-        adj: list[list[int]] = [[] for _ in range(numCourses)]
-        for course, prereq in prerequisites:
-            adj[prereq].append(course)
+### Time and space complexity
 
-        # 0 = unvisited, 1 = visiting (in active call stack), 2 = visited
-        state = [0] * numCourses
-        order: list[int] = []
-        has_cycle = False
+#### Time: $O(V + E)$
 
-        def dfs(node: int) -> None:
-            nonlocal has_cycle
-            if has_cycle:
-                return
+Each course enters and leaves the queue once, and each prerequisite pair is read twice: once when building the structures, once when its unlocking course is taken.
 
-            state[node] = 1
-            for neighbor in adj[node]:
-                if state[neighbor] == 1:
-                    has_cycle = True
-                    return
-                elif state[neighbor] == 0:
-                    dfs(neighbor)
+#### Space: $O(V + E)$
 
-            state[node] = 2
-            order.append(node)
-
-        for i in range(numCourses):
-            if state[i] == 0:
-                dfs(i)
-
-        if has_cycle:
-            return []
-
-        # Reverse post-order to obtain valid prerequisite ordering
-        order.reverse()
-        return order
-```
-
-  </TabItem>
-</Tabs>
+The counts, the unlock lists, the queue and the order.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Kahn's Algorithm (BFS)** | $O(V + E)$ | $O(V + E)$ | Builds the topological order in natural forward order. Detects cycles without needing recursion. |
-| **Post-Order DFS** | $O(V + E)$ | $O(V + E)$ | Collects nodes in post-order and reverses at the end. Requires recursion stack space of $O(V)$. |
-
----
-
-### Common Pitfall: Returning a Partial Ordering when Cycles Exist
-
-When a cycle exists, Kahn's algorithm will still process and append any nodes that occurred before the cycle to `order`. If you forget to check `len(order) == numCourses` and return `order` directly, you will return an incomplete schedule instead of the required empty array `[]`. Always verify that every course was scheduled before returning the array.
-
----
-
-### Concise Interview Takeaway
-
-Extend Kahn's algorithm by appending each popped vertex to an output list as its dependencies are cleared. If the length of the result list equals `numCourses`, return the collected sequence as a valid topological ordering; otherwise, return an empty list to indicate an unresolvable cycle deadlock.
+This is Course Schedule with the order kept rather than counted, which is the actual topological sort. Append each course as it leaves the queue, and check the length at the end: short means a cycle, and the answer must then be empty rather than partial. Several orders are usually valid; swap the queue for a min-heap if the smallest one is wanted. $O(V + E)$ time.

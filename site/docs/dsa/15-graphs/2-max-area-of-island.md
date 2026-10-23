@@ -1,186 +1,114 @@
 ---
 id: 2-max-area-of-island
 title: "695. Max Area of Island"
-description: "Find the largest connected component size in a binary grid via DFS accumulation"
+description: "Same sweep as counting islands, except each search reports how big it was"
 sidebar_position: 2
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Graphs</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Grid DFS / BFS</span>
 
-> **Problem Statement:** You are given an `m x n` binary matrix `grid`. An island is a group of `1`s (representing land) connected 4-directionally (horizontal or vertical). You may assume all four edges of the grid are surrounded by water. The area of an island is the number of cells with a value `1` in the island. Return the maximum area of an island in `grid`. If there is no island, return 0.
+> **Problem Statement:** You are given a grid of land and water cells, where an island is a group of land cells joined up, down, left or right. Return the number of cells in the largest island, or `0` if there is none.
 
 ```text
-Input:  grid = [
-  [0,0,1,0,0,0,0,1,0,0,0,0,0],
-  [0,0,0,0,0,0,0,1,1,1,0,0,0],
-  [0,1,1,0,1,0,0,0,0,0,0,0,0],
-  [0,1,0,0,1,1,0,0,1,0,1,0,0],
-  [0,1,0,0,1,1,0,0,1,1,1,0,0],
-  [0,0,0,0,0,0,0,0,0,0,1,0,0],
-  [0,0,0,0,0,0,0,1,1,1,0,0,0],
-  [0,0,0,0,0,0,0,1,1,0,0,0,0]
-]
-Output: 6
-Explanation: The largest island is highlighted in the center-right region, containing 6 connected cells.
+Input:  grid = [[0,0,1,0], [0,1,1,0], [0,0,0,1]]
+Output: 3
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-This problem shares the exact graph topology as Number of Islands, but modifies the aggregation goal. Instead of counting how many disjoint components exist, we calculate the number of vertices (area) in each connected component and maintain the running maximum.
+This is Number of Islands with the counting moved.
 
-#### Brute Force: External Set Tracking
-We can scan through each coordinate `(r, c)`. When a `1` is discovered that is not present in an external `visited` set, we trigger a traversal that computes the area by counting vertices while inserting coordinates into `visited`. While correct in $O(m \times n)$ time, allocating dynamic tuples `(r, c)` in a hash set introduces unnecessary memory allocation overhead.
+There, each search sank an island and the sweep added one. Here each search **measures** the island it sinks and reports the number of cells it covered, and the sweep keeps the largest report.
 
-#### Optimal Approach: In-Place DFS Area Accumulation
-Instead of a separate set, we can submerge land cells directly by overwriting `grid[r][c] = 0` as soon as they are reached. To accumulate the area cleanly, DFS can be written as a value-returning function rather than a `void` routine:
-
-$$\text{area}(r, c) = 1 + \text{area}(r + 1, c) + \text{area}(r - 1, c) + \text{area}(r, c + 1) + \text{area}(r, c - 1)$$
-
-- **Base Case:** If `(r, c)` is out of bounds or equals `0` (water), return `0`.
-- **Recursive Step:** Sink the cell to `0` to prevent revisiting, then return `1` plus the accumulated area of its four orthogonal neighbors.
-- **Outer Loop:** Scan all cells in the grid. Whenever `grid[r][c] == 1`, call DFS and update `max_area = max(max_area, dfs(r, c))`.
-
-#### Execution Walkthrough
-
-Consider a smaller $3 \times 4$ grid:
+So the only change is what the search returns: instead of nothing, it returns a size.
 
 ```text
-0  1  1  0
-0  1  0  0
-0  0  1  1
+Number of Islands:  found land -> count += 1
+Max Area:           found land -> best = max(best, size of this island)
 ```
 
-| Step | Scanning Coordinate | Cell Value | Action Taken | Submerged Coordinates | Current Area | Max Area So Far |
-| :---: | :---: | :---: | :--- | :--- | :---: | :---: |
-| **1** | `(0, 0)` | `0` | Water. Skip. | None | 0 | 0 |
-| **2** | `(0, 1)` | `1` | Start DFS flood fill | `(0, 1)`, `(0, 2)`, `(1, 1)` | 3 | 3 |
-| **3** | `(0, 2)` to `(2, 1)` | `0` | Water (or sunk in Step 2). Skip. | None | 0 | 3 |
-| **4** | `(2, 2)` | `1` | Start DFS flood fill | `(2, 2)`, `(2, 3)` | 2 | 3 |
-| **5** | `(2, 3)` | `0` | Sunk in Step 4. Skip. Scan complete. | None | 0 | 3 |
+---
+
+### How to think about it
+
+The search becomes an arithmetic one. For a cell:
+
+- **Off the grid, or water**, contributes `0`.
+- **Land**, contributes `1` for itself plus whatever the four neighbours report.
+
+Mark the cell as water **before** recursing into the neighbours. Doing it after, or not at all, lets the search walk back into cells it has already counted, which both inflates the total and loops forever.
+
+That `1 +` and the sum of four recursive calls is the whole body. It is the same "a node's answer is built from its children's answers" shape as the tree problems, except a grid has four directions instead of two and can revisit, which is why marking is needed where trees needed nothing.
+
+Start the best area at `0`, which is also the answer for a grid with no land at all.
 
 ---
 
-### Step-by-Step Algorithm
+### Walking through the example
 
-1. **Guard Against Empty Input:** Return `0` if `grid` is empty or has zero columns.
-2. **Initialize Dimensions and Tracker:** Store `rows = len(grid)` and `cols = len(grid[0])`. Initialize `max_area = 0`.
-3. **Define Recursive DFS:**
-   - Base condition: If `r < 0` or `r >= rows` or `c < 0` or `c >= cols` or `grid[r][c] != 1`, return `0`.
-   - Mutate `grid[r][c] = 0` to submerge the current cell and avoid duplicate visits.
-   - Return `1 + dfs(r + 1, c) + dfs(r - 1, c) + dfs(r, c + 1) + dfs(r, c - 1)`.
-4. **Scan Every Cell:**
-   - Loop over row index `r` and column index `c`.
-   - When `grid[r][c] == 1`, update `max_area = max(max_area, dfs(r, c))`.
-5. **Return Result:** Once all rows and columns are scanned, return `max_area`.
+The grid is:
+
+```text
+0 0 1 0
+0 1 1 0
+0 0 0 1
+```
+
+1. **The sweep finds land at (0, 2).** The search marks it, then explores: below is (1, 2), which is land and marks itself, and from there left is (1, 1), also land. Nothing else is adjacent. The reports add up to `1 + 1 + 1 = 3`. Best becomes `3`.
+2. **Cells (1, 1) and (1, 2)** are water by the time the sweep reaches them, so they are skipped.
+3. **The sweep finds land at (2, 3).** It has no land neighbours, so the search reports `1`, which does not beat `3`.
+
+The answer is `3`.
 
 ---
 
-### Python 3 Implementation
-
-<Tabs>
-  <TabItem value="optimal" label="Optimal: In-Place DFS Accumulation" default>
+### The code
 
 ```python
 class Solution:
     def maxAreaOfIsland(self, grid: list[list[int]]) -> int:
-        if not grid or not grid[0]:
-            return 0
-
         rows, cols = len(grid), len(grid[0])
-        max_area = 0
 
-        def dfs(r: int, c: int) -> int:
-            # Boundary check and water check
-            if r < 0 or r >= rows or c < 0 or c >= cols or grid[r][c] != 1:
+        def measure(r: int, c: int) -> int:
+            if not (0 <= r < rows and 0 <= c < cols) or grid[r][c] == 0:
                 return 0
 
-            # Sink cell to prevent cycle loops
-            grid[r][c] = 0
+            grid[r][c] = 0   # mark before recursing, or cells are counted twice
 
-            # 1 (current cell) + sum of connected neighbor areas
-            return (
-                1
-                + dfs(r + 1, c)
-                + dfs(r - 1, c)
-                + dfs(r, c + 1)
-                + dfs(r, c - 1)
-            )
+            return (1
+                    + measure(r + 1, c)
+                    + measure(r - 1, c)
+                    + measure(r, c + 1)
+                    + measure(r, c - 1))
 
+        best = 0
         for r in range(rows):
             for c in range(cols):
                 if grid[r][c] == 1:
-                    max_area = max(max_area, dfs(r, c))
+                    best = max(best, measure(r, c))
 
-        return max_area
+        return best
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Breadth-First Search (BFS)">
+---
 
-```python
-from collections import deque
+### Time and space complexity
 
-class Solution:
-    def maxAreaOfIsland(self, grid: list[list[int]]) -> int:
-        if not grid or not grid[0]:
-            return 0
+#### Time: $O(m \cdot n)$
 
-        rows, cols = len(grid), len(grid[0])
-        max_area = 0
+Each cell is examined by the sweep once and entered by a search at most once, since the search only enters land and immediately marks it.
 
-        def bfs(start_r: int, start_c: int) -> int:
-            queue: deque[tuple[int, int]] = deque([(start_r, start_c)])
-            grid[start_r][start_c] = 0
-            area = 0
+#### Space: $O(m \cdot n)$ in the worst case
 
-            while queue:
-                r, c = queue.popleft()
-                area += 1
-
-                for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-                    nr, nc = r + dr, c + dc
-                    if 0 <= nr < rows and 0 <= nc < cols and grid[nr][nc] == 1:
-                        grid[nr][nc] = 0  # Mark visited immediately
-                        queue.append((nr, nc))
-
-            return area
-
-        for r in range(rows):
-            for c in range(cols):
-                if grid[r][c] == 1:
-                    max_area = max(max_area, bfs(r, c))
-
-        return max_area
-```
-
-  </TabItem>
-</Tabs>
+The recursion depth, which on an all-land grid reaches the number of cells.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **In-Place DFS Accumulation** | $O(m \times n)$ | $O(m \times n)$ | Recursively sums neighbor components directly. Recursion stack can reach $O(m \times n)$ in the worst case with snake-shaped islands. |
-| **In-Place BFS Traversal** | $O(m \times n)$ | $O(\min(m, n))$ | Uses an explicit queue and iterative counter. Memory is bounded by the maximum frontier width of any island. |
-
----
-
-### Common Pitfall: Integer Types and Modifying Inputs
-
-Unlike Number of Islands where coordinates store character strings `'1'` and `'0'`, Max Area of Island uses native integers `1` and `0`. Comparing `grid[r][c] == "1"` instead of `grid[r][c] == 1` causes silent traversal failures. Additionally, if an interviewer specifies that the input grid is immutable, use a separate boolean matrix or `visited` set instead of overwriting cells directly.
-
----
-
-### Concise Interview Takeaway
-
-Transform flood fill from a simple void sinker into an area accumulator. By returning $1$ plus the recursive sum of all four orthogonal directions while sinking visited land to $0$, each island's total area is computed in a single pass across its cells, running in optimal $O(m \times n)$ time.
+Identical sweep to Number of Islands, with the search returning a size instead of nothing: `0` for water, and `1` plus the four neighbours' reports for land. Mark the cell before recursing, or cells get counted more than once and the search can loop. Keep the largest report rather than a running count. $O(m \cdot n)$ time.

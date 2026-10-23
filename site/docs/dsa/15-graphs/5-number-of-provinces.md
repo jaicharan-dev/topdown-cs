@@ -1,175 +1,103 @@
 ---
 id: 5-number-of-provinces
 title: "547. Number of Provinces"
-description: "Count connected components in an adjacency matrix using DFS or Disjoint Set Union"
+description: "Number of Islands on a matrix of connections instead of a map"
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Graphs</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Connected Components / DSU</span>
 
-> **Problem Statement:** There are `n` cities. Some of them are connected directly, while some are not. If city `a` is connected directly with city `b`, and city `b` is connected directly with city `c`, then city `a` is connected indirectly with city `c`. A province is a group of directly or indirectly connected cities with no outside connections. Given an `n x n` matrix `isConnected` where `isConnected[i][j] = 1` if city `i` and city `j` are directly connected and `0` otherwise, return the total number of provinces.
+> **Problem Statement:** You are given a matrix where entry `i, j` says whether city `i` and city `j` are directly joined. A province is a group of cities all reachable from each other. Count the provinces.
 
 ```text
-Input:  isConnected = [[1,1,0],[1,1,0],[0,0,1]]
+Input:  isConnected = [[1,1,0], [1,1,0], [0,0,1]]
 Output: 2
-Explanation: Cities 0 and 1 are directly connected to each other, forming Province 1. City 2 is isolated, forming Province 2. Total provinces = 2.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Unlike 2D grid problems where each cell only borders four orthogonal coordinates, the input here is an **adjacency matrix** representing an arbitrary undirected graph:
-- **Vertices:** The $n$ cities indexed from $0$ to $n - 1$.
-- **Edges:** A direct road exists between city $i$ and city $j$ if and only if `isConnected[i][j] == 1`. Every city connects to itself (`isConnected[i][i] == 1`), and edges are bidirectional (`isConnected[i][j] == isConnected[j][i]`).
+Strip away the wording and this is Number of Islands again: count the connected groups.
 
-Under this definition, a province is simply a **connected component** of the graph.
+The only difference is the packaging. There, the graph was a grid and a cell's neighbours were the four cells around it. Here, the graph is given as a matrix of connections, and city `i`'s neighbours are every `j` where the entry is `1`.
 
-#### Brute Force: Pairwise Path Verification
-A naive approach would test connectivity between every pair of vertices by running separate pathfinding searches for all $O(n^2)$ pairs, manually grouping vertices with mutual reachability. This results in $O(n^3)$ redundant graph sweeps and complex intermediate set bookkeeping.
+So the same sweep works. Walk the cities, and each time you meet one that has not been visited, you have found a new province: add one to the count, then visit everything reachable from it so none of those is counted again.
 
-#### Optimal Approach: Connected Component Traversal
-Because any connected component can be completely traversed from any single vertex within it, we only need to visit each vertex once:
-1. Maintain a boolean array `visited` of size $n$, initialized to `False`.
-2. Iterate through each city index $i \in [0, n - 1]$.
-3. If city $i$ has not been visited yet, we have discovered a brand-new province. Increment `provinces += 1`.
-4. Launch a Depth-First Search (DFS) starting from city $i$:
-   - Mark city $i$ as `visited`.
-   - Scan row `isConnected[i]`: for every neighbor $j$ from $0$ to $n - 1$, if `isConnected[i][j] == 1` and `visited[j]` is `False`, recurse into city $j$.
-5. After the traversal terminates, every city in that province is flagged. When the outer loop encounters them, they are skipped immediately.
-
-#### Execution Walkthrough
-
-Consider $n = 3$ with `isConnected = [[1,1,0],[1,1,0],[0,0,1]]`:
-
-| Step | City Inspected | Visited Status | Action Taken | Cities Traversed in DFS | Visited State | Province Count |
-| :---: | :---: | :---: | :--- | :--- | :--- | :---: |
-| **1** | City `0` | `False` | New province found! Increment count and launch DFS | `0` connects to `1`; both visited | `[True, True, False]` | 1 |
-| **2** | City `1` | `True` | Already part of Province 1. Skip. | None | `[True, True, False]` | 1 |
-| **3** | City `2` | `False` | New province found! Increment count and launch DFS | `2` connects only to itself | `[True, True, True]` | 2 |
-
-Traversal complete. Total provinces = 2.
+The matrix is a way of writing down the edges, not a map to be walked cell by cell. Reading it that way is what makes this a three-line change from the islands problem.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State:**
-   - Determine `n = len(isConnected)`.
-   - Create a boolean array `visited = [False] * n`.
-   - Initialize `provinces = 0`.
-2. **Define Traversal Routine (`dfs(city)`):**
-   - Set `visited[city] = True`.
-   - Iterate through every candidate neighbor `neighbor` from $0$ to $n - 1$:
-     - If `isConnected[city][neighbor] == 1` and `not visited[neighbor]`:
-       - Recursively invoke `dfs(neighbor)`.
-3. **Scan All Vertices:**
-   - Loop `i` from $0$ to $n - 1$:
-     - If `not visited[i]`:
-       - Increment `provinces += 1`.
-       - Call `dfs(i)`.
-4. **Return Total:** Return `provinces`.
+Keep a set of visited cities and sweep from city `0` upward.
+
+When a city is unvisited, increase the count and start a search. The search marks the city, then looks along its row in the matrix: for every `j` the city connects to that has not been visited, continue from `j`.
+
+Because the connection is mutual, the matrix is symmetric, and the visited set keeps the search from bouncing back and forth between two cities forever.
+
+The diagonal entries are always `1`, since a city connects to itself. They cause no trouble: by the time the search reads its own row, the city is already marked visited, so it is skipped.
+
+**Disjoint set union** is the other standard answer, and it is the one the block's name points at. Start with every city in its own group and merge the two groups behind each connection; the answer is how many groups survive. It is the right tool when connections arrive over time rather than all at once, which is exactly what Redundant Connection and Accounts Merge need later in this block.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Depth-First Search (DFS)" default>
+The matrix says city `0` and city `1` are joined, and city `2` stands alone.
+
+1. **City 0** is unvisited, so the count becomes `1` and a search starts. It marks `0`, reads row `0`, and finds a connection to `1`. City `1` is unvisited, so the search moves there, marks it, and reads row `1`, which connects back to `0`, already visited. The search ends.
+2. **City 1** is visited by the time the sweep reaches it, so it is skipped.
+3. **City 2** is unvisited, so the count becomes `2`. Its row connects only to itself, so the search ends immediately.
+
+The answer is `2`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def findCircleNum(self, isConnected: list[list[int]]) -> int:
         n = len(isConnected)
-        visited = [False] * n
-        provinces = 0
+        seen = set()
+        count = 0
 
-        def dfs(city: int) -> None:
-            visited[city] = True
+        def visit(city: int) -> None:
+            seen.add(city)
 
-            # Scan the adjacency row for all connected neighbors
-            for neighbor in range(n):
-                if isConnected[city][neighbor] == 1 and not visited[neighbor]:
-                    dfs(neighbor)
+            # the row lists this city's neighbours
+            for other in range(n):
+                if isConnected[city][other] and other not in seen:
+                    visit(other)
 
-        # Iterate through every city to find all connected components
-        for i in range(n):
-            if not visited[i]:
-                provinces += 1
-                dfs(i)
+        for city in range(n):
+            if city not in seen:
+                count += 1   # a new province
+                visit(city)
 
-        return provinces
+        return count
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Disjoint Set Union (DSU / Union-Find)">
+---
 
-```python
-class UnionFind:
-    def __init__(self, n: int) -> None:
-        self.parent = list(range(n))
-        self.rank = [0] * n
-        self.count = n
+### Time and space complexity
 
-    def find(self, x: int) -> int:
-        if self.parent[x] != x:
-            self.parent[x] = self.find(self.parent[x])  # Path compression
-        return self.parent[x]
+#### Time: $O(n^2)$
 
-    def union(self, x: int, y: int) -> None:
-        root_x = self.find(x)
-        root_y = self.find(y)
-        if root_x != root_y:
-            # Union by rank
-            if self.rank[root_x] < self.rank[root_y]:
-                self.parent[root_x] = root_y
-            elif self.rank[root_x] > self.rank[root_y]:
-                self.parent[root_y] = root_x
-            else:
-                self.parent[root_y] = root_x
-                self.rank[root_x] += 1
-            self.count -= 1
+Each city's row is read once during its search, and there are `n` rows of `n` entries. That is forced by the input format: the matrix itself has `n²` entries, so even reading it costs that much, however few connections it describes.
 
-class Solution:
-    def findCircleNum(self, isConnected: list[list[int]]) -> int:
-        n = len(isConnected)
-        dsu = UnionFind(n)
+An edge list would allow $O(V + E)$ instead, which matters when the graph is sparse.
 
-        # Only upper triangular matrix needs evaluation due to symmetry
-        for i in range(n):
-            for j in range(i + 1, n):
-                if isConnected[i][j] == 1:
-                    dsu.union(i, j)
+#### Space: $O(n)$
 
-        return dsu.count
-```
-
-  </TabItem>
-</Tabs>
+The visited set, plus recursion depth up to the number of cities in one province.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Depth-First Search (DFS)** | $O(n^2)$ | $O(n)$ | Scans each cell in the $n \times n$ adjacency matrix once. Call stack takes at most $O(n)$ frames. |
-| **Disjoint Set Union (DSU)** | $O(n^2 \cdot \alpha(n))$ | $O(n)$ | Iterates over the upper triangle of the matrix with near-constant $\alpha(n)$ union operations. Avoids recursion stacks entirely. |
-
----
-
-### Common Pitfall: Treating Adjacency Matrix Cells as 4-Directional Grid Coordinates
-
-A frequent conceptual error is attempting to navigate `isConnected` using grid directional offsets like `(r + 1, c)` or `(r, c + 1)`. The matrix is not a spatial board; it is an adjacency matrix. Moving to a neighbor does not mean stepping to the cell below; it means reading row `i` across all columns `0` through `n - 1` to find which cities `j` satisfy `isConnected[i][j] == 1`.
-
----
-
-### Concise Interview Takeaway
-
-The Number of Provinces problem is standard connected component counting on an adjacency matrix. Loop through all vertices from $0$ to $n - 1$; whenever an unvisited vertex is encountered, increment the province count and trigger a DFS across its row in the matrix to mark all transitively reachable vertices as visited. This solves the problem cleanly in $O(n^2)$ time and $O(n)$ auxiliary space.
+This is counting connected groups, exactly like Number of Islands, with the graph handed over as a connection matrix rather than a grid. Sweep the cities, count each unvisited one as a new province, and visit everything reachable so the rest of the province is skipped. The $O(n^2)$ cost comes from the matrix format, not the algorithm. Disjoint set union is the alternative, and the right one when edges arrive over time.

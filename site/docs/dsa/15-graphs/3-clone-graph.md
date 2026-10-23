@@ -1,173 +1,108 @@
 ---
 id: 3-clone-graph
 title: "133. Clone Graph"
-description: "Deep copy an undirected graph using DFS/BFS and an original-to-clone hash map"
+description: "A map from old node to new node is both the memo and the cycle guard"
 sidebar_position: 3
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Graphs</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">DFS / BFS Hash Map</span>
 
-> **Problem Statement:** Given a reference of a node in a connected undirected graph, return a deep copy (clone) of the graph. Each node in the graph contains an integer value `val` and a list `neighbors` of connected `Node` objects.
+> **Problem Statement:** Given one node of a connected undirected graph, return a deep copy of the whole graph. Every node has a value and a list of neighbours.
 
 ```text
 Input:  adjList = [[2,4],[1,3],[2,4],[1,3]]
-Output: [[2,4],[1,3],[2,4],[1,3]]
-Explanation: Node 1 connects to 2 and 4. Node 2 connects to 1 and 3. Node 3 connects to 2 and 4. Node 4 connects to 1 and 3.
+Output: an identical graph made of entirely new nodes
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-In a tree, nodes only point downward, so cycles do not exist. In an undirected graph, however, edges are bidirectional: if node 1 connects to node 2, then node 2 connects back to node 1.
+Copying a tree is easy, because you can never arrive anywhere twice. A graph has cycles, so a naive copy walks round a cycle forever, making a fresh copy of the same node on each lap.
 
-#### Brute Force: Naive Traversal without Cycle Detection
-If you attempt a naive recursive copy without cycle tracking:
-1. Clone node 1.
-2. For each neighbor of node 1, clone node 2.
-3. For each neighbor of node 2, clone node 1, triggering an infinite recursive loop that causes a call stack overflow.
+The fix is a single dictionary: **old node to its copy**.
 
-#### Optimal Approach: Hash Map Memoization with Early Registration
-To prevent infinite cycles and ensure that each node in the cloned graph is instantiated exactly once, maintain an `original -> clone` hash map:
+Before copying a node, look it up. If it is already in the dictionary, the copy exists, so hand that back rather than making another. If it is not, make the copy, record it **immediately**, and only then deal with its neighbours.
 
-$$\text{cloned} = \{\text{original\_node}: \text{cloned\_node}\}$$
-
-When visiting an original node `curr`:
-1. If `curr` has already been copied (`curr in cloned`), immediately return the existing cloned node pointer.
-2. If `curr` has not yet been copied, instantiate its clone: `copy = Node(curr.val)`.
-3. **Crucial Registration:** Immediately store `cloned[curr] = copy` before iterating over its neighbors.
-4. Iterate over each neighbor in `curr.neighbors`, recursively resolve its clone, and append it to `copy.neighbors`.
-
-Because the clone is registered in the hash map before recursion descends into neighbors, any back-edge or cycle pointing back to `curr` resolves to the cached clone pointer in $O(1)$ time, cleanly severing the loop.
-
-#### Execution Walkthrough
-
-Consider a 4-node ring: `1 - 2 - 3 - 4 - 1`:
-
-| Step | Visited Node | Action Taken | Map Registration (`cloned`) | Cloned Neighbors Linked |
-| :---: | :---: | :--- | :--- | :--- |
-| **1** | Node `1` | Allocate `copy1`, record in map, recurse to neighbor `2` | `{1: 1'}` | Pending |
-| **2** | Node `2` | Allocate `copy2`, record in map, recurse to neighbor `1` | `{1: 1', 2: 2'}` | `1'` already in map; link `2' -> 1'` |
-| **3** | Node `2` | Recurse to neighbor `3`, allocate `copy3`, record in map | `{1: 1', 2: 2', 3: 3'}` | Link `2' -> 3'` |
-| **4** | Node `3` | Recurse to neighbor `4`, allocate `copy4`, record in map | `{1: 1', 2: 2', 3: 3', 4: 4'}` | Link `3' -> 4'` |
-| **5** | Node `4` | Check neighbors `3` and `1`. Both in map; link directly | `{1: 1', 2: 2', 3: 3', 4: 4'}` | Link `4' -> 3'`, `4' -> 1'` |
-
-All vertices and bidirectional edges are copied without duplicate node allocations.
+That dictionary does two jobs at once. It stops the infinite walk, and it guarantees that two different nodes pointing at the same neighbour end up pointing at the same copy, which is what makes the result a faithful duplicate rather than a tree-shaped unrolling of the graph.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Guard Against Null Graph:** If `node` is `None`, return `None` immediately.
-2. **Initialize Memoization Map:** Create a dictionary `cloned: dict[Node, Node] = {}`.
-3. **Define Traversal (`dfs(curr)`):**
-   - Check if `curr` is in `cloned`. If present, return `cloned[curr]`.
-   - Allocate the clone: `copy = Node(curr.val)`.
-   - Register the clone immediately: `cloned[curr] = copy`.
-   - Iterate through `curr.neighbors` and append `dfs(neighbor)` to `copy.neighbors`.
-   - Return `copy`.
-4. **Trigger Traversal:** Return `dfs(node)`.
+Walk the graph depth-first.
+
+For a node:
+
+1. **Already in the dictionary?** Return the stored copy.
+2. **Make a copy** holding the same value, with no neighbours yet.
+3. **Record it in the dictionary before recursing.** This is the critical ordering.
+4. **For each neighbour**, copy it recursively and append the result to the new node's neighbour list.
+
+Step three has to happen before step four. If the node is recorded only after its neighbours are done, then a cycle coming back to it finds nothing in the dictionary, makes a second copy, and the recursion never ends.
+
+Making the copy with an **empty** neighbour list first, then filling it, is what allows the node to be recorded before its neighbours exist.
+
+Handle an empty input explicitly: a `None` node should give `None` back, not a crash.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Depth-First Search (DFS)" default>
+The graph is a square: node `1` joins `2` and `4`, node `2` joins `1` and `3`, and so on.
+
+1. **Start at node 1.** Not in the dictionary, so create copy `1'` and record it. Now copy its neighbours.
+2. **Neighbour 2.** Not recorded, so create `2'` and record it. Its neighbours are `1` and `3`.
+   - **Node 1** is already recorded, so `1'` is returned at once. This is where the cycle would otherwise have spun.
+   - **Node 3** is new, so create `3'`, record it, and copy its neighbours `2` and `4`. Node `2` is recorded, giving `2'`. Node `4` is new, so create `4'` and copy its neighbours `1` and `3`, both already recorded.
+3. **Back at node 1**, its second neighbour `4` is now recorded, so `4'` comes straight from the dictionary.
+
+Four nodes created, each exactly once, with the links among the copies mirroring the original.
+
+---
+
+### The code
 
 ```python
-"""
-# Definition for a Node.
-class Node:
-    def __init__(self, val = 0, neighbors = None):
-        self.val = val
-        self.neighbors = neighbors if neighbors is not None else []
-"""
-
 class Solution:
-    def cloneGraph(self, node: "Node | None") -> "Node | None":
+    def cloneGraph(self, node: "Node") -> "Node":
         if not node:
             return None
 
-        # Map original node references to their cloned copies
-        cloned: dict["Node", "Node"] = {}
+        copies = {}   # original node -> its copy
 
-        def dfs(curr: "Node") -> "Node":
-            # Return cached clone if already visited
-            if curr in cloned:
-                return cloned[curr]
+        def clone(original):
+            if original in copies:
+                return copies[original]   # already done, and this breaks cycles
 
-            # 1. Allocate new clone node
-            copy = Node(curr.val)
+            copy = Node(original.val)
+            copies[original] = copy       # record BEFORE visiting neighbours
 
-            # 2. Register immediately before neighbor recursion to terminate cycles
-            cloned[curr] = copy
-
-            # 3. Recursively copy and connect all neighbors
-            for neighbor in curr.neighbors:
-                copy.neighbors.append(dfs(neighbor))
+            for neighbour in original.neighbors:
+                copy.neighbors.append(clone(neighbour))
 
             return copy
 
-        return dfs(node)
+        return clone(node)
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Breadth-First Search (BFS)">
+---
 
-```python
-from collections import deque
+### Time and space complexity
 
-class Solution:
-    def cloneGraph(self, node: "Node | None") -> "Node | None":
-        if not node:
-            return None
+#### Time: $O(V + E)$
 
-        # Map original nodes to copies and prime the queue
-        cloned: dict["Node", "Node"] = {node: Node(node.val)}
-        queue: deque["Node"] = deque([node])
+Every node is created once, thanks to the dictionary, and every edge is followed once from each of its ends.
 
-        while queue:
-            curr = queue.popleft()
+#### Space: $O(V)$
 
-            for neighbor in curr.neighbors:
-                # If neighbor has not been instantiated, allocate and enqueue it
-                if neighbor not in cloned:
-                    cloned[neighbor] = Node(neighbor.val)
-                    queue.append(neighbor)
-
-                # Connect cloned neighbor to cloned current node
-                cloned[curr].neighbors.append(cloned[neighbor])
-
-        return cloned[node]
-```
-
-  </TabItem>
-</Tabs>
+The dictionary holds one entry per node, plus recursion depth that can reach the number of nodes on a long chain. The copied graph itself is the output.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Depth-First Search (DFS)** | $O(V + E)$ | $O(V)$ | Traverses each vertex and edge once. Call stack reaches $O(V)$ frames on deep line-shaped graphs. |
-| **Breadth-First Search (BFS)** | $O(V + E)$ | $O(V)$ | Uses an explicit queue. Avoids recursion stack overflow for graphs with high diameters. |
-
----
-
-### Common Pitfall: Registering the Clone Too Late
-
-The most common bug is appending to `copy.neighbors` before registering `cloned[curr] = copy`. If the hash map registration is deferred until after neighbors are processed, any circular reference or back-edge will fail to recognize that the node is currently being constructed. The algorithm will re-enter the same node and overflow the call stack. Always record the clone in the map immediately after allocating it.
-
----
-
-### Concise Interview Takeaway
-
-Deep copying an arbitrary graph requires pairing traversal with memoization. Maintain a hash map linking each original node to its newly allocated clone, and register the clone before descending into neighbors. This guarantees that cycles terminate in $O(1)$ lookups, producing an exact structural replica in $O(V + E)$ time and $O(V)$ space.
+Keep a dictionary from each original node to its copy. It prevents the infinite walk round a cycle **and** makes shared neighbours share a copy, which is what a deep copy means. Create the copy with an empty neighbour list and record it before recursing, since recording afterwards leaves cycles unguarded. $O(V + E)$ time, $O(V)$ space.
