@@ -1,141 +1,96 @@
 ---
 id: 1-valid-parentheses
 title: "20. Valid Parentheses"
-description: "LIFO stack matching closing brackets to opening expectations"
+description: "Push the closer you expect, and check it when a closer arrives"
 sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Stacks</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Matching Pairs</span>
 
-> **Problem Statement:** Given a string `s` containing just the characters `'('`, `')'`, `'{'`, `'}'`, `'['` and `']'`, determine if the input string is valid. Brackets must close in the exact reverse order of opening, and each close bracket must match an open bracket of the same type.
+> **Problem Statement:** You are given a string of brackets, round, square and curly. Decide whether they are balanced: every bracket closed by one of the same type, and closed in the opposite order to how they were opened.
 
 ```text
 Input:  s = "()[]{}"
 Output: true
-Explanation: Every open bracket is closed by the same type of bracket in the correct order.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Parentheses matching follows a Last-In, First-Out (LIFO) discipline. Whenever an opening bracket appears, it establishes an expectation for a matching closing bracket. Because nested structures must close from the inside out, the most recently opened bracket must always be the very first one closed.
+Brackets close in the reverse of the order they open. The most recent thing you opened is always the first thing that has to close.
 
-#### Brute Force: Repeated String Replacement
-A naive approach repeatedly searches the string for adjacent matching pairs `"()"`, `"{}"`, and `"[]"` and replaces them with the empty string `""`. We repeat this replacement loop until no more pairs can be found. If the resulting string is empty, the original was valid; otherwise, it was invalid. Because each replacement pass scans the string in $O(n)$ time and can shrink the string by at most 2 characters at a time, this takes $O(n^2)$ time in the worst case (such as `"((((...))))"`), allocating new strings repeatedly.
+That is exactly how a stack behaves, so use one to hold **what you are still waiting for**. Every time you meet an opening bracket, push the closer it will eventually need. Every time you meet a closing bracket, it has to be the one sitting on top. Anything else means the brackets are tangled.
 
-#### Optimal Approach: LIFO Stack with Bracket Map
-Instead of repeatedly scanning and copying strings, we can process the characters in a single pass using a stack. 
-
-Whenever we encounter an opening bracket (`(`, `{`, `[`), we push it onto the stack. When a closing bracket arrives, it acts as a claim ticket: it looks at the top of the stack and demands its corresponding open bracket partner. By storing bracket pairs in a hash map where closing brackets are keys (`{')': '(', '}': '{', ']': '['}`), we can validate each closing bracket in $O(1)$ time:
-- If the stack is empty when a closer arrives, a bracket closed without ever opening, so the string is invalid.
-- If the top element does not match the closer's required partner, the nesting order is violated, so the string is invalid.
-- If the top element matches, we pop it off the stack and continue.
-
-#### Execution Walkthrough
-
-Let us trace `s = "{[]}"`:
-
-| Step | Character | Action | Stack State | Valid So Far? |
-| :---: | :---: | :--- | :--- | :---: |
-| **1** | `'{'` | Opener: push `'{'` | `['{']` | Yes |
-| **2** | `'['` | Opener: push `'['` | `['{', '[']` | Yes |
-| **3** | `']'` | Closer: top is `'['` matches `']'`, pop `'['` | `['{']` | Yes |
-| **4** | `'}'` | Closer: top is `'{'` matches `'}'`, pop `'{'` | `[]` | Yes |
-
-At the end of iteration, the stack is empty, confirming that every bracket was matched and closed properly.
+Pushing the expected closer rather than the opener itself is a small choice that makes the comparison a direct equality check, with no lookup table at the moment of comparison.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Parity Quick Check:** If `len(s) % 2 != 0`, an odd number of brackets can never pair up evenly. Return `False` immediately.
-2. **Initialize Lookup Table and Stack:** Create a hash map `bracket_map` mapping each closing bracket to its expected opener: `{')': '(', '}': '{', ']': '['}`. Initialize an empty list `stack = []`.
-3. **Iterate Characters:** For each character `char` in `s`:
-   - If `char` is in `bracket_map` (it is a closing bracket):
-     - Check if `stack` is non-empty. If empty, return `False`.
-     - Pop `top = stack.pop()`.
-     - If `top != bracket_map[char]`, return `False`.
-   - Otherwise, `char` is an opening bracket:
-     - Push `char` onto `stack`.
-4. **Final Check:** Return `len(stack) == 0`. Any remaining elements represent unclosed opening brackets.
+Walk the string once.
+
+**An opening bracket** means a new promise, so push its matching closer onto the stack.
+
+**A closing bracket** has to settle the most recent promise. Two things can go wrong. The stack might be empty, meaning this bracket closes something that was never opened. Or the top might be a different closer, meaning the types are crossed, like `([)]`.
+
+**At the end**, the stack must be empty. Anything still sitting there was opened and never closed, which catches a string like `(((`.
+
+That last check is the one people forget. Without it, `"((("` walks the whole string without ever failing a comparison and wrongly reports `true`.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: LIFO Stack" default>
+Take `s = "()[]{}"`.
+
+1. **`(`** pushes the expectation `)`. The stack is `)`.
+2. **`)`** matches the top, so pop it. The stack is empty.
+3. **`[`** pushes `]`. The stack is `]`.
+4. **`]`** matches, pop. Empty again.
+5. **`{`** pushes `}`, and **`}`** matches and pops.
+
+The stack ends empty, so the answer is `true`.
+
+Now take the crossed `"([)]"`. The `(` pushes `)` and the `[` pushes `]`, so the stack reads `)` then `]` with `]` on top. The `)` arrives and does not match `]`, so the answer is `false`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def isValid(self, s: str) -> bool:
-        # Odd-length strings cannot be partitioned into matching pairs
-        if len(s) % 2 != 0:
-            return False
+        closer = {"(": ")", "[": "]", "{": "}"}
+        expected = []
 
-        bracket_map: dict[str, str] = {
-            ')': '(',
-            '}': '{',
-            ']': '['
-        }
-        stack: list[str] = []
+        for ch in s:
+            if ch in closer:
+                expected.append(closer[ch])
+            elif not expected or expected.pop() != ch:
+                return False
 
-        for char in s:
-            if char in bracket_map:
-                # If stack is empty or top does not match expected opener
-                if not stack or stack[-1] != bracket_map[char]:
-                    return False
-                stack.pop()
-            else:
-                stack.append(char)
-
-        return len(stack) == 0
+        # anything still waiting was opened and never closed
+        return not expected
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Alternative / Brute Force: String Replacement">
+---
 
-```python
-class Solution:
-    def isValid(self, s: str) -> bool:
-        if len(s) % 2 != 0:
-            return False
+### Time and space complexity
 
-        prev_len = -1
-        while len(s) != prev_len:
-            prev_len = len(s)
-            s = s.replace("()", "").replace("{}", "").replace("[]", "")
+#### Time: $O(n)$
 
-        return len(s) == 0
-```
+One pass over the string, and each character causes at most one push or one pop, both of which are constant time.
 
-  </TabItem>
-</Tabs>
+#### Space: $O(n)$
+
+The stack. A string of nothing but opening brackets pushes an expectation for every character before anything is ever popped, so in the worst case it holds `n` entries.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force (String Replacement)** | $O(n^2)$ | $O(n)$ | Repeatedly allocates new strings while searching for adjacent pairs. Inefficient for long strings. |
-| **Optimal (LIFO Stack)** | $O(n)$ | $O(n)$ | Single scan with $O(1)$ push and pop operations. Requires auxiliary stack memory proportional to depth. |
-
----
-
-### Common Pitfall: Premature Pop and Lingering Openers
-
-A frequent bug occurs when handling edge cases at both ends of the stack lifecycle. When a closing bracket arrives first (such as `s = "]"`), calling `stack.pop()` without first verifying that the stack is non-empty raises an `IndexError`. Conversely, strings with only opening brackets (such as `s = "((("`) will successfully complete the loop without errors. Forgetting to verify `len(stack) == 0` at the very end would incorrectly return `True` instead of `False`.
-
----
-
-### Concise Interview Takeaway
-
-Use a LIFO stack paired with a hash map mapping closing brackets to opening brackets. Push openers onto the stack and pop to validate against closers. Filter out odd string lengths in $O(1)$ time up front, and verify that the stack is completely empty at completion to achieve optimal $O(n)$ time and $O(n)$ auxiliary space.
+Push the closer you expect, not the bracket you saw, so the check at a closing bracket is a plain equality against the top. Fail if the stack is empty when a closer arrives, fail if the top disagrees, and fail at the end if anything is left over. $O(n)$ time, $O(n)$ space.

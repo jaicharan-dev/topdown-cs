@@ -1,173 +1,115 @@
 ---
 id: 8-basic-calculator-ii
 title: "227. Basic Calculator II"
-description: "Operator precedence resolution with a deferred-addition stack"
+description: "Addition can wait on a stack, multiplication cannot wait at all"
 sidebar_position: 8
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Stacks</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Operator Precedence</span>
 
-> **Problem Statement:** Given a string `s` representing an arithmetic expression containing non-negative integers, `+`, `-`, `*`, `/`, and empty spaces, evaluate this expression and return its value. Integer division must truncate toward zero. You may not use any built-in `eval()` function.
+> **Problem Statement:** You are given a string holding an arithmetic expression with non-negative numbers, the four operators and some spaces. Work out its value. Division cuts toward zero, and you cannot use a built-in evaluator.
 
 ```text
 Input:  s = "3+2*2"
 Output: 7
-Explanation: Multiplication takes precedence over addition: 3 + (2 * 2) = 7.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-In arithmetic expressions without parentheses, operator precedence governs evaluation order:
-- Multiplication and division (`*`, `/`) have high precedence and must execute immediately.
-- Addition and subtraction (`+`, `-`) have low precedence and can be deferred.
+The difficulty is precedence. Reading `3+2*2` left to right, you meet the `+` before you know that a `*` is coming, and the `*` has to happen first.
 
-Think of a stack as an accumulator tray of signed numbers waiting to be summed together at the end. When we encounter `+` or `-`, we defer the operation by placing the signed value onto the stack. When we encounter `*` or `/`, we do not defer: we immediately pop the top number, execute the multiplication or division with the current number, and push the combined result back onto the tray.
+The way out is to notice that the two kinds of operator behave very differently.
 
-#### Brute Force: Two-Pass Tokenization and Reduction
-A naive approach tokenizes the string into an array of numbers and operator symbols. A first pass scans from left to right looking for `*` and `/`. For each found, it computes the operation with its left and right operands, replaces the 3 tokens with the single result, and shrinks the array. A second pass then scans left to right to evaluate all `+` and `-` operations. Because deleting elements from a list takes $O(n)$ time, repeated array modifications result in $O(n^2)$ time.
+**Multiplication and division are urgent.** When you reach `*`, both of its operands are already known: the number just before it and the number just after. You can do it the moment the second number is complete, and nothing later can change the result.
 
-#### Optimal Approach: Single-Pass Operator Precedence Stack
-Because an operator sits between its two operands, when reading from left to right, we encounter the operator before we know the right-hand operand. We maintain a `pending_op` variable initialized to `'+'`. 
+**Addition and subtraction can wait.** You cannot finish `3 + something` until you know what that something turns out to be, and the something might involve multiplication.
 
-As we scan characters:
-1. Digits accumulate into `curr_num`.
-2. When we hit a new operator or the end of the string, the number `curr_num` is complete, and we apply `pending_op` to it:
-   - If `pending_op == '+'`: push `curr_num`.
-   - If `pending_op == '-'`: push `-curr_num`.
-   - If `pending_op == '*'`: pop top, push `stack.pop() * curr_num`.
-   - If `pending_op == '/'`: pop top, push `int(stack.pop() / curr_num)`.
-3. Update `pending_op` to the newly encountered character and reset `curr_num = 0`.
-4. When the entire string is processed, every multiplication and division has been evaluated, and the final answer is simply `sum(stack)`.
-
-#### Execution Walkthrough
-
-Let us trace `s = "3 + 2 * 2"`:
-
-| Step | Char | `curr_num` | `pending_op` | Trigger Evaluation? | Stack State |
-| :---: | :---: | :---: | :---: | :---: | :--- |
-| **1** | `'3'` | `3` | `'+'` | No | `[]` |
-| **2** | `'+'` | `3` | `'+'` | Yes: push `3`, `pending_op = '+'` | `[3]` |
-| **3** | `'2'` | `2` | `'+'` | No | `[3]` |
-| **4** | `'*'` | `2` | `'+'` | Yes: push `2`, `pending_op = '*'` | `[3, 2]` |
-| **5** | `'2'` | `2` | `'*'` | End of string: pop `2`, compute $2 \times 2 = 4$, push `4` | `[3, 4]` |
-
-Final sum: `sum([3, 4]) = 7`.
+So collect the additions as a pile of pending numbers, and perform the multiplications straight away by reaching back into the pile. Add up the pile at the end.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State:** Create an empty list `stack = []`, an integer `curr_num = 0`, and a character `pending_op = '+'`.
-2. **Scan Expression:** Iterate through each character `ch` and index `i` across `enumerate(s)`:
-   - If `ch.isdigit()`: accumulate `curr_num = curr_num * 10 + int(ch)`.
-   - If `ch in "+-*/"` or `i == len(s) - 1` (excluding whitespace):
-     - If `pending_op == '+'`: push `curr_num` to `stack`.
-     - If `pending_op == '-'`: push `-curr_num` to `stack`.
-     - If `pending_op == '*'`: pop top, push `stack.pop() * curr_num`.
-     - If `pending_op == '/'`: pop top, push `int(stack.pop() / curr_num)`.
-     - Update `pending_op = ch`.
-     - Reset `curr_num = 0`.
-3. **Return Total:** Return `sum(stack)`.
+Keep a stack of numbers that are waiting to be added, the number currently being read, and the operator that came **before** that number.
+
+When a number is complete, deal with it according to that previous operator:
+
+- **`+`** pushes the number onto the stack, waiting.
+- **`-`** pushes its negative, which turns every subtraction into an addition and saves a separate case at the end.
+- **`*`** pops the last pending number, multiplies, and pushes the result back. The pile shrinks and regrows by one.
+- **`/`** does the same with division.
+
+At the end, the answer is simply the sum of the pile.
+
+Two parsing details. Numbers can have several digits, so build them with `num = num * 10 + digit`. And a number is complete either when an operator appears **or** when the string ends, so the final number needs the same treatment, which is easiest to handle by checking for the last character inside the same loop.
+
+As in Reverse Polish Notation, division must cut toward zero, so use `int(a / b)` rather than `//`.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Operator Precedence Stack" default>
+Take `s = "3+2*2"`, with the pending operator starting as `+`.
+
+1. **`3`** is read. The next character is `+`, so the number is complete. The pending operator is `+`, so push `3`. The pile is `3`. The pending operator becomes `+`.
+2. **`2`** is read. The next character is `*`, so the number is complete. The pending operator is `+`, so push `2`. The pile is `3, 2`. The pending operator becomes `*`.
+3. **`2`** is read and the string ends, so the number is complete. The pending operator is `*`, so pop the `2` from the pile, multiply by this `2`, and push `4`. The pile is `3, 4`.
+
+The sum of the pile is `7`.
+
+Notice that the `*` reached back and changed a number already on the pile. That reaching back is precedence being handled.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def calculate(self, s: str) -> int:
-        stack: list[int] = []
-        curr_num = 0
-        pending_op = '+'
+        stack = []
+        num = 0
+        op = "+"       # the operator sitting in front of the number being read
 
         for i, ch in enumerate(s):
             if ch.isdigit():
-                curr_num = curr_num * 10 + int(ch)
+                num = num * 10 + int(ch)   # numbers can be several digits long
 
-            # Evaluate when encountering an operator or the last character
-            if (not ch.isdigit() and ch != ' ') or i == len(s) - 1:
-                if pending_op == '+':
-                    stack.append(curr_num)
-                elif pending_op == '-':
-                    stack.append(-curr_num)
-                elif pending_op == '*':
-                    stack.append(stack.pop() * curr_num)
-                elif pending_op == '/':
-                    # int() truncates division toward zero
-                    stack.append(int(stack.pop() / curr_num))
+            # a number is finished at an operator, or at the end of the string
+            if (not ch.isdigit() and ch != " ") or i == len(s) - 1:
+                if op == "+":
+                    stack.append(num)
+                elif op == "-":
+                    stack.append(-num)
+                elif op == "*":
+                    stack.append(stack.pop() * num)
+                else:
+                    stack.append(int(stack.pop() / num))
 
-                pending_op = ch
-                curr_num = 0
+                op = ch
+                num = 0
 
         return sum(stack)
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: O(1) Space Running Total">
+---
 
-```python
-class Solution:
-    def calculate(self, s: str) -> int:
-        total = 0
-        last_term = 0
-        curr_num = 0
-        pending_op = '+'
+### Time and space complexity
 
-        for i, ch in enumerate(s):
-            if ch.isdigit():
-                curr_num = curr_num * 10 + int(ch)
+#### Time: $O(n)$
 
-            if (not ch.isdigit() and ch != ' ') or i == len(s) - 1:
-                if pending_op == '+':
-                    total += last_term
-                    last_term = curr_num
-                elif pending_op == '-':
-                    total += last_term
-                    last_term = -curr_num
-                elif pending_op == '*':
-                    last_term = last_term * curr_num
-                elif pending_op == '/':
-                    last_term = int(last_term / curr_num)
+One pass over the string. Each character costs a digit fold, or a push and sometimes a pop. The final sum walks the pile once, and the pile is never longer than the count of numbers in the expression.
 
-                pending_op = ch
-                curr_num = 0
+#### Space: $O(n)$
 
-        return total + last_term
-```
-
-  </TabItem>
-</Tabs>
+The pile of pending additions. An expression made entirely of `+` keeps every number waiting until the end, so it holds one entry per number.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Operator Precedence Stack** | $O(n)$ | $O(n)$ | Single pass over the expression, deferring additions onto a stack and resolving multiplications immediately. |
-| **Running Total (O(1) Space)** | $O(n)$ | $O(1)$ | Maintains `last_term` and `total` directly, eliminating auxiliary stack memory. |
-
----
-
-### Common Pitfall: Final Operand Trigger and Negative Division
-
-Two common bugs occur when implementing this parser:
-1. **Missing the last number:** Because operations are evaluated when the *next* operator arrives, the final number in the string has no subsequent operator to trigger its evaluation. Checking `i == len(s) - 1` ensures the final accumulated number is processed.
-2. **Floor division on negative values:** In Python, `-3 // 2` equals `-2` because `//` rounds toward negative infinity. The problem specifies truncation toward zero, where $-3 / 2$ must evaluate to `-1`. Using `int(stack.pop() / curr_num)` performs float division first, truncating toward zero correctly.
-
----
-
-### Concise Interview Takeaway
-
-Because operators lag behind their operands, store the pending operator and execute it once the full operand is parsed. Evaluate high-precedence multiplication and division immediately by popping the top element of the stack, and defer addition and subtraction by pushing signed numbers onto the stack. A final `sum(stack)` produces the result in linear $O(n)$ time and $O(n)$ space.
+Multiplication and division are urgent because both their operands are known the moment the second number ends. Addition and subtraction can wait, so stack them, pushing a negative for subtraction so there is only ever one operation at the end. Multiplication reaches back and rewrites the last pending number, and that reaching back is what precedence means here. $O(n)$ time, $O(n)$ space.

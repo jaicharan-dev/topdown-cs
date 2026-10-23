@@ -1,154 +1,104 @@
 ---
 id: 3-evaluate-reverse-polish-notation
 title: "150. Evaluate Reverse Polish Notation"
-description: "Operand stack evaluation with operand ordering and truncating division"
+description: "Numbers wait on a stack, and an operator takes the two most recent"
 sidebar_position: 3
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Stacks</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Operand Stack</span>
 
-> **Problem Statement:** You are given an array of strings `tokens` that represents an arithmetic expression in Reverse Polish Notation (postfix). Evaluate the expression and return an integer representing its value. Division between two integers should truncate toward zero.
+> **Problem Statement:** You are given an arithmetic expression written in postfix form, where each operator comes after the two values it applies to. Work out what it evaluates to. Division should cut toward zero.
 
 ```text
 Input:  tokens = ["2", "1", "+", "3", "*"]
 Output: 9
-Explanation: ((2 + 1) * 3) = 9
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-In standard arithmetic (infix notation), operators sit between numbers, requiring parentheses and operator precedence rules (`(2 + 1) * 3`). In Reverse Polish Notation (postfix), operands appear first, followed immediately by their operator (`"2"`, `"1"`, `"+"`, `"3"`, `"*"`). Postfix expressions are unambiguous and require no parentheses.
+Postfix writing exists to remove brackets and precedence entirely. `2 1 +` means "add those two", and `3 *` then means "multiply the result by three". There is never any question about what happens first, because the order is written into the arrangement.
 
-#### Brute Force: In-Place Array Reduction
-A naive method repeatedly searches the list from left to right for the first operator. Once found, it retrieves the two preceding numbers, evaluates the sub-expression, replaces the three items in the array with the single result, and repeats. Because deleting two elements and shifting an array takes $O(n)$ time, performing this across $O(n)$ operators degrades total runtime to $O(n^2)$.
+That makes evaluating it almost mechanical. Numbers have to wait around until an operator calls for them, and the operator always wants the two most recent ones. Waiting values with the most recent needed first is a stack.
 
-#### Optimal Approach: Operand Stack
-Instead of scanning repeatedly and shifting array elements, we process tokens sequentially in a single pass using a LIFO operand stack:
-- Every time a number is encountered, push it onto the stack.
-- Whenever an arithmetic operator arrives (`+`, `-`, `*`, `/`), pop the top two numbers from the stack.
-- The first popped element is the right operand ($b$), and the second popped element is the left operand ($a$).
-- Compute the result, push it back onto the stack, and continue.
-- After all tokens are processed, the single remaining element on the stack is the final answer.
-
-#### Execution Walkthrough
-
-Let us trace `tokens = ["2", "1", "+", "3", "*"]`:
-
-| Step | Token | Type | Action Taken | Stack State |
-| :---: | :---: | :---: | :--- | :--- |
-| **1** | `"2"` | Number | Push `2` | `[2]` |
-| **2** | `"1"` | Number | Push `1` | `[2, 1]` |
-| **3** | `"+"` | Operator | Pop `b = 1`, pop `a = 2`. Compute $2 + 1 = 3$. Push `3` | `[3]` |
-| **4** | `"3"` | Number | Push `3` | `[3, 3]` |
-| **5** | `"*"` | Operator | Pop `b = 3`, pop `a = 3`. Compute $3 \times 3 = 9$. Push `9` | `[9]` |
-
-Final result returned: `9`.
+So: push numbers as you meet them. On an operator, pop two, combine them, push the result back. When the tokens run out, the single value left on the stack is the answer.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Stack:** Create an empty list `stack = []` to store evaluated numerical operands.
-2. **Iterate Tokens:** Traverse each string `token` in `tokens`:
-   - If `token` is an operator (`+`, `-`, `*`, `/`):
-     - Pop the right operand: `b = stack.pop()`.
-     - Pop the left operand: `a = stack.pop()`.
-     - Evaluate the operation:
-       - For `+`: push `a + b`.
-       - For `-`: push `a - b`.
-       - For `*`: push `a * b`.
-       - For `/`: push `int(a / b)` to truncate division toward zero.
-   - Otherwise, `token` represents an integer:
-     - Convert the string to an integer `int(token)` and push it onto `stack`.
-3. **Return Result:** Return `stack[0]`, the sole remaining value representing the complete evaluated expression.
+The mechanics are straightforward, and there are exactly two details that catch people.
+
+**The operands come back in reverse.** The first value you pop is the one that was pushed most recently, which is the **right** operand. The second pop is the left. For addition and multiplication it makes no difference, but for subtraction and division it is the whole answer. Getting this backwards turns `5 1 -` into `-4` instead of `4`.
+
+**Division has to cut toward zero.** In Python, `//` rounds toward negative infinity, so `-7 // 2` gives `-4` when the problem wants `-3`. Dividing normally and converting with `int` does the right thing, because that conversion discards the fractional part rather than rounding down.
+
+A valid postfix expression always leaves exactly one value behind, so there is no need to check anything at the end.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Operand Stack" default>
+Take `tokens = ["2", "1", "+", "3", "*"]`.
+
+1. **`2`** is a number, so push it. The stack is `2`.
+2. **`1`** is a number, so push it. The stack is `2, 1`.
+3. **`+`** pops `1` as the right operand and `2` as the left. The sum `3` goes back on. The stack is `3`.
+4. **`3`** is a number, so push it. The stack is `3, 3`.
+5. **`*`** pops `3` and `3`, multiplies to `9`, and pushes it back.
+
+One value is left, so the answer is `9`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def evalRPN(self, tokens: list[str]) -> int:
-        stack: list[int] = []
+        stack = []
 
         for token in tokens:
+            if token not in ("+", "-", "*", "/"):
+                stack.append(int(token))
+                continue
+
+            right = stack.pop()
+            left = stack.pop()   # popped second, so this is the left operand
+
             if token == "+":
-                stack.append(stack.pop() + stack.pop())
-            elif token == "*":
-                stack.append(stack.pop() * stack.pop())
+                stack.append(left + right)
             elif token == "-":
-                b = stack.pop()  # Right operand
-                a = stack.pop()  # Left operand
-                stack.append(a - b)
-            elif token == "/":
-                b = stack.pop()  # Right operand
-                a = stack.pop()  # Left operand
-                # int(a / b) truncates toward zero in Python
-                stack.append(int(a / b))
+                stack.append(left - right)
+            elif token == "*":
+                stack.append(left * right)
             else:
-                stack.append(int(token))
+                # // rounds toward minus infinity; this cuts toward zero
+                stack.append(int(left / right))
 
         return stack[0]
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Lambda Dispatch Table">
-
-```python
-class Solution:
-    def evalRPN(self, tokens: list[str]) -> int:
-        stack: list[int] = []
-        operations = {
-            "+": lambda a, b: a + b,
-            "-": lambda a, b: a - b,
-            "*": lambda a, b: a * b,
-            "/": lambda a, b: int(a / b)
-        }
-
-        for token in tokens:
-            if token in operations:
-                b = stack.pop()
-                a = stack.pop()
-                stack.append(operations[token](a, b))
-            else:
-                stack.append(int(token))
-
-        return stack[0]
-```
-
-  </TabItem>
-</Tabs>
+The check is "is this token **not** an operator" rather than "does it look like a number", because negative values arrive as tokens like `"-4"`, and testing for digits would misread the minus sign.
 
 ---
 
-### Complexity Analysis
+### Time and space complexity
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force (In-Place Array Reduction)** | $O(n^2)$ | $O(1)$ extra space | Deleting elements and shifting array memory takes linear time per operator. |
-| **Optimal (Operand Stack)** | $O(n)$ | $O(n)$ | Evaluates the expression in a single pass with $O(1)$ push and pop operations per token. |
+#### Time: $O(n)$
 
----
+Every token is handled once. A number costs a push, an operator costs two pops, one arithmetic operation and a push. All constant.
 
-### Common Pitfall: Operand Ordering and Python Floor Division
+#### Space: $O(n)$
 
-Two major bugs commonly occur in this problem:
-1. **Asymmetric Operand Order:** Because the stack is LIFO, the first popped element is the right operand ($b$) and the second popped element is the left operand ($a$). Computing $b - a$ or $b / a$ reverses the operation and gives incorrect answers.
-2. **Floor Division vs Truncation:** Python's integer division operator `//` rounds toward negative infinity (`6 // -132` produces `-1`). The problem specification requires truncation toward zero (`6 / -132` must evaluate to `0`). Using `int(a / b)` performs true float division before truncating the decimal part, correctly matching integer truncation rules.
+The stack. An expression that lists many numbers before any operator, which is perfectly legal, holds all of them at once.
 
 ---
 
-### Concise Interview Takeaway
+### Remember this
 
-Evaluate Reverse Polish Notation using a single LIFO operand stack. Push numbers as encountered, and upon reaching an operator, pop the top two numbers where the first is the right operand and the second is the left operand. Always use `int(a / b)` in Python to truncate toward zero, processing all tokens in linear $O(n)$ time and $O(n)$ space.
+Push numbers, and on an operator pop two and push the result. The first pop is the **right** operand, which only matters for subtraction and division, and that is exactly where it is easy to get wrong. Use `int(left / right)` rather than `//`, because the problem wants division cut toward zero. $O(n)$ time, $O(n)$ space.

@@ -1,162 +1,109 @@
 ---
 id: 10-largest-rectangle-in-histogram
 title: "84. Largest Rectangle in Histogram"
-description: "Monotonic increasing stack tracking left and right boundaries"
+description: "Every bar stretches sideways until a shorter bar stops it"
 sidebar_position: 10
 sidebar_class_name: sidebar-hard
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Stacks</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Monotonic Stack</span>
 
-> **Problem Statement:** Given an array of integers `heights` representing the heights of adjacent bars in a histogram where each bar has width `1`, return the area of the largest rectangle that can be formed within the histogram.
+> **Problem Statement:** You are given the heights of bars standing side by side, each one unit wide. Find the area of the largest rectangle that fits inside them.
 
 ```text
 Input:  heights = [2, 1, 5, 6, 2, 3]
 Output: 10
-Explanation: The largest rectangle is formed by heights [5, 6] with height 5 and width 2, giving an area of 5 * 2 = 10 units.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Instead of trying to guess both rectangle widths and heights simultaneously, reframe the problem around bottlenecks: **What is the largest rectangle where bar $i$ serves as the minimum height?**
+Every possible rectangle has some bar as its limiting height. So instead of hunting for rectangles, take each bar in turn and ask the only question that matters:
 
-If bar $i$ has height $h$:
-- That rectangle can extend to the left until encountering a bar strictly shorter than $h$.
-- It can extend to the right until encountering a bar strictly shorter than $h$.
-- The area using bar $i$ as the bottleneck height is:
+> If the rectangle is exactly as tall as this bar, how wide can it be?
 
-$$\text{Area} = h \times (\text{right\_boundary} - \text{left\_boundary} - 1)$$
+As wide as the bar can stretch in both directions before it runs into something **shorter** than itself. A taller neighbour is no obstacle, since the rectangle only needs this bar's height. A shorter one is a hard stop, because the rectangle cannot stay at this height across it.
 
-To test every bar as a candidate bottleneck, we must identify the first smaller bar to the left and the first smaller bar to the right.
+```text
+area for this bar = its height  x  (distance to the first shorter bar on each side)
+```
 
-#### Brute Force: Expand Outward per Bar
-For every bar $i$, treat `heights[i]` as the minimum height and expand two pointers outwards: walk left while heights are $\ge heights[i]$, and walk right while heights are $\ge heights[i]$. Multiply the height by the total width spanned. With $n$ bars and up to $O(n)$ scanning time per bar, this requires $O(n^2)$ quadratic time, which times out on large inputs.
-
-#### Optimal Approach: Monotonic Increasing Stack
-A monotonic increasing stack of bar indices discovers both boundaries for every bar in amortized constant time:
-- Maintain indices in strictly increasing order of height.
-- When an arriving bar at index $i$ is strictly shorter than the bar at the top of the stack, the taller bar cannot extend any further to the right. The incoming index $i$ is precisely its right boundary.
-- We pop the taller bar `popped_idx` and record its height `h = heights[popped_idx]`.
-- Its left boundary is the index now at the top of the stack (`stack[-1]`), because all bars between `stack[-1]` and `popped_idx` were taller than `h` and have already been processed.
-- The width is given by $i - \text{stack}[-1] - 1$.
-- Appending a dummy height `0` to the end forces all remaining bars off the stack at completion, removing the need for a separate post-processing cleanup pass.
-
-#### Execution Walkthrough
-
-Let us trace `heights = [2, 1, 5, 6, 2, 3]` with a trailing `0` appended (`[2, 1, 5, 6, 2, 3, 0]`):
-
-| Step `i` | Height | Action Taken | Stack (Indices) | Popped Bar (`h`, `w`) | Computed Area | Max Area |
-| :---: | :---: | :--- | :--- | :---: | :---: | :---: |
-| **0** | `2` | `2 > stack[-1]` sentinel: push `0` | `[-1, 0]` | - | - | `0` |
-| **1** | `1` | `1 < heights[0]`: pop `0`, push `1` | `[-1, 1]` | `h=2, w=1-(-1)-1=1` | $2 \times 1 = 2$ | `2` |
-| **2** | `5` | `5 > heights[1]`: push `2` | `[-1, 1, 2]` | - | - | `2` |
-| **3** | `6` | `6 > heights[2]`: push `3` | `[-1, 1, 2, 3]` | - | - | `2` |
-| **4** | `2` | `2 < heights[3]`: pop `3`<br/>`2 < heights[2]`: pop `2`<br/>`2 >= heights[1]`: push `4` | `[-1, 1, 4]` | `h=6, w=4-2-1=1`<br/>`h=5, w=4-1-1=2` | $6 \times 1 = 6$<br/>$5 \times 2 = 10$ | `10` |
-| **5** | `3` | `3 > heights[4]`: push `5` | `[-1, 1, 4, 5]` | - | - | `10` |
-| **6** | `0` | `0` flushes stack: pop `5`, pop `4`, pop `1` | `[-1]` | `h=3, w=6-4-1=1`<br/>`h=2, w=6-1-1=4`<br/>`h=1, w=6-(-1)-1=6` | $3 \times 1 = 3$<br/>$2 \times 4 = 8$<br/>$1 \times 6 = 6$ | `10` |
-
-Final maximum area returned: `10`.
+Do that for every bar and keep the largest. The work is finding those two boundaries without scanning outward each time.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Sentinels:** Append a dummy height `0` to `heights` to create `extended_heights`. Initialize `stack = [-1]` to serve as an imaginary left boundary before index `0`, and set `max_area = 0`.
-2. **Iterate Bars:** Loop through index `i` and height `h` across `enumerate(extended_heights)`:
-   - While `stack[-1] != -1` and `extended_heights[stack[-1]] > h`:
-     - Pop `popped_idx = stack.pop()`.
-     - Read the bar height: `current_height = extended_heights[popped_idx]`.
-     - Compute the width: `width = i - stack[-1] - 1`.
-     - Update `max_area = max(max_area, current_height * width)`.
-   - Push `i` onto `stack`.
-3. **Return Maximum Area:** Return `max_area`.
+Walk left to right with a stack of bar positions whose heights **increase** from bottom to top.
+
+While the current bar is shorter than the one on top of the stack, that top bar has just found its right-hand boundary: the current position. So pop it and settle it. Its left-hand boundary is whatever is now beneath it on the stack, because that is the nearest earlier bar shorter than it, everything between having been popped already.
+
+The width is then the gap between those two boundaries, exclusive on both ends:
+
+```text
+width = current position - position now on top - 1
+```
+
+If the stack empties when you pop, there was no shorter bar to the left at all, so the rectangle reaches back to the very start of the histogram. Treating the missing position as `-1` makes that fall out of the same formula.
+
+Finally, bars still on the stack when the walk ends never met anything shorter on the right, so their rectangles extend to the end. Rather than writing a separate loop for them, append a bar of height zero to the input. It is shorter than everything, so it flushes the stack through the normal path.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Monotonic Increasing Stack" default>
+Take `heights = [2, 1, 5, 6, 2, 3]`.
+
+1. **Position 0, height 2.** The stack is empty, so push it.
+2. **Position 1, height 1.** It is shorter than the `2`, so pop the `2`. The stack is now empty, so its left boundary is the very start, giving a width of `1 - (-1) - 1 = 1` and an area of `2`. Push position 1.
+3. **Positions 2 and 3, heights 5 and 6.** Each is taller than the one before, so both just get pushed. The stack holds heights 1, 5, 6.
+4. **Position 4, height 2.** It is shorter than `6`, so pop it: its left boundary is the `5` at position 2, width `4 - 2 - 1 = 1`, area `6`. Still shorter than `5`, so pop that too: left boundary is the `1` at position 1, width `4 - 1 - 1 = 2`, area `10`. That is the best so far. Now push position 4.
+5. **Position 5, height 3.** Taller than the `2`, so push.
+6. **The trailing zero** flushes everything: the `3` gives `3`, the `2` gives `2 * 4 = 8`, and the `1` spans the whole histogram for `1 * 6 = 6`.
+
+The largest is `10`, the rectangle of height `5` across the bars `5` and `6`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def largestRectangleArea(self, heights: list[int]) -> int:
-        # Append 0 to flush all remaining bars out of the stack at completion
-        extended_heights = heights + [0]
-        # -1 serves as the left-boundary sentinel before index 0
-        stack: list[int] = [-1]
-        max_area = 0
+        stack = []   # positions, with heights increasing from bottom to top
+        best = 0
 
-        for i, h in enumerate(extended_heights):
-            # When the current bar is shorter than the top of the stack,
-            # the top bar cannot extend further right.
-            while stack[-1] != -1 and extended_heights[stack[-1]] > h:
-                popped_idx = stack.pop()
-                current_height = extended_heights[popped_idx]
-                # Right boundary is i; Left boundary is stack[-1]
-                current_width = i - stack[-1] - 1
-                max_area = max(max_area, current_height * current_width)
+        # the trailing zero is shorter than everything, so it settles the rest
+        for i, h in enumerate(heights + [0]):
+            while stack and heights[stack[-1]] >= h:
+                height = heights[stack.pop()]
+                left = stack[-1] if stack else -1
+                best = max(best, height * (i - left - 1))
 
             stack.append(i)
 
-        return max_area
+        return best
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Alternative / Brute Force: Expand Around Center">
+---
 
-```python
-class Solution:
-    def largestRectangleArea(self, heights: list[int]) -> int:
-        n = len(heights)
-        max_area = 0
+### Time and space complexity
 
-        for i in range(n):
-            h = heights[i]
-            # Expand left
-            left = i
-            while left >= 0 and heights[left] >= h:
-                left -= 1
-            # Expand right
-            right = i
-            while right < n and heights[right] >= h:
-                right += 1
-            # Width between strictly shorter boundaries
-            width = right - left - 1
-            max_area = max(max_area, h * width)
+#### Time: $O(n)$
 
-        return max_area
-```
+Each position is pushed once and popped once, so the stack work totals at most `2n` operations however deep the inner loop occasionally runs.
 
-  </TabItem>
-</Tabs>
+Checking every pair of boundaries directly would be $O(n^2)$, and this problem is the standard example of a monotonic stack turning that into a single pass.
+
+#### Space: $O(n)$
+
+The stack. Bars that rise the whole way across, like `[1, 2, 3, 4, 5]`, are all pushed before anything is settled.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force (Expand Around Center)** | $O(n^2)$ | $O(1)$ extra space | Expands outward from each bar to find boundaries. Quadratic time makes it unsuitable for large inputs. |
-| **Optimal (Monotonic Increasing Stack)** | $O(n)$ | $O(n)$ | Every bar index is pushed and popped at most once. Finds both left and right boundaries in amortized $O(1)$ time per bar. |
-
----
-
-### Common Pitfall: Unflushed Stack Elements and Width Calculation
-
-Two tricky bugs commonly occur:
-1. **Unflushed elements:** For strictly increasing histograms (such as `[1, 2, 3, 4]`), an incoming bar is never strictly shorter than the stack top, leaving bars unflushed on the stack. Appending a trailing `0` height sentinel guarantees that every element is flushed and evaluated.
-2. **Incorrect width computation:** Using `i - popped_idx` instead of `i - stack[-1] - 1` produces an incorrect width. The left boundary is defined by the first shorter bar remaining on the stack, not the popped bar itself, because bars that were taller and popped earlier also span across the current height.
-
----
-
-### Concise Interview Takeaway
-
-Reframe histogram problems around bottleneck heights: for every bar, find its first shorter boundary to the left and to the right. A monotonic increasing stack discovers both boundaries simultaneously when a shorter bar arrives. Appending a trailing zero sentinel flushes all elements cleanly, achieving optimal $O(n)$ time and $O(n)$ space.
+Fix the height to each bar in turn and ask how wide it can stretch before meeting something shorter. Keep a stack of increasing heights: when a shorter bar arrives, pop and settle, taking the right boundary as the current position and the left as whatever now sits beneath on the stack, with `-1` standing in for an empty stack. Append a zero height to flush the leftovers. $O(n)$ time, $O(n)$ space.

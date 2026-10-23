@@ -1,142 +1,98 @@
 ---
 id: 4-daily-temperatures
 title: "739. Daily Temperatures"
-description: "Monotonic decreasing stack of day indices tracking warmer days in O(n)"
+description: "Days queue up waiting for warmth, and one warm day settles all of them at once"
 sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Stacks</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Monotonic Stack</span>
 
-> **Problem Statement:** Given an array of integers `temperatures` representing daily temperatures, return an array `answer` such that `answer[i]` is the number of days you must wait after the $i$-th day to get a warmer temperature. If there is no future day that is warmer, set `answer[i] = 0`.
+> **Problem Statement:** You are given the temperature for each day. For every day, say how many days you have to wait before it gets warmer. If it never does, the answer for that day is `0`.
 
 ```text
 Input:  temperatures = [73, 74, 75, 71, 69, 72, 76, 73]
 Output: [1, 1, 4, 2, 1, 1, 0, 0]
-Explanation:
-- Day 0 (73) waits 1 day for day 1 (74).
-- Day 1 (74) waits 1 day for day 2 (75).
-- Day 2 (75) waits 4 days for day 6 (76).
-- Day 3 (71) waits 2 days for day 5 (72).
-- Day 4 (69) waits 1 day for day 5 (72).
-- Day 5 (72) waits 1 day for day 6 (76).
-- Day 6 (76) and day 7 (73) have no warmer future days.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-When searching for the next greater element in an array, we need to defer decision-making until future elements arrive. Days that have not yet witnessed a warmer temperature can be viewed as waiting in a queue.
+Turn the question around. Instead of asking each day to go looking for its warmer day, let each day **wait**, and let the warm day do the work when it arrives.
 
-#### Brute Force: Forward Scan per Day
-The simplest approach checks every day individually: for day $i$, scan forward through all subsequent days $j > i$ until encountering the first temperature strictly greater than `temperatures[i]`. The wait time is $j - i$. On decreasing temperature series such as `[90, 80, 70, 60, ...]`, no warmer day exists, forcing the inner loop to scan all the way to the end for every single day. This takes $O(n^2)$ quadratic time.
+Keep a line of days that are still waiting. When a new day turns up, it settles every waiting day it is warmer than, handing each one the gap between them. Then it joins the back of the line itself, because it too is waiting for something warmer.
 
-#### Optimal Approach: Monotonic Decreasing Stack
-Instead of scanning forward repeatedly, we walk through the array once and store unresolved days in a LIFO stack. The stack maintains indices whose corresponding temperatures are in strictly decreasing order:
-- Every time a colder or equal day arrives, it cannot resolve any previously waiting day. It simply joins the top of the stack.
-- The moment a warmer day arrives, it immediately resolves all days on top of the stack that are strictly colder than itself.
-- For each resolved day `prev_day`, the distance is calculated as:
-
-$$\text{wait\_time} = \text{curr\_day} - \text{prev\_day}$$
-
-- Once all colder elements are popped and resolved, the current day is pushed onto the stack to await its own warmer future day.
-
-#### Execution Walkthrough
-
-Let us trace `temperatures = [73, 74, 75, 71, 69, 72]`:
-
-| Step | Day `i` | Temp | Action Taken | Stack (Indices) | Output `answer` |
-| :---: | :---: | :---: | :--- | :--- | :--- |
-| **1** | `0` | `73` | Push `0` | `[0]` | `[0, 0, 0, 0, 0, 0]` |
-| **2** | `1` | `74` | `74 > 73`: pop `0`, `ans[0] = 1 - 0 = 1`. Push `1` | `[1]` | `[1, 0, 0, 0, 0, 0]` |
-| **3** | `2` | `75` | `75 > 74`: pop `1`, `ans[1] = 2 - 1 = 1`. Push `2` | `[2]` | `[1, 1, 0, 0, 0, 0]` |
-| **4** | `3` | `71` | `71 <= 75`: push `3` | `[2, 3]` | `[1, 1, 0, 0, 0, 0]` |
-| **5** | `4` | `69` | `69 <= 71`: push `4` | `[2, 3, 4]` | `[1, 1, 0, 0, 0, 0]` |
-| **6** | `5` | `72` | `72 > 69`: pop `4`, `ans[4] = 5 - 4 = 1`<br/>`72 > 71`: pop `3`, `ans[3] = 5 - 3 = 2`<br/>`72 <= 75`: stop popping. Push `5` | `[2, 5]` | `[1, 1, 0, 2, 1, 0]` |
-
-Days remaining on the stack (`[2, 5]`) never witnessed a warmer day and retain their default `0`.
+The line is always in decreasing temperature order from front to back, and that is not a rule you impose, it just happens. Any waiting day that a newcomer beats leaves immediately, so nothing cooler than the newcomer is ever left behind it.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State:** Create an array `answer` of size $n$ filled with zeros. Initialize an empty list `stack = []` to store unresolved day indices.
-2. **Traverse Temperatures:** Iterate through `curr_day, curr_temp` using `enumerate(temperatures)`.
-3. **Resolve Colder Days:** While `stack` is non-empty and `curr_temp > temperatures[stack[-1]]`:
-   - Pop `prev_day = stack.pop()`.
-   - Record wait duration: `answer[prev_day] = curr_day - prev_day`.
-4. **Push Current Day:** Push `curr_day` onto `stack`.
-5. **Return Answer:** Return `answer`. Any day index that was never popped retains `0`.
+Hold the waiting days in a stack of **positions**, not temperatures, because the answer is a gap between days and you need the index arithmetic.
+
+For each new day, pop every waiting day whose temperature is lower, and for each one fill in the answer as the difference between the two positions. Then push the new day.
+
+Days still in the stack when the walk ends never found anything warmer. Their answers stay `0`, which is why starting the output filled with zeros saves a final cleanup pass.
+
+The nested `while` is the thing to be ready to defend. It never makes this quadratic, because each day is pushed exactly once and popped at most once, so the total number of pops across the whole run is at most `n`. Count the pushes and pops, not the loop nesting.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Monotonic Decreasing Stack" default>
+Take `temperatures = [73, 74, 75, 71, 69, 72, 76, 73]`.
+
+1. **Day 0 at 73** waits. The line is day 0.
+2. **Day 1 at 74** beats day 0, so day 0 gets `1 - 0 = 1`. Day 1 waits.
+3. **Day 2 at 75** beats day 1, so day 1 gets `1`. Day 2 waits.
+4. **Day 3 at 71** beats nobody, since 75 is warmer. It joins the line behind day 2.
+5. **Day 4 at 69** beats nobody either. The line is days 2, 3, 4 at 75, 71, 69.
+6. **Day 5 at 72** beats day 4 at 69, which gets `1`, and day 3 at 71, which gets `2`. It stops at day 2, since 75 is still warmer. Day 5 waits.
+7. **Day 6 at 76** beats day 5, which gets `1`, and then day 2, which gets `6 - 2 = 4`. Day 6 waits.
+8. **Day 7 at 73** beats nobody and waits.
+
+Days 6 and 7 are still in line at the end, so both keep `0`. The result is `[1, 1, 4, 2, 1, 1, 0, 0]`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def dailyTemperatures(self, temperatures: list[int]) -> list[int]:
-        n = len(temperatures)
-        answer: list[int] = [0] * n
-        stack: list[int] = []  # Stores indices of unresolved days
+        answer = [0] * len(temperatures)
+        waiting = []  # positions of days still looking for something warmer
 
-        for curr_day, curr_temp in enumerate(temperatures):
-            # Resolve all waiting days that are colder than today's temperature
-            while stack and curr_temp > temperatures[stack[-1]]:
-                prev_day = stack.pop()
-                answer[prev_day] = curr_day - prev_day
+        for day, temp in enumerate(temperatures):
+            # this day settles every cooler day still in the line
+            while waiting and temperatures[waiting[-1]] < temp:
+                earlier = waiting.pop()
+                answer[earlier] = day - earlier
 
-            stack.append(curr_day)
-
-        return answer
-```
-
-  </TabItem>
-  <TabItem value="brute" label="Alternative / Brute Force: Forward Scan">
-
-```python
-class Solution:
-    def dailyTemperatures(self, temperatures: list[int]) -> list[int]:
-        n = len(temperatures)
-        answer: list[int] = [0] * n
-
-        for i in range(n):
-            for j in range(i + 1, n):
-                if temperatures[j] > temperatures[i]:
-                    answer[i] = j - i
-                    break
+            waiting.append(day)
 
         return answer
 ```
 
-  </TabItem>
-</Tabs>
+---
+
+### Time and space complexity
+
+#### Time: $O(n)$
+
+Each day enters the stack once and leaves at most once, so there are at most `2n` stack operations across the entire run, however deeply the inner loop sometimes goes.
+
+Checking each day against every later day would be $O(n^2)$, which is what the stack is buying you.
+
+#### Space: $O(n)$
+
+The stack. A run of temperatures that falls the whole way never settles anything, so every day ends up waiting at once.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force (Forward Scan)** | $O(n^2)$ | $O(1)$ extra space | Compares each day against all future days. Highly inefficient on descending arrays. |
-| **Optimal (Monotonic Stack)** | $O(n)$ | $O(n)$ | Each index is pushed and popped at most once across the entire iteration, achieving amortized linear time. |
-
----
-
-### Common Pitfall: Storing Values Instead of Indices
-
-A frequent mistake is pushing temperature values onto the stack rather than day indices. Because the final answer requires calculating elapsed days (`curr_day - prev_day`), storing only temperatures leaves no way to determine how far apart the two days were without an auxiliary lookup. Moreover, storing day indices directly allows immediate access to both the temperature via `temperatures[idx]` and the exact position in the array.
-
----
-
-### Concise Interview Takeaway
-
-For next greater element problems requiring distance, maintain a monotonic decreasing stack of indices. When a strictly larger value appears, pop each smaller index and write the difference between current and popped indices directly to the result array. Each element enters and leaves the stack at most once, yielding optimal $O(n)$ time and $O(n)$ auxiliary space.
+Let days wait rather than search. Hold their positions in a stack, and when a warmer day arrives let it settle everything cooler that is still waiting, paying each one the gap in days. Anything left waiting at the end keeps its `0`. $O(n)$ time, because each day is pushed and popped at most once, and $O(n)$ space.

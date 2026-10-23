@@ -1,161 +1,105 @@
 ---
 id: 9-longest-valid-parentheses
 title: "32. Longest Valid Parentheses"
-description: "Index stack boundary anchors or two-pass counter scan"
+description: "Keep the position where the current good run would have to start"
 sidebar_position: 9
 sidebar_class_name: sidebar-hard
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Stacks</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Index Stack</span>
 
-> **Problem Statement:** Given a string containing just the characters `'('` and `')'`, return the length of the longest valid (well-formed) parentheses substring.
+> **Problem Statement:** You are given a string of only `(` and `)`. Find the length of the longest stretch of it that is properly balanced.
 
 ```text
 Input:  s = ")()())"
 Output: 4
-Explanation: The longest valid parentheses substring is "()()".
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Parentheses validation typically pushes bracket characters onto a stack. However, finding the length of the longest valid contiguous substring requires computing distances rather than just validating balance. Storing indices on the stack provides direct access to boundaries.
+Checking whether brackets are balanced is easy. Measuring the longest balanced **stretch** is harder, because you need to know where each good run begins, not just whether one exists.
 
-#### Brute Force: Substring Validation
-A brute force approach enumerates every possible even-length substring and validates it using a standard stack. Generating all substrings takes $O(n^2)$ time, and verifying each substring takes $O(n)$ time, leading to an impractical $O(n^3)$ overall runtime.
+Think of an unmatched `)` as a wall. Nothing on its left can ever join up with anything on its right, because the `)` itself can never be matched. So every unmatched `)` chops the string into separate territories, and the answer is the longest good run inside one territory.
 
-#### Optimal Approach: Index Boundary Stack
-Think of the stack as holding boundary "walls" that delimit valid segments:
-- Before inspecting any characters, seed the stack with index `-1`. This represents the virtual baseline wall immediately before index `0`.
-- When encountering an opening bracket `'('`, push its index onto the stack. It represents a potential opener or an unmatched boundary.
-- When encountering a closing bracket `')'`, pop the top index off the stack to match the pair.
-  - If the stack is now empty, the chain was broken by an unmatched `')'`. This `')'` becomes the new boundary wall, so push its index `i` onto the stack as the new anchor.
-  - If the stack remains non-empty, the top of the stack `stack[-1]` is the index of the last unmatched boundary. The length of the valid substring ending at index `i` is simply $i - \text{stack}[-1]$. We update `max_len = max(max_len, i - stack[-1])`.
-
-#### Execution Walkthrough
-
-Let us trace `s = ")()())"`:
-
-| Step | Index `i` | Char | Action Taken | Stack State | Current Length | `max_len` |
-| :---: | :---: | :---: | :--- | :--- | :---: | :---: |
-| **0** | - | - | Initial seed | `[-1]` | - | `0` |
-| **1** | `0` | `')'` | Pop `-1`. Stack empty: push `0` as new wall | `[0]` | - | `0` |
-| **2** | `1` | `'('` | Opener: push `1` | `[0, 1]` | - | `0` |
-| **3** | `2` | `')'` | Closer: pop `1`. Stack top is `0`. Len = $2 - 0 = 2$ | `[0]` | `2` | `2` |
-| **4** | `3` | `'('` | Opener: push `3` | `[0, 3]` | - | `2` |
-| **5** | `4` | `')'` | Closer: pop `3`. Stack top is `0`. Len = $4 - 0 = 4$ | `[0]` | `4` | `4` |
-| **6** | `5` | `')'` | Closer: pop `0`. Stack empty: push `5` as new wall | `[5]` | - | `4` |
-
-Final maximum length returned: `4`.
+That gives the thing to keep track of: **the position of the wall behind you**. Once you know that, the length of the run ending at the current position is just the distance back to the wall.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize State:** Create a list `stack = [-1]` representing the initial boundary wall, and set `max_len = 0`.
-2. **Iterate Characters:** Traverse each index `i` and character `ch` across `enumerate(s)`:
-   - If `ch == '('`:
-     - Push `i` onto `stack`.
-   - If `ch == ')'`:
-     - Pop the top index from `stack`.
-     - If `not stack`:
-       - The popped element was the boundary wall, meaning this `')'` had no matching opener. Push `i` onto `stack` to serve as the new anchor wall.
-     - Else:
-       - Update `max_len = max(max_len, i - stack[-1])`.
-3. **Return Maximum Length:** Return `max_len`.
+Use a stack of positions, and keep the wall at the bottom of it. Start the stack holding `-1`, standing for an imaginary wall just before the string begins.
+
+Then:
+
+**On a `(`**, push its position. It is an opener waiting to be matched.
+
+**On a `)`**, pop. What happens next depends on what is left:
+
+- **The stack is now empty.** The thing you popped was the wall, which means this `)` had no opener to match. It becomes the new wall, so push its own position.
+- **The stack is not empty.** This `)` matched a real opener, so a valid run ends here. Its length is the current position minus whatever position is now on top, because that is either the wall or an opener still waiting, and either way the good run starts just after it.
+
+The subtraction is the elegant part. You never have to count matched pairs: the distance to the top of the stack is the answer automatically, including all the nested pairs inside.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Index Boundary Stack" default>
+Take `s = ")()())"`, with the stack starting as `-1`.
+
+1. **Position 0 is `)`.** Pop the `-1`, leaving the stack empty. So this is an unmatched closer: push `0` as the new wall. The stack is `0`.
+2. **Position 1 is `(`.** Push it. The stack is `0, 1`.
+3. **Position 2 is `)`.** Pop the `1`, leaving `0` on top. A run ends here of length `2 - 0 = 2`. Best so far is `2`.
+4. **Position 3 is `(`.** Push it. The stack is `0, 3`.
+5. **Position 4 is `)`.** Pop the `3`, leaving `0`. The run length is `4 - 0 = 4`, which correctly counts both pairs, `()()`. Best is now `4`.
+6. **Position 5 is `)`.** Pop the `0`, leaving the stack empty, so this is unmatched. Push `5` as the new wall.
+
+The answer is `4`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def longestValidParentheses(self, s: str) -> int:
-        # Stack stores indices. Seed with -1 as the initial boundary anchor.
-        stack: list[int] = [-1]
-        max_len = 0
+        best = 0
+        stack = [-1]   # the position just before the current run
 
         for i, ch in enumerate(s):
             if ch == "(":
                 stack.append(i)
-            else:
-                stack.pop()
-                if not stack:
-                    # No matching opener existed; this ')' becomes the new anchor
-                    stack.append(i)
-                else:
-                    max_len = max(max_len, i - stack[-1])
+                continue
 
-        return max_len
+            stack.pop()
+
+            if not stack:
+                stack.append(i)   # unmatched closer, so the run restarts here
+            else:
+                best = max(best, i - stack[-1])
+
+        return best
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Two-Pass Counter (O(1) Space)">
+---
 
-```python
-class Solution:
-    def longestValidParentheses(self, s: str) -> int:
-        max_len = 0
+### Time and space complexity
 
-        # Pass 1: Left to right
-        left = right = 0
-        for ch in s:
-            if ch == "(":
-                left += 1
-            else:
-                right += 1
-            if left == right:
-                max_len = max(max_len, 2 * right)
-            elif right > left:
-                left = right = 0
+#### Time: $O(n)$
 
-        # Pass 2: Right to left
-        left = right = 0
-        for ch in reversed(s):
-            if ch == "(":
-                left += 1
-            else:
-                right += 1
-            if left == right:
-                max_len = max(max_len, 2 * left)
-            elif left > right:
-                left = right = 0
+One pass, with at most one push and one pop per character.
 
-        return max_len
-```
+#### Space: $O(n)$
 
-  </TabItem>
-</Tabs>
+The stack. A string of nothing but `(` pushes every position before anything is popped.
+
+There is a second well-known solution that sweeps left to right counting openers and closers, then sweeps right to left doing the same, which gets the answer in $O(1)$ space. It is a neat trick, but the reasoning behind why two sweeps are needed is harder to reconstruct under pressure than the wall idea here.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force (Substring Check)** | $O(n^3)$ | $O(n)$ | Tests all even substrings for validity. Infeasible for large inputs. |
-| **Optimal (Index Boundary Stack)** | $O(n)$ | $O(n)$ | Single pass measuring distance from last unmatched boundary index on the stack. |
-| **Two-Pass Counter Scan** | $O(n)$ | $O(1)$ | Scans forward and backward counting balances, eliminating auxiliary stack memory. |
-
----
-
-### Common Pitfall: Missing Initial Anchor and Asymmetric Openers
-
-Two pitfalls frequently appear in this problem:
-1. **Omitting the `-1` anchor:** If the stack is not initialized with `-1`, a valid string starting at index `0` like `"()"` pops its only opener at index `1`, leaving an empty stack. Without an anchor at `-1`, there is no reference index to compute $1 - (-1) = 2$.
-2. **One-way counting trap:** In the $O(1)$ space counter approach, scanning only left-to-right fails on cases like `"(()"`. Here, `left` is `2` and `right` is `1`, so `left == right` is never satisfied and the count resets never trigger. A symmetrical right-to-left reverse pass is essential to resolve unbalanced openers.
-
----
-
-### Concise Interview Takeaway
-
-Store indices on a stack initialized with `-1` as the boundary anchor. When encountering `')'`, pop the top index: if the stack becomes empty, record the current index as the new anchor; otherwise, compute the valid length as `i - stack[-1]`. This achieves optimal $O(n)$ time and $O(n)$ space, with an optional two-pass counter variation achieving $O(1)$ auxiliary memory.
+An unmatched `)` is a wall that nothing can reach across, so keep its position at the bottom of the stack, seeded with `-1`. Push openers, pop on a closer, and if the stack empties the closer becomes the new wall. Otherwise the run ending here is the distance from the current position back to whatever the stack now shows. $O(n)$ time, $O(n)$ space.
