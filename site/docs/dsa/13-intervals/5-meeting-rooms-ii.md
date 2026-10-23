@@ -1,152 +1,112 @@
 ---
 id: 5-meeting-rooms-ii
 title: "253. Meeting Rooms II"
-description: "Two-pointer chronological sweep and min-heap tracking of concurrent rooms"
+description: "Separate the starts from the ends and watch how many meetings are live at once"
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Intervals</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Two Pointers Sweep</span>
 
-> **Problem Statement:** Given an array of meeting time intervals where `intervals[i] = [start_i, end_i]`, return the minimum number of conference rooms required to host all meetings without conflicts.
+> **Problem Statement:** Given a list of meetings with start and end times, return the smallest number of rooms needed so that none of them clash.
 
 ```text
 Input:  intervals = [[0, 30], [5, 10], [15, 20]]
 Output: 2
-Explanation: Room 1 hosts [0, 30]. Room 2 can host [5, 10] and then [15, 20], requiring 2 rooms in total.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-The identity of which meeting takes place in which specific room is irrelevant. We only need to determine the maximum number of meetings occurring simultaneously at any single moment in time.
+The answer is not about which meeting goes in which room. It is simply the **largest number of meetings happening at the same moment**, because that many rooms must exist and no more are ever needed.
 
-#### Brute Force: Timeline Frequency Array
-One direct approach records active meeting counts on a minute-by-minute timeline array. For each meeting `[start, end]`, increment every unit in `[start, end)`. The maximum count reached across the timeline is the required number of rooms. However, when meeting timestamps are large (such as $10^6$), this takes $O(n \cdot \text{range})$ time and excessive memory.
+So forget the pairings and watch the count rise and fall. Every start adds one to the number of live meetings; every end takes one away. The answer is the highest the count ever reaches.
 
-#### Optimal Approach: Chronological Two-Pointer Sweep
-Meetings only alter room demand at discrete points in time: when a meeting begins (requiring $+1$ room) or when a meeting concludes (freeing $-1$ room).
+And for that, a meeting's start and end do not need to stay attached to each other. Pull them apart into two sorted lists and replay the day:
 
-Instead of keeping start and end pairs bound together, separate them into two independent sorted lists:
-1. `starts`: chronologically ordered start times.
-2. `ends`: chronologically ordered end times.
+```text
+starts: 0, 5, 15
+ends:  10, 20, 30
+```
 
-We traverse the timeline with two pointers:
-- If `starts[s] < ends[e]`: a new meeting begins before the earliest ongoing meeting concludes. We must allocate a new room (`rooms_needed += 1`) and advance `s += 1`.
-- If `starts[s] >= ends[e]`: an existing meeting has concluded. That room is vacated and can be immediately reused. We advance `e += 1` to inspect the next earliest conclusion without incrementing the room count.
-
-#### Execution Walkthrough
-
-Let us trace `intervals = [[0, 30], [5, 10], [15, 20]]`. Separating and sorting gives `starts = [0, 5, 15]` and `ends = [10, 20, 30]`:
-
-| Step | Current `start` | Current `end` (`ends[e]`) | Condition (`start < end`) | Action Taken | Pointers (`s, e`) | Rooms Needed |
-| :---: | :---: | :---: | :---: | :--- | :---: | :---: |
-| **1** | `0` | `10` | $0 < 10$ (True) | Allocate new room | `s=1, e=0` | `1` |
-| **2** | `5` | `10` | $5 < 10$ (True) | Allocate new room | `s=2, e=0` | `2` |
-| **3** | `15` | `10` | $15 < 10$ (False) | Room freed! Reuse room | `s=3, e=1` | `2` |
-
-Maximum concurrent rooms required across the schedule is `2`.
+Step through both in time order, adding a room at each start and releasing one at each end.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Handle Base Case:** If `intervals` is empty, return `0`.
-2. **Extract and Sort Times:**
-   - `starts = sorted([i[0] for i in intervals])`
-   - `ends = sorted([i[1] for i in intervals])`
-3. **Initialize Trackers:** Set `rooms_needed = 0` and pointer `end_ptr = 0`.
-4. **Sweep Starts:** Iterate through each `start` in `starts`:
-   - If `start < ends[end_ptr]`: room is occupied; increment `rooms_needed += 1`.
-   - Else: an existing room was vacated; increment `end_ptr += 1`.
-5. **Return Result:** Return `rooms_needed`.
+Sort the starts and sort the ends into two separate lists. Then walk with a pointer into each.
+
+At each step compare the next start against the next end:
+
+- **The next start comes first**, so a meeting begins. Increase the live count and advance the start pointer.
+- **Otherwise a meeting ends first** (or at the same moment), so release a room. Decrease the live count and advance the end pointer.
+
+Record the highest live count seen.
+
+The tie matters. When a meeting ends exactly as another begins, the room is free in time and can be reused, so the end should be handled first. Writing the comparison as "start is strictly before the next end" gives that behaviour automatically.
+
+Only the starts need walking to the end: once they are exhausted no new rooms can be needed, so the loop can stop there.
+
+**The heap version** is the other standard answer. Sort by start, keep a min-heap of the end times of meetings currently in rooms, and at each new meeting pop any end that has already passed before pushing the new one. The heap's size is the live count, and its peak is the answer. Same complexity, more machinery; the two-list sweep is the one that makes *why* it works obvious.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Chronological Two-Pointer Sweep" default>
+Starts sorted are `0, 5, 15`. Ends sorted are `10, 20, 30`.
+
+1. **Start `0` against end `10`.** The start is first, so a meeting begins. Live count `1`, which is the new maximum.
+2. **Start `5` against end `10`.** The start is first again. Live count `2`, a new maximum.
+3. **Start `15` against end `10`.** Now the end is first, so a room is released. Live count `1`.
+4. **Start `15` against end `20`.** The start is first. Live count `2`, which ties the maximum.
+5. **Starts are exhausted**, so stop.
+
+The peak was `2`, so two rooms are needed.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def minMeetingRooms(self, intervals: list[list[int]]) -> int:
-        if not intervals:
-            return 0
+        starts = sorted(span[0] for span in intervals)
+        ends = sorted(span[1] for span in intervals)
 
-        # Separate start and end times into independently sorted timelines
-        starts = sorted([i[0] for i in intervals])
-        ends = sorted([i[1] for i in intervals])
+        live = 0
+        most = 0
+        e = 0
 
-        rooms_needed = 0
-        end_ptr = 0
-
-        # Sweep chronologically through meeting start requests
         for start in starts:
-            # If the current meeting begins before the earliest meeting finishes
-            if start < ends[end_ptr]:
-                rooms_needed += 1
+            # a meeting ending exactly now frees its room in time
+            if start < ends[e]:
+                live += 1
             else:
-                # An existing room is vacated; reuse it by advancing end_ptr
-                end_ptr += 1
+                e += 1   # a room came free, so this meeting reuses it
 
-        return rooms_needed
+            most = max(most, live)
+
+        return most
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Min-Heap for Active Rooms">
+---
 
-```python
-import heapq
+### Time and space complexity
 
-class Solution:
-    def minMeetingRooms(self, intervals: list[list[int]]) -> int:
-        if not intervals:
-            return 0
+#### Time: $O(n \log n)$
 
-        # Sort intervals chronologically by start time
-        intervals.sort(key=lambda x: x[0])
+Two sorts, then a single pass over the starts.
 
-        # Min-heap to store the end times of active rooms
-        rooms_heap: list[int] = []
+#### Space: $O(n)$
 
-        for start, end in intervals:
-            # If the room with earliest end time has freed up, reuse it
-            if rooms_heap and rooms_heap[0] <= start:
-                heapq.heappop(rooms_heap)
-
-            # Assign room (new or reused) with the current meeting end time
-            heapq.heappush(rooms_heap, end)
-
-        return len(rooms_heap)
-```
-
-  </TabItem>
-</Tabs>
+The two lists of times. The heap version instead holds one entry per room in use, which is $O(n)$ in the worst case too.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Min-Heap** | $O(n \log n)$ | $O(n)$ | Sorts intervals and uses a min-heap to reuse rooms with the earliest end time. |
-| **Two-Pointer Sweep** | $O(n \log n)$ | $O(n)$ | Separates start and end times into sorted arrays, sweeping linearly without heap overhead. |
-
----
-
-### Common Pitfall: Failing to Handle Equal Start and End Times
-
-If meeting A ends at time 10 and meeting B begins at time 10, meeting B can immediately reuse the room vacated by meeting A. If the condition used is `start <= ends[end_ptr]`, a new room would be incorrectly allocated at time 10. The condition must be strictly `start < ends[end_ptr]` so that vacated rooms are reused right away.
-
----
-
-### Concise Interview Takeaway
-
-The minimum number of rooms needed equals the maximum concurrent overlaps. Separate start and end times into two sorted arrays and sweep chronologically with two pointers: allocate a room if `start < ends[end_ptr]`, and reuse an existing room by advancing `end_ptr` otherwise. This runs in $O(n \log n)$ time with $O(n)$ auxiliary memory.
+The number of rooms is the peak number of meetings live at once, so stop pairing meetings with rooms. Split the starts and ends into two sorted lists and replay them in time order, adding on a start and releasing on an end. Handle an end before a start at the same moment, so a room freed exactly on time gets reused. $O(n \log n)$ time.

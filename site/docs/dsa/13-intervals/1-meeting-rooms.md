@@ -1,122 +1,96 @@
 ---
 id: 1-meeting-rooms
 title: "252. Meeting Rooms"
-description: "Sort intervals by start time and verify chronological disjointness"
+description: "Sort by start time, then only neighbours can clash"
 sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Intervals</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Sorting by Start Time</span>
 
-> **Problem Statement:** Given an array of meeting time intervals where `intervals[i] = [start_i, end_i]`, determine if a single person could attend all meetings without any overlapping conflicts.
+> **Problem Statement:** You are given a list of meetings, each with a start and an end time. Say whether one person could attend all of them without a clash.
 
 ```text
 Input:  intervals = [[0, 30], [5, 10], [15, 20]]
 Output: false
-Explanation: The meeting [0, 30] overlaps with [5, 10] and [15, 20], making it impossible for one person to attend all meetings.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine your desk is covered in an unsorted pile of meeting schedule slips. In an arbitrary order, discovering whether any two meetings clash requires testing every meeting against every other meeting.
+In the given order the meetings look scattered, and checking every pair against every other is `n²` comparisons.
 
-#### Brute Force: Pairwise Comparisons
-The most direct approach compares every pair of meetings `(i, j)`. Two meetings overlap if $\max(\text{start}_i, \text{start}_j) < \min(\text{end}_i, \text{end}_j)$. For an array of $n$ intervals, checking all pairs requires $O(n^2)$ time. When the schedule contains thousands of entries, quadratic comparisons become unacceptably slow.
+Sorting by start time changes the situation completely. Once the meetings are in chronological order, a clash can only happen between **neighbours**.
 
-#### Optimal Approach: Sort by Start Time
-The universal foundation of interval problems is to bring order to chaos by sorting. When you sort all intervals chronologically by their start time:
-- Any potential conflict is guaranteed to occur between **immediately adjacent neighbors** in the sorted list.
-- If meeting $i$ does not overlap with meeting $i - 1$, no subsequent meeting can overlap with meeting $i - 1$ either, because future meetings start even later.
-- A person can attend all meetings if and only if each meeting starts at or after the previous meeting finishes:
-  $$\text{intervals}[i][0] \ge \text{intervals}[i - 1][1]$$
+The reason is worth stating properly. If meeting `A` comes before meeting `B` in the sorted order and they do not overlap, then everything after `B` starts even later, so it cannot overlap `A` either. Any clash that exists must therefore show up between some meeting and the one right after it.
 
-#### Execution Walkthrough
-
-Let us trace `intervals = [[5, 8], [9, 15], [1, 4]]`. Sorting chronologically by start time produces `[[1, 4], [5, 8], [9, 15]]`:
-
-| Step | Current Meeting | Previous Meeting End | Condition (`start < prev_end`) | Conflict Detected? | Action Taken |
-| :---: | :---: | :---: | :---: | :---: | :--- |
-| **1** | `[1, 4]` | None | Baseline meeting | No | Establish initial endpoint `4` |
-| **2** | `[5, 8]` | `4` | $5 < 4$ is False | No | Valid transition; update endpoint to `8` |
-| **3** | `[9, 15]` | `8` | $9 < 8$ is False | No | Valid transition; schedule complete |
-
-Because every adjacent pair satisfies chronological disjointness, the algorithm returns `True`.
+So one sorted sweep is enough.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Sort Chronologically:** Sort `intervals` in ascending order by start time using `intervals.sort(key=lambda x: x[0])`.
-2. **Scan Adjacent Neighbors:** Iterate through the array starting from index `1` up to `len(intervals) - 1`.
-3. **Check for Overlap:** Compare each meeting's start time with the previous meeting's end time. If `intervals[i][0] < intervals[i - 1][1]`, a conflict exists; return `False` immediately.
-4. **Confirm Valid Schedule:** If the loop finishes without detecting any conflicts across all adjacent pairs, return `True`.
+Sort by start time, then compare each meeting with its immediate predecessor. If the new one begins **before** the previous one ends, they clash and the answer is `false`.
+
+Everything turns on that comparison being right.
+
+```text
+previous ends at 10, next starts at 10   -> no clash, back to back
+previous ends at 10, next starts at 9    -> clash
+```
+
+A meeting starting at exactly the moment another ends is fine, so the test is "starts strictly before the previous end". Using "at or before" would wrongly reject a perfectly packed schedule, and it is the detail interviewers check.
+
+Sorting by **start** time specifically is what makes neighbour comparison valid. Sorting by end time would also group things, but the one-step argument above would no longer hold in the same way.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Sort and Adjacent Scan" default>
+Take `[[0, 30], [5, 10], [15, 20]]`. Sorting by start gives `[[0, 30], [5, 10], [15, 20]]`, which happens to be unchanged.
+
+1. **Compare `[5, 10]` with `[0, 30]`.** It starts at `5`, which is before `30`. They clash, so return `false` immediately.
+
+The third meeting is never examined.
+
+Now take `[[7, 10], [2, 4]]`. Sorted, that is `[[2, 4], [7, 10]]`. The second starts at `7`, which is not before `4`, so there is no clash and the answer is `true`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def canAttendMeetings(self, intervals: list[list[int]]) -> bool:
-        # Step 1: Sort chronologically by start time
-        intervals.sort(key=lambda x: x[0])
+        intervals.sort(key=lambda meeting: meeting[0])
 
-        # Step 2: Linear verification of adjacent intervals
         for i in range(1, len(intervals)):
-            # If current meeting starts before previous meeting concludes
+            # starting exactly when the previous ends is fine
             if intervals[i][0] < intervals[i - 1][1]:
                 return False
 
         return True
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Alternative: Brute Force Pairwise Check">
+---
 
-```python
-class Solution:
-    def canAttendMeetings(self, intervals: list[list[int]]) -> bool:
-        n = len(intervals)
-        
-        # Test every distinct pair for temporal overlap
-        for i in range(n):
-            for j in range(i + 1, n):
-                if max(intervals[i][0], intervals[j][0]) < min(intervals[i][1], intervals[j][1]):
-                    return False
-                    
-        return True
-```
+### Time and space complexity
 
-  </TabItem>
-</Tabs>
+#### Time: $O(n \log n)$
+
+The sort dominates. The sweep afterwards is a single pass with one comparison each, and it can return early at the first clash.
+
+Comparing every pair without sorting would be $O(n^2)$, so the sort pays for itself many times over.
+
+#### Space: $O(1)$ beyond the sort
+
+Only an index is kept. Python's sort itself uses $O(n)$ internally, which is worth mentioning if the question is about memory.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force** | $O(n^2)$ | $O(1)$ | Tests every pair with nested loops. Requires no sorting, but scales quadratically. |
-| **Sort and Scan** | $O(n \log n)$ | $O(1)$ | Sorts intervals by start time and verifies adjacent pairs in a single linear pass. |
-
----
-
-### Common Pitfall: Strict vs Non-Strict Inequalities at Boundaries
-
-A common mistake is confusing overlapping meetings with back-to-back meetings. If meeting A ends at 5:00 PM (`[2, 5]`) and meeting B begins at 5:00 PM (`[5, 8]`), they do not conflict because one starts exactly as the other concludes. The conflict condition is strictly `intervals[i][0] < intervals[i - 1][1]`, not `<=`. Using `<=` would incorrectly flag legitimate consecutive meetings as conflicts.
-
----
-
-### Concise Interview Takeaway
-
-Sort intervals chronologically by start time. Once ordered, conflicts can only happen between adjacent neighbors. Check if `intervals[i][0] < intervals[i - 1][1]` in a single $O(n)$ linear scan, reducing time complexity from $O(n^2)$ down to $O(n \log n)$ with $O(1)$ auxiliary memory.
+Sorting by start time is the move that makes every interval problem tractable, because afterwards only neighbours can clash. Compare each meeting's start against the previous meeting's end, and use a strict comparison so back-to-back meetings are allowed. $O(n \log n)$ time, dominated by the sort.
