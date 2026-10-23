@@ -1,144 +1,99 @@
 ---
 id: 2-merge-sorted-array
 title: "88. Merge Sorted Array"
-description: "Reverse three-pointer merge utilizing the tail buffer"
+description: "Fill from the back, where the space is already empty"
 sidebar_position: 2
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Two Pointers</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Reverse Three Pointers</span>
 
-> **Problem Statement:** You are given two integer arrays `nums1` and `nums2`, sorted in non-decreasing order, and two integers `m` and `n`, representing the number of elements in `nums1` and `nums2` respectively. Merge `nums2` into `nums1` as one sorted array. The final sorted array should not be returned by the function, but instead be stored inside the array `nums1`. To accommodate this, `nums1` has a length of `m + n`, where the first `m` elements denote the elements that should be merged, and the last `n` elements are set to `0` and should be ignored.
+> **Problem Statement:** You are given two sorted arrays. The first one, `nums1`, holds `m` real values followed by exactly enough spare room for the `n` values in `nums2`. Merge them into `nums1` so it ends up sorted. Do it in place.
 
 ```text
 Input:  nums1 = [1, 2, 3, 0, 0, 0], m = 3, nums2 = [2, 5, 6], n = 3
 Output: [1, 2, 2, 3, 5, 6]
-Explanation: The arrays we are merging are [1, 2, 3] and [2, 5, 6]. The result of the merge is [1, 2, 2, 3, 5, 6] with the elements stored directly in nums1.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-When merging two sorted arrays into one, merging from the front causes collisions: writing a smaller element from `nums2` into `nums1[0]` would overwrite the original value before it can be placed. To prevent data loss, you would need an auxiliary copy of `nums1` ($O(m)$ space) or repeated shifts ($O(m \times n)$ time).
+Merging two sorted piles is familiar: look at the top card of each, take the smaller one, repeat.
 
-#### Brute Force: Overwrite and Sort
-The naive alternative is appending `nums2` into the tail of `nums1` and sorting the combined array:
-- Copy the $n$ elements of `nums2` directly into indices $m$ through $m + n - 1$.
-- Call `nums1.sort()`.
+The trouble here is where to put the card you take. The answer has to go into `nums1`, and `nums1` is already holding its own values at the front. Writing the first merged value into position `0` would destroy the `1` living there before it has been merged.
 
-While minimal code, this requires $O((m + n) \log(m + n))$ time, discarding the crucial fact that both arrays are already sorted.
+But look at the shape of `nums1`. The front is occupied and the **back is empty**. So fill from the back.
 
-#### Optimal Approach: Reverse Merge from the Tail
-Notice that the end of `nums1` contains $n$ uninitialized buffer slots (filled with zeroes). These tail slots are completely safe to overwrite without losing any valid data.
-
-Instead of smallest-to-largest from index `0`, we merge largest-to-smallest from the back:
-- Place pointer `p1` at the last valid element of `nums1` (`m - 1`).
-- Place pointer `p2` at the last element of `nums2` (`n - 1`).
-- Place write pointer `p` at the very end of `nums1` (`m + n - 1`).
-- Compare `nums1[p1]` with `nums2[p2]`. Write the larger element to `nums1[p]`, then decrement that array's pointer and `p`.
-- Repeat until all elements of `nums2` are placed.
-
-If `p2 < 0`, every element from `nums2` is already placed. Any remaining elements in `nums1` are already in their correct sorted positions at the front, so we can terminate immediately.
-
-#### Execution Walkthrough
-
-Let us trace `nums1 = [1, 2, 3, 0, 0, 0]`, `m = 3`, `nums2 = [2, 5, 6]`, `n = 3`:
-
-| Step | `p1` (`nums1[p1]`) | `p2` (`nums2[p2]`) | `p` (Write Pos) | Larger Value | Action Taken | `nums1` State |
-| :---: | :---: | :---: | :---: | :---: | :--- | :--- |
-| **1** | `2` (`3`) | `2` (`6`) | `5` | `6` (`nums2`) | Write `6` at `nums1[5]`, `p2 -> 1`, `p -> 4` | `[1, 2, 3, 0, 0, 6]` |
-| **2** | `2` (`3`) | `1` (`5`) | `4` | `5` (`nums2`) | Write `5` at `nums1[4]`, `p2 -> 0`, `p -> 3` | `[1, 2, 3, 0, 5, 6]` |
-| **3** | `2` (`3`) | `0` (`2`) | `3` | `3` (`nums1`) | Write `3` at `nums1[3]`, `p1 -> 1`, `p -> 2` | `[1, 2, 3, 3, 5, 6]` |
-| **4** | `1` (`2`) | `0` (`2`) | `2` | `2` (`nums2`) | Write `2` at `nums1[2]`, `p2 -> -1`, `p -> 1` | `[1, 2, 2, 3, 5, 6]` |
-| **End** | `1` (`2`) | `-1` (Done) | `1` | None | `p2 < 0`: elements in `nums1` already sorted | `[1, 2, 2, 3, 5, 6]` |
+The largest value of the whole merge belongs in the very last slot, which is spare room. The next largest belongs in the second to last, also spare. By the time the writing position catches up with the values still waiting to be read, every one of those has already been copied somewhere safer.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Three Pointers:**
-   - `p1 = m - 1`: Tracks the rightmost unprocessed element in `nums1`.
-   - `p2 = n - 1`: Tracks the rightmost unprocessed element in `nums2`.
-   - `p = m + n - 1`: Tracks the next insertion index from the tail of `nums1`.
-2. **Loop While Elements Remain in `nums2`:** Continue as long as `p2 >= 0`.
-3. **Compare and Insert:**
-   - If `p1 >= 0` and `nums1[p1] > nums2[p2]`, assign `nums1[p] = nums1[p1]` and decrement `p1 -= 1`.
-   - Otherwise, assign `nums1[p] = nums2[p2]` and decrement `p2 -= 1`.
-4. **Advance Write Pointer:** Decrement `p -= 1`.
-5. **Early Exit:** Once `nums2` is exhausted (`p2 < 0`), any remaining elements in `nums1` are already sorted at the beginning; the merge is complete.
+Three positions, all moving backwards:
+
+- **`i`** reads the last unmerged value of `nums1`, starting at `m - 1`.
+- **`j`** reads the last unmerged value of `nums2`, starting at `n - 1`.
+- **`write`** is where the next value goes, starting at the final slot, `m + n - 1`.
+
+Each pass compares what `i` and `j` point at, writes the larger one to `write`, and steps that reader back along with the writer.
+
+The loop only needs to run **while `j` still has values**. If `nums2` empties first, everything left in `nums1` is already sitting in the right place, so there is nothing to do. If `nums1` empties first, the rest of `nums2` still has to be copied over, and the loop handles that because `i` falling below zero makes the comparison fall to the `nums2` side every time.
+
+Writing can never clobber an unread value. At any moment the writer has placed exactly as many values as the two readers have consumed, so it is always at least as far right as either of them.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Reverse Three Pointers" default>
+Take `nums1 = [1, 2, 3, 0, 0, 0]` with `m = 3`, and `nums2 = [2, 5, 6]` with `n = 3`.
+
+1. **`3` against `6`.** Six wins, so it goes into the last slot: `[1, 2, 3, 0, 0, 6]`.
+2. **`3` against `5`.** Five wins: `[1, 2, 3, 0, 5, 6]`.
+3. **`3` against `2`.** Three wins: `[1, 2, 3, 3, 5, 6]`. Note the `3` has now been copied rightward, and its old slot is free.
+4. **`2` against `2`.** Neither is larger, so the one from `nums2` is taken: `[1, 2, 2, 3, 5, 6]`.
+5. **`nums2` is empty**, so the loop stops. The `1` and `2` still at the front were never moved, and they are exactly where they belong.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def merge(self, nums1: list[int], m: int, nums2: list[int], n: int) -> None:
-        """
-        Do not return anything, modify nums1 in-place instead.
-        """
-        p1 = m - 1
-        p2 = n - 1
-        p = m + n - 1
+        i, j, write = m - 1, n - 1, m + n - 1
 
-        # We only need to place elements from nums2.
-        # Any elements left in nums1 are already in their correct sorted slots.
-        while p2 >= 0:
-            if p1 >= 0 and nums1[p1] > nums2[p2]:
-                nums1[p] = nums1[p1]
-                p1 -= 1
+        while j >= 0:
+            # i running out means the rest of nums2 goes straight in
+            if i >= 0 and nums1[i] > nums2[j]:
+                nums1[write] = nums1[i]
+                i -= 1
             else:
-                nums1[p] = nums2[p2]
-                p2 -= 1
-            p -= 1
+                nums1[write] = nums2[j]
+                j -= 1
+
+            write -= 1
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Alternative / Brute Force: Overwrite and Sort">
+---
 
-```python
-class Solution:
-    def merge(self, nums1: list[int], m: int, nums2: list[int], n: int) -> None:
-        """
-        Do not return anything, modify nums1 in-place instead.
-        """
-        # Overwrite the trailing zeros with elements from nums2
-        for i in range(n):
-            nums1[m + i] = nums2[i]
-            
-        # Re-sort the combined array
-        nums1.sort()
-```
+### Time and space complexity
 
-  </TabItem>
-</Tabs>
+#### Time: $O(m + n)$
+
+Every pass of the loop places exactly one value and never revisits it. There are `m + n` values in total, so that is the number of passes.
+
+#### Space: $O(1)$
+
+Three indices. The merge happens inside the array you were given, using the spare room it already came with.
+
+Merging forwards into a temporary array and copying back would also be $O(m + n)$ time, but it would cost $O(m + n)$ extra memory, which is exactly what the back-to-front trick avoids.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Overwrite and Sort** | $O((m + n) \log(m + n))$ | $O(1)$ | Simple to write, but ignores existing sorted order and incurs higher logarithmic runtime. |
-| **Reverse Three Pointers** | $O(m + n)$ | $O(1)$ | Merges elements directly into empty tail buffer slots in a single linear pass with zero extra allocations. |
-
----
-
-### Common Pitfall: Redundant Copying of Remaining nums1 Elements
-
-A common mistake is writing two separate cleanup loops: one for remaining `nums2` elements and another for remaining `nums1` elements. If `nums2` finishes first (`p2 < 0`), any unprocessed items in `nums1` are already in their proper positions at indices `0` through `p1`. Only unprocessed elements from `nums2` need to be copied. Stopping when `p2 < 0` simplifies the code and avoids redundant writes.
-
----
-
-### Concise Interview Takeaway
-
-For **Merge Sorted Array**, exploit the unused buffer space at the tail of `nums1` by merging backwards from index $m + n - 1$. Comparing elements from greatest to least prevents overwriting unprocessed values in `nums1`, giving an optimal $O(m + n)$ time and $O(1)$ auxiliary space solution.
+Filling from the front overwrites values that have not been merged yet. Filling from the back writes into the spare room first, and the writer can never catch up with either reader. Run the loop while `nums2` still has values, since anything left in `nums1` is already in place. $O(m + n)$ time, $O(1)$ space.

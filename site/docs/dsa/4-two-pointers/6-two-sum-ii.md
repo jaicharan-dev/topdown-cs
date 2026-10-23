@@ -1,137 +1,99 @@
 ---
 id: 6-two-sum-ii
 title: "167. Two Sum II - Input Array Is Sorted"
-description: "Inward-converging two pointers leveraging monotonicity for O(1) space"
+description: "Sorted input means the sum tells you which end to move"
 sidebar_position: 6
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Two Pointers</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Opposite Ends</span>
 
-> **Problem Statement:** Given a 1-indexed array of integers `numbers` that is already sorted in non-decreasing order, find two numbers such that they add up to a specific `target` number. Return the indices of the two numbers, `index1` and `index2`, added by one as an integer array `[index1, index2]` of length 2. You may not use the same element twice. Your solution must use only constant extra space.
+> **Problem Statement:** You are given a sorted array `numbers` and a `target`. Find the two values that add up to the target and return their positions, counting from one rather than zero. You must use only a constant amount of extra memory.
 
 ```text
 Input:  numbers = [2, 7, 11, 15], target = 9
 Output: [1, 2]
-Explanation: The sum of 2 and 7 is 9. Therefore, index1 = 1, index2 = 2. We return [1, 2].
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-In the classic Two Sum problem, the array is unsorted, requiring an $O(n)$ auxiliary hash map to achieve linear time. Here, the input array is already sorted, and the prompt strictly forbids auxiliary memory.
+The array is sorted, and that changes everything. In the original Two Sum the array is in no order, so a dictionary is needed to remember what has been seen. Here the order itself does the remembering.
 
-#### Brute Force: Binary Search Complement Lookup
-Because the array is sorted, we could iterate through each element `numbers[i]` and perform a binary search for `target - numbers[i]` across the remaining elements to the right. While this adheres to the $O(1)$ auxiliary space constraint, it takes $O(n \log n)$ time.
+Start with one finger on the smallest value and one on the largest. That pair is the widest possible sum you can make from the two ends. Now add them up and compare with the target:
 
-#### Optimal Approach: Two Pointers from Opposite Ends
-Sorting gives the array a monotonic property: moving right increases values, while moving left decreases values. We can exploit this with two converging pointers:
-- Place `left` at the start (`0`) and `right` at the end (`len(numbers) - 1`).
-- Compute `curr_sum = numbers[left] + numbers[right]`.
-- If `curr_sum < target`: The sum is too small. Because `numbers[right]` is already the largest candidate available, pairing `numbers[left]` with any smaller number would produce an even smaller sum. Hence `numbers[left]` cannot be part of the solution. Increment `left += 1`.
-- If `curr_sum > target`: The sum is too large. Because `numbers[left]` is the smallest candidate available, pairing `numbers[right]` with any larger number would produce an even larger sum. Hence `numbers[right]` cannot be part of the solution. Decrement `right -= 1`.
-- If `curr_sum == target`: Return `[left + 1, right + 1]`.
+- **Too small?** The only way to get more is to let go of the smallest value. Move the left finger right.
+- **Too big?** The only way to get less is to let go of the largest value. Move the right finger left.
+- **Exactly right?** You are done.
 
-Each step eliminates at least one candidate number without skipping any valid combinations.
-
-#### Execution Walkthrough
-
-Let us trace `numbers = [2, 7, 11, 15]`, `target = 9`:
-
-| Step | `left` (`numbers[left]`) | `right` (`numbers[right]`) | Current Sum | Comparison to Target (9) | Action Taken |
-| :---: | :---: | :---: | :---: | :---: | :--- |
-| **1** | `0` (`2`) | `3` (`15`) | $2 + 15 = 17$ | $17 > 9$ (Too large) | Decrement `right -> 2` |
-| **2** | `0` (`2`) | `2` (`11`) | $2 + 11 = 13$ | $13 > 9$ (Too large) | Decrement `right -> 1` |
-| **3** | `0` (`2`) | `1` (`7`) | $2 + 7 = 9$ | $9 == 9$ (Match!) | Return `[0 + 1, 1 + 1] = [1, 2]` |
+Each step rules something out and nothing else, which is why this never needs to backtrack.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Two Pointers:** Set `left = 0` and `right = len(numbers) - 1`.
-2. **Loop While Pointers Do Not Cross:** Continue while `left < right`:
-   - Compute `curr_sum = numbers[left] + numbers[right]`.
-   - If `curr_sum == target`, return `[left + 1, right + 1]`.
-   - If `curr_sum < target`, increment `left += 1`.
-   - If `curr_sum > target`, decrement `right -= 1`.
-3. **Fallback:** Return an empty list if no pair is found (the problem guarantees exactly one solution).
+The step that deserves a moment's thought is why discarding is safe.
+
+Suppose the sum is too small. The left finger is on the smallest remaining value, and it is currently paired with the **largest** remaining value. That is the best this value can ever do. Every other partner still available is smaller, so every other pair involving it is smaller still, and all of them fall short of the target too. The value cannot be part of any answer, so dropping it loses nothing.
+
+The same argument runs the other way for a sum that is too big.
+
+Because each pass discards exactly one value, and a value is never revisited, the fingers march toward each other and meet after at most `n` steps.
+
+The problem also asks for constant memory, which is a direct hint away from the dictionary approach. The dictionary version would be $O(n)$ space and would work fine, but it ignores the sortedness you were handed.
+
+Watch the indexing. This problem counts positions from one, so both answers need a `+ 1`.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Two Pointers" default>
+Take `numbers = [2, 7, 11, 15]` with `target = 9`.
+
+1. **`2 + 15 = 17`**, too big. The `15` cannot help, so the right finger moves to `11`.
+2. **`2 + 11 = 13`**, still too big. The `11` goes too, so the right finger moves to `7`.
+3. **`2 + 7 = 9`**, exactly the target. The positions are `0` and `1`, so the answer is `[1, 2]` once converted to counting from one.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def twoSum(self, numbers: list[int], target: int) -> list[int]:
-        left = 0
-        right = len(numbers) - 1
+        left, right = 0, len(numbers) - 1
 
         while left < right:
-            curr_sum = numbers[left] + numbers[right]
+            total = numbers[left] + numbers[right]
 
-            if curr_sum == target:
-                # Problem requires 1-indexed output
-                return [left + 1, right + 1]
-            elif curr_sum < target:
-                left += 1
+            if total == target:
+                return [left + 1, right + 1]  # positions count from one here
+
+            if total < target:
+                left += 1   # only a larger small-end value can help
             else:
-                right -= 1
+                right -= 1  # only a smaller large-end value can help
 
         return []
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Alternative / Brute Force: Binary Search">
+---
 
-```python
-class Solution:
-    def twoSum(self, numbers: list[int], target: int) -> list[int]:
-        n = len(numbers)
-        for i in range(n):
-            complement = target - numbers[i]
-            # Binary search for complement in numbers[i + 1:]
-            low, high = i + 1, n - 1
-            while low <= high:
-                mid = (low + high) // 2
-                if numbers[mid] == complement:
-                    return [i + 1, mid + 1]
-                elif numbers[mid] < complement:
-                    low = mid + 1
-                else:
-                    high = mid - 1
+### Time and space complexity
 
-        return []
-```
+#### Time: $O(n)$
 
-  </TabItem>
-</Tabs>
+Every pass of the loop moves one finger inward and never moves either one back. The gap between them starts at `n` and shrinks by one each time, so the loop runs at most `n` times.
+
+#### Space: $O(1)$
+
+Two indices and a sum. No dictionary, which is what the constant-memory requirement was asking for.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Binary Search** | $O(n \log n)$ | $O(1)$ | Performs binary search for each complement. Achieves constant space but runs in superlinear time. |
-| **Two Pointers** | $O(n)$ | $O(1)$ | Inward-converging pointers prune candidates monotonically in a single linear pass with constant extra space. |
-
----
-
-### Common Pitfall: Returning 0-Indexed Values
-
-Because standard Python array indexing begins at `0`, it is easy to forget that this problem explicitly requires 1-indexed output values (`[index1, index2]`). Forgetting to add `+ 1` to both pointer indices causes an immediate off-by-one test failure.
-
----
-
-### Concise Interview Takeaway
-
-For **Two Sum II**, take advantage of the sorted input array by placing pointers at the two boundaries. Adjusting `left` upward increases the sum while adjusting `right` downward decreases it, enabling a deterministic monotonic search in $O(n)$ time and strictly $O(1)$ space without a hash map.
+Sorted input means the sum itself tells you which end to give up. Too small, raise the bottom; too big, lower the top. Discarding is safe because the value you drop was already paired with the best partner it will ever have. $O(n)$ time, $O(1)$ space, and remember the answer counts from one.

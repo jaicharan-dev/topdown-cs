@@ -1,88 +1,59 @@
 ---
 id: 3-remove-duplicates-from-sorted-array
 title: "26. Remove Duplicates from Sorted Array"
-description: "Slow-fast read/write pointers for in-place array deduplication"
+description: "One finger reads every value, another writes only the new ones"
 sidebar_position: 3
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Two Pointers</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Slow & Fast Pointers</span>
 
-> **Problem Statement:** Given an integer array `nums` sorted in non-decreasing order, remove the duplicates in-place such that each unique element appears only once. The relative order of the elements should be kept the same. Then return the number of unique elements in `nums`.
+> **Problem Statement:** You are given a sorted array `nums`. Remove the repeats in place so each value appears once, keeping the original order, and return how many distinct values there are. Whatever sits beyond that count does not matter.
 
 ```text
 Input:  nums = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]
-Output: 5, nums = [0, 1, 2, 3, 4, _, _, _, _, _]
-Explanation: Your function should return k = 5, with the first five elements of nums being 0, 1, 2, 3, and 4 respectively. Elements beyond k do not matter.
+Output: 5, with nums starting [0, 1, 2, 3, 4, ...]
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Because the array is already sorted in non-decreasing order, all duplicate instances of any number appear clustered together side-by-side.
+The array is sorted, and that is the gift. Equal values have no choice but to sit next to each other, so a repeat is always the value immediately before it. You never have to remember anything from further back.
 
-#### Brute Force: Auxiliary Array or Set
-The straightforward approach collects unique values into a separate collection:
-- Iterate through `nums` and insert elements into a new list or hash set.
-- Copy those elements back into the beginning of `nums`.
+Now use two fingers moving at different speeds. The **reader** visits every slot in turn. The **writer** stays behind, marking where the next distinct value should be placed. Most of the time the reader sees a repeat and the writer does not move at all. When the reader finds something new, it gets written at the writer's slot and the writer steps forward.
 
-While this identifies unique items in $O(n)$ time, allocating an auxiliary collection uses $O(n)$ memory, violating the strict in-place constraint.
-
-#### Optimal Approach: Slow and Fast Pointers
-We can achieve in-place deduplication using two pointers moving in the same direction:
-- **Write Pointer `w` (Slow):** Points to the next index where a newly discovered unique element should be written.
-- **Read Pointer `r` (Fast):** Scans forward across the array to find transitions where a number changes.
-
-The very first element `nums[0]` is guaranteed to be unique, so we leave it at index `0` and start `w = 1`. As `r` moves from index `1` to the end:
-- If `nums[r] != nums[r - 1]`, we have encountered a new unique number.
-- We copy `nums[r]` into `nums[w]` and advance `w += 1`.
-- If `nums[r] == nums[r - 1]`, it is an adjacent duplicate, so we simply move `r` forward without advancing `w`.
-
-Once `r` reaches the end, the first `w` slots contain all unique numbers in sorted order.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]`:
-
-| Step | Read Index `r` | Current `nums[r]` | Previous `nums[r - 1]` | Is New Unique? | Action Taken | Prefix `nums[0:w]` |
-| :---: | :---: | :---: | :---: | :---: | :--- | :--- |
-| **Start** | `0` | `0` | None | Yes (Anchor) | Anchor `nums[0] = 0`, initialize `w = 1` | `[0]` |
-| **1** | `1` | `0` | `0` | No | Duplicate detected; skip | `[0]` |
-| **2** | `2` | `1` | `0` | Yes | Write `nums[1] = 1`, increment `w -> 2` | `[0, 1]` |
-| **3** | `3` | `1` | `1` | No | Duplicate detected; skip | `[0, 1]` |
-| **4** | `4` | `1` | `1` | No | Duplicate detected; skip | `[0, 1]` |
-| **5** | `5` | `2` | `1` | Yes | Write `nums[2] = 2`, increment `w -> 3` | `[0, 1, 2]` |
-| **6** | `6` | `2` | `2` | No | Duplicate detected; skip | `[0, 1, 2]` |
-| **7** | `7` | `3` | `2` | Yes | Write `nums[3] = 3`, increment `w -> 4` | `[0, 1, 2, 3]` |
-| **8** | `8` | `3` | `3` | No | Duplicate detected; skip | `[0, 1, 2, 3]` |
-| **9** | `9` | `4` | `3` | Yes | Write `nums[4] = 4`, increment `w -> 5` | `[0, 1, 2, 3, 4]` |
-
-The function returns `w = 5`. The first 5 elements of `nums` are `[0, 1, 2, 3, 4]`.
+When the reader reaches the end, the writer's position is the count of distinct values, and everything before it is the answer.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Check Base Case:** If `nums` is empty, return `0`.
-2. **Initialize Write Pointer:** Set `w = 1`, since `nums[0]` is always the first unique value.
-3. **Iterate Read Pointer:** Loop `r` from `1` through `len(nums) - 1`.
-4. **Detect Value Change:** If `nums[r] != nums[r - 1]`:
-   - Assign `nums[w] = nums[r]`.
-   - Increment `w += 1`.
-5. **Return Unique Count:** Return `w`, which represents the number of unique elements stored at the front.
+Nothing is ever deleted. Deleting from the middle of an array means shifting everything after it, which is slow and entirely unnecessary. Instead the distinct values are compacted toward the front, and the junk left beyond the writer is simply ignored, which is what the problem's "whatever sits beyond that count does not matter" is telling you.
+
+The first value is always distinct, so start the writer at position `1` and the reader at position `1` too.
+
+The comparison worth getting right is **what the reader compares against**. It is not the previous slot in the array, which may already have been overwritten. It is the last value actually kept, which lives at `write - 1`. Comparing against the last kept value is what makes a run of three or four identical numbers collapse correctly.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Slow and Fast Pointers" default>
+Take `nums = [0, 0, 1, 1, 1, 2, 2, 3, 3, 4]`, with the writer at `1`.
+
+1. **Reader at `1` sees `0`.** The last kept value is `0`, so this is a repeat. Nothing happens.
+2. **Reader at `2` sees `1`.** New. Write it at position `1`, and the writer moves to `2`. The array starts `[0, 1, ...]`.
+3. **Readers at `3` and `4` see `1` again.** Both repeats, both ignored.
+4. **Reader at `5` sees `2`.** New. Write at position `2`, writer moves to `3`.
+5. **The rest** plays out the same way: `3` is written at position `3`, `4` at position `4`.
+
+The writer finishes at `5`, which is the answer, and the first five slots hold `0, 1, 2, 3, 4`.
+
+---
+
+### The code
 
 ```python
 class Solution:
@@ -90,59 +61,31 @@ class Solution:
         if not nums:
             return 0
 
-        # w marks the write position for the next unique element
-        w = 1
+        write = 1
 
-        # r scans ahead to detect new unique values
-        for r in range(1, len(nums)):
-            if nums[r] != nums[r - 1]:
-                nums[w] = nums[r]
-                w += 1
+        for read in range(1, len(nums)):
+            # compare against the last value kept, not the previous slot
+            if nums[read] != nums[write - 1]:
+                nums[write] = nums[read]
+                write += 1
 
-        return w
+        return write
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Alternative / Brute Force: Auxiliary Array">
+---
 
-```python
-class Solution:
-    def removeDuplicates(self, nums: list[int]) -> int:
-        if not nums:
-            return 0
+### Time and space complexity
 
-        unique_elements: list[int] = [nums[0]]
-        for i in range(1, len(nums)):
-            if nums[i] != nums[i - 1]:
-                unique_elements.append(nums[i])
+#### Time: $O(n)$
 
-        # Write unique elements back into nums
-        for i in range(len(unique_elements)):
-            nums[i] = unique_elements[i]
+The reader makes one pass and the writer only ever moves forward, never backward and never more than once per step. One comparison and sometimes one assignment per element.
 
-        return len(unique_elements)
-```
+#### Space: $O(1)$
 
-  </TabItem>
-</Tabs>
+Two indices, and all the moving happens inside the original array. Building a new array of distinct values would be easier to write but would cost $O(n)$ memory, which is what "in place" rules out.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Auxiliary Array** | $O(n)$ | $O(n)$ | Allocates an extra list to collect unique elements before copying back. |
-| **Slow and Fast Pointers** | $O(n)$ | $O(1)$ | Overwrites duplicates in-place during a single pass with zero extra memory allocations. |
-
----
-
-### Common Pitfall: Comparing Against Unwritten Indices
-
-A common bug occurs when trying to compare `nums[r]` against `nums[w]` instead of `nums[r - 1]` (or `nums[w - 1]`). Because `nums[w]` contains an old value that has not yet been overwritten, checking `nums[w]` leads to comparing against stale data. Comparing `nums[r]` with `nums[r - 1]` cleanly detects transitions between adjacent sorted duplicates.
-
----
-
-### Concise Interview Takeaway
-
-For **Remove Duplicates from Sorted Array**, use a slow write pointer and a fast read pointer. Since the array is sorted, duplicates are adjacent: whenever the fast pointer detects a new element different from its predecessor, write it to the slow pointer's position and increment. This achieves $O(n)$ time and $O(1)$ auxiliary space.
+Sorted means repeats are neighbours, so a reader and a writer are enough. The reader visits everything, the writer advances only on a value that differs from the last one kept, and the writer's final position is the count. Nothing is deleted; the distinct values are just compacted to the front. $O(n)$ time, $O(1)$ space.

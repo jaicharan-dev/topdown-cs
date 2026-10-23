@@ -1,152 +1,109 @@
 ---
 id: 5-sort-colors
 title: "75. Sort Colors"
-description: "Dijkstra's Dutch National Flag single-pass three-way partition"
+description: "Three boundaries, one sweep, and a value swapped back from the end that still needs checking"
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Two Pointers</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Dutch National Flag</span>
 
-> **Problem Statement:** Given an array `nums` with $n$ objects colored red, white, or blue, sort them in-place so that objects of the same color are adjacent, with the colors in the order red, white, and blue (`0`, `1`, and `2`). Solve this in a single pass without using library sorting functions.
+> **Problem Statement:** You are given an array holding only the values `0`, `1` and `2`. Sort it in place so all the `0`s come first, then the `1`s, then the `2`s. Do it in a single pass, without calling a sorting function.
 
 ```text
 Input:  nums = [2, 0, 2, 1, 1, 0]
 Output: [0, 0, 1, 1, 2, 2]
-Explanation: The objects with colors 0 (red), 1 (white), and 2 (blue) are partitioned in-place into sorted order.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-We are sorting an array containing only three distinct keys (`0`, `1`, and `2`). 
+With only three possible values, the finished array is three blocks: zeros, then ones, then twos.
 
-#### Brute Force: Two-Pass Counting Sort
-The most obvious approach counts frequencies:
-- Pass 1: Count how many `0`s, `1`s, and `2`s are in `nums`.
-- Pass 2: Overwrite `nums` with the counted number of `0`s, followed by `1`s, followed by `2`s.
+So the array can be thought of as four regions while the work is going on:
 
-This takes $O(n)$ time and $O(1)$ space, but requires two complete passes over the array. The challenge is to complete the sort in a single traversal.
+```text
+[ settled zeros | settled ones | not looked at yet | settled twos ]
+```
 
-#### Optimal Approach: Dijkstra's Dutch National Flag Algorithm
-We partition the array into four regions using three pointers:
-- **`[0 .. low-1]`:** Red zone (all `0`s)
-- **`[low .. mid-1]`:** White zone (all `1`s)
-- **`[mid .. high]`:** Unexplored territory (uninspected elements)
-- **`[high+1 .. n-1]`:** Blue zone (all `2`s)
+Three markers hold those regions apart. `low` is the first slot after the zeros. `high` is the last slot before the twos. `i` is the scanner, walking through the unexamined middle.
 
-Pointer `mid` acts as our active inspector:
-1. If `nums[mid] == 0`: Swap `nums[low]` and `nums[mid]`. Because the element at `low` was already inspected and guaranteed to be a `1`, we can safely advance both `low += 1` and `mid += 1`.
-2. If `nums[mid] == 1`: The element belongs in the middle. Advance `mid += 1`.
-3. If `nums[mid] == 2`: Swap `nums[mid]` and `nums[high]`, and decrement `high -= 1`. However, do not advance `mid`: the value brought in from `high` came from unexplored territory and must be evaluated on the next step.
-
-When `mid > high`, all elements have been categorized.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [2, 0, 2, 1, 1, 0]`:
-
-| Step | `low` | `mid` | `high` | Current `nums[mid]` | Action Taken | Array State (`nums`) |
-| :---: | :---: | :---: | :---: | :---: | :--- | :--- |
-| **Start** | `0` | `0` | `5` | - | Initial pointer setup | `[2, 0, 2, 1, 1, 0]` |
-| **1** | `0` | `0` | `5` | `2` | Swap `nums[0]` & `nums[5]`, `high -> 4` (keep `mid = 0`) | `[0, 0, 2, 1, 1, 2]` |
-| **2** | `0` | `0` | `4` | `0` | Swap `nums[0]` & `nums[0]`, `low -> 1`, `mid -> 1` | `[0, 0, 2, 1, 1, 2]` |
-| **3** | `1` | `1` | `4` | `0` | Swap `nums[1]` & `nums[1]`, `low -> 2`, `mid -> 2` | `[0, 0, 2, 1, 1, 2]` |
-| **4** | `2` | `2` | `4` | `2` | Swap `nums[2]` & `nums[4]`, `high -> 3` (keep `mid = 2`) | `[0, 0, 1, 1, 2, 2]` |
-| **5** | `2` | `2` | `3` | `1` | Middle element (`1`); advance `mid -> 3` | `[0, 0, 1, 1, 2, 2]` |
-| **6** | `2` | `3` | `3` | `1` | Middle element (`1`); advance `mid -> 4` | `[0, 0, 1, 1, 2, 2]` |
-| **End** | `2` | `4` | `3` | - | Loop terminates (`mid > high`) | `[0, 0, 1, 1, 2, 2]` |
+Every value the scanner meets gets sent to one of the three blocks, and the unexamined middle shrinks from both sides. When it disappears, the array is sorted.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Three Pointers:** Set `low = 0`, `mid = 0`, and `high = len(nums) - 1`.
-2. **Loop While `mid <= high`:**
-   - **Case 0 (`nums[mid] == 0`):** Swap `nums[low]` and `nums[mid]`. Advance `low += 1` and `mid += 1`.
-   - **Case 1 (`nums[mid] == 1`):** Keep element in place and advance `mid += 1`.
-   - **Case 2 (`nums[mid] == 2`):** Swap `nums[mid]` and `nums[high]`. Decrement `high -= 1` (do not increment `mid`).
-3. **Termination:** When `mid > high`, the array is sorted in-place in a single pass.
+The scanner looks at `nums[i]` and does one of three things.
+
+- **It is a `0`.** It belongs at the front, so swap it with whatever is at `low`, then move `low` and `i` both forward.
+- **It is a `1`.** It is already in the middle block where it belongs, so just move `i` forward.
+- **It is a `2`.** It belongs at the back, so swap it with whatever is at `high` and move `high` backwards.
+
+Look carefully at that last case. **`i` does not move.** The value that just arrived from the back has never been examined, so the scanner has to look at it next. Advancing past it is the single most common way to get this wrong, and it silently leaves stray values in the middle.
+
+The zero case is different, and it is fair to ask why `i` can safely move there. Everything to the left of `i` has already been examined, so the value swapped up from `low` is something the scanner has seen before, and it can only be a `1`. Moving over it loses nothing.
+
+The loop runs while `i` has not passed `high`. Once it does, there is no unexamined region left.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Dutch National Flag Partition" default>
+Take `nums = [2, 0, 2, 1, 1, 0]`, with `low = 0`, `i = 0`, `high = 5`.
+
+1. **`nums[0]` is `2`.** Swap with position `5`: `[0, 0, 2, 1, 1, 2]`. Now `high = 4`, and `i` stays at `0`.
+2. **`nums[0]` is `0`.** Swap with position `0`, which changes nothing. Now `low = 1`, `i = 1`.
+3. **`nums[1]` is `0`.** Again a self-swap. Now `low = 2`, `i = 2`.
+4. **`nums[2]` is `2`.** Swap with position `4`: `[0, 0, 1, 1, 2, 2]`. Now `high = 3`, and `i` stays at `2`.
+5. **`nums[2]` is `1`.** Leave it, `i = 3`.
+6. **`nums[3]` is `1`.** Leave it, `i = 4`. That is past `high`, so the sweep ends.
+
+The array is `[0, 0, 1, 1, 2, 2]`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def sortColors(self, nums: list[int]) -> None:
-        """
-        Do not return anything, modify nums in-place instead.
-        """
-        low = 0
-        mid = 0
-        high = len(nums) - 1
+        low, i, high = 0, 0, len(nums) - 1
 
-        while mid <= high:
-            if nums[mid] == 0:
-                # Swap into low boundary; previous element at low is known to be 1
-                nums[low], nums[mid] = nums[mid], nums[low]
+        while i <= high:
+            if nums[i] == 0:
+                nums[low], nums[i] = nums[i], nums[low]
                 low += 1
-                mid += 1
-            elif nums[mid] == 1:
-                # 1 stays in middle region
-                mid += 1
-            else:
-                # Swap into high boundary; element from high is uninspected
-                nums[mid], nums[high] = nums[high], nums[mid]
+                i += 1
+            elif nums[i] == 2:
+                nums[high], nums[i] = nums[i], nums[high]
                 high -= 1
+                # i stays put: the value from the back has not been examined
+            else:
+                i += 1
 ```
 
-  </TabItem>
-  <TabItem value="brute" label="Alternative / Brute Force: Two-Pass Counting Sort">
+---
 
-```python
-class Solution:
-    def sortColors(self, nums: list[int]) -> None:
-        """
-        Do not return anything, modify nums in-place instead.
-        """
-        counts = [0, 0, 0]
-        for num in nums:
-            counts[num] += 1
+### Time and space complexity
 
-        # Overwrite array with counts
-        index = 0
-        for color in range(3):
-            for _ in range(counts[color]):
-                nums[index] = color
-                index += 1
-```
+#### Time: $O(n)$
 
-  </TabItem>
-</Tabs>
+Each pass of the loop either moves `i` forward or moves `high` backward, so the gap between them shrinks every single time. It starts at `n` and the loop ends when it closes, which caps the number of passes at `n`.
+
+That is what "single pass" means here, even though `i` sometimes stands still.
+
+#### Space: $O(1)$
+
+Three indices, and every move is a swap inside the array.
+
+Counting the three values and then rewriting the array from those counts is the other classic answer. It is simple and also $O(n)$, but it reads the array twice, which this problem explicitly rules out.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Two-Pass Counting Sort** | $O(n)$ | $O(1)$ | Tallies counts and overwrites elements in a second pass. Easy to implement, but requires two full passes. |
-| **Dutch National Flag** | $O(n)$ | $O(1)$ | Partitions the array into three zones simultaneously in a single pass in-place using three pointers. |
-
----
-
-### Common Pitfall: Incrementing Mid After Swapping With High
-
-A frequent mistake is executing `mid += 1` after swapping `nums[mid]` with `nums[high]`. When swapping with `low`, the incoming element is known to be `1` because `mid` had already inspected it earlier. In contrast, the element swapped in from `high` came from uninspected territory and could be `0`, `1`, or `2`. If you increment `mid`, that uninspected element is never evaluated, leaving the array incorrectly partitioned.
-
----
-
-### Concise Interview Takeaway
-
-For **Sort Colors**, apply Dijkstra's Dutch National Flag three-way partition. Use `low` for `0`s, `high` for `2`s, and `mid` to inspect. Advance `mid` after swapping with `low` (since the swapped item is guaranteed to be `1`), but keep `mid` stationary after swapping with `high` to evaluate the newly placed item. This completes the sort in a single $O(n)$ pass with $O(1)$ space.
+Three markers: zeros settle below `low`, twos settle above `high`, and `i` scans the middle. Swap a `0` down and advance both, leave a `1` alone, swap a `2` up and **do not advance `i`**, because the value that came back from the end has not been looked at yet. $O(n)$ time, $O(1)$ space, one pass.
