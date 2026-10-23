@@ -1,144 +1,104 @@
 ---
 id: 4-count-primes
 title: "204. Count Primes"
-description: "The Sieve of Eratosthenes with square-start optimization"
+description: "Stop testing numbers for primality and start crossing out multiples"
 sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Math & Number Theory</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Sieve of Eratosthenes</span>
 
-> **Problem Statement:** Given an integer `n`, return the number of prime numbers that are strictly less than `n`.
+> **Problem Statement:** You are given a number `n`. Count how many prime numbers are smaller than `n`.
 
 ```text
 Input:  n = 10
 Output: 4
-Explanation: There are 4 prime numbers strictly less than 10, which are 2, 3, 5, and 7.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Counting prime numbers less than `n` requires distinguishing primes from composite numbers efficiently.
+Write out every number from `2` up to `n` on a long strip of paper.
 
-#### Brute Force: Trial Division
-The most straightforward approach is to test each candidate integer from `2` up to `n - 1`. For each candidate `i`, check whether any integer from `2` up to $\lfloor\sqrt{i}\rfloor$ divides `i` evenly.
+Find the first number not yet crossed out. That is `2`, and it must be prime, because nothing smaller than it crossed it off. Now walk along the strip crossing out every multiple of `2`: `4`, `6`, `8` and so on. None of those can be prime, since each one has `2` as a factor.
 
-While each individual primality check runs in $O(\sqrt{i})$ time, repeating this test for all $n$ candidates requires $O(n \sqrt{n})$ total time. For $n = 5,000,000$, $n \sqrt{n} \approx 1.1 \times 10^{10}$ operations, which inevitably triggers a Time Limit Exceeded (TLE) error.
+The next number still standing is `3`. Prime, for the same reason. Cross out its multiples. Then `5`, then `7`.
 
-#### Optimal Approach: Sieve of Eratosthenes
-Instead of testing each number independently, the Sieve of Eratosthenes eliminates composites in bulk by crossing out multiples of known primes.
-
-1. Create a boolean lookup table `is_prime` initialized to `True` for all indices.
-2. Start at $p = 2$. Because 2 is prime, all multiples of 2 ($4, 6, 8, 10, \dots$) must be composite, so mark them `False`.
-3. Proceed to the next unmarked number ($p = 3$). Mark all multiples of 3 ($9, 12, 15, \dots$) as `False`.
-4. Continue this process. Any number that remains `True` when reached is prime.
-
-Two critical mathematical optimizations make this sieve exceptionally fast:
-- **Stop outer loop at $\sqrt{n}$:** Any composite number $\le n$ must have at least one prime factor $\le \sqrt{n}$. Once $p > \sqrt{n}$, all composites have already been crossed out.
-- **Start inner loop at $p^2$:** When crossing out multiples of $p$, any multiple $k \cdot p$ where $k < p$ has already been marked by a smaller prime factor $k$. The first multiple that requires crossing is $p \cdot p = p^2$.
-
-#### Execution Walkthrough
-
-Let us trace the sieve for $n = 10$:
-
-Initial state: indices 0 and 1 are `False`, indices 2 through 9 are `True`.
-Since $\sqrt{10} \approx 3.16$, the outer loop checks $p = 2$ and $p = 3$.
-
-| Step | Prime Candidate $p$ | Multiples Marked (`p*p, p*p + p, ... < n`) | Indices Flipped to `False` | Remaining Primes Below $n$ |
-| :---: | :---: | :---: | :---: | :--- |
-| **1** | `2` | $2^2 = 4, 4+2=6, 6+2=8$ | `4, 6, 8` | `2, 3, 5, 7, 9` |
-| **2** | `3` | $3^2 = 9$ | `9` | `2, 3, 5, 7` |
-| **End** | - | Outer loop terminates ($p > \sqrt{10}$) | - | Count = `4` (primes: `2, 3, 5, 7`) |
+When you are done, everything still standing is prime. You never once tested a number to see whether it was prime. You only ever crossed out things you already knew could not be.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Guard Edge Cases:** If `n <= 2`, return `0` because no primes exist strictly less than 2.
-2. **Initialize Sieve Array:** Create a boolean list `is_prime` of length `n`, initialized to `True`. Mark `is_prime[0] = is_prime[1] = False`.
-3. **Sift Multiples up to $\sqrt{n}$:** Iterate $p$ from `2` up to $\lfloor\sqrt{n}\rfloor$:
-   - If `is_prime[p]` is `True`:
-     - Cross out all multiples starting from $p \cdot p$ up to $n$ with step $p$:  
-       `is_prime[p * p : n : p] = [False] * len(range(p * p, n, p))`.
-4. **Sum Prime Survivors:** Count all remaining `True` values using `sum(is_prime)` and return the total.
+The direct approach is to take each number and try dividing it by everything up to its square root. That is a lot of repeated work, and it gets slow quickly.
+
+The sieve turns the problem inside out. Instead of asking "is this number prime", it marks off the numbers that cannot be, and lets the primes be whatever survives. Each composite number gets crossed out by its factors rather than discovered by a test.
+
+Two refinements make it fast, and both are worth being able to explain.
+
+**Start crossing at `p` squared, not at `2p`.** When you get to `5`, the numbers `10`, `15` and `20` have already gone, crossed out by `2` and `3` earlier. In general any multiple of `p` below `p` squared has a smaller factor, so it was already handled. Beginning at `25` skips all that duplicated work.
+
+**Stop sieving once `p` squared reaches `n`.** Beyond that point there is nothing left to cross out, because the first multiple you would start from is already off the end of the strip. Any composite number below `n` must have a factor at or below the square root of `n`, so by then every composite has been caught.
+
+The trade is memory. The strip of paper is a list of `n` flags, which has to exist all at once.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Sieve of Eratosthenes" default>
+Take `n = 10`, so the strip runs from `0` to `9` with `0` and `1` crossed out from the start.
+
+1. **`2` is standing**, so it is prime. Start crossing at `2 * 2 = 4`, then `6`, then `8`.
+2. **`3` is standing**, so it is prime. Start crossing at `3 * 3 = 9`. That is the only multiple of `3` left, since `6` went already.
+3. **`4` would be next**, but `4 * 4 = 16` is past `n`, so the sieving stops.
+
+Still standing: `2`, `3`, `5`, `7`. The answer is `4`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def countPrimes(self, n: int) -> int:
-        if n <= 2:
+        if n < 3:
             return 0
 
-        # Step 1: Initialize sieve table
         is_prime = [True] * n
         is_prime[0] = is_prime[1] = False
 
-        # Step 2: Sieve only up to sqrt(n)
-        for p in range(2, int(n**0.5) + 1):
+        p = 2
+        while p * p < n:
             if is_prime[p]:
-                # Cross out multiples starting from p * p
-                is_prime[p * p : n : p] = [False] * len(range(p * p, n, p))
+                # everything below p squared already has a smaller factor
+                for multiple in range(p * p, n, p):
+                    is_prime[multiple] = False
+            p += 1
 
-        # Step 3: Count remaining prime survivors
         return sum(is_prime)
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Trial Division">
+---
 
-```python
-class Solution:
-    def countPrimes(self, n: int) -> int:
-        if n <= 2:
-            return 0
+### Time and space complexity
 
-        def is_prime_number(val: int) -> bool:
-            for d in range(2, int(val**0.5) + 1):
-                if val % d == 0:
-                    return False
-            return True
+#### Time: $O(n \log \log n)$
 
-        count = 0
-        for i in range(2, n):
-            if is_prime_number(i):
-                count += 1
+That exponent looks alarming and is actually gentle. Here is where it comes from.
 
-        return count
-```
+Crossing out the multiples of `2` costs about `n / 2` steps. The multiples of `3` cost about `n / 3`. The multiples of `5` cost about `n / 5`. Adding up `1/p` across all the primes up to `n` grows like $\log \log n$, so the total work is about `n` times that.
 
-  </TabItem>
-</Tabs>
+The practical point is that $\log \log n$ barely moves. For a million it is under three. So the sieve behaves like a small constant multiple of `n`, which is why it comfortably beats testing each number individually.
+
+#### Space: $O(n)$
+
+One flag for every number below `n`, all held at once. This is the real cost of the sieve, and the thing to mention if asked about very large inputs: counting primes below a trillion is not a memory budget most machines have.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Trial Division** | $O(n \sqrt{n})$ | $O(1)$ | Tests each candidate independently up to its square root. Minimal memory, but triggers TLE on large constraints. |
-| **Sieve of Eratosthenes** | $O(n \log \log n)$ | $O(n)$ | Marks composites in bulk using a boolean array. Trades $O(n)$ space for near-linear runtime. |
-
----
-
-### Common Pitfall: Starting Composite Marking at 2p
-
-Starting the inner crossing loop at $2p$ rather than $p^2$ causes redundant work. For example, for $p = 7$, multiples like $14$, $21$, $28$, $35$, and $42$ have already been crossed out by $2$, $3$, and $5$. Starting at $p^2 = 49$ eliminates repeated writes. Another pitfall is running the outer loop all the way to $n$ instead of $\lfloor\sqrt{n}\rfloor$, which introduces unnecessary loop cycles.
-
----
-
-### Concise Interview Takeaway
-
-Do not test numbers for primality individually. Use the Sieve of Eratosthenes to eliminate composites in bulk. By terminating the outer loop at $\lfloor\sqrt{n}\rfloor$ and starting inner multiple marking at $p^2$, the time complexity drops from $O(n \sqrt{n})$ down to $O(n \log \log n)$, which runs almost linearly even for inputs in the millions.
+Do not test numbers for primality, cross out multiples instead and keep whatever survives. Start crossing at `p` squared, because everything below it was already crossed out by a smaller factor, and stop sieving once `p` squared passes `n`. $O(n \log \log n)$ time, which behaves almost like $O(n)$, and $O(n)$ space for the flags.

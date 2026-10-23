@@ -1,146 +1,109 @@
 ---
 id: 5-pow-x-n
 title: "50. Pow(x, n)"
-description: "Binary exponentiation (exponentiation by squaring) in O(log n)"
+description: "Square the base and halve the exponent instead of multiplying n times"
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Math & Number Theory</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Binary Exponentiation</span>
 
-> **Problem Statement:** Implement `myPow(x, n)`, which calculates `x` raised to the power `n` (that is, $x^n$).
+> **Problem Statement:** Write `myPow(x, n)`, which raises `x` to the power `n`. The exponent can be negative.
 
 ```text
 Input:  x = 2.00000, n = 10
 Output: 1024.00000
-Explanation: 2.0 raised to the power 10 is 2^10 = 1024.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Calculating $x^n$ directly involves repeated multiplication, but large exponents require a logarithmic approach.
+Multiplying `x` by itself `n` times is the obvious way, and for a large `n` it is a very long afternoon.
 
-#### Brute Force: Linear Multiplication
-The simplest approach is multiplying $x$ by itself $n$ times in a loop.
-However, when $n$ reaches $2^{31} - 1 \approx 2.14 \times 10^9$, performing 2.14 billion multiplications takes several seconds and causes a Time Limit Exceeded (TLE) error.
+The shortcut is that squaring doubles the exponent for free:
 
-#### Optimal Approach: Binary Exponentiation
-Every integer exponent $n$ can be expressed as a sum of powers of 2 using its binary representation.
+```text
+x squared        has exponent 2
+that squared     has exponent 4
+that squared     has exponent 8
+```
 
-For example, to compute $x^{13}$:
-Since $13 = 1101_2 = 8 + 4 + 1$, we can factor the expression as:
-$$x^{13} = x^8 \cdot x^4 \cdot x^1$$
+Three multiplications got you to `x` to the eighth, where the plain approach would have taken eight. Every squaring doubles your progress, so you cover a huge exponent in very few steps.
 
-Instead of multiplying $x$ thirteen times:
-1. Start with `res = 1.0` and `curr_product = x`.
-2. Inspect the lowest bit of $n$:
-   - If the bit is `1` ($n$ is odd), multiply `res` by `curr_product`.
-3. Square the base: `curr_product = curr_product * curr_product` ($x \to x^2 \to x^4 \to x^8$).
-4. Halve the exponent: $n = \lfloor n / 2 \rfloor$.
-
-Negative exponents are inverted mathematically via $x^{-n} = (1 / x)^n$, setting `x = 1 / x` and `n = -n`.
-
-#### Execution Walkthrough
-
-Let us trace $x = 2.0, n = 10$ ($10 = 1010_2$):
-
-| Step | Exponent `n` | Is `n` Odd? (`n % 2 == 1`) | Updated `res` | Squared Base (`curr_product`) | Next `n` (`n // 2`) |
-| :---: | :---: | :---: | :---: | :---: | :---: |
-| **1** | `10` | No | `1.0` | $2.0^2 = 4.0$ | `5` |
-| **2** | `5` | **Yes** | $1.0 \times 4.0 = 4.0$ | $4.0^2 = 16.0$ | `2` |
-| **3** | `2` | No | `4.0` | $16.0^2 = 256.0$ | `1` |
-| **4** | `1` | **Yes** | $4.0 \times 256.0 = 1024.0$ | $256.0^2 = 65536.0$ | `0` |
-
-The loop terminates when `n == 0`, returning `1024.0` in just 4 steps instead of 10.
+The only question left is what to do with exponents that are not neat powers of two.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Handle Negative Exponents:** If $n < 0$, invert the base `x = 1 / x` and negate the exponent `n = -n`.
-2. **Initialize Accumulators:** Set `res = 1.0` and `curr_product = x`.
-3. **Loop While `n > 0`:**
-   - If `n % 2 == 1`: multiply `res *= curr_product`.
-   - Square the base: `curr_product *= curr_product`.
-   - Halve the exponent: `n //= 2`.
-4. **Return Result:** Return `res`.
+Work the problem from the exponent's side, halving it each pass.
+
+Keep two things: a `result` that starts at `1`, and a running `base` that starts at `x`. Then repeat until the exponent reaches zero:
+
+- **If the exponent is odd**, multiply the current base into `result`. Halving an odd number throws away a remainder of one, and that remainder is exactly one copy of the current base. Banking it into `result` is how you keep it.
+- **Square the base**, which is what makes it worth twice as much on the next pass.
+- **Halve the exponent**, rounding down.
+
+This is the exponent's binary representation being read from the right. Each bit that is set contributes one squared base to the answer. `10` in binary is `1010`, so the answer for `n = 10` is built from the base after one squaring and the base after three squarings, which is `x` to the `2` times `x` to the `8`.
+
+**A negative exponent** means a reciprocal, since `x` to the minus `n` is one over `x` to the `n`. Handle it once at the start by replacing `x` with `1 / x` and making `n` positive, and the rest of the loop never has to think about signs.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Iterative Binary Exponentiation" default>
+Take `x = 2` and `n = 10`, with `result` at `1` and `base` at `2`.
+
+1. **`n` is `10`, even.** Nothing to bank. Square the base to `4`, halve `n` to `5`.
+2. **`n` is `5`, odd.** Bank the base: `result` becomes `4`. Square the base to `16`, halve `n` to `2`.
+3. **`n` is `2`, even.** Nothing to bank. Square the base to `256`, halve `n` to `1`.
+4. **`n` is `1`, odd.** Bank the base: `result` becomes `4 * 256 = 1024`. Halve `n` to `0`, so the loop ends.
+
+The answer is `1024`, reached in four passes rather than ten multiplications. For an exponent in the billions the gap becomes absurd: about thirty passes against a billion.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def myPow(self, x: float, n: int) -> float:
-        # Handle negative exponents
+        # a negative exponent is just the reciprocal raised to a positive one
         if n < 0:
             x = 1 / x
             n = -n
 
-        res = 1.0
-        curr_product = x
+        result = 1.0
+        while n:
+            # an odd exponent leaves one copy of the base behind, so bank it
+            if n % 2:
+                result *= x
 
-        # Exponentiation by squaring
-        while n > 0:
-            if n % 2 == 1:
-                res *= curr_product
-
-            curr_product *= curr_product
+            x *= x
             n //= 2
 
-        return res
+        return result
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Recursive Divide and Conquer">
+---
 
-```python
-class Solution:
-    def myPow(self, x: float, n: int) -> float:
-        if n == 0:
-            return 1.0
+### Time and space complexity
 
-        if n < 0:
-            return 1.0 / self.myPow(x, -n)
+#### Time: $O(\log n)$
 
-        half = self.myPow(x, n // 2)
+The exponent is halved on every pass, so the number of passes is however many times `n` can be halved before reaching zero. That is the logarithm of `n` in base two.
 
-        if n % 2 == 0:
-            return half * half
-        else:
-            return half * half * x
-```
+An exponent of one billion takes about thirty passes. The plain approach would take a billion multiplications. This is the same reason binary search is fast: repeatedly halving a number gets to zero remarkably quickly.
 
-  </TabItem>
-</Tabs>
+#### Space: $O(1)$
+
+Two numbers and the exponent, updated in place. Writing this recursively instead is just as valid and often reads more cleanly, but it costs $O(\log n)$ stack frames, so the loop is the better answer when memory is being asked about.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Recursive Divide & Conquer** | $O(\log n)$ | $O(\log n)$ | Halves the exponent recursively. Takes logarithmic time but consumes $O(\log n)$ call stack frames. |
-| **Iterative Binary Exponentiation** | $O(\log n)$ | $O(1)$ | Squares the base and shifts the exponent bitwise. Optimal logarithmic time with zero recursion overhead. |
-
----
-
-### Common Pitfall: 32-Bit Integer Overflow When Negating INT_MIN
-
-In statically typed languages like C++ or Java, the minimum signed 32-bit integer is $-2^{31} = -2,147,483,648$, whereas the maximum is $2^{31} - 1 = 2,147,483,647$. Directly calculating `-n` when $n = -2^{31}$ causes an integer overflow crash because $2,147,483,648$ does not fit in a signed 32-bit integer. In those languages, you must cast `n` to a 64-bit integer (`long long`) before negating. While Python automatically handles arbitrarily large integers, recognizing this hardware boundary is crucial in technical interviews.
-
----
-
-### Concise Interview Takeaway
-
-Instead of multiplying $x$ linearly in $O(n)$ time, use binary exponentiation to achieve $O(\log n)$. Express the exponent in binary, square the base in each step, and multiply into the result whenever the current bit is 1. Convert negative exponents via $x^{-n} = (1 / x)^n$. For exponents up to $2 \times 10^9$, this executes in at most 32 operations with $O(1)$ auxiliary space.
+Square the base and halve the exponent, banking one copy of the base into the answer whenever the exponent is odd. That turns `n` multiplications into about $\log n$ of them. Deal with a negative exponent once at the start by inverting `x`, so the loop stays sign-free. $O(\log n)$ time, $O(1)$ space when written as a loop.

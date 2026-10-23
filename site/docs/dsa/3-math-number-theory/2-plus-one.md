@@ -1,130 +1,97 @@
 ---
 id: 2-plus-one
 title: "66. Plus One"
-description: "Reverse carry propagation and the mechanical odometer rollover"
+description: "Only a nine can carry, so the first smaller digit ends the work"
 sidebar_position: 2
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Math & Number Theory</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Carry Propagation</span>
 
-> **Problem Statement:** You are given a large integer represented as an integer array `digits`, where each `digits[i]` is the $i$-th digit of the integer. The digits are ordered from most significant to least significant in left-to-right order. Increment the large integer by one and return the resulting array of digits.
+> **Problem Statement:** You are given a number written out as an array of its digits, most significant first. Add one to that number and return the new array of digits.
 
 ```text
 Input:  digits = [1, 2, 3]
 Output: [1, 2, 4]
-Explanation: The array represents the integer 123. Incrementing by one gives 123 + 1 = 124, so the result is [1, 2, 4].
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Think of the array of digits as a mechanical car odometer clicking forward by one mile.
+This is the odometer in a car.
 
-#### Brute Force: String or BigInt Conversion
-One approach is to concatenate the array into a string, convert the string into a large integer, add 1, convert the resulting number back into a string, and split each character back into an integer array. While practical in languages with arbitrary-precision integers like Python, this approach allocates multiple intermediate strings and lists ($O(n)$ extra memory) and fails outright in languages with fixed 32-bit or 64-bit primitive integer types when the input contains dozens or hundreds of digits.
+You add one to the rightmost wheel. If that wheel was showing anything from `0` to `8`, it clicks up by one and the rest of the dashboard never moves. Done.
 
-#### Optimal Approach: Reverse Carry Propagation
-The crucial observation is that adding 1 only creates a carry if the current digit is `9`. For any digit between `0` and `8`, adding 1 settles the operation immediately with no further carry needed.
+If it was showing `9`, it rolls around to `0` and gives the wheel to its left a nudge. That wheel now faces the same question, and so on leftward for as long as it keeps meeting nines.
 
-We traverse the array backward starting from the least significant digit:
-- If `digits[i] < 9`, increment `digits[i]` by 1 and return `digits` immediately.
-- If `digits[i] == 9`, that digit rolls over to `0`, and we carry `+1` into the next digit to the left.
-
-If the loop finishes without returning, every single digit was `9` (such as `[9, 9, 9]`). In this scenario, all elements have become `0` (`[0, 0, 0]`), and we only need to prepend `1` to the front, yielding `[1, 0, 0, 0]`.
-
-#### Execution Walkthrough
-
-Let us trace `digits = [1, 2, 9]`:
-
-| Step | Index `i` | Current Digit `digits[i]` | Condition (`< 9`) | Action Taken | Array State (`digits`) |
-| :---: | :---: | :---: | :---: | :--- | :--- |
-| **1** | `2` | `9` | No (`9 < 9` is False) | Set `digits[2] = 0`, carry 1 left | `[1, 2, 0]` |
-| **2** | `1` | `2` | **Yes** (`2 < 9` is True) | Increment `digits[1] += 1`, return immediately | `[1, 3, 0]` |
-
-Now let us trace an all-nines rollover with `digits = [9, 9]`:
-
-| Step | Index `i` | Current Digit `digits[i]` | Condition (`< 9`) | Action Taken | Array State (`digits`) |
-| :---: | :---: | :---: | :---: | :--- | :--- |
-| **1** | `1` | `9` | No | Set `digits[1] = 0`, carry 1 left | `[9, 0]` |
-| **2** | `0` | `9` | No | Set `digits[0] = 0`, loop finishes | `[0, 0]` |
-| **Post-loop** | - | - | - | Prepend `[1]` to `digits` | `[1, 0, 0]` |
+If every single wheel was a `9`, the nudging runs off the left-hand end, and the number gains a whole new digit: `999` becomes `1000`.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Traverse Backward:** Iterate backward from the least significant digit at index `len(digits) - 1` down to `0`.
-2. **Evaluate Digit:**
-   - If `digits[i] < 9`: increment `digits[i]` by 1 and return `digits` immediately.
-   - If `digits[i] == 9`: set `digits[i] = 0` to absorb the rollover and continue leftward.
-3. **Handle Complete Rollover:** If the loop terminates without returning, all digits were `9`. Return `[1] + digits` to attach the leading overflow digit.
+Walk the digits from the right.
+
+**If the digit is less than nine**, add one to it and return the array immediately. There is no carry, so nothing to the left of it can possibly change. Stopping right there is not an optimisation, it is just the truth about addition.
+
+**If the digit is nine**, it becomes `0` and the walk continues leftward with the carry still in hand.
+
+**If the walk runs out of digits**, every digit was a nine and every one of them is now a `0`. The answer is a `1` followed by all those zeros, which is one digit longer than the input.
+
+That last case is the only one that needs new memory, and it is the one people forget. Inputs like `[9]` and `[9, 9, 9]` are what an interviewer reaches for first.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: In-Place Reverse Traversal" default>
+Take `digits = [1, 2, 3]`.
+
+1. **The rightmost digit is `3`**, which is less than nine. It becomes `4`, and the array `[1, 2, 4]` is returned on the spot. The `1` and the `2` are never even looked at.
+
+Now take `digits = [9, 9]`:
+
+1. **Rightmost is `9`.** It becomes `0`, carry continues. The array is `[9, 0]`.
+2. **Next is `9`.** It becomes `0`, carry continues. The array is `[0, 0]`.
+3. **The walk ends** with the carry still unplaced, so a `1` goes on the front: `[1, 0, 0]`, which is `100`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def plusOne(self, digits: list[int]) -> list[int]:
-        n = len(digits)
-
-        # Traverse backward from least to most significant digit
-        for i in range(n - 1, -1, -1):
+        for i in range(len(digits) - 1, -1, -1):
+            # anything below nine absorbs the carry and ends the job
             if digits[i] < 9:
                 digits[i] += 1
                 return digits
 
-            # Digit 9 rolls over to 0; propagate carry leftward
             digits[i] = 0
 
-        # If all digits were 9 (e.g. [9, 9] -> [1, 0, 0]), prepend 1
+        # every digit was a nine, so the number gains a place
         return [1] + digits
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Integer Reconstruction">
+---
 
-```python
-class Solution:
-    def plusOne(self, digits: list[int]) -> list[int]:
-        num = 0
-        for d in digits:
-            num = num * 10 + d
+### Time and space complexity
 
-        num += 1
-        return [int(ch) for ch in str(num)]
-```
+#### Time: $O(n)$
 
-  </TabItem>
-</Tabs>
+The worst case is an array of nothing but nines, where the carry travels the whole way and every digit is touched. That is $O(n)$.
+
+Almost every other input finishes in a single step, because nine out of ten random last digits absorb the carry straight away. The worst case is what gets quoted, but the typical case is constant.
+
+#### Space: $O(1)$, except for the all-nines case
+
+Ordinarily the digits are changed in place and nothing new is allocated. The all-nines case is the exception, because the answer genuinely has one more digit than the input, so a new array of size `n + 1` has to be built. No approach can avoid that, since the result does not fit in the space provided.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Integer Reconstruction** | $O(n)$ | $O(n)$ | Converts the array to an integer and parses it back. Incurs memory overhead and fails in languages without arbitrary-precision arithmetic. |
-| **In-Place Reverse Traversal** | $O(n)$ | $O(1)$ | Modifies the list in place with early exit in $O(1)$ average time. Requires $O(n)$ space only during the rare all-nines rollover. |
-
----
-
-### Common Pitfall: Repeated Inefficient Array Insertions
-
-A common mistake is using `digits.insert(0, 1)` inside the loop or reallocating arrays on each carry step. Prepending to an array in Python takes $O(n)$ time because every following element must be shifted right. By modifying elements in place and performing at most a single prepend (`[1] + digits`) after the loop terminates, the optimal solution remains clean and efficient.
-
----
-
-### Concise Interview Takeaway
-
-Model the increment like a mechanical odometer. Traverse backward from the last digit: if the digit is less than 9, increment it and return immediately. If it is 9, turn it to 0 and propagate the carry to the next digit left. If the loop completes without an early exit, every digit was 9, so prepend `[1]` to the front. This achieves $O(1)$ average runtime and $O(1)$ auxiliary space.
+Walk from the right. The first digit below nine takes the increment and you return immediately, because a carry cannot pass it. Nines turn into zeros and pass the carry along. If the walk falls off the left end, every digit was a nine, so return a `1` in front of all the zeros. $O(n)$ time in the worst case, usually one step.

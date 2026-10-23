@@ -1,144 +1,112 @@
 ---
 id: 3-reverse-integer
 title: "7. Reverse Integer"
-description: "Mathematical digit peeling with 32-bit hardware overflow guards"
+description: "Move digits from the back of one number to the back of another, checking the range before each push"
 sidebar_position: 3
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Math & Number Theory</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Digit Peeling</span>
 
-> **Problem Statement:** Given a signed 32-bit integer `x`, return `x` with its digits reversed. If reversing `x` causes the value to go outside the signed 32-bit integer range `[-2^31, 2^31 - 1]`, then return `0`. Assume the environment does not allow you to store 64-bit integers.
+> **Problem Statement:** You are given a signed 32-bit integer `x`. Return it with its digits reversed. If the reversed value falls outside the 32-bit range, return `0` instead. You cannot use a wider type to hold the intermediate value.
 
 ```text
 Input:  x = 123
 Output: 321
-Explanation: Reversing the digits of 123 produces 321. Both values fall within the signed 32-bit integer range.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Reversing an integer mathematically is like popping items from one stack and pushing them onto another.
+Reversing a number is moving digits from the back of one pile to the back of another.
 
-#### Brute Force: String Reversal with Range Check
-A straightforward approach is to convert the number to a string, reverse the characters, restore the negative sign if applicable, and convert the string back to an integer. Afterward, you check if the value falls outside `[-2^31, 2^31 - 1]`. While concise in Python, this approach violates the interview requirement to guard against overflow during calculation without storing 64-bit integers or allocating heap memory for strings.
+```text
+x % 10   takes the last digit off x
+x // 10  shortens x by that digit
+```
 
-#### Optimal Approach: Digit Peeling with 32-Bit Overflow Guard
-We extract digits from the back of `x` using modulo arithmetic and push them into an accumulator variable `res`:
-- **Pop:** `digit = x % 10`, `x //= 10`.
-- **Push:** `res = res * 10 + digit`.
+Each digit you peel gets pushed onto the end of the result, which means multiplying the result by ten to make room and then adding the digit in. Peel, push, repeat, until nothing is left of `x`.
 
-The primary challenge is respecting the signed 32-bit integer limits:
-$$[-2^{31}, 2^{31} - 1] = [-2,147,483,648, \ 2,147,483,647]$$
-
-If we multiply `res` by 10 after it has already grown too large, the operation overflows a 32-bit integer register.
-To prevent overflow before it occurs, define `threshold = INT_MAX // 10 = 214,748,364`:
-- If `res > threshold`, then `res * 10` will definitely overflow.
-- If `res == threshold`, then `res * 10 + digit` will overflow if `digit > 7`.
-
-Checking this guard on each iteration ensures we catch overflow early and safely return `0`.
-
-#### Execution Walkthrough
-
-Let us trace `x = 123` with `threshold = 214748364`:
-
-| Step | Current `x` | Popped Digit (`x % 10`) | Remaining `x` (`x // 10`) | Overflow Guard Triggered? | Updated `res` (`res * 10 + digit`) |
-| :---: | :---: | :---: | :---: | :---: | :---: |
-| **1** | `123` | `3` | `12` | No (`0 < 214748364`) | `3` |
-| **2** | `12` | `2` | `1` | No (`3 < 214748364`) | `32` |
-| **3** | `1` | `1` | `0` | No (`32 < 214748364`) | `321` |
-
-Now consider an overflow case such as `x = 1534236469`:
-- At the 10th step, `res` is `964632435`, which is strictly greater than `threshold` (`214748364`).
-- The overflow check immediately triggers and returns `0` before any register overflow can occur.
+That part is easy. The actual problem is the second sentence of the question.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Establish 32-Bit Boundary:** Define `INT_MAX = 2**31 - 1` ($2,147,483,647$) and calculate `threshold = INT_MAX // 10` ($214,748,364$).
-2. **Record Sign and Magnitude:** Store the sign (`sign = -1 if x < 0 else 1`) and work with the positive magnitude `x = abs(x)`.
-3. **Initialize Result:** Set `res = 0`.
-4. **Peel Digits in a Loop:** While `x > 0`:
-   - Pop the last digit: `digit = x % 10`.
-   - Shrink `x`: `x //= 10`.
-   - **Check Overflow Guard:** If `res > threshold` or (`res == threshold and digit > 7`), return `0`.
-   - Push the digit: `res = res * 10 + digit`.
-5. **Reapply Sign:** Multiply `res * sign` and return the resulting 32-bit integer.
+You are reversing a 32-bit number, but the reversed version does not have to fit in 32 bits. `1534236469` is a fine input, and its reverse is `9646324351`, which is far too big. The question asks you to detect that and return `0`, without being allowed to store the oversized value anywhere to look at it.
+
+So the check has to happen **before** the push that would break the range, not after.
+
+Before multiplying the result by ten and adding a digit, ask whether there is room:
+
+```text
+is result greater than (the largest allowed value minus the digit) divided by ten?
+```
+
+If it is, the push would escape the range, so return `0` immediately. If it is not, the push is safe. This way the forbidden value is never actually constructed.
+
+There is also a Python-specific trap. The `%` operator on a negative number does not do what you might expect: `-123 % 10` gives `7`, not `3`, because Python's remainder follows the sign of the divisor. Peeling digits off a negative number directly therefore produces nonsense. Take the sign off at the start, work entirely with the positive value, and put the sign back at the end.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Mathematical Digit Peeling" default>
+Take `x = 123`, with the result starting at `0`.
+
+1. **Peel `3`.** There is plenty of room, so push it: the result is `3`, and `x` is now `12`.
+2. **Peel `2`.** Push it: the result is `3 * 10 + 2 = 32`, and `x` is now `1`.
+3. **Peel `1`.** Push it: the result is `32 * 10 + 1 = 321`, and `x` is now `0`, so the loop ends.
+
+The answer is `321`.
+
+Now picture `x = 1534236469`. The peeling proceeds happily until the result has reached `964632435` and the final digit `1` is waiting to be pushed. The check fires, because ten times that result would clear the 32-bit ceiling, so the function returns `0` without ever building the number.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def reverse(self, x: int) -> int:
-        INT_MAX = 2**31 - 1  # 2,147,483,647
-        threshold = INT_MAX // 10  # 214,748,364
+        INT_MAX = 2**31 - 1
 
+        # Python's % follows the sign of the divisor, so strip the sign first
         sign = -1 if x < 0 else 1
         x = abs(x)
-        res = 0
 
-        while x > 0:
+        result = 0
+        while x:
             digit = x % 10
             x //= 10
 
-            # Guard against 32-bit signed overflow before multiplying
-            if res > threshold or (res == threshold and digit > 7):
+            # would this push leave the range? ask before doing it
+            if result > (INT_MAX - digit) // 10:
                 return 0
 
-            res = res * 10 + digit
+            result = result * 10 + digit
 
-        return res * sign
+        return sign * result
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: String Reversal">
-
-```python
-class Solution:
-    def reverse(self, x: int) -> int:
-        sign = -1 if x < 0 else 1
-        reversed_int = int(str(abs(x))[::-1]) * sign
-
-        # Check 32-bit signed integer boundary after conversion
-        if reversed_int < -2**31 or reversed_int > 2**31 - 1:
-            return 0
-
-        return reversed_int
-```
-
-  </TabItem>
-</Tabs>
+The negative end of the 32-bit range is one larger than the positive end, so in principle a negative answer has slightly more room. It never matters here: the only input whose reverse would land in that one-value gap is itself too large to have been a valid input, so checking both signs against the same ceiling is safe.
 
 ---
 
-### Complexity Analysis
+### Time and space complexity
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **String Reversal** | $O(\log_{10} n)$ | $O(\log_{10} n)$ | Converts to string and checks range after the fact. Uses string memory and does not protect intermediate 32-bit registers. |
-| **Mathematical Digit Peeling** | $O(\log_{10} n)$ | $O(1)$ | Extracts digits mathematically and guards against overflow prior to multiplication. Constant space and hardware safe. |
+#### Time: $O(\log x)$
 
----
+One pass of the loop per digit, and the digit count of a number is its logarithm in base ten. A 32-bit integer has at most ten digits, so this is at most ten passes, each one a handful of arithmetic operations.
 
-### Common Pitfall: Checking Overflow After Multiplication
+#### Space: $O(1)$
 
-In fixed 32-bit environments (like C++ or Java), waiting until after `res = res * 10 + digit` to check for overflow causes an integer wrap-around or undefined behavior before the `if` condition can run. The boundary check must always occur beforehand using `threshold = INT_MAX // 10`.
+A sign, a digit and a running result. The reversed value is built up inside a single number rather than collected into a list of digits, so nothing grows with the input.
 
 ---
 
-### Concise Interview Takeaway
+### Remember this
 
-Peel digits from the right using modulo math (`x % 10`) and append them using `res * 10 + digit`. To strictly adhere to 32-bit hardware constraints, verify that `res` does not exceed `INT_MAX // 10` before multiplying by 10. This handles signed integers reliably in $O(\log_{10} n)$ time and $O(1)$ auxiliary space.
+Peel digits off the back of `x` with `% 10` and `// 10`, and push each one onto the back of the result. Because the reversed value can be too large to hold, test for room before every push rather than checking afterwards. In Python, strip the sign first, because the remainder of a negative number does not give you the digit you expect. $O(\log x)$ time, $O(1)$ space.

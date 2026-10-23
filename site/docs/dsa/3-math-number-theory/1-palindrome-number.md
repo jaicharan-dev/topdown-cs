@@ -1,131 +1,107 @@
 ---
 id: 1-palindrome-number
 title: "9. Palindrome Number"
-description: "Reversing half the digits using modulo math without string conversion"
+description: "Peel digits off the back and rebuild only half the number"
 sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Math & Number Theory</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Digit Extraction</span>
 
-> **Problem Statement:** Given an integer `x`, return `true` if `x` is a palindrome, and `false` otherwise. An integer is a palindrome when it reads the same forward and backward. Solve this problem without converting the integer to a string.
+> **Problem Statement:** You are given an integer `x`. Return `true` if it reads the same forwards and backwards. You are not allowed to turn it into a string.
 
 ```text
 Input:  x = 1221
 Output: true
-Explanation: 1221 reads as 1221 from left to right and from right to left.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Converting `x` to a string (`str(x) == str(x)[::-1]`) is trivial, but in a technical interview, doing so allocates extra memory and circumvents the mathematical concepts being tested.
+Without strings, you still have two tools for getting at digits, and between them they do everything:
 
-#### Brute Force: String Conversion or Full Reversal
-The most direct approach is converting the integer to a string and checking whether it matches its reverse. Alternatively, one could reverse the entire number mathematically into a new integer. However, string conversion incurs an $O(n)$ memory allocation overhead, and reversing an entire 32-bit integer risks arithmetic overflow if the reversed value exceeds $2^{31} - 1$.
+```text
+x % 10   gives you the last digit
+x // 10  throws the last digit away
+```
 
-#### Optimal Approach: Reversing Half the Digits
-Instead of reversing the entire number, we only need to reverse the second half of the digits and compare it directly against the first half.
+So you can peel digits off the back of a number one at a time. Peel one off `1221` and you have the digit `1` in your hand and `122` left over.
 
-As we peel off the last digit of `x` using modulo arithmetic (`digit = x % 10`), we push it onto an accumulator variable `reverted = reverted * 10 + digit`, while shrinking `x` via integer division (`x //= 10`).
-
-Because `x` loses a digit on each step and `reverted` gains one, the exact moment `reverted >= x`, the two numbers have met at the halfway point.
-
-If the number has an even number of digits (such as `1221`), the two halves must match exactly (`x == reverted`). If the number has an odd number of digits (such as `12321`), the middle digit sits at the end of `reverted`, so we discard it with integer division (`x == reverted // 10`).
-
-Negative numbers can never be palindromes due to their leading negative sign, and non-zero numbers ending in `0` cannot be palindromes because positive integers never begin with `0`.
-
-#### Execution Walkthrough
-
-Let us trace `x = 1221`:
-
-| Step | Current `x` | Extracted Digit (`x % 10`) | Updated `reverted` | Remaining `x` (`x // 10`) | Loop Condition (`x > reverted`) |
-| :---: | :---: | :---: | :---: | :---: | :--- |
-| **0** | `1221` | - | `0` | `1221` | Yes (`1221 > 0`) |
-| **1** | `1221` | `1` | `1` | `122` | Yes (`122 > 1`) |
-| **2** | `122` | `2` | `12` | `12` | No (`12 > 12` is False, loop stops) |
-
-At loop termination, `x == reverted` evaluates to `12 == 12`, returning `true`.
-
-For an odd-length number like `12321`:
-- The loop stops when `x = 12` and `reverted = 123`.
-- Comparing `x == reverted // 10` gives `12 == 123 // 10` (`12 == 12`), which correctly evaluates to `true`.
+To check a palindrome you want to compare the front against the back. Peeling gives you the back. The number that remains is the front. That is the whole mechanism.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Filter Impossible Cases:** If `x < 0` or (`x % 10 == 0` and `x != 0`), return `False` immediately because negative numbers and non-zero multiples of 10 cannot be palindromes.
-2. **Initialize Reverted Variable:** Initialize `reverted = 0` to store the reversed digits of the second half.
-3. **Extract Half of the Digits:** While `x > reverted`:
-   - Append the last digit of `x` to `reverted`: `reverted = reverted * 10 + (x % 10)`.
-   - Remove the last digit from `x`: `x //= 10`.
-4. **Evaluate Symmetry:** When the loop terminates, check whether `x == reverted` (for even-length inputs) or `x == reverted // 10` (for odd-length inputs).
-5. **Return Result:** Return `True` if either equality holds, otherwise `False`.
+The tempting move is to reverse the entire number and compare it with the original. That works, but it builds a value as large as the input, which can overflow in a language with fixed-width integers. The problem is nudging you away from it.
+
+Reversing only **half** avoids that completely. Peel digits off the back and use them to build up a reversed tail, while the original number shrinks from the right. The two meet in the middle.
+
+How do you know when you have reached the middle? When the shrinking front is no longer bigger than the growing tail. That single condition handles both lengths:
+
+- **Even number of digits,** like `1221`. The two halves end up equal, so compare them directly.
+- **Odd number of digits,** like `12321`. The middle digit ends up stuck on the tail, so throw it away with one more division before comparing.
+
+Two cases can be rejected before any of that starts. **Negative numbers** are never palindromes, because the minus sign sits at the front and nothing matches it at the back. **Numbers ending in zero** cannot be palindromes either, because they would have to start with a zero, and no number is written that way. The single exception is `0` itself.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Reversing Half the Digits" default>
+Take `x = 1221`, starting with an empty tail of `0`.
+
+1. **Peel `1`.** The tail becomes `1`, the front is now `122`.
+2. **Peel `2`.** The tail becomes `12`, the front is now `12`.
+3. The front is no longer bigger than the tail, so stop. Both are `12`, so the answer is `true`.
+
+Now take the odd-length `x = 12321`:
+
+1. **Peel `1`.** Tail `1`, front `1232`.
+2. **Peel `2`.** Tail `12`, front `123`.
+3. **Peel `3`.** Tail `123`, front `12`.
+4. The front is smaller now, so stop. The tail carries the middle digit `3` on its end, so drop it with one division to get `12`, which matches the front. The answer is `true`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def isPalindrome(self, x: int) -> bool:
-        # Negative numbers and non-zero multiples of 10 cannot be palindromes
+        # a minus sign at the front has nothing to match at the back,
+        # and a trailing zero would need a leading zero
         if x < 0 or (x % 10 == 0 and x != 0):
             return False
 
-        reverted = 0
-        while x > reverted:
-            reverted = reverted * 10 + (x % 10)
+        tail = 0
+        while x > tail:
+            tail = tail * 10 + x % 10
             x //= 10
 
-        # For even lengths: x == reverted
-        # For odd lengths: x == reverted // 10 (middle digit discarded)
-        return x == reverted or x == (reverted // 10)
+        # even length: the halves match outright
+        # odd length: the middle digit is stuck on the tail, so drop it
+        return x == tail or x == tail // 10
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: String Conversion">
+---
 
-```python
-class Solution:
-    def isPalindrome(self, x: int) -> bool:
-        if x < 0:
-            return False
-            
-        s = str(x)
-        return s == s[::-1]
-```
+### Time and space complexity
 
-  </TabItem>
-</Tabs>
+#### Time: $O(\log x)$
+
+Each pass of the loop removes one digit, and the loop stops halfway, so it runs about half as many times as the number has digits. The digit count of a number is roughly its logarithm in base ten, which is why this is written as $O(\log x)$ rather than $O(n)$.
+
+In human terms it is tiny. A ten-digit number takes five passes.
+
+#### Space: $O(1)$
+
+Two numbers, `x` and `tail`. Nothing is built that grows with the input, which is the advantage of reversing half rather than reversing the whole value into a new one.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **String Conversion** | $O(\log_{10} n)$ | $O(\log_{10} n)$ | Converts the number to a string and verifies equality with its reverse. Allocates heap memory for string characters. |
-| **Reversing Half the Digits** | $O(\log_{10} n)$ | $O(1)$ | Processes only half of the digits using modulo arithmetic. Optimal space with zero memory allocation and no overflow risk. |
-
----
-
-### Common Pitfall: Trailing Zeros and Full Reversal Overflow
-
-A common mistake is failing to filter numbers ending with zero (such as `10` or `100`). Without the condition `x % 10 == 0 and x != 0`, input `10` would terminate with `x = 1` and `reverted = 0`, falsely passing the odd-length check `1 == 0 // 10` is False, but with numbers like `100`, `x = 1` and `reverted = 00` can lead to subtle bugs. Additionally, attempting to reverse the entire integer in fixed 32-bit environments risks integer overflow before the comparison is made.
-
----
-
-### Concise Interview Takeaway
-
-Filter out negative numbers and non-zero multiples of 10 up front. Then peel off digits from the back of the number into a reversed accumulator until `reverted >= x`. By stopping at the midpoint, you compare `x == reverted` for even lengths and `x == reverted // 10` for odd lengths. This avoids integer overflow and runs in $O(\log_{10} n)$ time with $O(1)$ auxiliary space.
+Use `% 10` to read the last digit and `// 10` to drop it. Build the reversed tail while the front shrinks, and stop when the front is no longer the bigger of the two. Compare them directly for an even number of digits, or drop the tail's last digit first for an odd one. Reject negatives and trailing zeros up front. $O(\log x)$ time, $O(1)$ space.
