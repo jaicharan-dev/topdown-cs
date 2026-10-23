@@ -1,175 +1,109 @@
 ---
 id: 4-longest-palindromic-substring
 title: "5. Longest Palindromic Substring"
-description: "Find longest palindromic substring using two-pointer center expansion in O(1) space"
+description: "Stand at every centre and push outwards while the letters agree"
 sidebar_position: 4
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">1D Dynamic Programming</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Expand Around Center</span>
 
-> **Problem Statement:** Given a string `s`, return the longest palindromic substring in `s`.
+> **Problem Statement:** Given a string, return its longest stretch that reads the same forwards and backwards.
 
 ```text
 Input:  s = "babad"
-Output: "bab"
-Explanation: "aba" is also a valid answer.
+Output: "bab", or "aba", either is accepted
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-A palindrome reads identically forwards and backwards, which means it is mirrored across a central axis. In a string of length $n$, there are $2n - 1$ possible centers:
-- **$n$ Odd-Length Centers:** Centered on a single character (e.g. `"aba"` centered at `'b'`).
-- **$n - 1$ Even-Length Centers:** Centered between two adjacent characters (e.g. `"abba"` centered between `'b'` and `'b'`).
+Every palindrome is built outwards from a **centre**. Start at the middle and the letters match in pairs as you walk away from it in both directions.
 
-#### Brute Force: Checking All Substrings
-Generating every substring takes $O(n^2)$ pairs of indices, and checking whether each substring is a palindrome requires $O(n)$ time. This results in an inefficient $O(n^3)$ total runtime.
+So instead of testing stretches, try every centre and push outwards while the letters on each side agree. The moment they disagree, or you run off an end, that centre has given everything it has.
 
-#### Optimal Approach: Expanding Around Centers
-Instead of checking substrings from the outside in, we can start at each potential center and expand outwards as long as the mirrored characters match:
-1. Initialize two pointers, `left` and `right`, at the center.
-2. While both pointers are within bounds and `s[left] == s[right]`, expand outward by decrementing `left` and incrementing `right`.
-3. Stop at the first mismatch and record the palindrome bounds.
+There is one wrinkle. A palindrome of odd length has a single letter at its centre, like `aba`. One of even length has a gap between two letters, like `abba`. Both kinds have to be tried, which gives `2n - 1` centres rather than `n`.
 
-This matches the $O(n^2)$ runtime of traditional 2D Dynamic Programming while dropping auxiliary memory usage from $O(n^2)$ down to $O(1)$.
-
-#### Execution Walkthrough
-
-Let us trace `s = "babad"` across centers:
-
-| Center ($i$) | Type | Initial (`left`, `right`) | Expansion Steps | Palindrome Found | Length |
-| :---: | :---: | :---: | :---: | :---: | :---: |
-| **0** | Odd | (0, 0) | Match `'b'` | `"b"` | 1 |
-| **0** | Even | (0, 1) | Mismatch `'b'` vs `'a'` | `""` | 0 |
-| **1** | Odd | (1, 1) | Match `'a'`, then `'b' == 'b'` | `"bab"` | 3 |
-| **1** | Even | (1, 2) | Mismatch `'a'` vs `'b'` | `""` | 0 |
-| **2** | Odd | (2, 2) | Match `'b'`, then `'a' == 'a'` | `"aba"` | 3 |
-| **2** | Even | (2, 3) | Mismatch `'b'` vs `'a'` | `""` | 0 |
-| **3** | Odd | (3, 3) | Match `'a'` | `"a"` | 1 |
-| **3** | Even | (3, 4) | Mismatch `'a'` vs `'d'` | `""` | 0 |
-| **4** | Odd | (4, 4) | Match `'d'` | `"d"` | 1 |
-
-The longest palindrome discovered has length 3: `"bab"` (or `"aba"`).
+```text
+"babad"
+ centres: b, ba, a, ab, b, ba, a, ad, d     single letters and gaps
+```
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Guard Clause:** If `s` is empty, return `""`.
-2. **Track Longest Substring:** Maintain `start = 0` and `max_len = 0`.
-3. **Define Helper Function (`expand(left, right)`):**
-   - While `left >= 0`, `right < len(s)`, and `s[left] == s[right]`:
-     - Decrement `left` and increment `right`.
-   - The valid palindrome spans index `left + 1` through `right - 1`, with length `right - left - 1`.
-   - Return `(left + 1, right - left - 1)`.
-4. **Scan Centers:**
-   - Loop `i` from 0 to `len(s) - 1`:
-     - Check odd center with `expand(i, i)`. Update `start` and `max_len` if larger.
-     - Check even center with `expand(i, i + 1)`. Update `start` and `max_len` if larger.
-5. **Return Longest Slice:** Return `s[start : start + max_len]`.
+Write one helper that takes a left and a right starting point and pushes them apart while the characters match and both stay inside the string. It returns the stretch it managed to cover.
+
+Then loop over the positions, calling it twice: once with left and right both on the position, for odd lengths, and once with right one further along, for even lengths. Keep the longest result.
+
+Track the answer as a **start position and a length** rather than slicing out a string at every centre. Slicing inside the loop quietly adds a factor of the string length to the running time.
+
+This sits in the dynamic programming block, and the textbook solution here really is a table saying whether each start-and-end pair is a palindrome, filled using the fact that a stretch is a palindrome when its ends match and its inside is one. That is correct and costs $O(n^2)$ memory. Expanding around centres computes the same information in the same time with no table at all, so it is the version to write.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Expand Around Center" default>
+Take `s = "babad"`.
+
+1. **Centre at position 0, `b`.** Pushing out immediately runs off the left end, so the best here is `b`, length `1`.
+2. **Centre at position 1, `a`.** Left is `b`, right is `b`, which match, giving `bab`. Pushing again runs off the left end. Length `3`, a new best.
+3. **Gap between positions 1 and 2, `a` and `b`.** They differ, so nothing.
+4. **Centre at position 2, `b`.** Left is `a`, right is `a`, giving `aba`, length `3`. It ties the best rather than beating it, so the earlier one is kept.
+5. **The remaining centres** give nothing longer.
+
+The answer is `bab`, with `aba` equally valid.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def longestPalindrome(self, s: str) -> str:
-        if not s:
-            return ""
+        best_start, best_len = 0, 0
 
-        start = 0
-        max_len = 0
+        def expand(left: int, right: int) -> None:
+            nonlocal best_start, best_len
 
-        def expand(left: int, right: int) -> tuple[int, int]:
             while left >= 0 and right < len(s) and s[left] == s[right]:
                 left -= 1
                 right += 1
-            # Valid palindrome is between left + 1 and right - 1
-            return left + 1, right - left - 1
+
+            # the loop stepped one too far on each side
+            length = right - left - 1
+            if length > best_len:
+                best_start, best_len = left + 1, length
 
         for i in range(len(s)):
-            # Odd-length palindrome
-            l1, len1 = expand(i, i)
-            if len1 > max_len:
-                start, max_len = l1, len1
+            expand(i, i)        # odd length, a single letter at the centre
+            expand(i, i + 1)    # even length, a gap at the centre
 
-            # Even-length palindrome
-            l2, len2 = expand(i, i + 1)
-            if len2 > max_len:
-                start, max_len = l2, len2
-
-        return s[start : start + max_len]
+        return s[best_start:best_start + best_len]
 ```
 
-  </TabItem>
-  <TabItem value="dp" label="Alternative: 2D Dynamic Programming">
-
-```python
-class Solution:
-    def longestPalindrome(self, s: str) -> str:
-        n = len(s)
-        if n <= 1:
-            return s
-
-        dp = [[False] * n for _ in range(n)]
-        start = 0
-        max_len = 1
-
-        # Base case: single character palindromes
-        for i in range(n):
-            dp[i][i] = True
-
-        # Base case: two character palindromes
-        for i in range(n - 1):
-            if s[i] == s[i + 1]:
-                dp[i][i + 1] = True
-                start = i
-                max_len = 2
-
-        # Substrings of length 3 to n
-        for length in range(3, n + 1):
-            for i in range(n - length + 1):
-                j = i + length - 1
-                if s[i] == s[j] and dp[i + 1][j - 1]:
-                    dp[i][j] = True
-                    start = i
-                    max_len = length
-
-        return s[start : start + max_len]
-```
-
-  </TabItem>
-</Tabs>
+The `- 1` in the length, and the `+ 1` in the start, correct for the final step that failed the match.
 
 ---
 
-### Complexity Analysis
+### Time and space complexity
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force (All Substrings)** | $O(n^3)$ | $O(1)$ | Evaluates all $O(n^2)$ substrings and validates each with an $O(n)$ symmetry check. |
-| **2D Dynamic Programming** | $O(n^2)$ | $O(n^2)$ | Caches palindrome truth values in an $n \times n$ table, incurring high memory overhead. |
-| **Expand Around Center** | $O(n^2)$ | $O(1)$ | Expands outward from all $2n - 1$ centers with zero extra memory allocation. |
+#### Time: $O(n^2)$
 
----
+There are `2n - 1` centres, and each can expand up to `n` positions. The worst case is a string of identical characters, where every centre expands the whole way.
 
-### Common Pitfall: Missing Even-Length Palindromes
+#### Space: $O(1)$
 
-A common oversight is checking only single-character centers (`expand(i, i)`). This correctly handles odd palindromes like `"racecar"`, but completely misses even palindromes like `"abba"` or `"noon"`. Always expand both odd centers (`i, i`) and even centers (`i, i + 1`).
+Two numbers for the answer. The table version costs $O(n^2)$ for the same running time, which is why expanding is preferred.
+
+Manacher's algorithm solves this in $O(n)$, and is worth naming as the theoretical best while being far too intricate to write under interview conditions.
 
 ---
 
-### Concise Interview Takeaway
+### Remember this
 
-Every palindrome expands symmetrically from its center. Instead of allocating an $O(n^2)$ 2D dynamic programming grid, expanding outward from all $2n - 1$ centers (both single characters and between adjacent pairs) achieves the same optimal $O(n^2)$ time bound in $O(1)$ auxiliary space.
+Palindromes grow outwards from a centre, so try all `2n - 1` of them, single letters for odd lengths and gaps for even, and push out while the ends agree. Track a start and a length rather than slicing inside the loop. The table solution is equally fast but costs $O(n^2)$ memory, so expanding around centres is the better answer.

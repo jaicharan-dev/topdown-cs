@@ -1,153 +1,110 @@
 ---
 id: 5-decode-ways
 title: "91. Decode Ways"
-description: "Count valid letter decodings of numeric string using single- and two-digit DP transitions"
+description: "Climbing Stairs where some of the steps are not allowed"
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">1D Dynamic Programming</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Conditional Transitions</span>
 
-> **Problem Statement:** A message containing letters from A-Z can be encoded into numbers using the mapping `'A' -> "1"`, `'B' -> "2"`, ..., `'Z' -> "26"`. To decode an encoded message, all digits must be grouped and mapped back into letters. There may be multiple ways to group the digits (for example, `"11106"` can be mapped into `"AAJF"` with grouping `(1, 1, 10, 6)` or `"KJF"` with grouping `(11, 10, 6)`). Note that `"06"` is invalid because leading zeros are not allowed. Given a string `s` containing only digits, return the total number of ways to decode it.
+> **Problem Statement:** Letters are encoded as numbers, `A` as `1` through `Z` as `26`. Given a string of digits, count the ways it can be split back into letters. A group starting with `0` is invalid.
 
 ```text
 Input:  s = "226"
 Output: 3
-Explanation: "226" could be decoded as "BZ" (2 26), "VF" (22 6), or "BBF" (2 2 6).
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-This problem is a constrained extension of the stair-climbing problem. At each index $i$, you can make one of two choices:
-1. **Take a 1-digit step:** Decode the single character $s[i]$ into a letter.
-2. **Take a 2-digit step:** Decode the two-character pair $s[i-1 \dots i]$ together into a letter.
+Stand at a position in the string and look back, exactly as in Climbing Stairs. You arrived here by decoding either:
 
-#### Brute Force: Recursive Branching
-A naive recursive solution checks both 1-digit and 2-digit options at each index. Because subproblem prefixes overlap heavily, this binary recursion takes exponential $O(2^n)$ time without caching.
+- **One digit**, if that digit is not `0`, or
+- **Two digits**, if the pair reads between `10` and `26`.
 
-#### Optimal Approach: Constrained Fibonacci Transitions
-Unlike standard staircase climbing where all steps are valid, numeric decoding introduces strict constraints:
-- **Single digit ($s[i]$):** A digit can be decoded if and only if $s[i] \ne \text{'0'}$. If valid, it contributes the total ways up to index $i - 1$ (`one_back`).
-- **Two digits ($s[i-1 \dots i]$):** The numeric value must lie between 10 and 26. Values below 10 are invalid due to leading zeros (e.g. `"06"`), and values above 26 exceed the alphabet limit (e.g. `"27"`). If valid, it contributes the total ways up to index $i - 2$ (`two_back`).
+So the count at this position is the count from one back plus the count from two back, but only counting the moves that are actually legal:
 
-Because each position only depends on the previous two states, we can discard the $O(n)$ dynamic programming array and maintain just two variables: `two_back` and `one_back`.
+```text
+ways(i) = ways(i - 1)  if the single digit works
+        + ways(i - 2)  if the pair works
+```
 
-#### Execution Walkthrough
-
-Let us trace `s = "226"`:
-
-| Index ($i$) | Char (`s[i]`) | 1-Digit Check (`s[i] != '0'`) | 2-Digit Check (`10 <= val <= 26`) | Calculation (`current`) | New `two_back` | New `one_back` |
-| :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Initial** | - | - | - | - | 1 | 1 |
-| **1** | `'2'` | Valid (`+one_back = 1`) | `"22"` valid (`+two_back = 1`) | $1 + 1 = 2$ | 1 | 2 |
-| **2** | `'6'` | Valid (`+one_back = 2`) | `"26"` valid (`+two_back = 1`) | $2 + 1 = 3$ | 2 | 3 |
-
-The final answer stored in `one_back` is 3.
+That is the same formula as Climbing Stairs with two conditions attached. If neither move is legal, the count is zero, and that zero spreads forward and correctly kills the whole string.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Validate Initial Character:** If `not s` or `s[0] == '0'`, the string starts with an unparseable zero; return 0 immediately.
-2. **Initialize Pointers:** Set `two_back = 1` (representing an empty prefix) and `one_back = 1` (representing the first valid single digit).
-3. **Iterate Through Digits:** Loop index `i` from 1 to `len(s) - 1`:
-   - Initialize `current = 0`.
-   - **Check 1-digit transition:** If $s[i] \ne \text{'0'}$, increment `current += one_back`.
-   - **Check 2-digit transition:** Parse the integer `two_digit = int(s[i-1 : i+1])`. If $10 \le \text{two\_digit} \le 26$, increment `current += two_back`.
-   - Shift states: `two_back = one_back`, `one_back = current`.
-4. **Return Final Decodings:** Return `one_back`.
+Two variables again, since the formula reaches back two places.
+
+**The single-digit move** is legal unless the digit is `0`. Zero is never a letter on its own, and a `0` can only ever appear as the second half of `10` or `20`.
+
+**The two-digit move** is legal when the pair is at least `10` and at most `26`. The lower bound rules out pairs starting with `0`, like `06`, which the problem explicitly forbids.
+
+The starting value is the one to think about. Before any digits are read there is exactly **one** way to decode nothing, the empty decoding, and that `1` is what lets the first valid digit come out as `1` rather than `0`. Setting it to zero makes everything zero.
+
+A string beginning with `0` cannot be decoded at all, which falls out naturally: the first digit fails the single-digit test, there is no pair yet, so the count becomes zero and stays there.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Space-Optimized DP" default>
+Take `s = "226"`, with "ways to decode nothing" as `1` and the previous position also `1`.
+
+1. **Digit `2`.** The single digit is fine, so it inherits `1` way. There is no pair yet. Count `1`, matching the only reading `B`.
+2. **Digit `2`.** The single digit is fine, contributing the previous count of `1`. The pair `22` is between `10` and `26`, contributing the count from two back, `1`. Total `2`: `BB` and `V`.
+3. **Digit `6`.** The single digit is fine, contributing `2`. The pair `26` is in range, contributing the count from two back, `1`. Total `3`.
+
+The answer is `3`: `BBF`, `VF` and `BZ`.
+
+Now take `"06"`. The first digit is `0`, so the single-digit move is illegal, no pair exists, and the count becomes `0` immediately.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def numDecodings(self, s: str) -> int:
-        if not s or s[0] == "0":
-            return 0
+        # one way to decode nothing, which seeds the first real digit
+        two_back, one_back = 1, 1
 
-        # two_back represents dp[i - 2], one_back represents dp[i - 1]
-        two_back = 1
-        one_back = 1
-
-        for i in range(1, len(s)):
+        for i in range(len(s)):
             current = 0
 
-            # 1-digit transition
+            # one digit, unless it is a zero
             if s[i] != "0":
                 current += one_back
 
-            # 2-digit transition
-            two_digit = int(s[i - 1 : i + 1])
-            if 10 <= two_digit <= 26:
+            # two digits, if they read between 10 and 26
+            if i > 0 and "10" <= s[i - 1:i + 1] <= "26":
                 current += two_back
 
-            # Advance window
-            two_back = one_back
-            one_back = current
+            two_back, one_back = one_back, current
 
         return one_back
 ```
 
-  </TabItem>
-  <TabItem value="tabulation" label="Alternative: 1D Tabulation Array">
-
-```python
-class Solution:
-    def numDecodings(self, s: str) -> int:
-        if not s or s[0] == "0":
-            return 0
-
-        n = len(s)
-        dp = [0] * (n + 1)
-        dp[0] = 1
-        dp[1] = 1
-
-        for i in range(2, n + 1):
-            # Single digit check
-            if s[i - 1] != "0":
-                dp[i] += dp[i - 1]
-
-            # Double digit check
-            two_digit = int(s[i - 2 : i])
-            if 10 <= two_digit <= 26:
-                dp[i] += dp[i - 2]
-
-        return dp[n]
-```
-
-  </TabItem>
-</Tabs>
+Comparing the two-character slice as a string works because both halves are digits of equal length, so the ordering matches the numeric one.
 
 ---
 
-### Complexity Analysis
+### Time and space complexity
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force (Recursion)** | $O(2^n)$ | $O(n)$ | Explores every single- and double-digit grouping recursively without caching. |
-| **1D Tabulation** | $O(n)$ | $O(n)$ | Tracks decodings for each prefix length in an array of size $n + 1$. |
-| **Space-Optimized DP** | $O(n)$ | $O(1)$ | Retains only the two preceding counts in scalar variables. |
+#### Time: $O(n)$
 
----
+One pass with a couple of comparisons per digit.
 
-### Common Pitfall: Improper Handling of Zero
+#### Space: $O(1)$
 
-The character `'0'` has no independent letter representation because alphabetical encodings range from 1 to 26. A `'0'` is only valid when combined with a preceding `'1'` or `'2'` (producing `'10'` or `'20'`). Any standalone zero or invalid two-digit sequence such as `'30'` or `'70'` yields zero valid decodings for that branch. In addition, an input starting with `'0'` must immediately return 0.
+Two counts. The array version is $O(n)$ and is the natural first draft.
 
 ---
 
-### Concise Interview Takeaway
+### Remember this
 
-Decode Ways is a constrained variant of the Fibonacci recurrence. At each digit, add the ways from one step back if the single character is non-zero, and add the ways from two steps back if the two-digit pair falls in the valid range of 10 to 26. Because each state depends only on the prior two steps, you can solve it in $O(n)$ time with $O(1)$ space.
+This is Climbing Stairs with the steps conditional: come from one digit back when that digit is not `0`, and from two back when the pair reads `10` to `26`. Seed the count with `1` for the empty decoding, or the first digit contributes nothing. A count of zero propagates forward and correctly rules out an undecodable string. $O(n)$ time, $O(1)$ space.

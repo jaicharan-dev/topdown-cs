@@ -1,153 +1,111 @@
 ---
 id: 10-partition-equal-subset-sum
 title: "416. Partition Equal Subset Sum"
-description: "Partition array into equal subsets using 0/1 knapsack dynamic programming"
+description: "Two equal halves means hitting exactly half the total, so track which sums are reachable"
 sidebar_position: 10
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">1D Dynamic Programming</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">0/1 Knapsack</span>
 
-> **Problem Statement:** Given an integer array `nums`, return `True` if you can partition the array into two subsets such that the sum of the elements in both subsets is equal, or `False` otherwise.
+> **Problem Statement:** Given an array of positive numbers, say whether it can be split into two groups with equal totals.
 
 ```text
 Input:  nums = [1, 5, 11, 5]
 Output: true
-Explanation: The array can be partitioned as [1, 5, 5] and [11].
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-To divide an array into two subsets of equal sum, the sum of each subset must equal exactly half of the total array sum:
+Two reductions turn this from vague into mechanical.
 
-$$\text{target} = \frac{\sum \text{nums}}{2}$$
+**First**, if the two groups are equal then each holds exactly **half the total**. So add everything up: an odd total is immediately impossible, since the numbers are whole.
 
-From this definition, two key observations emerge:
-1. **Odd Total Sum:** If the sum of all elements is odd, dividing it into two equal integer halves is mathematically impossible. Return `False` immediately.
-2. **0/1 Knapsack Equivalence:** If the sum is even, the question becomes: can we select a subset of numbers that sums to exactly `target`? Each number may be chosen at most once.
+**Second**, you only have to find **one** group. Whatever it leaves behind is the other group automatically.
 
-#### Brute Force: Subset Sum Recursion
-A brute force recursive search evaluates both choices (include or exclude) for every element in `nums`. Without memoization, this explores a binary decision tree of depth $n$, requiring exponential $O(2^n)$ time.
+So the question becomes: can some selection of the numbers add up to exactly half the total? Each number is either in the selection or out, which is the 0/1 knapsack shape.
 
-#### Optimal Approach: 0/1 Knapsack with Reverse Tabulation
-We can define a boolean array `dp` of size $\text{target} + 1$, where `dp[s]` indicates whether a subset sum of $s$ is achievable.
-- Base case: `dp[0] = True` because an empty subset trivially achieves a sum of 0.
-- For each number `num` in `nums`, update achievable sums backwards from `target` down to `num`:
-
-$$\text{dp}[s] = \text{dp}[s] \lor \text{dp}[s - \text{num}]$$
-
-Iterating backwards is critical: it guarantees that `num` is only factored in once per outer loop, strictly preserving the 0/1 knapsack constraint without needing a 2D matrix.
-
-#### Execution Walkthrough
-
-Let us trace `nums = [1, 5, 11, 5]` with total = 22 and target = 11:
-
-| Step | Processed Element (`num`) | Achievable Sums Updated ($s$) | Achievable Set State | Target Achieved? |
-| :---: | :---: | :---: | :---: | :---: |
-| **Initial** | - | Base case `dp[0] = True` | `{0}` | No |
-| **1** | 1 | $s = 1$ ($1 - 1 = 0$) | `{0, 1}` | No |
-| **2** | 5 | $s = 6, 5$ | `{0, 1, 5, 6}` | No |
-| **3** | 11 | $s = 11$ ($11 - 11 = 0$) | `{0, 1, 5, 6, 11}` | **Yes** (`dp[11] == True`) |
-
-The algorithm detects that `dp[11] == True` and returns `True` immediately.
+Track which sums are reachable. Start with only zero reachable, since picking nothing gives nothing. Each number then makes new sums reachable: everything already reachable, plus that number.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Calculate Sum and Check Parity:** Compute `total = sum(nums)`. If `total % 2 != 0`, return `False` immediately.
-2. **Define Target:** Set `target = total // 2`.
-3. **Initialize DP Table:** Create a boolean list `dp` of length `target + 1` filled with `False`. Set `dp[0] = True`.
-4. **Iterate Across Numbers:** For each `num` in `nums`:
-   - Traverse `s` in reverse order from `target` down to `num`:
-     - Update `dp[s] = dp[s] or dp[s - num]`.
-   - If `dp[target]` becomes `True`, return `True` early.
-5. **Return Final Result:** Return `dp[target]`.
+Keep a row of flags, one for every sum from `0` up to the target, saying whether that sum can be made.
+
+For each number, walk the sums and mark `sum` reachable if `sum - number` already was.
+
+**Walk the sums downward**, from the target toward the number, and this is the detail everything hinges on. Going upward would let a number be used several times, because a sum it just made reachable would be read again later in the same pass. Going downward reads only sums from before this number was considered, which keeps each number used at most once.
+
+That is precisely the difference between the 0/1 and the unbounded cases: direction of the inner loop. Coin Change, where coins are reusable, deliberately goes the other way.
+
+Stop early when the target becomes reachable, and return straight away.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: 1D Space-Optimized DP" default>
+Take `nums = [1, 5, 11, 5]`. The total is `22`, which is even, so the target is `11`.
+
+Reachable sums start as just `0`.
+
+1. **After `1`:** `0, 1`.
+2. **After `5`:** `0, 1, 5, 6`.
+3. **After `11`:** the previous sums plus `11`, `12`, `16`, `17`. The target `11` is now reachable, so the answer is `true`.
+
+The group making `11` is `[11]` itself, leaving `[1, 5, 5]`, which also totals `11`.
+
+Had the array been `[1, 2, 5]`, the total would be `8` and the target `4`, and the reachable sums would be `0, 1, 2, 3, 5, 6, 7, 8` with no `4`, so the answer would be `false`.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def canPartition(self, nums: list[int]) -> bool:
         total = sum(nums)
 
-        # An odd total cannot be partitioned into equal integer halves
-        if total % 2 != 0:
+        # an odd total cannot split into two equal whole halves
+        if total % 2:
             return False
 
         target = total // 2
-        dp = [False] * (target + 1)
-        dp[0] = True
+        reachable = [False] * (target + 1)
+        reachable[0] = True   # picking nothing makes zero
 
-        for num in nums:
-            # Reverse traversal prevents using the same number multiple times
-            for s in range(target, num - 1, -1):
-                dp[s] = dp[s] or dp[s - num]
+        for number in nums:
+            # downward, so this number cannot be used twice in one pass
+            for value in range(target, number - 1, -1):
+                if reachable[value - number]:
+                    reachable[value] = True
 
-            if dp[target]:
+            if reachable[target]:
                 return True
 
-        return dp[target]
+        return reachable[target]
 ```
 
-  </TabItem>
-  <TabItem value="set" label="Alternative: Reachable Sums Set">
+---
 
-```python
-class Solution:
-    def canPartition(self, nums: list[int]) -> bool:
-        total = sum(nums)
-        if total % 2 != 0:
-            return False
+### Time and space complexity
 
-        target = total // 2
-        reachable: set[int] = {0}
+#### Time: $O(n \times \text{target})$
 
-        for num in nums:
-            next_reachable = set(reachable)
-            for s in reachable:
-                if s + num == target:
-                    return True
-                if s + num < target:
-                    next_reachable.add(s + num)
-            reachable = next_reachable
+Every number is considered against every sum up to half the total.
 
-        return target in reachable
-```
+This is called pseudo-polynomial: it depends on the **size** of the numbers, not just how many there are. An array of five values summing to a billion would be hopeless, which is a good thing to note since the problem is NP-complete in general.
 
-  </TabItem>
-</Tabs>
+#### Space: $O(\text{target})$
+
+One row of flags. The textbook version uses a full two-dimensional table of numbers against sums, which is $O(n \times \text{target})$; collapsing it to one row is what the downward walk makes possible.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force (Recursion)** | $O(2^n)$ | $O(n)$ | Explores all $2^n$ subsets without caching. |
-| **Reachable Sums Set** | $O(n \times \text{target})$ | $O(\text{target})$ | Accumulates reachable sums in a Python set, fast in practice for sparse sums. |
-| **1D Array DP** | $O(n \times \text{target})$ | $O(\text{target})$ | Updates boolean array in reverse order to enforce 0/1 knapsack with optimal cache locality. |
-
----
-
-### Common Pitfall: Forward Iteration in 1D DP
-
-When optimizing a 2D knapsack DP to a 1D array, iterating `s` forward from `num` up to `target` turns the problem into an unbounded knapsack. This happens because a number processed at index `s - num` could be reused again at index `s` within the same outer iteration. Iterating backwards from `target` down to `num` ensures that each element is factored in at most once.
-
----
-
-### Concise Interview Takeaway
-
-Partitioning into equal subsets is identical to finding a subset that sums to half the total array sum. An odd total sum immediately rules out an equal split. Reduce space from $O(n \times \text{target})$ to $O(\text{target})$ by iterating backwards across target sums, strictly enforcing that each number is selected at most once.
+Equal halves means hitting exactly half the total, so an odd total fails immediately and only one group needs finding. Track reachable sums, marking `sum` when `sum - number` was already reachable. Walk the sums **downward**, which is what stops a number being reused and is the single difference from the unbounded coin problems. $O(n \times \text{target})$ time.

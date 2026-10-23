@@ -1,148 +1,107 @@
 ---
 id: 11-perfect-squares
 title: "279. Perfect Squares"
-description: "Find least number of perfect squares summing to N using unbounded knapsack DP"
+description: "Coin Change where the coins are the square numbers"
 sidebar_position: 11
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">1D Dynamic Programming</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Unbounded Knapsack</span>
 
-> **Problem Statement:** Given an integer `n`, return the least number of perfect square numbers that sum to `n`. A perfect square is an integer that is the square of an integer (e.g., 1, 4, 9, 16, ...).
+> **Problem Statement:** Given a number `n`, return the fewest perfect squares that add up to it.
 
 ```text
 Input:  n = 12
 Output: 3
-Explanation: 12 = 4 + 4 + 4.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-This problem is structurally identical to Coin Change, where the available coin denominations are all perfect square values less than or equal to $n$:
+This is **Coin Change** with the denominations handed to you by arithmetic rather than by the input. The coins are `1, 4, 9, 16, 25` and so on, every square up to `n`, and each may be used as often as you like.
 
-$$\text{squares} = [1, 4, 9, 16, \dots, \lfloor\sqrt{n}\rfloor^2]$$
+So the same reasoning applies. To build `n`, one square has to be the last one added. If it is `9`, the rest makes `n - 9`, and you want that rest to use as few squares as possible, which is the same question on a smaller number.
 
-Because greedy subtraction of the largest square can yield suboptimal results, we evaluate all possible square choices using Dynamic Programming.
+```text
+best(n) = 1 + the smallest best(n - square) over every square that fits
+```
 
-#### Brute Force: Recursive Decomposition
-A brute force recursive solver branches on every square $s \le n$, subtracting it from the current target and taking the minimum across all choices. Because subproblems overlap exponentially without caching, the runtime scales exponentially as $O((\sqrt{n})^n)$.
+Recognising the restatement is most of the work here. Once it is Coin Change, the implementation is already known.
 
-#### Optimal Approach: Bottom-Up Unbounded Knapsack Tabulation
-Let `dp[i]` represent the minimum number of square numbers required to sum to integer $i$:
-- Base Case: `dp[0] = 0` because zero squares are needed to form the value 0.
-- For each integer $i$ from 1 to $n$, test every candidate square $s \le i$:
-
-$$\text{dp}[i] = 1 + \min_{s \le i} (\text{dp}[i - s])$$
-
-Precomputing the squares up to $\sqrt{n}$ guarantees that each subproblem only performs at most $\sqrt{n}$ lookups.
-
-#### Execution Walkthrough
-
-Let us trace key values up to $n = 12$ using candidate squares `[1, 4, 9]`:
-
-| Value ($i$) | Squares Evaluated ($s \le i$) | Subproblem Lookups ($1 + \text{dp}[i - s]$) | Optimal $\text{dp}[i]$ | Component Squares |
-| :---: | :---: | :---: | :---: | :---: |
-| **0** | None | Base case | 0 | None |
-| **1** | 1 | $1 + \text{dp}[0] = 1$ | 1 | 1 |
-| **4** | 1, 4 | $\min(1+\text{dp}[3], 1+\text{dp}[0]) = 1$ | 1 | 4 |
-| **8** | 1, 4 | $\min(1+\text{dp}[7], 1+\text{dp}[4]) = 1 + 1 = 2$ | 2 | 4 + 4 |
-| **9** | 1, 4, 9 | $\min(1+\text{dp}[8], 1+\text{dp}[5], 1+\text{dp}[0]) = 1$ | 1 | 9 |
-| **12** | 1, 4, 9 | $\min(1+\text{dp}[11], 1+\text{dp}[8], 1+\text{dp}[3]) = \min(4, 3, 4) = 3$ | 3 | 4 + 4 + 4 |
-
-The minimum count for 12 is 3.
+Note that greed fails just as it did there. For `12`, taking the largest square first gives `9 + 1 + 1 + 1`, four squares, while `4 + 4 + 4` is three.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize DP Table:** Create an array `dp` of size $n + 1$ filled with float infinity. Set base case `dp[0] = 0`.
-2. **Precompute Candidate Squares:** Generate all square numbers up to $n$: `squares = [i * i for i in range(1, int(n**0.5) + 1)]`.
-3. **Iterate Across Numbers:** Loop $i$ from 1 to $n$:
-   - For each `sq` in `squares`:
-     - If `sq > i`, break out early since squares are in ascending order.
-     - Update `dp[i] = min(dp[i], 1 + dp[i - sq])`.
-4. **Return Result:** Return `int(dp[n])`.
+Build an array of best counts from `0` up to `n`.
+
+**Zero needs no squares.** Every other entry starts as unreachable, though here nothing actually is: every number can be made from `1`s, so the answer always exists and no `-1` case is needed. That is the one simplification over Coin Change.
+
+For each value, try every square up to it and keep the smallest result.
+
+Generating the squares as you go, with an inner loop over `i` while `i * i` is at most the value, avoids building a list first and makes the bound obvious: there are about the square root of `n` squares to try.
+
+**The number-theory shortcut** is worth knowing because interviewers enjoy it. Lagrange's four-square theorem says every positive integer is the sum of at most four squares, and there are simple tests for whether the answer is `1`, `2` or `4`, leaving `3` otherwise. That gives an $O(\sqrt{n})$ solution. It is a fine thing to mention; the dynamic programming version is the one to write, since it generalises and does not depend on recalling a theorem.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Bottom-Up DP" default>
+Take `n = 12`.
+
+1. **Value 1.** Only `1` fits, giving `1 + best(0) = 1`.
+2. **Value 4.** The square `4` gives `1 + best(0) = 1`, beating four `1`s.
+3. **Value 8.** The square `4` gives `1 + best(4) = 2`, which is `4 + 4`.
+4. **Value 9.** The square `9` gives `1`.
+5. **Value 12.** The square `1` gives `1 + best(11)`; the square `4` gives `1 + best(8) = 3`; the square `9` gives `1 + best(3) = 4`, since `3` needs three `1`s. The best is `3`.
+
+The answer is `3`, from `4 + 4 + 4`.
+
+Step 5 shows the greedy failure plainly: starting from the largest square, `9`, leads to four, while `4` leads to three.
+
+---
+
+### The code
 
 ```python
 class Solution:
     def numSquares(self, n: int) -> int:
-        dp = [float("inf")] * (n + 1)
-        dp[0] = 0
+        best = [0] * (n + 1)
 
-        squares = [i * i for i in range(1, int(n**0.5) + 1)]
+        for value in range(1, n + 1):
+            fewest = value          # the worst case is that many 1s
+            i = 1
 
-        for i in range(1, n + 1):
-            for sq in squares:
-                if sq > i:
-                    break
-                dp[i] = min(dp[i], 1 + dp[i - sq])
+            while i * i <= value:
+                # this square last, plus the best way to make the rest
+                fewest = min(fewest, 1 + best[value - i * i])
+                i += 1
 
-        return int(dp[n])
+            best[value] = fewest
+
+        return best[n]
 ```
 
-  </TabItem>
-  <TabItem value="bfs" label="Alternative: BFS Level-Order Search">
-
-```python
-from collections import deque
-
-class Solution:
-    def numSquares(self, n: int) -> int:
-        squares = [i * i for i in range(1, int(n**0.5) + 1)]
-        queue: deque[tuple[int, int]] = deque([(n, 0)])
-        visited: set[int] = {n}
-
-        while queue:
-            remainder, level = queue.popleft()
-            if remainder == 0:
-                return level
-
-            for sq in squares:
-                next_rem = remainder - sq
-                if next_rem < 0:
-                    break
-                if next_rem not in visited:
-                    visited.add(next_rem)
-                    queue.append((next_rem, level + 1))
-
-        return -1
-```
-
-  </TabItem>
-</Tabs>
+Seeding `fewest` with `value` itself is a tidy touch: it is the count of using nothing but `1`s, which is always achievable, so no unreachable marker is needed.
 
 ---
 
-### Complexity Analysis
+### Time and space complexity
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force (Recursion)** | $O((\sqrt{n})^n)$ | $O(n)$ | Tries all square combinations recursively with exponential branching. |
-| **BFS Shortest Path** | $O(n \sqrt{n})$ | $O(n)$ | Finds the shortest layer to reach 0 via queue exploration, fast on early terminations. |
-| **Bottom-Up DP** | $O(n \sqrt{n})$ | $O(n)$ | Computes minimum squares iteratively for all values up to $n$ in simple array. |
+#### Time: $O(n \sqrt{n})$
 
----
+Every value from `1` to `n` is tried against roughly the square root of `n` squares.
 
-### Common Pitfall: Greedy Subtraction of the Largest Square
+#### Space: $O(n)$
 
-A greedy strategy that repeatedly subtracts the largest possible square does not produce the optimal answer. For example, for $n = 12$, the largest square is 9. Subtracting 9 leaves 3, which requires three 1s ($9 + 1 + 1 + 1 = 4$ squares). However, choosing three 4s gives $4 + 4 + 4 = 12$, requiring only 3 squares. Dynamic programming correctly evaluates all combinations.
+The array of best counts.
 
 ---
 
-### Concise Interview Takeaway
+### Remember this
 
-Perfect Squares is structurally identical to the Coin Change problem, where candidate square values $1, 4, 9, \dots \le n$ act as coins. Evaluating subproblems bottom-up using $\text{dp}[i] = 1 + \min(\text{dp}[i - s])$ yields an $O(n\sqrt{n})$ time and $O(n)$ space solution.
+This is Coin Change with the squares as denominations, and greed fails here for the same reason: `12` is `4 + 4 + 4`, not `9 + 1 + 1 + 1`. Build upward, trying every square as the last one added. No unreachable case exists, since `1` is a square, so seeding each value with its own count of `1`s is enough. $O(n \sqrt{n})$ time.

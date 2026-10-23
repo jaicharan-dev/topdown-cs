@@ -1,141 +1,115 @@
 ---
 id: 9-longest-increasing-subsequence
 title: "300. Longest Increasing Subsequence"
-description: "Find longest strictly increasing subsequence using patience sorting with binary search in O(n log n)"
+description: "Keep the smallest possible tail for each length, and binary search where each number belongs"
 sidebar_position: 9
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">1D Dynamic Programming</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Binary Search / Patience Sorting</span>
 
-> **Problem Statement:** Given an integer array `nums`, return the length of the longest strictly increasing subsequence. A subsequence is derived from an array by deleting some or no elements without changing the order of the remaining elements.
+> **Problem Statement:** Given an array, return the length of the longest strictly increasing subsequence. The chosen numbers keep their original order but need not be neighbours.
 
 ```text
 Input:  nums = [10, 9, 2, 5, 3, 7, 101, 18]
 Output: 4
-Explanation: The longest increasing subsequence is [2, 3, 7, 101] (or [2, 3, 7, 18]), therefore the length is 4.
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-An increasing subsequence selects elements in ascending order while preserving their relative ordering in the original array. Subsequences do not need to be contiguous.
+The straightforward solution asks, for each position, how long an increasing run can end here: look back at every earlier smaller number and take the best. That is $O(n^2)$ and it is a perfectly good answer to give first.
 
-#### Brute Force: Recursive Power Set
-A brute force approach considers all $2^n$ subsequences, checking each one for the strictly increasing property and recording the maximum length. Because the decision tree branches twice for each element (include or exclude), this takes $O(2^n)$ time.
+The faster method rests on a different idea. Keep a list where entry `k` holds **the smallest value that could end an increasing run of length `k + 1`** seen so far.
 
-#### Optimal Approach: Patience Sorting with Binary Search
-Instead of comparing against every prior element in $O(n^2)$ time, we can maintain an auxiliary array `tails`:
-- `tails[i]` stores the smallest tail value among all valid strictly increasing subsequences of length $i + 1$ found so far.
-- For each number `num` in `nums`:
-  1. Use binary search (`bisect_left`) to locate the first entry in `tails` that is $\ge \text{num}$.
-  2. If `num` is strictly greater than all elements in `tails`, append it. This means we have unlocked a strictly longer subsequence.
-  3. Otherwise, overwrite `tails[idx] = num`. Lowering a tail value never shortens any achieved subsequence length, but it expands future opportunities for subsequent numbers to attach and extend the sequence.
+Why smallest? Because a run ending in a small number is easier to extend than one ending in a large number, so for each length only the smallest possible tail is worth remembering.
 
-At the conclusion of the loop, `len(tails)` equals the exact length of the longest increasing subsequence.
+That list is always sorted, which is the property that makes it useful:
 
-#### Execution Walkthrough
+```text
+tails = [2, 3, 7, 18]
+         a run of length 1 can end as low as 2
+         a run of length 2 can end as low as 3
+         ...
+```
 
-Let us trace `nums = [10, 9, 2, 5, 3, 7, 101, 18]`:
-
-| Step | Element (`num`) | Insertion Index (`bisect_left`) | Action Taken | State of `tails` |
-| :---: | :---: | :---: | :---: | :--- |
-| **1** | 10 | 0 | Append 10 | `[10]` |
-| **2** | 9 | 0 | Overwrite index 0 | `[9]` |
-| **3** | 2 | 0 | Overwrite index 0 | `[2]` |
-| **4** | 5 | 1 | Append 5 | `[2, 5]` |
-| **5** | 3 | 1 | Overwrite index 1 | `[2, 3]` |
-| **6** | 7 | 2 | Append 7 | `[2, 3, 7]` |
-| **7** | 101 | 3 | Append 101 | `[2, 3, 7, 101]` |
-| **8** | 18 | 3 | Overwrite index 3 | `[2, 3, 7, 18]` |
-
-The length of `tails` is 4, matching the optimal subsequence length.
+Its **length** is the answer, though its contents are not necessarily a real subsequence, which is the thing to be careful about claiming.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Initialize Tails Tracker:** Create an empty list `tails = []`.
-2. **Iterate Across Numbers:** For each number `num` in `nums`:
-   - Find the insertion point using `idx = bisect_left(tails, num)`.
-   - If `idx == len(tails)`, append `num` to `tails`.
-   - Otherwise, replace `tails[idx] = num` with the smaller tail value.
-3. **Return Answer:** Return `len(tails)`.
+Walk the numbers. For each one, find the first tail that is **not smaller** than it, using binary search since the tails are sorted.
+
+- **Found one?** Replace it. A run of that length can now end on a smaller number, which is an improvement for the future.
+- **Found none**, meaning the number is bigger than every tail? Append it, extending the longest run by one.
+
+The answer is the length of the tails list at the end.
+
+**Why the contents are not a valid subsequence**: entries get overwritten at different times, so the list can end up holding numbers that never appeared together in order. Only its length is meaningful. If the actual subsequence is wanted, you have to record a parent for each number and walk back, which is worth mentioning as the follow-up.
+
+For the non-strict version, where equal values are allowed, search for the first tail strictly greater instead. That one-character change is a favourite follow-up.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Patience Sorting (O(n log n))" default>
+Take `nums = [10, 9, 2, 5, 3, 7, 101, 18]`.
+
+1. **`10`.** Tails are empty, so append: `[10]`.
+2. **`9`.** It replaces `10`, since a run of one can now end at `9`: `[9]`.
+3. **`2`.** Replaces `9`: `[2]`.
+4. **`5`.** Bigger than everything, so append: `[2, 5]`.
+5. **`3`.** The first tail not smaller than `3` is `5`, so replace it: `[2, 3]`. A run of two can now end at `3`, which is better.
+6. **`7`.** Append: `[2, 3, 7]`.
+7. **`101`.** Append: `[2, 3, 7, 101]`.
+8. **`18`.** Replaces `101`: `[2, 3, 7, 18]`.
+
+The length is `4`, which is the answer, from `2, 3, 7, 18` or `2, 3, 7, 101`.
+
+Step 5 is the one worth rereading: replacing `5` with `3` did not change the answer then, but it is what let `7` extend the run afterwards.
+
+---
+
+### The code
 
 ```python
 from bisect import bisect_left
 
 class Solution:
     def lengthOfLIS(self, nums: list[int]) -> int:
-        tails: list[int] = []
+        tails = []   # tails[k] = smallest tail of an increasing run of length k+1
 
-        for num in nums:
-            idx = bisect_left(tails, num)
+        for value in nums:
+            i = bisect_left(tails, value)
 
-            # If num is strictly greater than all tails, extend the length
-            if idx == len(tails):
-                tails.append(num)
+            if i == len(tails):
+                tails.append(value)    # longer than anything so far
             else:
-                # Greedily replace the larger tail to optimize future extensions
-                tails[idx] = num
+                tails[i] = value       # the same length, ending lower
 
         return len(tails)
 ```
 
-  </TabItem>
-  <TabItem value="dp" label="Alternative: 1D Dynamic Programming (O(n^2))">
-
-```python
-class Solution:
-    def lengthOfLIS(self, nums: list[int]) -> int:
-        if not nums:
-            return 0
-
-        n = len(nums)
-        dp = [1] * n
-
-        for i in range(1, n):
-            for j in range(i):
-                if nums[j] < nums[i]:
-                    dp[i] = max(dp[i], 1 + dp[j])
-
-        return max(dp)
-```
-
-  </TabItem>
-</Tabs>
+`bisect_left` finds the first entry not smaller than the value, which is exactly the strict-increase rule. Using `bisect_right` instead gives the non-strict version.
 
 ---
 
-### Complexity Analysis
+### Time and space complexity
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Brute Force (Recursion)** | $O(2^n)$ | $O(n)$ | Explores all $2^n$ subsequences to find the longest increasing one. |
-| **1D Dynamic Programming** | $O(n^2)$ | $O(n)$ | Compares each element with all preceding elements using nested loops. |
-| **Patience Sorting (Binary Search)** | $O(n \log n)$ | $O(n)$ | Maintains minimum tails for each length, updating in $O(\log n)$ via binary search. |
+#### Time: $O(n \log n)$
 
----
+Each number costs one binary search over a list that never exceeds `n` entries. The look-back solution is $O(n^2)$, which is the one to offer first and then improve.
 
-### Common Pitfall: Mistaking tails as the Actual Subsequence
+#### Space: $O(n)$
 
-A very common misunderstanding is assuming that the `tails` array contains the actual elements of the longest increasing subsequence. In reality, `tails` stores the smallest possible ending element for each subsequence length discovered so far. While its length accurately mirrors the length of the longest increasing subsequence, the elements inside `tails` might not form a valid subsequence in the original order. If the actual subsequence elements are needed, you must maintain backpointers.
+The tails list.
 
 ---
 
-### Concise Interview Takeaway
+### Remember this
 
-While an $O(n^2)$ dynamic programming approach checks all prior elements, patience sorting achieves an optimal $O(n \log n)$ runtime. By maintaining an array `tails` where each entry holds the minimal tail for that length, using binary search (`bisect_left`) tells you immediately whether to append a new maximum length or greedily lower an existing tail.
+For each length, remember only the **smallest** value that can end a run of it, since a lower tail is always easier to extend. That list stays sorted, so each number is placed by binary search: replace the first tail not smaller than it, or append if it beats them all. The length is the answer; the contents are not a real subsequence. $O(n \log n)$ time.
