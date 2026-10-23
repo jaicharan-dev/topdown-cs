@@ -1,236 +1,130 @@
 ---
 id: 3-word-search-ii
 title: "212. Word Search II"
-description: "Trie-guided grid backtracking with prefix pruning"
+description: "Put the words in a trie and walk the board and the trie together"
 sidebar_position: 3
 sidebar_class_name: sidebar-hard
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Tries</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Trie + Backtracking</span>
 
-> **Problem Statement:** Given an $m \times n$ board of characters and a list of strings `words`, return all words from the list that can be constructed on the board. Each word must be formed from letters in sequentially adjacent cells (horizontally or vertically). The same letter cell may not be used more than once in a single word.
+> **Problem Statement:** Given a grid of letters and a list of words, return every word that can be spelled by stepping between neighbouring cells, up, down, left or right, without using the same cell twice in one word.
 
 ```text
-Input:
-board = [
-  ["o", "a", "a", "n"],
-  ["e", "t", "a", "e"],
-  ["i", "h", "k", "r"],
-  ["i", "f", "l", "v"]
-]
+board = [["o","a","a","n"], ["e","t","a","e"], ["i","h","k","r"], ["i","f","l","v"]]
 words = ["oath", "pea", "eat", "rain"]
-Output: ["eat", "oath"]
-Explanation: The words "eat" and "oath" can be formed by sequentially adjacent cells in the board.
+Output: ["oath", "eat"]
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine playing Boggle with a dictionary containing thousands of words.
+Searching the board for one word is a depth-first walk: start on a matching cell, step to a neighbour that matches the next letter, and back out when it does not.
 
-If you test each dictionary word individually by launching a full grid search from scratch, you repeat identical grid walks thousands of times. Prefix paths like `"oa"` or `"ea"` get traversed and re-evaluated over and over again, causing Time Limit Exceeded.
+Doing that once per word is the obvious plan, and it is wasteful. If the words are `"cat"`, `"car"` and `"card"`, the board gets searched for `"ca"` three separate times, and each search rediscovers the same dead ends.
 
-Instead, invert the perspective: load the entire word list into a single prefix tree (Trie), then explore the grid once.
+A trie fixes this by searching for **all the words at once**. Put every word into a trie, then walk the board and the trie in step. One cell letter advances you one node down the trie, and that single step is being made on behalf of every word sharing that prefix.
 
-As your grid explorer moves across the board, they consult the Trie at every single step:
-1. Does the current character exist as a child edge of the current Trie node?
-2. If no: Stop exploring immediately. This prefix cannot lead to any valid dictionary word. The entire sub-tree of grid paths is pruned in $O(1)$ time.
-3. If yes: Move to the neighbor cell on the grid while stepping down to the corresponding child node in the Trie.
-4. When a terminal word is encountered, record it and reset its marker to prevent duplicates.
-
-```
-Grid:                     Trie Radar:
-[ o | a | a | n ]             (root)
-[ e | t | a | e ]            /      \
-[ i | h | k | r ]          [o]      [e]
-[ i | f | l | v ]           |        |
-                           [a]      [a]
-                            |        |
-                           [t]*     [t]*
-
-Path: 'o' -> 'a' -> 't' -> 'h'* matches valid word "oath"!
-```
-
-#### Brute Force: Word Search I for Each Dictionary Word
-
-The direct baseline runs Word Search I independently for every word in `words`. If there are $W$ words, each DFS exploration from any cell can branch into 4 directions up to depth $L$. The overall runtime reaches $O(W \cdot M \cdot N \cdot 4^L)$, which explodes when $W$ is large or when many words share common prefixes.
-
-#### Optimal Approach: Trie-Guided Grid Backtracking with Pruning
-
-A Trie consolidates common prefixes into shared tree nodes. By traversing the grid and the Trie synchronously, invalid prefixes are rejected at the earliest possible step.
-
-Furthermore, we apply dynamic leaf pruning: once a word at a leaf node is found and has no child branches remaining, we delete that leaf from its parent's `children` map. This progressively shrinks the search space as words are discovered.
-
-#### Execution Walkthrough
-
-Let the board have cells containing `o`, `a`, `t`, `h` and Trie contain `{"oath", "pea", "eat", "rain"}`:
-
-| Step | Grid Cell `(r, c)` | Character | Trie Node State | Action Taken | Word Found |
-| :---: | :---: | :---: | :--- | :--- | :---: |
-| **1** | `(0, 0)` | `'o'` | `root.children['o']` exists | Step to node `'o'`, mark cell visited (`'#'`) | None |
-| **2** | `(0, 1)` | `'a'` | Node `'o'.children['a']` exists | Step to node `'a'`, mark cell visited (`'#'`) | None |
-| **3** | `(1, 1)` | `'t'` | Node `'a'.children['t']` exists | Step to node `'t'`, mark cell visited (`'#'`) | None |
-| **4** | `(2, 1)` | `'h'` | Node `'t'.children['h']` exists | Word terminal reached! Collect `"oath"` | `"oath"` |
-| **5** | Backtrack | Restore | Clear `curr_node.word`, restore cells | Delete completed leaf `'h'` from parent | None |
-| **6** | `(1, 0)` | `'e'` | `root.children['e']` exists | Match `'e' -> 'a' -> 't'`, collect `"eat"` | `"eat"` |
+The trie also prunes brilliantly. If the current trie node has no child for a neighbouring cell's letter, then **no word at all** continues that way, and the whole branch dies immediately.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Construct the Trie:**
-   - Initialize a `root` Trie node with an empty `children` mapping.
-   - Insert every word from `words`. Store the full string in `curr.word` at the terminal node (avoiding string concatenation during grid search).
-2. **Define Backtracking Helper `dfs(r, c, parent_node)`:**
-   - Retrieve character `char = board[r][c]`.
-   - If `char` is not in `parent_node.children`, return immediately.
-   - Advance `curr_node = parent_node.children[char]`.
-   - If `curr_node.word` is present:
-     - Append `curr_node.word` to the results list.
-     - Set `curr_node.word = None` to avoid duplicate entries.
-   - Mark the current cell visited in-place: `board[r][c] = '#'`.
-   - For each orthogonal neighbor `(nr, nc)` within board bounds and not equal to `'#'`:
-     - If `board[nr][nc]` is in `curr_node.children`, recurse: `dfs(nr, nc, curr_node)`.
-   - Backtrack cell value: `board[r][c] = char`.
-   - **Dynamic Pruning:** If `not curr_node.children`, delete `char` from `parent_node.children`.
-3. **Iterate Grid:** For each row `r` and column `c`, if `board[r][c]` is in `root.children`, invoke `dfs(r, c, root)`.
-4. **Return Results:** Return the collected list of discovered words.
+Build the trie with each word stored at the node where it ends, rather than only a boolean flag. Keeping the word itself means that when you arrive at a word-ending node you can record it directly, with no need to track the letters collected along the way.
+
+Then run a depth-first search from every cell:
+
+1. **Can the trie continue?** If the current node has no child for this cell's letter, stop.
+2. **Step into that child.** If it holds a word, record it, then clear it so the same word is not recorded again from another route.
+3. **Mark the cell as used** before exploring, by replacing its letter with something that cannot match.
+4. **Explore the four neighbours.**
+5. **Restore the cell** afterwards, which is the backtracking step that makes it available to other paths.
+
+Two refinements worth mentioning, because they are what make this fast in practice. **Clearing the word** after recording avoids duplicates. **Pruning dead nodes**, removing a child that has no words and no children left, shrinks the trie as the search proceeds, so later cells have even less to explore.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Trie-Guided Backtracking with Pruning" default>
+The trie holds `oath`, `pea`, `eat` and `rain`.
+
+**Starting at the top-left `o`.** The root has an `o` child, since `oath` begins with it. Step in, mark the cell used, and look at the neighbours. The `a` below-right fits, then `t`, then `h`, and the node after `h` holds the word `oath`, which is recorded.
+
+**Starting at the `e` on the left edge.** The root has an `e` child because of `eat`. Step in. A neighbouring `a` continues, then `t`, and the node holds `eat`, which is recorded.
+
+**Starting at any cell whose letter is not `o`, `p`, `e` or `r`.** The root has no child for it, so the search stops before taking a single step. That is the pruning doing its work: most of the board is dismissed instantly.
+
+Nothing spells `pea` or `rain`, so the answer is `["oath", "eat"]`.
+
+---
+
+### The code
 
 ```python
-class TrieNode:
-    def __init__(self):
-        self.children: dict[str, TrieNode] = {}
-        self.word: str | None = None
-
-
 class Solution:
     def findWords(self, board: list[list[str]], words: list[str]) -> list[str]:
-        # 1. Build the Trie from the word list
-        root = TrieNode()
+        # build the trie, storing the whole word at its final node
+        root = {}
         for word in words:
-            curr = root
-            for char in word:
-                if char not in curr.children:
-                    curr.children[char] = TrieNode()
-                curr = curr.children[char]
-            curr.word = word
+            node = root
+            for ch in word:
+                node = node.setdefault(ch, {})
+            node["$"] = word
 
         rows, cols = len(board), len(board[0])
-        result: list[str] = []
+        found = []
 
-        def dfs(r: int, c: int, parent: TrieNode) -> None:
-            char = board[r][c]
-            curr_node = parent.children[char]
+        def explore(r: int, c: int, node: dict) -> None:
+            ch = board[r][c]
 
-            # Check if current prefix completes a dictionary word
-            if curr_node.word is not None:
-                result.append(curr_node.word)
-                curr_node.word = None  # Prevent duplicate collection
+            if ch not in node:
+                return   # no word continues this way at all
 
-            # Mark cell visited in-place
-            board[r][c] = "#"
+            nxt = node[ch]
 
-            # Explore 4 orthogonal directions
-            for dr, dc in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+            word = nxt.pop("$", None)
+            if word:
+                found.append(word)   # popped, so it cannot be found twice
+
+            board[r][c] = "#"   # mark used for this path only
+
+            for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 nr, nc = r + dr, c + dc
                 if 0 <= nr < rows and 0 <= nc < cols and board[nr][nc] != "#":
-                    if board[nr][nc] in curr_node.children:
-                        dfs(nr, nc, curr_node)
+                    explore(nr, nc, nxt)
 
-            # Backtrack cell state
-            board[r][c] = char
+            board[r][c] = ch   # restore for other paths
 
-            # Dynamic pruning: remove leaf nodes with no remaining children
-            if not curr_node.children:
-                del parent.children[char]
+            if not nxt:
+                node.pop(ch)   # dead end, so prune it from the trie
 
-        # Launch search from every cell containing a valid initial prefix
         for r in range(rows):
             for c in range(cols):
-                if board[r][c] in root.children:
-                    dfs(r, c, root)
+                explore(r, c, root)
 
-        return result
+        return found
 ```
 
-  </TabItem>
-  <TabItem value="alternative" label="Alternative / Brute Force: Word Search I Iteration">
+---
 
-```python
-class Solution:
-    def findWords(self, board: list[list[str]], words: list[str]) -> list[str]:
-        rows, cols = len(board), len(board[0])
+### Time and space complexity
 
-        def exist(word: str) -> bool:
-            def dfs(r: int, c: int, idx: int) -> bool:
-                if idx == len(word):
-                    return True
-                if (
-                    r < 0
-                    or r >= rows
-                    or c < 0
-                    or c >= cols
-                    or board[r][c] != word[idx]
-                ):
-                    return False
+#### Time: $O(m \cdot n \cdot 4^{L})$ in the worst case
 
-                temp = board[r][c]
-                board[r][c] = "#"
+Where `L` is the length of the longest word. Every cell can start a search, and each step has up to four directions, though the first step has four and later ones have three since you never go straight back.
 
-                found = (
-                    dfs(r + 1, c, idx + 1)
-                    or dfs(r - 1, c, idx + 1)
-                    or dfs(r, c + 1, idx + 1)
-                    or dfs(r, c - 1, idx + 1)
-                )
+That bound is pessimistic by a long way. The trie prunes any branch that no word continues, and the dead-node pruning shrinks it further as the search runs, so real boards finish far sooner.
 
-                board[r][c] = temp
-                return found
+#### Space: $O(\text{total letters in the words})$
 
-            for r in range(rows):
-                for c in range(cols):
-                    if board[r][c] == word[0] and dfs(r, c, 0):
-                        return True
-            return False
-
-        return [word for word in set(words) if exist(word)]
-```
-
-  </TabItem>
-</Tabs>
+The trie. The recursion adds $O(L)$ on top, and marking cells happens in the board itself rather than in a separate visited structure.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Word Search I per Word** | $O(W \cdot M \cdot N \cdot 4^L)$ | $O(L)$ | Runs a fresh grid search for each word. Redundant walks on shared prefixes cause timeout on large vocabularies. |
-| **Trie-Guided Backtracking** | $O(\sum L + M \cdot N \cdot 4 \cdot 3^{L-1})$ | $O(\sum L)$ | Synchronous grid and Trie traversal prunes non-existent prefixes immediately, dynamically trimming completed branches. |
-
----
-
-### Common Pitfall: Collecting Duplicate Words and Missing In-Flight Pruning
-
-Two distinct paths across the board may spell the exact same word. If the algorithm simply appends `curr_node.word` whenever reached, the result will contain duplicates. Setting `curr_node.word = None` immediately upon finding the word ensures each dictionary entry is recorded at most once.
-
-Additionally, omitting leaf node deletion (`del parent.children[char]`) leaves dead branches in the Trie, forcing subsequent grid paths to revisit branches that have already yielded all their words.
-
----
-
-### Concise Interview Takeaway
-
-Never search the grid for each word independently. Load all target words into a Trie and traverse the grid and Trie simultaneously. Prefix mismatches terminate in $O(1)$ time, and dynamically removing exhausted leaf nodes ensures optimal performance even against adversarial grid configurations.
+Searching once per word repeats the same dead ends, so put all the words in a trie and walk the board and the trie together, advancing every candidate word at once. Store the word at its final node so matches record themselves, pop it to avoid duplicates, mark and restore cells around the recursion, and prune dead trie nodes to keep shrinking the search.

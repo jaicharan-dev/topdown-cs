@@ -1,201 +1,126 @@
 ---
 id: 1-implement-trie-prefix-tree
 title: "208. Implement Trie (Prefix Tree)"
-description: "Prefix-sharing tree structure for string retrieval and autocompletion"
+description: "Letters become edges, shared beginnings become shared paths"
 sidebar_position: 1
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Tries</span>
 <span className="badge badge--secondary margin-left--sm margin-bottom--md">Prefix Tree</span>
 
-> **Problem Statement:** A trie (pronounced as "try") or prefix tree is a tree data structure used to efficiently store and retrieve keys in a dataset of strings. There are various applications of this data structure, such as autocomplete and spellchecker. Implement the `Trie` class:
-> - `Trie()`: Initializes the trie object.
-> - `void insert(String word)`: Inserts the string `word` into the trie.
-> - `boolean search(String word)`: Returns `true` if the string `word` is in the trie (i.e., was inserted before), and `false` otherwise.
-> - `boolean startsWith(String prefix)`: Returns `true` if there is a previously inserted string `word` that has the prefix `prefix`, and `false` otherwise.
+> **Problem Statement:** Build a structure that stores words and supports three operations: insert a word, check whether an exact word was inserted, and check whether any inserted word starts with a given prefix.
 
 ```text
-Input:
-["Trie", "insert", "search", "search", "startsWith", "insert", "search"]
-[[], ["apple"], ["apple"], ["app"], ["app"], ["app"], ["app"]]
-
-Output:
-[null, null, true, false, true, null, true]
-
-Explanation:
-Trie trie = new Trie();
-trie.insert("apple");
-trie.search("apple");   // returns True
-trie.search("app");     // returns False
-trie.startsWith("app"); // returns True
-trie.insert("app");
-trie.search("app");     // returns True
+insert("apple")
+search("apple")   -> true
+search("app")     -> false
+startsWith("app") -> true
 ```
 
 ---
 
-### The Intuitive Mental Model
+### Picture it
 
-Imagine an autocomplete engine or a physical thumb-indexed dictionary. A Trie (derived from re**trie**val) is an $n$-ary tree specialized for storing collections of strings.
+A set of words answers `search` instantly but is useless for `startsWith`, because finding every word beginning with `"app"` would mean examining all of them.
 
-Instead of storing each word in isolated memory slots, all words sharing a common prefix share the exact same chain of ancestor nodes. As you type `"a" -> "p" -> "p"`, traversal descends down a single shared sequence of character links. When words diverge, such as `"apple"` versus `"apply"`, the tree branches at character `'l'`.
+The way out is to stop storing words as units and store them **letter by letter**, with common beginnings sharing a path:
 
-To differentiate between a complete word and a mere intermediate prefix, each node maintains an `is_end_of_word` boolean flag:
-- `"app"` is a complete word (`is_end_of_word = True`).
-- `"appl"` is an internal prefix leading to `"apple"` (`is_end_of_word = False`).
-
-```
-              (root)
-             /      \
-           [a]      [b]
-            |        |
-           [p]      [a]
-            |        |
-          [p]*      [t]*
-          /   \
-        [l]   [y]*
-         |
-        [e]*
-
-  * denotes is_end_of_word = True
-  Words stored: "app", "apple", "apply", "bat"
+```text
+root
+ └── a ── p ── p ── l ── e      (apple)
+              └── s             (apps)
 ```
 
-#### Brute Force: Array or Hash Set Storage
-
-A naive approach stores words inside a standard hash set. While exact lookups via `search(word)` run in $O(L)$ time, answering `startsWith(prefix)` presents a severe challenge. To determine whether any word starts with `"app"`, a hash set cannot navigate prefix relationships: it must inspect every single word in the dataset, leading to an $O(N \cdot L)$ scan across $N$ words of average length $L$.
-
-#### Optimal Approach: Shared Prefix Tree
-
-A Trie organizes characters into hierarchical nodes. Traversal begins at the root node and follows edges labeled by successive characters in the query string.
-
-Because each transition takes $O(1)$ time via a dictionary or fixed array lookup, both `search` and `startsWith` terminate in exactly $O(L)$ steps, completely independent of how many millions of words exist in the dictionary.
-
-#### Execution Walkthrough
-
-Let us trace the operations from the example:
-
-| Step | Operation | Traversal Path | Node Action | Result |
-| :---: | :--- | :--- | :--- | :---: |
-| **1** | `insert("apple")` | `root -> a -> p -> p -> l -> e` | Create missing character nodes; mark node `'e'` with `is_end_of_word = True` | `None` |
-| **2** | `search("apple")` | `root -> a -> p -> p -> l -> e` | Follow edges to `'e'`; node exists and has `is_end_of_word == True` | `True` |
-| **3** | `search("app")` | `root -> a -> p -> p` | Follow edges to second `'p'`; node exists but has `is_end_of_word == False` | `False` |
-| **4** | `startsWith("app")` | `root -> a -> p -> p` | Follow edges to second `'p'`; all prefix characters exist | `True` |
-| **5** | `insert("app")` | `root -> a -> p -> p` | Nodes exist; update second `'p'` with `is_end_of_word = True` | `None` |
-| **6** | `search("app")` | `root -> a -> p -> p` | Follow edges to second `'p'`; node exists and now has `is_end_of_word == True` | `True` |
+`apple` and `apps` share the first three steps, because they share the first three letters. Walking from the root spells out a word, and any prefix is just a partway point on that walk.
 
 ---
 
-### Step-by-Step Algorithm
+### How to think about it
 
-1. **Define TrieNode:** Create a helper node class containing a `children` mapping (`char -> TrieNode`) and a boolean `is_end_of_word` set to `False`.
-2. **Initialize Trie:** In `__init__`, construct `self.root` as an empty `TrieNode`.
-3. **Implement `insert(word)`:**
-   - Point `curr = self.root`.
-   - Iterate through each character `char` in `word`. If `char` is not present in `curr.children`, instantiate a new `TrieNode`.
-   - Advance `curr = curr.children[char]`.
-   - After traversing all characters, set `curr.is_end_of_word = True`.
-4. **Implement `search(word)`:**
-   - Point `curr = self.root`.
-   - Iterate through each character in `word`. If `char` is missing from `curr.children`, return `False`.
-   - Advance `curr = curr.children[char]`.
-   - Return `curr.is_end_of_word` once all characters are matched.
-5. **Implement `startsWith(prefix)`:**
-   - Point `curr = self.root`.
-   - Iterate through each character in `prefix`. If `char` is missing from `curr.children`, return `False`.
-   - Advance `curr = curr.children[char]`.
-   - Return `True` once all prefix characters are verified.
+Each node holds a map from a letter to the next node, and a flag.
+
+**The flag is the crux.** Without it, the structure records that a path exists but not whether that path spells a complete word. Having inserted `apple`, the path for `app` exists, yet `app` was never inserted. The flag marks the nodes where a real word ends, which is exactly what separates `search` from `startsWith`.
+
+Then all three operations share one helper: walk the trie following the letters, and report the node you land on or nothing if a letter is missing.
+
+- **insert:** walk, creating missing nodes as you go, and set the flag on the final node.
+- **search:** walk, then report whether you arrived and the flag is set.
+- **startsWith:** walk, then report only whether you arrived.
+
+Using a dictionary for the children rather than a fixed array of 26 keeps it short and works for any alphabet, at the cost of a little memory per node.
 
 ---
 
-### Python 3 Implementation
+### Walking through the example
 
-<Tabs>
-  <TabItem value="optimal" label="Optimal: Prefix Tree (Trie)" default>
+Starting from an empty trie:
+
+1. **insert("apple").** From the root, no `a` exists, so create it. Then create `p`, `p`, `l` and `e` in turn. Set the flag on the node after `e`.
+2. **search("apple").** Walk `a`, `p`, `p`, `l`, `e`. All present, and the final node's flag is set, so `true`.
+3. **search("app").** Walk `a`, `p`, `p`. The node exists, but its flag is not set, because no word ended there. So `false`.
+4. **startsWith("app").** The same walk arrives at a real node, and that is all this operation asks, so `true`.
+
+Steps 3 and 4 walk to exactly the same place and give different answers, which is the flag earning its keep.
+
+---
+
+### The code
 
 ```python
 class TrieNode:
     def __init__(self):
-        self.children: dict[str, TrieNode] = {}
-        self.is_end_of_word: bool = False
+        self.children = {}        # letter -> next node
+        self.is_word = False      # does a complete word end here?
 
 
 class Trie:
     def __init__(self):
         self.root = TrieNode()
 
-    def insert(self, word: str) -> None:
-        curr = self.root
-        for char in word:
-            if char not in curr.children:
-                curr.children[char] = TrieNode()
-            curr = curr.children[char]
-        curr.is_end_of_word = True
+    def _walk(self, text: str) -> TrieNode:
+        node = self.root
 
-    def search(self, word: str) -> bool:
-        curr = self.root
-        for char in word:
-            if char not in curr.children:
-                return False
-            curr = curr.children[char]
-        return curr.is_end_of_word
+        for ch in text:
+            if ch not in node.children:
+                return None
+            node = node.children[ch]
 
-    def startsWith(self, prefix: str) -> bool:
-        curr = self.root
-        for char in prefix:
-            if char not in curr.children:
-                return False
-            curr = curr.children[char]
-        return True
-```
-
-  </TabItem>
-  <TabItem value="alternative" label="Alternative: Hash Set">
-
-```python
-class Trie:
-    def __init__(self):
-        self.words: set[str] = set()
+        return node
 
     def insert(self, word: str) -> None:
-        self.words.add(word)
+        node = self.root
+
+        for ch in word:
+            if ch not in node.children:
+                node.children[ch] = TrieNode()
+            node = node.children[ch]
+
+        node.is_word = True
 
     def search(self, word: str) -> bool:
-        return word in self.words
+        node = self._walk(word)
+        return node is not None and node.is_word
 
     def startsWith(self, prefix: str) -> bool:
-        # Linear scan over all stored words
-        for word in self.words:
-            if word.startswith(prefix):
-                return True
-        return False
+        return self._walk(prefix) is not None
 ```
 
-  </TabItem>
-</Tabs>
+---
+
+### Time and space complexity
+
+#### Time: $O(L)$ for every operation
+
+Where `L` is the length of the word or prefix. Each operation takes one step per letter, and crucially the cost does not depend on how many words the trie holds. A trie with a million words answers a five-letter query in five steps.
+
+#### Space: $O(\text{total letters})$
+
+In the worst case, with no shared beginnings, one node per letter of every word. Shared prefixes reduce that, which is the other half of why a trie is used.
 
 ---
 
-### Complexity Analysis
+### Remember this
 
-| Approach | Time Complexity | Space Complexity | Trade-off Summary |
-| :--- | :---: | :---: | :--- |
-| **Hash Set** | Insert: $O(L)$, Search: $O(L)$, Prefix: $O(N \cdot L)$ | $O(N \cdot L)$ | Hash sets provide quick exact matches, but prefix matching degrades to a full linear scan over all $N$ strings. |
-| **Prefix Tree (Trie)** | Insert: $O(L)$, Search: $O(L)$, Prefix: $O(L)$ | $O(N \cdot L)$ | Prefixes share node branches. Runtime depends strictly on query length $L$, independent of the dataset size $N$. |
-
----
-
-### Common Pitfall: Confusing Prefix Nodes with Complete Words
-
-A frequent pitfall is treating any node reachable in the Trie as a valid word. For example, inserting `"apple"` creates nodes for `'a'`, `'p'`, `'p'`, `'l'`, and `'e'`. Searching for `"app"` must return `False` unless `"app"` was explicitly inserted. Always verify the `is_end_of_word` flag in `search()`, whereas `startsWith()` only requires reaching the end of the query without encountering a missing link.
-
----
-
-### Concise Interview Takeaway
-
-A Trie organizes strings hierarchically by character edges so shared prefixes share nodes. By equipping each node with a children map and a terminal boolean flag, both exact word lookups and prefix searches execute in deterministic $O(L)$ time, regardless of the number of words stored.
+Store letters as edges so that shared beginnings become shared paths, which is what makes prefix queries cheap. Keep an end-of-word flag on each node: `search` requires both arriving and the flag, `startsWith` requires only arriving. Every operation is $O(L)$ in the query length, independent of how many words are stored.
