@@ -1,5 +1,10 @@
 import React, { useState } from 'react';
 import { useHistory } from '@docusaurus/router';
+import dsaStats from '@site/src/data/dsaStats.json';
+
+// Question counts come from the generated stats, keyed by the same ids used
+// for the nodes below, so adding a question updates the roadmap on its own.
+const COUNTS = dsaStats.topics;
 
 /**
  * Layout grid.
@@ -219,7 +224,11 @@ export default function DsaRoadmap() {
                   }}
                   tabIndex="0"
                   role="button"
-                  aria-label={`${node.label} roadmap topic`}
+                  aria-label={
+                    COUNTS[node.id]
+                      ? `${node.label} roadmap topic, ${COUNTS[node.id].count} questions`
+                      : `${node.label} roadmap topic`
+                  }
                 >
                   <rect
                     x={-node.w / 2 - 12}
@@ -264,6 +273,21 @@ export default function DsaRoadmap() {
                   >
                     {node.label}
                   </text>
+
+                  {/* Just under the card, right-aligned: the label fills the
+                      card, and a connector leaves from the bottom centre, so
+                      this corner is the only space that is reliably free. */}
+                  {COUNTS[node.id] && (
+                    <text
+                      x={node.w / 2}
+                      y={node.h / 2 + 14}
+                      textAnchor="end"
+                      pointerEvents="none"
+                      className="csf-dsa-node-count"
+                    >
+                      {COUNTS[node.id].count}
+                    </text>
+                  )}
                 </g>
               );
             })}
