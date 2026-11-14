@@ -1,147 +1,148 @@
 ---
 id: 9-static-keyword
 title: "The static Keyword: Class vs. Instance Memory & Method Hiding"
-description: "Understand the static keyword in Java: Metaspace storage, single-copy sharing across instances, why static methods cannot be overridden, and static blocks."
+description: "Belonging to the class rather than to any object, and why that rules out overriding"
 
 sidebar_position: 9
 sidebar_class_name: sidebar-medium
 ---
 
-import { SharedCopyFigure } from '@site/src/components/Figures/StaticKeyword';
-
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What does the 'static' keyword actually mean, where are static members stored in memory, and why can't you override a static method? Also, why should you prefer static nested classes over inner classes?"
 
-Every normal field and method in a class belongs to one object. Each object gets its own copy. `static` breaks that rule: a static member belongs to the **class itself**, not to any one object. There's only one copy, shared by every instance, loaded once when the class is loaded.
+---
 
-Think of a school: each student has their own name and marks (instance data). But the school's name is one value, shared by every student - that's the static field.
+### Picture it
 
-<SharedCopyFigure />
+Think of a chain of coffee shops.
 
-### The quick answer
+**Each shop has its own till.** Open a new branch and it gets its own till with its own takings. That is an ordinary field: every object has a separate copy.
 
-The `static` keyword means a member belongs to the class, not an object. All instances share the exact same copy. You call it through the class name (`ClassName.doSomething()`), not through an object.
+**The chain has one price list.** There is exactly one, held centrally. Every branch reads the same one, and a change there changes it for all of them at once. That is a static field: one copy, owned by the class.
 
-### Static vs. instance members
+**A question about the price list does not need a branch.** "What does a flat white cost?" is answerable from head office, with no branch involved. That is a static method: callable without any object.
 
-| | Instance Member | Static Member |
-|---|---|---|
-| **Belongs to** | One specific object | The class itself |
-| **Called as** | `object.doSomething()` | `ClassName.doSomething()` |
-| **Can access** | Both instance and static fields | Only static fields - no `this` |
-| **Resolved** | At runtime, based on the real object | At compile-time, based on the declared type |
-
-### Where does `static` actually live in memory?
-
-This trips people up because the answer changed across Java versions:
-* **Java 7 and earlier:** static variables and class metadata lived in **PermGen**, a region of the JVM heap.
-* **Java 8+:** PermGen was removed. Class metadata and bytecode now live in **Metaspace**, which sits in native memory, outside the heap.
-* **The catch:** the static **variables** themselves (and the `Class` object) still live on the regular Java heap, and can be garbage collected if their class loader is unloaded.
-
-### Can you override a static method?
-
-No. This is the one answer to memorize.
-
-Overriding depends on the runtime looking at the real object and picking the right method - that's late binding. Static methods skip all of that: the compiler locks in which method gets called based on the *declared type* of the variable, before the program even runs. That's early binding, and it happens whether or not an object exists.
-
-So if a subclass defines a static method with the same signature as the parent's, it doesn't override anything - it just **hides** it:
-
-```java
-Parent p = new Child();
-p.printRules(); // Prints "Parent Rules" - because p is declared as Parent, and static calls don't look at the real object
-```
-
-### Static nested class vs. inner class
-
-Joshua Bloch's *Effective Java* says: "favor static member classes over non-static." Here's why that matters.
-
-A regular (non-static) inner class secretly keeps a hidden reference back to the outer object that created it. If that inner object outlives the outer one - say it's sitting in a background thread or an event queue - the outer object can never be garbage collected. That's a memory leak hiding in plain sight.
-
-A **static** nested class holds no such reference. It behaves like any ordinary top-level class: no hidden link, no leak risk.
+And now the part that matters for overriding. A branch can have its own house rule for serving customers, and which rule applies depends on the branch you walk into. But the price list is not something a branch owns, so a branch cannot have its own version of it. There is nothing to choose between at the door.
 
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+### The proper terms
 
-### Clean Code Example
+#### What static means
 
-Here is how static variables, methods, and blocks are declared across languages:
+**`static`** means the member belongs to the **class** rather than to any **instance**. There is exactly one copy, shared by every object, and it exists whether or not any object has been created.
 
-<Tabs groupId="programming-language">
-<TabItem value="java" label="Java" default>
+A **static field**, sometimes called a **class variable**, is that single shared copy. A plain field is an **instance variable**, with one copy per object.
+
+A **static method** can be called on the class itself. Because no instance is involved, it has no `this`, and therefore cannot access instance fields or call instance methods directly.
+
+#### Where they live
+
+Since Java 8, static fields are stored in the **Metaspace**, the native-memory area holding class metadata. The objects they point at still live on the **heap** like any other object; only the variable slot itself sits with the class.
+
+Before Java 8 this area was the **PermGen** space, which had a fixed size and produced the familiar `OutOfMemoryError: PermGen space`. Metaspace grows into native memory instead, which is the headline change worth naming.
+
+**Static initialiser blocks** run once, when the class is first loaded by the **class loader**, before any instance exists.
+
+#### Why a static method cannot be overridden
+
+**Overriding** is resolved by **dynamic dispatch**: the JVM follows the object to its class and looks the method up there. A static method is not reached through an object, so there is nothing to follow. The call is bound at **compile time** from the **reference type**.
+
+Declaring a static method in a subclass with the same signature is legal, but it is **method hiding**, not overriding. Both methods exist, and which one runs depends on the declared type of the reference, not the object it holds. This is why calling a static method through an instance variable is discouraged and usually flagged by linters.
+
+#### Static nested classes versus inner classes
+
+A **static nested class** is a class declared `static` inside another. It is simply a class that happens to be namespaced inside its enclosing one, with no link to any instance.
+
+A non-static **inner class** holds an implicit reference to the **enclosing instance** that created it. That reference is what allows `Outer.this`, and it is also the problem: while the inner object is reachable, the outer one cannot be **garbage collected**. An inner object that outlives its intended scope therefore pins the whole enclosing object in memory, which is a common **memory leak**.
+
+So the preference is: make a nested class static unless it genuinely needs access to the enclosing instance's state.
+
+---
+
+### In code
 
 ```java
-public class Bank {
-    // 1. Static Variable: Shared by all bank accounts
-    public static double baseInterestRate;
+class Branch {
+    private static int branchCount = 0;      // one copy for the whole class
+    private static final String CHAIN = "Beans";
 
-    // 2. Static Initializer Block: Runs once when class is loaded
-    static {
-        baseInterestRate = 0.045; // 4.5%
+    private double tillTotal = 0;            // one copy per object
+
+    static {                                 // runs once, at class loading
+        System.out.println("chain opening");
     }
 
-    // 3. Static Utility Method: No access to instance state
-    public static double calculateInterest(double principal) {
-        return principal * baseInterestRate;
+    Branch() {
+        branchCount++;                       // every branch updates the shared count
     }
 
-    // 4. Static Nested Class: Does not leak outer instance reference
-    public static class TransactionLog {
-        public void log(String message) {
-            System.out.println("Log: " + message);
-        }
+    static int howManyBranches() {           // no instance needed
+        // return tillTotal;                 // compile error: no instance, no this
+        return branchCount;
+    }
+
+    static String chain() { return CHAIN; }
+
+    // Static nested: no reference to any Branch instance
+    static class PriceList {
+        double priceOf(String item) { return 2.80; }
+    }
+
+    // Inner: silently holds a reference to the Branch that created it
+    class DailyReport {
+        double total() { return tillTotal; } // can reach instance state
+    }
+}
+
+class CityBranch extends Branch {
+    static String chain() { return "Beans City"; }   // hiding, not overriding
+}
+
+public class Demo {
+    public static void main(String[] args) {
+        Branch b = new CityBranch();
+        System.out.println(Branch.chain());      // "Beans": reference type decides
+        System.out.println(CityBranch.chain());  // "Beans City"
+
+        Branch.PriceList list = new Branch.PriceList();      // no instance needed
+        Branch.DailyReport report = new Branch().new DailyReport();  // needs one
     }
 }
 ```
 
-</TabItem>
-<TabItem value="cpp" label="C++">
+The two constructions at the end show the difference plainly. The static nested class is built on its own; the inner class can only be built from an existing `Branch`, because it has to capture one.
 
-```cpp
-#include <iostream>
+---
 
-class Bank {
-public:
-    // In C++17, 'inline static' allows in-class initialization
-    inline static double baseInterestRate = 0.045;
+### What they ask next
 
-    // Static member function
-    static double calculateInterest(double principal) {
-        return principal * baseInterestRate;
-    }
-};
+**"Can a static method access an instance variable?"**
+Not directly, because there is no `this`. It can if it is handed an object, since then it has a specific instance to read from.
 
-int main() {
-    // Invoked using Scope Resolution Operator (::) without instantiating Bank
-    double interest = Bank::calculateInterest(1000.0);
-    std::cout << "Interest: " << interest << std::endl;
-    return 0;
-}
-```
+**"Can you overload a static method?"**
+Yes. Overloading is resolved by signature at compile time, which is exactly how static calls are resolved anyway.
 
-</TabItem>
-<TabItem value="python" label="Python">
+**"Is a static field thread-safe?"**
+No. One shared copy across all threads is if anything more exposed, since every thread touches the same variable. It needs the same synchronisation, `volatile`, or atomic types as any shared mutable state.
 
-```python
-class Bank:
-    # 1. Class Variable (Static): Shared across all instances
-    base_interest_rate: float = 0.045
+**"Why is `main` static?"**
+Because the JVM has to call it before any object exists. Requiring an instance would raise the question of who creates it and with what arguments.
 
-    # 2. @staticmethod: Independent utility function; receives neither self nor cls
-    @staticmethod
-    def calculate_interest(principal: float) -> float:
-        return principal * Bank.base_interest_rate
+**"What is the difference between a static nested class and an inner class, in one line?"**
+The inner class holds a reference to the enclosing instance and the static nested class does not, which is why the static one is the default choice.
 
-    # 3. @classmethod: Receives the class object (cls) as first argument
-    @classmethod
-    def update_rate(cls, new_rate: float) -> None:
-        cls.base_interest_rate = new_rate
+**The common wrong answer** is "static methods can't be overridden because they're final". They are not final. They are excluded because dispatch needs an object and there isn't one.
 
-# Usage:
-print(Bank.calculate_interest(1000.0))  # 45.0
-```
+---
 
-</TabItem>
-</Tabs>
+### Say this in the interview
+
+*"Static means the member belongs to the class rather than to any instance. A static field, or class variable, is a single copy shared by every object, as against an instance variable which exists once per object. A static method is callable on the class, has no this, and therefore cannot touch instance state directly.*
+
+*Since Java 8 static fields live in Metaspace, the native-memory area for class metadata, replacing the old fixed-size PermGen. The objects they reference still sit on the heap. Static initialiser blocks run once when the class loader first loads the class.*
+
+*A static method cannot be overridden because overriding relies on dynamic dispatch through an object, and a static call has no object to dispatch on. It is bound at compile time from the reference type. Declaring the same signature in a subclass is method hiding, not overriding, and the reference type decides which runs.*
+
+*A static nested class has no link to an enclosing instance, while an inner class holds an implicit reference to one. That reference keeps the enclosing object from being garbage collected, which is a common memory leak, so I make nested classes static unless they need the enclosing instance."*

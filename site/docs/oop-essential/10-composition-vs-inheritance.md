@@ -1,167 +1,127 @@
 ---
 id: 10-composition-vs-inheritance
 title: "Composition vs. Inheritance"
-description: "Discover why composition is often favored over inheritance to build flexible, loosely-coupled systems."
+description: "What a thing is against what a thing has, and why the second is usually safer"
 
 sidebar_position: 10
 sidebar_class_name: sidebar-medium
 ---
 
-import {
-  InheritanceVsCompositionFigure,
-  HasASpectrumFigure,
-} from '@site/src/components/Figures/CompositionVsInheritance';
-
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What's the fundamental difference between composition and inheritance? Why is the industry consensus to 'favor composition over inheritance', and how do Association, Aggregation, and Composition differ?"
 
-There are two ways to build a class out of other things: say it **IS** that thing, or say it **HAS** that thing.
+---
 
-A `SavingsAccount` IS a `BankAccount` (inheritance). A `Car` HAS an `Engine` (composition). Both let you reuse code, but they reuse it very differently.
+### Picture it
 
-### The quick answer
+Two ways to give an object the ability to do something.
 
-Inheritance builds an **IS-A** relationship: a subclass picks up a parent class's fields and methods at compile time. Composition builds a **HAS-A** relationship: a class is assembled from other independent objects at runtime, usually handed to it rather than created by it. Most modern codebases lean toward composition, because it's easier to change later and harder to break by accident.
+**Inheritance is inheriting a trade.** You join the family business and are given everything the family already does. It is one decision, made once, and you cannot change your mind later. You also get the whole lot, including parts of the trade you have no use for, and if the family changes how something works, your version changes underneath you.
 
-<InheritanceVsCompositionFigure />
+**Composition is hiring a specialist.** You do not know how to do accounts, so you employ an accountant. You can employ a different one tomorrow. You can employ several people with different skills. And the accountant's private methods stay private, because all you ever do is ask them for results.
 
-### Core comparison
-
-| | Inheritance (IS-A) | Composition (HAS-A) |
-|---|---|---|
-| **Relationship** | `SavingsAccount` is a `BankAccount` | `Car` has an `Engine` |
-| **Coupling** | Tight: the subclass depends on the parent's internals | Loose: talks to the other object only through its public methods |
-| **When it's fixed** | Compile-time; the hierarchy can't change while running | Runtime; you can swap one component for another on the fly |
-| **How polymorphism shows up** | Through the class hierarchy (subtyping) | Through interfaces or injected parameters |
-
-### Why composition usually wins
-
-1. **It's easy to test.** If a class *has* a dependency instead of extending it, you can hand it a fake version in tests. A `PaymentService` that receives a `PaymentGateway` through its constructor can be given a real `StripeGateway` in production and a `MockGateway` in tests, with no production code changes.
-2. **It avoids the fragile base class problem.** In a deep inheritance chain, a small, reasonable-looking change to a `protected` method in the base class can quietly break every subclass that depended on the old behavior. Composition keeps that risk contained, because each piece only talks to the others through a stable interface.
-3. **It doesn't box you in.** Java and most OOP languages only let you `extend` one class. Composition has no such limit: a class can hold as many independent collaborators as it needs: a `Logger`, a `DatabasePool`, a `CacheClient`, all at once.
-
-### Association, aggregation, composition: the three flavors of "HAS-A"
-
-These three terms describe the same idea (one object holding a reference to another) but differ in how tightly their lifetimes are tied together.
-
-<HasASpectrumFigure />
-
-1. **Association ("uses-a"):** the loosest link. Two classes just interact: a `Customer` places an `Order`. Neither owns the other, and neither one's lifetime depends on the other.
-2. **Aggregation (weak HAS-A):** a whole/part relationship where the part can live on its own. If a `Department` shuts down, its `Professor` objects don't vanish - they still exist in memory, just unattached.
-3. **Composition (strong HAS-A):** real ownership. The part's lifetime is tied to the whole. If a `House` object is destroyed, its `Room` objects go with it.
-
-### So is inheritance ever the right call?
-
-Yes - just not as the default. Reach for inheritance when:
-* The relationship is a genuine, stable IS-A fit in the real domain (not one you're forcing for convenience).
-* It fully satisfies the **Liskov Substitution Principle**: any subclass instance can stand in for the parent anywhere the parent is expected, without surprising the caller or breaking its assumptions.
+Inheritance says a car **is a** vehicle. Composition says a car **has an** engine. The first is about identity, the second about parts.
 
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+### The proper terms
 
-### Clean Code Example
+#### The two relationships
 
-Here is how composition with dependency injection is implemented across languages:
+**Inheritance** models an **IS-A** relationship. A subclass **extends** a superclass, receiving its fields and methods. It is decided at **compile time** and cannot be changed while the program runs.
 
-<Tabs groupId="programming-language">
-<TabItem value="java" label="Java" default>
+**Composition** models a **HAS-A** relationship. One class holds another as a field and **delegates** work to it. Because that field is an ordinary reference, it can be swapped at **runtime**, which is what makes composition flexible.
+
+#### Why composition is usually preferred
+
+**Encapsulation is preserved.** A subclass can reach `protected` members and depends on how the parent is built, not only on what it promises. A composing class sees only the other object's public surface, so the two stay genuinely separate.
+
+**The fragile base class problem.** When a parent changes internally, every subclass is exposed to that change, even though none of them were edited. The classic demonstration is subclassing a collection to count additions: if the parent's bulk-add method happens to call the single-add method internally, every item gets counted twice. Composition avoids it because the wrapper decides exactly what it forwards.
+
+**One parent only.** A class extends one superclass, so inheritance is a budget you can spend only once. A class can hold as many collaborators as it needs.
+
+**Behaviour can change at runtime.** Swapping a strategy object changes behaviour while running. Swapping a superclass is impossible.
+
+The principle is **favour composition over inheritance**. Reach for inheritance when the subtype is genuinely substitutable for the supertype, which is what the **Liskov Substitution Principle** requires, and when you control both sides of the relationship.
+
+#### Association, aggregation, composition
+
+These three are UML terms for how strongly objects are linked, and interviewers like them because the distinction is about **lifecycle ownership**.
+
+**Association** is the loosest: two objects know about each other, with no ownership at all. A teacher and a student, where each exists independently.
+
+**Aggregation** is a HAS-A where the part can outlive the whole. A department has professors, but deleting the department does not delete the people. In code, the object is usually passed in from outside.
+
+**Composition** here means the strict form: the part cannot exist without the whole, and dies with it. A house has rooms, and demolishing the house removes them. In code, the owner usually creates the part itself and never exposes it.
+
+The test is simple: if the contained object is still meaningful after the container is destroyed, it is aggregation; if not, it is composition.
+
+---
+
+### In code
 
 ```java
-// 1. Component Contract
-interface Engine {
-    void start();
+// Inheritance: Stack IS-A Vector, inherited wholesale
+// java.util.Stack does this, and it is a textbook mistake: a stack
+// ends up with get(index) and insertElementAt(), which break its contract.
+
+// Composition: Stack HAS-A list, and exposes only stack operations
+class SafeStack<T> {
+    private final java.util.List<T> items = new java.util.ArrayList<>();
+
+    void push(T item) { items.add(item); }              // delegation
+
+    T pop() {
+        if (items.isEmpty()) throw new IllegalStateException("empty");
+        return items.remove(items.size() - 1);
+    }
+
+    int size() { return items.size(); }                 // chosen, not inherited
 }
 
-class ElectricEngine implements Engine {
-    @Override
-    public void start() {
-        System.out.println("Electric motor silently engaged.");
-    }
-}
+// Composition also lets behaviour be swapped while running
+interface PaymentMethod { void pay(double amount); }
 
-// 2. Composition (HAS-A): Car HAS an Engine injected via constructor
-class Car {
-    private final Engine engine; // Composed dependency
+class Order {
+    private PaymentMethod method;                       // a collaborator, not a parent
 
-    public Car(Engine engine) {
-        this.engine = engine; // Loose coupling via constructor injection
+    Order(PaymentMethod method) { this.method = method; }
+
+    void setMethod(PaymentMethod method) {              // impossible with inheritance
+        this.method = method;
     }
 
-    public void drive() {
-        engine.start();
-        System.out.println("Car is moving forward.");
-    }
+    void checkout(double total) { method.pay(total); }
 }
 ```
 
-</TabItem>
-<TabItem value="cpp" label="C++">
+`SafeStack` is the argument in miniature. Inheriting from a list would have handed callers `get(5)` and `insertElementAt`, which contradict what a stack is. Composition exposes three methods and nothing else.
 
-```cpp
-#include <iostream>
-#include <memory>
+---
 
-// 1. Component Interface
-class Engine {
-public:
-    virtual ~Engine() = default;
-    virtual void start() = 0;
-};
+### What they ask next
 
-class ElectricEngine : public Engine {
-public:
-    void start() override {
-        std::cout << "Electric motor silently engaged." << std::endl;
-    }
-};
+**"Is inheritance ever the right choice?"**
+Yes, when the IS-A relationship genuinely holds and the subtype is substitutable, and especially when you own both classes. Template method designs, where a base defines an algorithm and subclasses fill in steps, are a legitimate use.
 
-// 2. Composition: Car owns an Engine via unique_ptr or receives a shared reference
-class Car {
-private:
-    std::shared_ptr<Engine> engine;
+**"What is the fragile base class problem, concretely?"**
+A subclass overrides a method, the parent calls that method internally as part of another operation, and the override now runs in a context it was never written for. Counting additions in a subclassed collection and getting double counts is the standard example.
 
-public:
-    Car(std::shared_ptr<Engine> eng) : engine(eng) {}
+**"How is composition different from aggregation in code?"**
+Mainly in who creates the part and whether it is exposed. Composition usually means the owner constructs it and never hands it out, so its lifetime matches the owner's. Aggregation usually means the object arrives through the constructor and outlives the container.
 
-    void drive() {
-        engine->start();
-        std::cout << "Car is moving forward." << std::endl;
-    }
-};
-```
+**"Does composition mean more boilerplate?"**
+Yes, you write delegating methods that inheritance would have given free. That verbosity is the price of controlling exactly what is exposed, and it is usually judged worth paying.
 
-</TabItem>
-<TabItem value="python" label="Python">
+**The common wrong answer** is "composition is better because inheritance is slow". Performance is not the issue. Coupling and the fragile base class problem are.
 
-```python
-from abc import ABC, abstractmethod
+---
 
-# 1. Component Interface
-class Engine(ABC):
-    @abstractmethod
-    def start(self) -> None:
-        pass
+### Say this in the interview
 
-class ElectricEngine(Engine):
-    def start(self) -> None:
-        print("Electric motor silently engaged.")
+*"Inheritance models an IS-A relationship: a subclass extends a superclass and receives its members, fixed at compile time. Composition models a HAS-A relationship: a class holds another as a field and delegates to it, and because that is an ordinary reference it can be swapped at runtime.*
 
-# 2. Composition: Car HAS an Engine passed at instantiation
-class Car:
-    def __init__(self, engine: Engine):
-        self._engine = engine  # Injected dependency
+*Composition is usually preferred for three reasons. It preserves encapsulation, since the composing class sees only the public surface rather than protected internals. It avoids the fragile base class problem, where a change inside a parent silently alters subclass behaviour, the classic case being a subclassed collection that double-counts because the parent's bulk method calls the single-item one. And a class can hold many collaborators but extend only one superclass. The principle is favour composition over inheritance, and inheritance is still right when the subtype is genuinely substitutable, which the Liskov Substitution Principle requires.*
 
-    def drive(self) -> None:
-        self._engine.start()
-        print("Car is moving forward.")
-
-# Usage:
-car = Car(ElectricEngine())
-car.drive()
-```
-
-</TabItem>
-</Tabs>
+*Association, aggregation and composition describe how strongly objects are linked, and the test is lifecycle ownership. Association is mutual awareness with no ownership. Aggregation is a HAS-A where the part outlives the whole, like a department and its professors. Composition is the strict form where the part dies with the whole, like a house and its rooms."*

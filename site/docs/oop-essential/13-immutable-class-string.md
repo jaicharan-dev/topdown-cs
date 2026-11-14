@@ -1,143 +1,148 @@
 ---
 id: 13-immutable-class-string
 title: "Immutability in Java: Designing Safe Classes and the String Pool"
-description: "Explore the mechanics of immutability in Java, including defensive copying, modern Records, and the String Pool."
+description: "Objects that never change after construction, the leaks that undo them, and why String is one"
 
 sidebar_position: 13
 sidebar_class_name: sidebar-medium
 ---
 
-import { DefensiveCopyFigure } from '@site/src/components/Figures/ImmutableClass';
-
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Walk me through how you design a strictly immutable class in Java. Why is String immutable, how do you handle defensive copying properly, and how do Java 14+ Records fit in?"
 
-An immutable object is one that can't change after it's created. Once you build it, its state is frozen for its entire lifetime - no setter, no sneaky backdoor, can touch it.
+---
 
-### The quick answer
+### Picture it
 
-In Java, you build an immutable class by marking the class `final`, making every field `private final`, giving it no methods that mutate state, and making **defensive copies** of any mutable object it takes in or hands out. `String` itself is immutable for four reasons: it enables the String Pool (memory reuse), it's safer, it's thread-safe without any locking, and it lets the hash code be cached.
+Think of a printed certificate rather than a whiteboard.
 
-### The 5 rules for building an immutable class by hand
+Once a certificate is printed, nobody can change it. If a detail is wrong you print a new one; the old one keeps saying what it always said. That is worth something: you can hand copies to as many people as you like and never worry that one of them has altered it, and you never have to ask "is this still current?"
 
-1. **Mark the class `final`.** Stops a subclass from overriding a method and sneaking in mutable behavior.
-2. **Make every field `private`.** Nothing outside the class can reach in and touch the data directly.
-3. **Make every field `final`.** Guarantees it's assigned exactly once, and lets the Java Memory Model safely publish the object across threads without needing synchronization.
-4. **Write no setters.** If there's no method that can change state, state can't change.
-5. **Defensively copy anything mutable - this is the one people forget:**
-   * **In the constructor:** clone any mutable object passed in (a `List`, a `Date`, a custom object) *before* storing it. Copy it before you even validate it, so nobody can sneak in a change between your check and your copy (a TOCTOU attack).
-   * **In getters:** never hand back a direct reference to a mutable internal field. Return an unmodifiable view (`Collections.unmodifiableList()`) or a real copy (`List.copyOf()`, Java 10+).
+The catch is subtler than it looks. If the certificate has a **pocket** holding a loose sheet, and you hand out the certificate with the pocket still reachable, someone can swap the sheet. The certificate itself is unaltered, yet what it effectively says has changed. Keeping a thing truly fixed means the parts it holds must be fixed too, or must never be handed out directly.
 
-<DefensiveCopyFigure />
-
-### What about Records (Java 14+)?
-
-A `record` gives you most of this for free: an implicitly `final` class, `private final` fields, and a generated constructor, getters, `equals()`, `hashCode()`, and `toString()`.
-
-**The catch:** records don't defensively copy mutable fields automatically. Declare `record Portfolio(String name, List<String> stocks) {}`, and a caller can hand you an `ArrayList`, keep a reference to it, and mutate it from outside - your "immutable" record just changed underneath you. Fix it with a compact constructor:
-
-```java
-public record Portfolio(String name, List<String> stocks) {
-    public Portfolio {
-        stocks = List.copyOf(stocks); // Defensively copies and enforces immutability
-    }
-}
-```
-
-### Why is `String` immutable?
-
-1. **The String Pool.** Java reuses identical string literals to save memory. If strings could change, mutating one reference would corrupt every other variable silently pointing at that same literal.
-2. **Security.** Strings often carry sensitive values - database credentials, file paths, URLs. If they were mutable, something could change a file path in the gap between a security check and the file actually being opened.
-3. **Thread safety.** An object that can't change can be shared across threads freely, with no locks needed.
-4. **Hash code caching.** `String` computes its hash code once, on the first `hashCode()` call, and reuses it forever - safe only because the characters can never change. That's what makes `HashMap` and `HashSet` lookups on strings so fast.
-
-### One nuance: the reflection backdoor
-
-Can an immutable string ever actually change? Yes - through reflection. With `Field.setAccessible(true)` and enough JVM permissions, code can reach into `String`'s internal `byte[]` and edit it directly in heap memory. Immutability in Java is a contract enforced by the language and the type system - not a hardware-level guarantee.
+That pocket is a mutable field, and it is where most attempts at immutability leak.
 
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+### The proper terms
 
-### Clean Code Example
+#### What makes a class immutable
 
-Here is how immutable objects are created across languages:
+An **immutable** object cannot change state after construction. Java requires several things together:
 
-<Tabs groupId="programming-language">
-<TabItem value="java" label="Java" default>
+Make the class `final` so no subclass can add mutable state or override behaviour to fake a change.
+
+Make every field `private final`. Final prevents reassignment; private prevents outside code reaching the field at all.
+
+Provide no setters, and no method of any kind that alters state. Operations that look like changes return a **new instance** instead.
+
+Defensively copy on the way in. If a constructor accepts a mutable object, store a copy. Otherwise the caller keeps a reference to the same object and can modify it afterwards.
+
+Defensively copy on the way out. If a getter returns a mutable field, return a copy or an unmodifiable view. Otherwise the caller receives the internals and can modify them directly.
+
+That pair of copies is **defensive copying**, and missing either one makes the class immutable in appearance only.
+
+#### Why immutability is worth it
+
+An immutable object is **inherently thread-safe**: with no writes after construction, there are no race conditions and no synchronisation needed. It is safe to share and cache freely. It is also safe as a **HashMap key**, because its **hash code** cannot change after insertion, which would otherwise leave the entry stranded in the wrong bucket.
+
+The cost is allocation. Every modification creates an object, which is why `StringBuilder` exists for repeated string concatenation.
+
+#### Why String is immutable
+
+Four reasons, and interviewers usually want more than one.
+
+**The string pool.** Java keeps a **string constant pool** so identical literals share one object. That sharing is only safe if nobody can modify a shared string.
+
+**Security.** File paths, URLs and credentials are passed as strings. If they were mutable, a value could be validated and then altered before use, a time-of-check-to-time-of-use attack.
+
+**Hash caching.** `String` caches its hash code after first use, which is only correct because the contents can never change. This makes strings excellent map keys.
+
+**Thread safety.** Strings can be shared across threads with no synchronisation at all.
+
+Note that `new String("x")` deliberately bypasses the pool and creates a separate object, which is why comparing strings with `==` is unreliable and `equals` is used instead. `intern()` puts a string back into the pool.
+
+#### Records
+
+A **record**, standard since Java 16, is a concise declaration of a transparent data carrier. The compiler generates a constructor, accessors, `equals`, `hashCode` and `toString`, and the fields are final.
+
+Records give **shallow immutability**: the references cannot be reassigned, but a record holding a `List` still exposes that same list. To make a record genuinely immutable you add a **compact constructor** that copies incoming mutable arguments, and override the accessor to return a copy. Records remove the boilerplate; they do not remove the need to think about defensive copying.
+
+---
+
+### In code
 
 ```java
-import java.util.Collections;
-import java.util.List;
 import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
 
-public final class ImmutablePortfolio {
-    private final String investor;
-    private final List<String> stocks;
+public final class Booking {                    // final: no subclass can break it
+    private final String reference;             // safe: String is immutable
+    private final Date travelDate;              // unsafe type: must be copied
+    private final List<String> passengers;      // unsafe type: must be copied
 
-    public ImmutablePortfolio(String investor, List<String> stocks) {
-        this.investor = investor;
-        // Defensive copy in constructor to break external reference
-        this.stocks = new ArrayList<>(stocks); 
+    public Booking(String reference, Date travelDate, List<String> passengers) {
+        this.reference = reference;
+        this.travelDate = new Date(travelDate.getTime());   // copy in
+        this.passengers = List.copyOf(passengers);          // copy in
     }
 
-    public String getInvestor() {
-        return investor;
+    public String getReference() { return reference; }
+
+    public Date getTravelDate() {
+        return new Date(travelDate.getTime());              // copy out
     }
 
-    // Defensive view in getter prevents external additions
-    public List<String> getStocks() {
-        return Collections.unmodifiableList(stocks);
+    public List<String> getPassengers() {
+        return passengers;                       // already unmodifiable
     }
+
+    public Booking withReference(String newReference) {     // change by replacement
+        return new Booking(newReference, travelDate, passengers);
+    }
+}
+
+// A record, with a compact constructor restoring the copy-in step
+record Trip(String code, List<String> stops) {
+    Trip {
+        stops = List.copyOf(stops);              // without this, the caller
+    }                                            // keeps a live reference
 }
 ```
 
-</TabItem>
-<TabItem value="cpp" label="C++">
+Remove either `new Date(...)` call and the class quietly stops being immutable. A caller holding the original `Date` could change it after construction, or mutate the one a getter handed back.
 
-```cpp
-#include <iostream>
-#include <string>
-#include <vector>
+---
 
-// In C++, immutability is enforced via 'const' references and member qualifiers
-class ImmutablePortfolio {
-private:
-    const std::string investor;
-    const std::vector<std::string> stocks;
+### What they ask next
 
-public:
-    // Takes ownership by value or creates a copy via initializer list
-    ImmutablePortfolio(std::string inv, std::vector<std::string> stk)
-        : investor(inv), stocks(stk) {}
+**"Is a `final` class with `final` fields automatically immutable?"**
+No. `final` fixes the reference, not the object behind it. A `final List` field can still have elements added, so the mutable parts must be copied in and out.
 
-    std::string getInvestor() const { return investor; }
+**"Why is `StringBuilder` needed if String is immutable?"**
+Because concatenating in a loop creates a new string on every iteration, which is quadratic in the total length. `StringBuilder` keeps one mutable buffer and produces a string once at the end.
 
-    // Returns a const reference to prevent external mutation
-    const std::vector<std::string>& getStocks() const { return stocks; }
-};
-```
+**"What is the difference between `==` and `equals` for strings?"**
+`==` compares references, so it can be true for two pooled literals and false for an equal string created with `new`. `equals` compares contents and is what you want.
 
-</TabItem>
-<TabItem value="python" label="Python">
+**"Are records fully immutable?"**
+Only shallowly. Fields cannot be reassigned, but mutable contents remain reachable unless a compact constructor copies them and the accessor returns a copy.
 
-```python
-from dataclasses import dataclass
-from typing import Tuple
+**"Can an immutable class have a mutable field internally?"**
+Yes, provided it never escapes. A cached hash code is the standard example, and `String` does exactly that.
 
-# In Python, @dataclass(frozen=True) creates an immutable class.
-# Use immutable Tuple instead of mutable List to ensure deep immutability:
-@dataclass(frozen=True)
-class ImmutablePortfolio:
-    investor: str
-    stocks: Tuple[str, ...]  # Immutable collection
+**The common wrong answer** is listing `final` and "no setters" and stopping there. The defensive copying pair is the part being tested.
 
-# Usage:
-portfolio = ImmutablePortfolio("Alice", ("AAPL", "GOOGL"))
-# portfolio.investor = "Bob" # Raises FrozenInstanceError!
-```
+---
 
-</TabItem>
-</Tabs>
+### Say this in the interview
+
+*"To make a class immutable I mark the class final so no subclass can introduce mutable state, make every field private final, provide no setters, and return a new instance for anything that looks like a modification. Crucially I use defensive copying in both directions: copy any mutable argument in the constructor, and copy any mutable field returned from a getter. Missing either leaves a reference the caller can modify, so the class is only immutable in appearance.*
+
+*The benefits are that the object is inherently thread-safe with no synchronisation, can be shared and cached freely, and is safe as a HashMap key because its hash code cannot change after insertion.*
+
+*String is immutable for four reasons: the string constant pool lets identical literals share one object, which is only safe if nobody can alter it; security, since paths and credentials are strings and mutability would allow a value to change between validation and use; hash caching, which is correct only because the contents are fixed; and thread safety.*
+
+*A record gives shallow immutability. The compiler generates the constructor, accessors, equals, hashCode and toString with final fields, but a record holding a List still exposes that list, so I add a compact constructor that copies it."*

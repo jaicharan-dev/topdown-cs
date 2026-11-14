@@ -1,131 +1,152 @@
 ---
 id: 14-pass-by-value-vs-reference
 title: "Pass by Value vs. Pass by Reference: The Java Object Trap"
-description: "Settle the debate: learn exactly why Java is strictly pass-by-value, even when handling object references."
+description: "Java copies the reference, not the object, which explains both things people find contradictory"
 
 sidebar_position: 14
 sidebar_class_name: sidebar-hard
 ---
 
-import { PassByValueFigure } from '@site/src/components/Figures/PassByValue';
-
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
 > **Interview Question:** "Explain the difference between pass-by-value and pass-by-reference. If passing an object into a Java method allows me to modify its fields, doesn't that mean Java is pass-by-reference? How does this differ from C++?"
 
-Picture handing someone a sticky note with your house's address written on it. They can drive to your house and rearrange your furniture: that address really does lead to your real house. But if they scribble a *different* address on their own copy of the sticky note, your original note, still in your pocket, is untouched. You're still pointing at your house.
+---
 
-That's the whole trick behind Java's object passing.
+### Picture it
 
-### The quick answer
+Think of a house and a piece of paper with its address written on it.
 
-Java is **strictly pass-by-value**, always: there's no pass-by-reference anywhere in the language. Pass a primitive, and you pass a copy of its raw value. Pass an object, and you pass a copy of the *reference* (the address) by value. Since both copies point at the same object on the heap, you can change that object's fields through either copy. What you can't do is make the caller's variable point somewhere else: reassigning your local copy of the address never touches the original.
+You write the address on a slip and hand the slip to a decorator. Now two slips exist, yours and theirs, both naming the same house.
 
-### Walking through memory
+**The decorator can repaint the house.** They follow the address, go inside, and paint the walls. You visit later and the walls are a different colour. The house changed, because you both have directions to the same one.
 
-<PassByValueFigure />
+**The decorator cannot move you to a different house.** If they scribble out their slip and write a different address on it, their slip now names somewhere else. Yours still says what it always said. Nothing you own has changed.
 
-1. In `main()`, `myDog` sits on the stack holding the address `0x1A2B`, which points to a `Dog` on the heap.
-2. Calling `modify(myDog)` pushes a new stack frame, and Java copies the address value `0x1A2B` into `param`. Two separate variables now hold the same address.
-3. **Mutating fields:** `param.name = "Max"` follows the address to the heap and changes the name there. Both `myDog` and `param` point at `0x1A2B`, so the caller sees the change too.
-4. **Reassigning the reference:** `param = new Dog("Buster")` creates a brand-new object at a new address and points `param` at it. This only updates `param`'s own copy: `myDog` back in the caller's frame still holds `0x1A2B`, unaffected. When `modify()` returns, that new object is simply forgotten.
-
-### Compare with real pass-by-reference (C++)
-
-* **Java:** `param = new Dog()` inside the method has zero effect on the caller's variable.
-* **C++ with `Dog&`:** the parameter becomes an *alias* for the caller's actual variable, not a copy of its address. `d = Dog("Buster")` inside the method overwrites the caller's variable directly.
-
-### Why does passing a `String` feel like passing a primitive?
-
-```java
-void modify(String s) { s = s + " World"; }
-```
-
-This doesn't change the caller's string, and the reason is immutability, not some special passing rule. `String` (and boxed types like `Integer`) never change in place. `s + " World"` builds a brand-new `String` object and points the *local copy* of `s` at it - exactly like reassigning `param` to a new `Dog` above. The caller's original reference never moves.
+That is the whole of Java's behaviour. The thing handed over is a **copy of the address**, never the house, and never your slip. Fields can change because both slips point at one house. Reassignment cannot be seen because each side scribbles only on its own slip.
 
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+### The proper terms
 
-### Clean Code Example
+#### The two mechanisms
 
-Here is how argument passing evaluates across Java, C++, and Python:
+**Pass by value** means the argument's value is **copied** into the parameter. Changes to the parameter do not affect the caller's variable.
 
-<Tabs groupId="programming-language">
-<TabItem value="java" label="Java" default>
+**Pass by reference** means the parameter is an **alias** for the caller's variable itself. Assigning to the parameter changes the caller's variable.
+
+#### What Java does
+
+**Java is always pass by value, without exception.** The confusion comes from what that value is.
+
+For a **primitive**, the value is the number itself, so a copy of it is passed.
+
+For an **object**, the variable does not hold the object. It holds a **reference**, which is a handle to an object living on the **heap**. What gets passed is a copy of that reference. Both the caller's variable and the parameter now refer to the same object.
+
+So the two observed behaviours follow from one rule. Mutation is visible because both references lead to the same object. Reassignment is not visible because the method reassigns only its own copy of the reference.
+
+The sharpest phrasing: Java passes object references by value.
+
+#### The swap test
+
+The decisive demonstration is a method that tries to swap two objects. In a genuinely pass-by-reference language the swap works. In Java it cannot, because the method only ever exchanges its own two local copies and the caller's variables are untouched. If Java were pass by reference, swap would work, and it does not.
+
+#### How C++ differs
+
+C++ offers all three explicitly.
+
+**Pass by value**, `void f(Obj o)`, copies the whole object using its copy constructor. Java never does this.
+
+**Pass by pointer**, `void f(Obj* o)`, copies the pointer. This is the closest match to Java's behaviour: the pointee can be modified, and reassigning the pointer inside is invisible outside.
+
+**Pass by reference**, `void f(Obj& o)`, makes a genuine alias. Assigning to `o` changes the caller's object, and a real swap is possible. This is the one Java has no equivalent of.
+
+So Java behaves like C++ pass by pointer, always, with no syntax to choose otherwise.
+
+#### A related trap
+
+Because wrappers like `Integer` and `String` are immutable, nothing done inside a method can change the object either. With no mutation possible and reassignment invisible, a method appears to have no effect at all, which reinforces the mistaken belief that primitives and objects behave differently. They do not. The rule is the same; the objects just have no mutators.
+
+---
+
+### In code
 
 ```java
-class Dog {
-    String name;
-    Dog(String name) { this.name = name; }
-}
+class House { String colour = "white"; }
 
-public class Main {
+public class Demo {
+
+    static void repaint(House h) {
+        h.colour = "blue";            // follows the reference: visible outside
+    }
+
+    static void rehouse(House h) {
+        h = new House();              // reassigns the local copy only
+        h.colour = "green";           // paints the new one, not the caller's
+    }
+
+    static void swap(House a, House b) {
+        House temp = a;               // swaps two local copies
+        a = b;
+        b = temp;                     // caller sees nothing
+    }
+
+    static void bump(int n) {
+        n = n + 1;                    // a copy of the number
+    }
+
     public static void main(String[] args) {
-        Dog myDog = new Dog("Spot");
+        House mine = new House();
 
-        modifyDog(myDog);
+        repaint(mine);
+        System.out.println(mine.colour);     // blue: the object was mutated
 
-        // myDog.name is "Max" (mutated via shared pointer)
-        // myDog is NOT "Buster" (pointer reassignment did not affect caller)
-        System.out.println("Final Name: " + myDog.name); // Prints "Max"
+        rehouse(mine);
+        System.out.println(mine.colour);     // still blue: reassignment was local
+
+        House other = new House();
+        other.colour = "red";
+        swap(mine, other);
+        System.out.println(mine.colour);     // still blue: swap cannot work
+
+        int count = 1;
+        bump(count);
+        System.out.println(count);           // 1: the primitive was copied
     }
-
-    public static void modifyDog(Dog d) {
-        d.name = "Max";       // 1. Mutates heap object state
-        d = new Dog("Buster");// 2. Reassigns local pointer copy only!
-    }
 }
 ```
 
-</TabItem>
-<TabItem value="cpp" label="C++">
+The failed swap is the proof to reach for. It is impossible to write a working two-object swap in Java, and that is only true of a pass-by-value language.
 
-```cpp
-#include <iostream>
-#include <string>
+---
 
-class Dog {
-public:
-    std::string name;
-    Dog(std::string n) : name(n) {}
-};
+### What they ask next
 
-// True Pass-by-Reference via '&': 'd' is an alias for caller's variable
-void modifyByReference(Dog& d) {
-    d = Dog("Buster"); // Overwrites the caller's original object!
-}
+**"If I can change the object's fields, how is that not pass by reference?"**
+Because pass by reference is about the **variable**, not the object. The test is whether assigning to the parameter changes the caller's variable. In Java it never does.
 
-// Pass-by-Value: creates a copy
-void modifyByValue(Dog d) {
-    d.name = "Max"; // Only affects local copy
-}
+**"Does Java pass large objects efficiently?"**
+Yes. Only the reference is copied, which is a machine word, so passing a huge object costs the same as passing a small one. C++ pass by value would copy the whole object.
 
-int main() {
-    Dog myDog("Spot");
-    modifyByReference(myDog);
-    std::cout << "Name: " << myDog.name << std::endl; // Prints "Buster"!
-    return 0;
-}
-```
+**"What about arrays?"**
+Arrays are objects, so the same rule applies. Changing `arr[0]` inside a method is visible; assigning `arr = new int[5]` is not.
 
-</TabItem>
-<TabItem value="python" label="Python">
+**"How do you return two values if swap is impossible?"**
+Return an object or record holding both, use an array or a mutable holder, or make the method return the new value and let the caller assign it. The last is usually cleanest.
 
-```python
-class Dog:
-    def __init__(self, name: str):
-        self.name = name
+**"Is C# the same?"**
+By default yes, but C# has `ref` and `out` parameters that give true pass by reference, so a real swap can be written there.
 
-def modify_dog(d: Dog) -> None:
-    d.name = "Max"      # Mutates object state via shared reference
-    d = Dog("Buster")   # Rebinds local variable name 'd' only
+**The common wrong answer** is "primitives are pass by value and objects are pass by reference". Everything is pass by value; what varies is whether the value is a number or a reference.
 
-my_dog = Dog("Spot")
-modify_dog(my_dog)
-print(my_dog.name)      # Prints "Max" (Buster had no effect on caller)
-```
+---
 
-</TabItem>
-</Tabs>
+### Say this in the interview
+
+*"Java is always pass by value. The subtlety is what the value is. For a primitive it is the number itself. For an object the variable holds a reference to something on the heap, and what gets copied into the parameter is a copy of that reference.*
+
+*That single rule explains both behaviours people find contradictory. Mutation is visible outside the method because both the caller's reference and the parameter point to the same object. Reassignment is invisible because the method only reassigns its own copy of the reference. The decisive test is a swap method: in a genuine pass-by-reference language it would work, and in Java it cannot, because only the local copies are exchanged.*
+
+*In C++ all three exist explicitly. Pass by value copies the whole object via its copy constructor. Pass by pointer copies the pointer and behaves like Java. Pass by reference, with an ampersand, creates a true alias where assignment affects the caller and a swap works. Java has no equivalent of that last one.*
+
+*The phrase I would use is that Java passes object references by value."*
