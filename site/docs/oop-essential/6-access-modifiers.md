@@ -1,170 +1,138 @@
 ---
 id: 6-access-modifiers
 title: "Understanding Access Modifiers"
-description: "A straightforward breakdown of public, private, protected, and default access modifiers and their visibility scopes."
+description: "Four levels of visibility, what happens when you leave one off, and the catch with protected"
 
 sidebar_position: 6
 sidebar_class_name: sidebar-easy
 ---
 
-import { VisibilityRingsFigure } from '@site/src/components/Figures/AccessModifiers';
-
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "Walk me through the four access modifiers in Java. What do they actually control, what happens if you leave one off, and what's the catch with `protected` across packages?"
 
-### The short version
+---
 
-Access modifiers are keywords that control who's allowed to see or touch a class, constructor, method, or variable. They're the actual enforcement mechanism behind **encapsulation** - without them, "private" would just be a suggestion.
+### Picture it
+
+Think of an office building with four kinds of door.
+
+**A private office.** Only the person whose name is on it goes in. Nobody else on the floor, nobody from another department.
+
+**A department floor.** Anyone working on that floor can walk between rooms freely. Someone from a different department cannot, even if they are senior.
+
+**A department floor plus the family.** Everyone on the floor, and additionally anyone who trained under this department and moved elsewhere, but only for their own work, not to wander through a colleague's.
+
+**The lobby.** Anyone at all.
+
+Those four doors are `private`, package-private, `protected` and `public`. The third one has the odd rule, and it is the one interviewers go for.
 
 ---
 
-### The four visibility levels
+### The proper terms
 
-| Modifier | Same class | Same package | Subclass in another package | Anywhere |
-|---|---|---|---|---|
-| **`private`** | ✅ Yes | ❌ No | ❌ No | ❌ No |
-| **`default` (package-private)** | ✅ Yes | ✅ Yes | ❌ No | ❌ No |
-| **`protected`** | ✅ Yes | ✅ Yes | ✅ Yes *(with a catch)* | ❌ No |
-| **`public`** | ✅ Yes | ✅ Yes | ✅ Yes | ✅ Yes |
+#### The four levels
 
-<VisibilityRingsFigure />
+An **access modifier** controls the **visibility** of a class, field, method or constructor: which other code is permitted to refer to it.
+
+**`private`** is visible only inside the declaring class. This is the tool that makes **encapsulation** real, since it is what stops outside code reaching the data directly.
+
+**Package-private**, also called **default access**, is what you get when you write no modifier at all. It is visible to any class in the same **package**, and invisible outside it. Note that it is not a keyword: the absence of one is the declaration.
+
+**`protected`** is visible within the package, and additionally to **subclasses in other packages**, with a restriction described below.
+
+**`public`** is visible everywhere.
+
+Ordered from most to least restrictive: `private`, package-private, `protected`, `public`.
+
+#### The protected catch
+
+Inside the same package, `protected` behaves exactly like package-private, so nothing surprising happens. The subtlety only appears across a package boundary.
+
+A subclass in another package may access a protected member **through itself or its own subtype**, but not through a plain reference to the superclass. The rule exists so that a subclass can work with the parts it inherited, without being handed a key to every other object of the parent's type.
+
+In practice: inside `Child`, writing `this.protectedField` is fine, and so is accessing it on another `Child`. Writing `someParent.protectedField`, where the variable's type is the parent, is a compile error.
+
+#### Where these can be applied
+
+Only `public` and package-private may be applied to a **top-level class**. A class cannot be `private` or `protected` at the top level, since there would be no enclosing scope for the restriction to mean anything. Nested classes, being members, may use all four.
+
+Members of an **interface** are implicitly `public`, so the restrictive modifiers have no place in a contract. Interface fields are additionally implicitly `static` and `final`.
+
+Access is also checked at **compile time** and is not a security mechanism. Reflection can reach private members, which is how frameworks and serialisation libraries work.
+
+#### An override cannot narrow access
+
+An overriding method may widen access but never narrow it: a `public` method cannot be overridden as `protected`. This preserves **substitutability**, since a subclass instance must be usable wherever the parent type is expected, and silently removing a method would break that.
 
 ---
 
-### The "protected across packages" catch
-
-This is one of the most common gotchas at the junior-to-mid level.
-
-When a subclass lives in a *different* package from its parent, it can only reach an inherited `protected` member through its own instance - through `this`, basically. It **cannot** reach that member through a reference to the parent class, or to a sibling class, even though both are technically "the same type."
+### In code
 
 ```java
-// Package: com.bank.parent
-public class Account {
-    protected double balance;
-}
+package shop;
 
-// Package: com.bank.child (DIFFERENT PACKAGE)
-public class SavingsAccount extends Account {
-    public void test() {
-        this.balance = 100.0;     // ✅ Allowed (access via inheritance)
-        
-        Account acc = new Account();
-        acc.balance = 100.0;      // ❌ COMPILE ERROR! Not accessible through parent reference
+public class Product {
+    private double cost;            // this class only
+    double margin;                  // package-private: any class in shop
+    protected String sku;           // package, plus subclasses anywhere
+    public String name;             // everywhere
+
+    private double internalRate() { return 1.2; }
+
+    protected double priceFor(int qty) {
+        return cost * internalRate() * qty;
     }
 }
 ```
 
----
-
-### What happens if you leave the modifier off?
-
-If you don't write an access modifier at all - `int age = 25;` - Java silently gives it **default** visibility.
-
-* Call this **package-private**, not just "default" - that's the term people expect in an interview. It means only classes in the exact same package can see it.
-* A top-level class can only ever be `public` or package-private. It can never be `private` or `protected` - those scopes just don't make sense for a file that stands on its own.
-
----
-
-### How this plays out in interfaces
-
-* **Fields** are implicitly `public static final` - they're constants, not real state.
-* **Methods** are implicitly `public abstract`. Since Java 8, `default` and `static` methods are public too. Java 9 added `private` and `private static` helpers for internal use. Interfaces never allow `protected` methods - there's no subclass relationship for it to apply to.
-
----
-
-### How other languages handle this
-
-**C++** lets you put an access specifier on inheritance itself, not just on members - `class Derived : private Base`. Private inheritance takes everything the base class exposed as public or protected and makes it private in the derived class.
-
-**Python doesn't enforce any of this.** It's all convention:
-* Public: `self.name`
-* "Protected" by convention only: `self._name` - just a hint to other developers, not enforced.
-* "Private" via name mangling: `self.__name` - Python renames it internally to `_ClassName__name`, mostly to avoid accidental name clashes in subclasses, not to actually lock it down.
-
----
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-
-### Clean Code Example
-
-Here is how access control and visibility conventions are declared across languages:
-
-<Tabs groupId="programming-language">
-<TabItem value="java" label="Java" default>
-
 ```java
-package com.example;
+package warehouse;                  // a different package
 
-public class Employee {
-    // 1. Private: Accessible ONLY within this class
-    private double salary;
+import shop.Product;
 
-    // 2. Package-Private (Default): Accessible within com.example
-    String department;
+public class BulkProduct extends Product {
 
-    // 3. Protected: Accessible within com.example AND subclasses globally
-    protected String employeeId;
+    void demo(Product plainParent, BulkProduct sibling) {
+        this.sku = "BULK-1";        // fine: through itself
+        sibling.sku = "BULK-2";     // fine: through its own type
 
-    // 4. Public: Accessible anywhere in the entire application
-    public String fullName;
-
-    public Employee(double salary, String department, String id, String name) {
-        this.salary = salary;
-        this.department = department;
-        this.employeeId = id;
-        this.fullName = name;
+        // plainParent.sku = "X";   // compile error: through the parent type
+        // this.cost = 10;          // compile error: private stays private
+        // this.margin = 0.3;       // compile error: package-private, wrong package
     }
 }
 ```
 
-</TabItem>
-<TabItem value="cpp" label="C++">
+The two commented-out `sku` lines are the whole protected rule in one place: same member, allowed through `BulkProduct`, refused through `Product`.
 
-```cpp
-#include <string>
+---
 
-class Employee {
-private:
-    // Accessible only within Employee member functions
-    double salary;
+### What they ask next
 
-protected:
-    // Accessible within Employee and derived subclasses
-    std::string employeeId;
+**"What is the difference between no modifier and `public`?"**
+No modifier is package-private, which confines the member to its own package. It is a real level, not an absence of policy, and it is the default precisely so that things are not exposed by accident.
 
-public:
-    // Accessible anywhere
-    std::string fullName;
+**"Is `protected` weaker or stronger than package-private?"**
+Weaker, meaning more permissive. It includes everything package-private allows and adds subclasses in other packages.
 
-    Employee(double sal, std::string id, std::string name)
-        : salary(sal), employeeId(id), fullName(name) {}
-};
-```
+**"Can a top-level class be `private`?"**
+No. Only `public` or package-private. A private top-level class would be visible to nothing, so the language forbids it.
 
-</TabItem>
-<TabItem value="python" label="Python">
+**"Does `private` mean another instance of the same class cannot see the field?"**
+It can. Access is per class, not per object, so a method of `Product` can read `other.cost` on a different `Product`. This is what makes `equals` and copy constructors straightforward to write.
 
-```python
-class Employee:
-    def __init__(self, salary: float, department: str, emp_id: str, name: str):
-        # 1. Public: Accessible freely from outside
-        self.full_name = name
+**"Can an overriding method reduce visibility?"**
+No. It may widen but never narrow, because a subclass has to remain usable wherever the parent type is expected.
 
-        # 2. Protected (Convention): Signals internal use, but not strictly blocked
-        self._department = department
+**The common wrong answer** is "protected means subclasses can access it", stated without the restriction. The cross-package rule is the part being tested.
 
-        # 3. Private (Name Mangling): Python mangles this to _Employee__salary
-        self.__salary = salary
+---
 
-# Usage demo:
-emp = Employee(100000, "Engineering", "E101", "Alice")
-print(emp.full_name)        # "Alice"
-print(emp._department)      # "Engineering" (discouraged, but works)
-# print(emp.__salary)       # AttributeError!
-print(emp._Employee__salary) # 100000 (mangled name accessible)
-```
+### Say this in the interview
 
-</TabItem>
-</Tabs>
+*"An access modifier controls visibility, and there are four levels. Private is the declaring class only, and it is what makes encapsulation real. Package-private, also called default access, is what you get when no modifier is written, and it limits access to the same package. Protected is package access plus subclasses in other packages. Public is everywhere.*
+
+*The catch with protected is across package boundaries: a subclass may access the member through itself or its own subtype, but not through a reference typed as the superclass. The intent is that a subclass can use what it inherited without gaining access to every other instance of the parent.*
+
+*Only public and package-private may apply to a top-level class. Interface members are implicitly public, and their fields are also static and final. Access is enforced at compile time and is not a security boundary, since reflection can bypass it. An overriding method may widen access but never narrow it, because that would break substitutability."*
