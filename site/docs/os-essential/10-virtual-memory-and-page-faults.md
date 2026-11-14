@@ -1,132 +1,145 @@
 ---
 id: 10-virtual-memory-and-page-faults
 title: "Virtual Memory & Page Fault Mechanics"
-description: "How virtual memory decouples a program's address space from physical RAM, the step-by-step page fault lifecycle, and minor vs. major page faults."
+description: "Every process believing it owns the machine, and what happens when the page is not there"
+
 sidebar_position: 10
 sidebar_class_name: sidebar-easy
 ---
-
-import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What is virtual memory, what problems does it solve, and what is the exact step-by-step lifecycle of a page fault? What is the difference between a major and a minor page fault?"
 
-Virtual memory is the illusion the OS gives every program: a huge, private, contiguous address space — even though real RAM is small and shared, and the data is actually scattered wherever it happens to fit.
+---
+
+### Picture it
+
+Think of a library where every reader is given their own private catalogue.
+
+Each reader's catalogue is numbered from one upwards, and every reader's catalogue starts at one. When a reader asks for "item 47", a librarian quietly translates that into a real shelf location, which might be anywhere, and which is different for each reader even though they all said 47.
+
+Three things fall out of this arrangement.
+
+**Readers cannot reach each other's books**, because a reader can only name entries in their own catalogue, and the translation never points outside their allocation.
+
+**Books need not sit together.** A reader's items 47, 48 and 49 can be on three different shelves in three different rooms, and the reader never knows.
+
+**The library can hold more than the building.** Rarely used items are moved to an offsite store. The catalogue entry is marked "not on site". When a reader asks for one, there is a pause while it is fetched, and then they get it as if it had been there all along.
+
+That pause is a page fault. It is not an error, it is the mechanism working.
 
 ---
 
-### The analogy: a desk and a filing cabinet
+### The proper terms
 
-- **CPU** = the worker.
-- **Physical RAM** = your desk. Blazing fast to grab a page from, but small — it only fits 100 pages.
-- **Hard drive** = a filing cabinet in the basement. Holds 100,000 pages, but walking down there takes a while.
+#### What virtual memory is
 
-Say you're working on a 10,000-page project. **Virtual memory** is the OS telling you: "Ask for any page from 1 to 10,000, I'll handle where it actually lives." It keeps the 100 pages you're actively using on your desk, and leaves the other 9,900 in the basement.
+**Virtual memory** gives each process its own **virtual address space**, which the hardware translates to **physical addresses** in RAM. The process only ever sees virtual addresses.
 
-A **page fault** is what happens when you ask for a page that's currently in the basement. You pause. The OS walks down, grabs it, brings it up, and you resume. If your desk is already full, it first carries an old unused page back down to make room.
+Memory is divided into fixed-size **pages** on the virtual side and equally sized **frames** on the physical side, typically **4 KB**. The **page table**, one per process, maps page numbers to frame numbers, and the translation is performed by the **Memory Management Unit**, or MMU, in hardware.
 
----
+#### What it solves
 
-### What's actually going on underneath
+**Isolation and protection.** A process cannot name an address outside its own space, so it cannot read or corrupt another's memory. Protection bits in each page table entry also enforce read-only and no-execute.
 
-<Diagram>
-<Row>
-<Box label="Page 0" />
-<Box label="Page 1" />
-<Box label="Page 2" />
-<Arrow label="page table" />
-<Box label="Frame 12" />
-<Box label="Frame 4" />
-<Box label="Frame 87" />
-</Row>
-</Diagram>
+**No external fragmentation.** Any free frame can hold any page, so physical memory never needs contiguous runs.
 
-- **Virtual pages:** fixed-size logical chunks (usually 4 KB on x86/ARM) — this is what the program sees.
-- **Physical frames:** fixed-size slots in actual RAM, same size as a page.
-- **Page table:** a per-process lookup table the kernel keeps, mapping each virtual page number to a physical frame number. Each entry is called a **PTE**.
-- **PTE status flags** worth knowing:
-  - **Valid/Present bit:** `1` if the page is currently in RAM, `0` if it's out on disk.
-  - **Dirty bit:** `1` if the page was written to since it was loaded — it has to be saved to disk before it can be evicted.
-  - **Referenced bit:** `1` if the page was recently touched — this is what LRU/Clock-style algorithms use to pick what to evict.
+**More memory than RAM.** Pages not in use can live on disk in the swap space or page file, so the total can exceed physical memory.
 
----
+**Simple relocation and sharing.** Programs are compiled for a fixed virtual layout and loaded anywhere, and two processes can map the same frame to share a library or memory region.
 
-### What happens, step by step, when a page fault fires
+**Lazy loading.** With **demand paging**, a page is only brought in when touched, so a program starts without loading all of it.
 
-A page fault happens when a process touches a virtual address that isn't currently mapped to RAM. Here's the exact sequence:
+#### The page fault lifecycle
 
-1. **CPU memory reference:** an instruction tries to read or write a virtual address.
-2. **MMU lookup:** the hardware Memory Management Unit checks the page table for that address.
-3. **Trap:** the Valid/Present bit is `0`. The MMU halts and raises a hardware trap into the kernel.
-4. **Context save:** the CPU switches to kernel mode and saves the process's registers and program counter.
-5. **Validity check:** the OS checks whether this address is actually legal for this process (inside a mapped region). If it isn't — say, a null pointer dereference — the OS sends `SIGSEGV` and kills the process.
-6. **Frame allocation:** if the address is legal, the OS looks for a free physical frame.
-7. **Eviction, if needed:** if RAM is completely full, the OS picks a victim frame using a replacement algorithm (LRU, Clock, etc).
-8. **Dirty page flush:** if that victim's dirty bit is set, its contents get written to disk first, and its PTE is marked invalid.
-9. **Disk read:** the OS schedules a disk read to bring the requested page into the now-free frame.
-10. **Process blocked:** disk I/O takes milliseconds, so the OS marks this process as blocked and runs something else in the meantime.
-11. **I/O completes:** the disk controller fires an interrupt once the read finishes.
-12. **Resume:** the OS updates the PTE with the new frame number, sets Valid = 1, clears the dirty bit, and puts the process back on the ready queue. When it runs again, the CPU **re-executes the exact instruction that faulted** — as if nothing happened.
+A **page fault** is a **trap** raised by the MMU when a translation cannot be completed. Step by step:
+
+1. The process issues a virtual address, and the MMU consults the TLB, then the **page table**.
+2. The entry's **valid bit** is clear, so the MMU raises a page fault, which is a trap into the kernel.
+3. The hardware saves the state of the faulting instruction so it can be **restarted** later, and switches to kernel mode.
+4. The kernel checks whether the address is **legal** for this process. If not, it delivers **SIGSEGV** and the process usually dies. This is the segmentation fault.
+5. It is legal, so the kernel finds a **free frame**. If none is free, the **page replacement algorithm** selects a victim, and if that victim is **dirty** it is written out first.
+6. The kernel schedules a **disk read** to load the page into the frame. The process is moved to the waiting state and the CPU is given to someone else.
+7. The disk completes and raises an **interrupt**.
+8. The kernel updates the page table: frame number written, valid bit set.
+9. The process is moved back to **ready**, and when scheduled, the faulting instruction is **restarted** and now succeeds.
+
+The two points interviewers listen for are step 6, that the process blocks and the CPU is not idle, and step 9, that the instruction is restarted rather than resumed mid-way.
+
+#### Major versus minor faults
+
+A **minor fault**, or soft fault, is resolved **without disk I/O**. The page is already in physical memory and only the mapping is missing: it is in the **page cache**, or shared by another process, or satisfied by **copy-on-write**, or a newly allocated page that just needs a zeroed frame. These cost microseconds.
+
+A **major fault**, or hard fault, requires reading from **disk**, because the page is in swap or not yet loaded from the file. These cost milliseconds, which is roughly a hundred thousand times longer, so the major fault rate is what actually matters for performance.
+
+On Linux both are visible per process in `/proc`, and tools such as `ps -o min_flt,maj_flt` report them.
 
 ---
 
-### Minor (soft) vs. major (hard) page faults
+### In code
 
-| Feature | Minor (Soft) Page Fault | Major (Hard) Page Fault |
-| :--- | :--- | :--- |
-| **Where's the data** | Already sitting in RAM, just not mapped into this process yet. | Not in RAM at all — has to be read from disk/swap. |
-| **Disk I/O?** | None. Resolved entirely in memory. | Yes — a real disk/SSD read. |
-| **Latency** | Microseconds (~1-5 μs). | Milliseconds (~1-10 ms) — up to 10,000× slower. |
-| **Common causes** | Freshly `malloc()`'d/`mmap()`'d memory on first touch; attaching to a shared library already loaded by another process; reclaiming a page still sitting in the OS page cache. | Reading cold code or data from a binary for the first time; re-fetching a page that got swapped out under memory pressure. |
+```text
+Address translation, and where a fault comes from:
+
+  virtual address = | page number | offset |
+                          │           │
+                          │           └──────────────────► same offset
+                          ▼
+                    page table entry
+                    | valid | dirty | referenced | protection | frame no |
+                          │                                        │
+                 valid = 0 ──► PAGE FAULT (trap to kernel)          ▼
+                 valid = 1 ──────────────────────────────► physical frame
+
+  physical address = | frame number | offset |
+```
+
+```text
+Minor vs major, by what the kernel has to do:
+
+  minor   page already in RAM, only the mapping is absent
+          - page cache already holds the file's page
+          - another process already mapped it
+          - copy-on-write: a write to a shared read-only page
+          - a fresh anonymous page: just hand over a zeroed frame
+          cost: microseconds
+
+  major   the page must be read from disk
+          - it was swapped out
+          - it has never been read from the executable or file
+          cost: milliseconds
+```
+
+---
+
+### What they ask next
+
+**"Is a page fault an error?"**
+No. It is the normal mechanism of demand paging, and most faults are minor. The error case is an **invalid** access, which the kernel rejects at step 4 with a segmentation fault.
+
+**"What is the difference between a page fault and a segmentation fault?"**
+A page fault is the trap itself. A segmentation fault is what happens when the kernel determines the faulting address was not legal for that process. Every segmentation fault starts as a page fault; almost no page fault ends as one.
+
+**"Why must the instruction be restarted rather than resumed?"**
+Because it never completed. The fault can occur partway through an instruction that touches several addresses, so the architecture defines faults as restartable and the saved state allows re-execution from the beginning.
+
+**"What are the bits in a page table entry?"**
+Valid or present, which triggers the fault; dirty or modified, deciding whether a victim must be written out; referenced or accessed, used by replacement algorithms; and protection bits for read, write and execute.
+
+**"How big is a page and why?"**
+Typically 4 KB. Smaller pages waste less to internal fragmentation but need larger page tables and more TLB entries. **Huge pages** of 2 MB or 1 GB exist to cut TLB misses for large workloads.
+
+**The common wrong answer** is "a page fault means you ran out of memory". It means the page is not currently mapped, which is usually routine and usually resolved without touching the disk at all.
 
 ---
 
 ### Say this in the interview
 
-*"Virtual memory gives each process the illusion of a large, contiguous, isolated address space, while the page table maps its virtual pages onto scattered physical frames. A page fault fires when the Valid bit on a PTE is 0 — the OS loads the page from disk, updates the page table, and transparently re-runs the faulting instruction. A minor fault resolves entirely in RAM with no disk I/O; a major fault has to go to disk and is orders of magnitude slower."*
+*"Virtual memory gives each process its own virtual address space that hardware translates into physical addresses. Memory is split into fixed-size pages and equally sized frames, typically 4 KB, with a per-process page table mapping one to the other, and the Memory Management Unit performing translation.*
 
----
+*It solves several problems: isolation, since a process cannot name memory outside its space; no external fragmentation, since any free frame holds any page; the ability to use more memory than RAM by keeping unused pages in swap; simple relocation and sharing; and lazy loading through demand paging.*
 
-### Code: observing page faults with `getrusage`
+*A page fault is a trap raised when the valid bit in the page table entry is clear. The kernel saves state so the instruction can be restarted, checks whether the address is legal and sends SIGSEGV if not, finds a free frame or selects a victim with the page replacement algorithm, writing it out first if dirty, schedules the disk read and blocks the process so the CPU goes elsewhere, handles the completion interrupt, updates the page table and sets the valid bit, moves the process back to ready, and restarts the faulting instruction.*
 
-```c
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/time.h>
-#include <sys/resource.h>
-#include <sys/mman.h>
-#include <unistd.h>
-
-void print_fault_counts() {
-    struct rusage usage;
-    getrusage(RUSAGE_SELF, &usage);
-    printf("Minor Page Faults: %ld | Major Page Faults: %ld\n", 
-           usage.ru_minflt, usage.ru_majflt);
-}
-
-int main() {
-    printf("--- INITIAL FAULT STATS ---\n");
-    print_fault_counts();
-
-    // Allocate 100 MB of virtual address space
-    // Notice: mmap only reserves virtual address space; NO physical RAM is allocated yet!
-    size_t size = 100 * 1024 * 1024;
-    char* memory = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-
-    printf("\n--- AFTER MMAP (Demand Paging: Not yet touched) ---\n");
-    print_fault_counts();
-
-    // Touch memory page-by-page (step by 4096 bytes)
-    // Every first write to a new page triggers a MINOR page fault to allocate a physical frame:
-    for (size_t i = 0; i < size; i += 4096) {
-        memory[i] = 'A';
-    }
-
-    printf("\n--- AFTER TOUCHING 100 MB (Triggered ~25,600 Minor Faults) ---\n");
-    print_fault_counts();
-
-    munmap(memory, size);
-    return 0;
-}
-```
+*A minor fault is resolved without disk I/O, because the page is already in memory and only the mapping is missing, as with the page cache, a shared page, copy-on-write, or a fresh zeroed page. A major fault requires reading from disk. Minor faults cost microseconds and major ones milliseconds, so the major fault rate is what matters for performance."*

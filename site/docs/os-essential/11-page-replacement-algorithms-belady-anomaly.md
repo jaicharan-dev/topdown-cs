@@ -1,7 +1,8 @@
 ---
 id: 11-page-replacement-algorithms-belady-anomaly
 title: "Page Replacement Algorithms: FIFO, LRU, Optimal & Belady's Anomaly"
-description: "Compare FIFO, LRU, Optimal, and Clock page replacement, and the counterintuitive Belady's Anomaly where adding RAM makes things worse."
+description: "Choosing what to evict, and the algorithm that gets worse when you give it more memory"
+
 sidebar_position: 11
 sidebar_class_name: sidebar-medium
 ---
@@ -10,117 +11,135 @@ sidebar_class_name: sidebar-medium
 
 > **Interview Question:** "What are the common page replacement algorithms (FIFO, LRU, Optimal)? What is Belady's Anomaly, how does the Clock algorithm approximate LRU in real kernels, and which algorithms are immune to the anomaly?"
 
-When RAM is full and a page fault happens, the OS has to pick a page to kick out to disk. Pick badly, and you evict something that's about to be needed again — causing a wave of extra disk I/O right after.
+---
+
+### Picture it
+
+Your desk holds three books and the library has many more. Every time you need a book that is not on the desk, you fetch it and must put one back.
+
+**By arrival order:** return whichever has been on the desk longest. Simple, and it ignores whether you are still using it. The book you fetched first may be the one you consult constantly.
+
+**By last use:** return whichever you have not opened for the longest time. This works well, because what you used recently you will probably use again. The cost is that you must track every single access, and you consult books constantly.
+
+**By the future:** return whichever you will not need for the longest time. Unbeatable, and impossible, because you do not know what you will need. It is still worth computing afterwards to judge how well the others did.
+
+Then the strange part. You would expect a bigger desk to always mean fewer trips to the library. For the arrival-order rule, that is not guaranteed. There are sequences where a four-book desk causes **more** trips than a three-book desk, which sounds impossible until you see it happen.
 
 ---
 
-### The analogy: a pastry display case with 3 slots
+### The proper terms
 
-- **FIFO:** throw out whatever's been in the case the longest, no matter how popular it is. If croissants sell every 30 seconds but happen to be the oldest item in the case, FIFO tosses them anyway.
-- **LRU:** track when each pastry was last ordered, and evict whichever one hasn't been touched in the longest time.
-- **Belady's Anomaly:** you upgrade the case from 3 slots to 4, expecting fewer baking trips. But because FIFO's blind ordering shifts around, you end up throwing out popular items right before someone asks for them — and somehow make *more* baking trips with the bigger case.
+#### The three algorithms
+
+**FIFO** evicts the page that has been resident longest, tracked with a simple queue. It is cheap and performs poorly, because age of arrival says nothing about future use.
+
+**LRU**, **Least Recently Used**, evicts the page unused for the longest time. It performs well because it exploits **temporal locality**, the tendency of recently used pages to be used again. True LRU is expensive: it needs a timestamp or a list update on **every memory reference**, which is too costly in hardware.
+
+**Optimal**, also called **OPT** or Bélády's algorithm, evicts the page that will not be used for the longest time in the future. It is provably optimal and **unimplementable**, since it requires knowledge of future references. It is used as a benchmark in simulation.
+
+#### Belady's Anomaly
+
+**Belady's Anomaly** is the phenomenon where increasing the number of frames increases the number of page faults, discovered by László Bélády in 1969.
+
+It is counterintuitive and real. The canonical sequence is **1 2 3 4 1 2 5 1 2 3 4 5** under FIFO: with 3 frames it causes 9 faults, and with 4 frames it causes 10.
+
+The reason is that FIFO's eviction choice is unrelated to usage, so a larger memory can retain a different, worse set of pages. There is no guarantee that what a smaller memory held is a subset of what a larger one holds.
+
+#### Stack algorithms and immunity
+
+An algorithm is a **stack algorithm** if it satisfies the **inclusion property**: the set of pages in memory with **n** frames is always a **subset** of the set with n + 1 frames, for any reference string.
+
+Stack algorithms are **provably immune** to Belady's Anomaly. If the larger memory always contains everything the smaller one has, it can never fault where the smaller one hit.
+
+LRU and OPT are stack algorithms, because both rank pages by a criterion independent of memory size: recency of past use, and distance to next use. The top n of that ranking is always inside the top n + 1.
+
+**FIFO is not**, because its ranking depends on load order, which itself changes with the number of frames.
+
+So the complete answer is: LRU and Optimal are immune, FIFO is not, and the reason is the inclusion property.
+
+#### The Clock algorithm
+
+Real kernels want LRU's behaviour without its cost, so they approximate it. **Clock**, also called **second-chance**, is the standard approximation.
+
+Each page has a **reference bit** that the hardware sets to 1 on any access. The pages are arranged in a **circular list** with a **hand** pointing at a candidate.
+
+To evict: look at the page under the hand. If its reference bit is **0**, evict it. If it is **1**, clear the bit to 0, giving the page a second chance, and advance the hand. Repeat.
+
+The effect is that recently accessed pages survive a pass while untouched ones are evicted, which approximates LRU using one bit per page and no work on each reference. The hardware does the recording for free.
+
+**Enhanced second-chance** also considers the **dirty bit**, preferring to evict clean pages because a dirty one must be written to disk first, making it more expensive. It uses the pair of bits to rank candidates.
+
+Linux uses a refinement of this, maintaining active and inactive LRU lists rather than one clock.
 
 ---
 
-### Comparing the core algorithms
+### In code
 
-| Algorithm | Eviction rule | Overhead | Stack algorithm? | Suffers Belady's Anomaly? |
-| :--- | :--- | :--- | :---: | :---: |
-| **FIFO** | Evicts whatever's been in memory the longest. | Minimal — a simple queue. | No | **Yes** |
-| **Optimal (OPT/MIN)** | Evicts whatever won't be used again for the longest time. | Impossible in practice — needs future knowledge. Used as a theoretical best case. | Yes | No |
-| **LRU** | Evicts whatever hasn't been used in the longest time. | Very high — needs timestamps or list updates on every access. | Yes | No |
-| **Clock (Second-Chance)** | Approximates LRU with one hardware bit per page. | Very low — what real OSes (Linux) actually use. | No | Rare in practice |
+```text
+Belady's Anomaly: reference string 1 2 3 4 1 2 5 1 2 3 4 5 under FIFO
 
----
+Three frames:
+  ref:   1   2   3   4   1   2   5   1   2   3   4   5
+         F   F   F   F   F   F   F   .   .   F   F   .
+  frames after each step (oldest first):
+         1 | 12 | 123 | 234 | 341 | 412 | 125 | 125 | 125 | 251 | 513 | 513
+  faults: 9
 
-### Why real kernels don't use pure LRU
-
-True LRU needs either a timestamp update on *every single memory access*, or moving a node to the head of a linked list each time. Either way, that saturates memory bandwidth and thrashes the CPU cache — way too expensive to do for real.
-
-**The Clock algorithm** gets close to LRU's behavior for almost nothing, using one bit per page:
-
-1. Physical frames sit in a circular buffer with a sweeping "hand," like a clock face.
-2. Whenever a page is read or written, hardware sets its **Referenced bit** to `1`.
-3. When the OS needs to evict something, it looks at the page under the hand:
-   - **Bit is 1:** give it a second chance — clear it to `0` and move the hand forward.
-   - **Bit is 0:** it hasn't been touched since the last sweep. Evict it now.
-
----
-
-### Belady's Anomaly: when more RAM makes things worse
-
-Under FIFO specifically, giving a process *more* physical frames can somehow cause *more* page faults — not fewer. That's Belady's Anomaly.
-
-**Why it only hits FIFO:** algorithms that satisfy the stack property — the pages cached with N frames are always a subset of the pages cached with N+1 frames — are immune to this. LRU and Optimal both have that property. FIFO doesn't: adding a frame reshuffles its whole eviction order, so pages that were safe before now get evicted right before they're needed.
-
-**Proof, with reference string `3, 2, 1, 0, 3, 2, 4, 3, 2, 1, 0, 4`:**
-
+Four frames:
+  ref:   1   2   3   4   1   2   5   1   2   3   4   5
+         F   F   F   F   .   .   F   F   F   F   F   F
+  faults: 10        <-- more memory, MORE faults
 ```
---- With 3 Frames (FIFO) ---
-Ref:   3  2  1  0  3  2  4  3  2  1  0  4
-F1:    3  3  3  0  0  0  4  4  4  4  0  0
-F2:       2  2  2  3  3  3  3  3  1  1  1
-F3:          1  1  1  2  2  2  2  2  2  4
-Fault: *  *  *  *  *  *  *        *  *  *  -> TOTAL: 9 Page Faults
 
---- With 4 Frames (FIFO) ---
-Ref:   3  2  1  0  3  2  4  3  2  1  0  4
-F1:    3  3  3  3  3  3  4  4  4  4  0  0
-F2:       2  2  2  2  2  2  3  3  3  3  4
-F3:          1  1  1  1  1  1  2  2  2  2
-F4:             0  0  0  0  0  0  1  1  1
-Fault: *  *  *  *        *  *  *  *  *  *  -> TOTAL: 10 Page Faults!
+```text
+Same string under LRU, which is a stack algorithm:
+
+  three frames -> 10 faults
+  four  frames ->  8 faults     never worse with more memory
 ```
 
-One extra frame, and faults go *up* from 9 to 10.
+```text
+Clock algorithm, one revolution:
+
+        [A,1]                      hand at A: ref=1, clear to 0, advance
+       /     \                     hand at B: ref=0, EVICT B
+   [D,0]     [B,0]                 load the new page at B with ref=1
+       \     /
+        [C,1]
+
+  Cost per reference: nothing. Hardware sets the reference bit.
+  Cost per eviction: at most one full revolution.
+```
+
+---
+
+### What they ask next
+
+**"Why not implement true LRU in hardware?"**
+It would require updating a timestamp or reordering a list on every memory access, which is far too expensive at memory speed. A counter per page would also need to be scanned at eviction time. The reference bit gives most of the benefit for one bit of state.
+
+**"Which algorithms are immune to Belady's Anomaly, and why?"**
+LRU and Optimal, because both are stack algorithms satisfying the inclusion property: the pages held with n frames are always a subset of those held with n + 1. FIFO is not, because its ordering depends on load order, which changes with frame count.
+
+**"Is Belady's Anomaly a practical concern?"**
+Not really, because almost nothing uses pure FIFO. It matters as proof that intuitions about caching can be wrong, and because it motivates the inclusion property.
+
+**"What is the dirty bit used for in replacement?"**
+A dirty page must be written back before its frame is reused, so evicting it costs a disk write. Enhanced second-chance prefers clean victims, and kernels also write dirty pages out in the background to keep clean candidates available.
+
+**"How does Linux actually do it?"**
+It keeps active and inactive lists per memory zone, promoting pages that are referenced twice and reclaiming from the inactive list, which approximates LRU while avoiding per-access bookkeeping. It also separates file-backed from anonymous pages.
+
+**The common wrong answer** is "more memory always means fewer faults". That is only guaranteed for stack algorithms, and the FIFO counterexample above is the reason the question is asked.
 
 ---
 
 ### Say this in the interview
 
-*"Belady's Anomaly is when adding physical frames increases page faults under FIFO. Stack algorithms like LRU and Optimal are immune — the set of pages cached with N frames is always a subset of what's cached with N+1 frames, so adding memory can only help. FIFO doesn't have that property, which is why real kernels use the Clock algorithm — it approximates LRU behavior using a single hardware-maintained reference bit, at almost no overhead."*
+*"FIFO evicts the longest-resident page, which is cheap but ignores usage. LRU, Least Recently Used, evicts the page unused for longest and performs well because it exploits temporal locality, but true LRU needs bookkeeping on every memory reference, which is too expensive. Optimal evicts the page not needed for the longest time in future; it is provably best and unimplementable, so it is used as a benchmark.*
 
----
+*Belady's Anomaly is that adding frames can increase the number of page faults. With the string 1 2 3 4 1 2 5 1 2 3 4 5, FIFO takes 9 faults with three frames and 10 with four. It happens because FIFO's eviction order is unrelated to usage, so a larger memory can retain a worse set.*
 
-### Code: simulating Belady's Anomaly in Python
+*An algorithm is a stack algorithm if it satisfies the inclusion property: the pages resident with n frames are always a subset of those with n plus one. Stack algorithms are provably immune to the anomaly, and LRU and Optimal are stack algorithms because they rank pages by a criterion independent of memory size. FIFO is not.*
 
-```python
-def simulate_fifo(pages, capacity):
-    memory = []
-    faults = 0
-    for page in pages:
-        if page not in memory:
-            faults += 1
-            if len(memory) == capacity:
-                memory.pop(0) # FIFO: evict oldest
-            memory.append(page)
-    return faults
-
-def simulate_lru(pages, capacity):
-    memory = []
-    faults = 0
-    for page in pages:
-        if page not in memory:
-            faults += 1
-            if len(memory) == capacity:
-                memory.pop(0) # Evict least recently used
-            memory.append(page)
-        else:
-            # Move accessed page to the end (most recently used)
-            memory.remove(page)
-            memory.append(page)
-    return faults
-
-if __name__ == "__main__":
-    belady_reference_string = [3, 2, 1, 0, 3, 2, 4, 3, 2, 1, 0, 4]
-
-    fifo_3 = simulate_fifo(belady_reference_string, 3)
-    fifo_4 = simulate_fifo(belady_reference_string, 4)
-
-    lru_3 = simulate_lru(belady_reference_string, 3)
-    lru_4 = simulate_lru(belady_reference_string, 4)
-
-    print("--- BELADY'S ANOMALY DEMONSTRATION ---")
-    print(f"FIFO (3 frames): {fifo_3} faults | FIFO (4 frames): {fifo_4} faults  <-- Anomaly observed!")
-    print(f"LRU  (3 frames): {lru_3} faults | LRU  (4 frames): {lru_4} faults  <-- Stack algorithm behaves correctly.")
-```
+*Kernels approximate LRU with the Clock or second-chance algorithm. Each page has a reference bit set by hardware on access. A hand sweeps a circular list: if the bit is 0 the page is evicted, and if it is 1 the bit is cleared and the hand moves on, giving that page a second chance. That approximates LRU with one bit per page and no cost per reference. Enhanced second-chance also weighs the dirty bit, preferring clean victims because dirty ones must be written out first."*

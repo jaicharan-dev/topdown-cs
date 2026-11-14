@@ -1,117 +1,161 @@
 ---
 id: 13-thrashing-and-working-set
 title: "Thrashing: Causes, Working Set Model & Page Fault Frequency"
-description: "What causes memory thrashing, Peter Denning's Working Set model, and how operating systems detect and recover from it."
+description: "The system spending all its time fetching pages, and the feedback loop that makes it worse"
+
 sidebar_position: 13
 sidebar_class_name: sidebar-medium
 ---
-
-import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is thrashing? What causes it, what is Peter Denning's Working Set Model, and how do operating systems detect and prevent thrashing?"
 
-Thrashing is what happens when the OS spends almost all its time swapping pages in and out of RAM, and almost none actually running code. Throughput collapses toward zero even though the CPU looks "busy."
+---
+
+### Picture it
+
+A desk that holds three books, and work that requires five.
+
+You open book one, need something from book four, put one away and fetch four. Then you need book two, which you just put away. Then one again. You spend the whole afternoon walking to the shelf, and almost none of it reading. If the desk held five books you would finish quickly, and with three you barely start.
+
+Now the part that turns a problem into a collapse.
+
+A manager watches and sees you barely working. Concluding you are underused, they assign you a sixth book, which makes the shelf trips even more frequent. Watching again, they see even less work being done, so they assign more. Every corrective step makes it worse, because the measurement was being read backwards: you were not idle, you were overloaded.
+
+That feedback loop is what makes thrashing collapse a system rather than merely slow it.
 
 ---
 
-### The analogy: a tiny kitchen counter
+### The proper terms
 
-You're cooking a banquet, but your counter only fits 2 bowls, and the other 8 ingredients are in a pantry down the hall.
+#### What thrashing is
 
-You bring out eggs and milk. Now you need flour — counter's full, so you carry the milk back and bring the flour instead. The very next step needs milk again, so you carry the eggs back and fetch milk again. Soon you're spending 98% of your time walking the hallway and 2% of your time actually cooking. That endless hallway sprint is thrashing.
+**Thrashing** is the state where a system spends more time servicing **page faults** than executing instructions. **CPU utilisation** collapses while **disk utilisation** saturates, and throughput falls to almost nothing.
+
+The cause is that the total memory actively being used by the running processes exceeds the available **physical memory**, so each process has too few **frames** to hold the pages it is actively touching. Every reference risks a fault, and each fault evicts a page another process is about to need.
+
+#### The feedback loop
+
+Thrashing was originally made worse by the operating system itself. An early scheduler reasoning that low CPU utilisation meant the CPU was underloaded would increase the degree of multiprogramming, admitting more processes. More processes means fewer frames each, which means more faults, which means lower CPU utilisation, which triggers the same response again.
+
+This positive feedback is why thrashing shows up as a sudden cliff rather than a gradual slowdown. Up to a point, adding processes raises utilisation; past it, utilisation falls off sharply.
+
+#### Locality
+
+The reason a process can run in less than its total size is locality of reference. A **locality** is the set of pages a process is actively using in a given phase, and programs move from one locality to another as they progress, for example from initialisation to a processing loop.
+
+Thrashing happens when a process is allocated **fewer frames than its current locality needs**.
+
+#### The Working Set Model
+
+Peter Denning's **Working Set Model** makes locality measurable.
+
+The **working set window**, written Δ (delta), is a fixed number of recent memory references. The **working set** of a process, WSS, is the set of **distinct pages** referenced within that window, and its size approximates the current locality.
+
+The policy follows directly. Let **D** be the sum of all processes' working set sizes, the total demand, and **m** the number of available frames.
+
+If D > m, thrashing will occur, and the system must **suspend** a process, freeing its frames for the rest.
+
+If D is comfortably below m, another process can safely be admitted.
+
+Choosing Δ matters. Too small and it misses part of the locality; too large and it spans several localities and overestimates. It is approximated in practice with a timer interrupt and **reference bits** rather than exact reference counting, which would be too expensive.
+
+#### Page Fault Frequency
+
+**Page Fault Frequency**, or PFF, is the more direct control, measuring the outcome instead of estimating the cause.
+
+Each process's fault rate is monitored against an **upper** and **lower** bound. Above the upper bound, the process has too few frames, so it is allocated more. Below the lower bound, it has more than it needs, so frames are taken away and given elsewhere. If the fault rate is high and no free frames exist, a process is suspended.
+
+PFF is simpler to implement than the working set model and targets the symptom directly, which is why variants of it are what real systems use.
+
+#### What modern systems do
+
+Whole-process **swapping** is largely historical. Linux reclaims at **page granularity** using LRU-approximating lists, and under genuine exhaustion invokes the **OOM killer**, which terminates a process chosen by a badness score rather than letting the machine thrash indefinitely.
+
+Administrators also limit it with cgroups memory limits, by tuning swappiness, by locking critical pages with `mlock`, or simply by adding RAM, which is usually the real fix.
 
 ---
 
-### How it spirals out of control
+### In code
 
-The root cause is a mismatch between the CPU scheduler and the memory manager — they end up working against each other:
+```text
+Why thrashing is a cliff, not a slope:
 
-<Diagram>
-<Row>
-<Box label="Too many processes" />
-<Arrow />
-<Box label="RAM runs out" />
-<Arrow />
-<Box label="Nonstop page faults" />
-<Arrow />
-<Box label="CPU sits idle" />
-</Row>
-</Diagram>
+  CPU
+  util
+   ▲
+   │        ┌──────────╮
+   │       ╱            ╲         <- past this point, adding processes
+   │      ╱              ╲           reduces utilisation
+   │     ╱                ╲
+   │    ╱                  ╲____
+   └───────────────────────────────► degree of multiprogramming
+                        ▲
+                   thrashing begins
 
-Here's the trap: the scheduler sees low CPU utilization and reads it as "the CPU is underused — load more processes to keep it busy." That decision makes things *worse*, not better — more processes means even less RAM per process, even more faulting, even less real work getting done. It's a feedback loop that feeds on itself until the whole system collapses.
+  The old scheduler, seeing utilisation fall, admitted MORE processes,
+  which drove it further down the right-hand slope.
+```
+
+```text
+Working set model
+
+  window  Δ = 10 references
+
+  reference string ... 2 6 1 5 7 7 7 7 5 1 | 6 2 3 4 1 2 3 4 4 4 ...
+                       └──── WS = {1,2,5,6,7} ┘ └── WS = {1,2,3,4,6} ┘
+                            WSS = 5                   WSS = 5
+
+  policy:   D = sum of all WSS
+            D >  m  ->  suspend a process
+            D << m  ->  admit another
+```
+
+```text
+Page Fault Frequency control
+
+  fault rate
+      ▲
+      │░░░░░░░░░░░░░░░  above upper bound: give this process more frames
+      │
+      │               normal operating band
+      │
+      │░░░░░░░░░░░░░░░  below lower bound: take frames away
+      └──────────────────────────────► frames allocated
+```
 
 ---
 
-### Peter Denning's Working Set Model
+### What they ask next
 
-Denning's fix is built on **locality of reference** — the fact that programs spend most of their time inside a small, slowly-shifting chunk of their own code and data:
+**"How do you tell thrashing from a genuinely busy system?"**
+By the pattern: thrashing shows **low CPU utilisation** with **high disk I/O** and a high **major fault** rate. A busy system shows high CPU utilisation. The combination of an idle CPU and a saturated disk is the signature.
 
-- **Working set window (Δ):** a fixed lookback interval — "the last Δ memory references."
-- **Working set `W(t, Δ)`:** the distinct pages a process actually touched during that window. This is its real, current memory demand.
-- **Total system demand:** `D = sum of |W_i|` across every running process.
+**"Why does adding processes ever help?"**
+Below the threshold it does. More processes mean more chances that someone is runnable while another waits for I/O, so utilisation rises. The curve only turns over once memory demand exceeds supply.
 
-**The condition for thrashing:** if `D > M` (total demand exceeds total physical frames), thrashing is guaranteed.
+**"What is the difference between the working set model and PFF?"**
+The working set model estimates the **cause**, how much memory a process needs, and allocates accordingly. PFF measures the **effect**, the fault rate, and adjusts frames in response. PFF is simpler and is closer to what real systems do.
 
-**The fix:** a medium-term scheduler (the "swapper") keeps an eye on `D`. If it goes over `M`, it picks a victim process and suspends it entirely — flushing all of its resident pages to swap and handing those frames to everyone else. Once demand drops back under `M`, the remaining processes run without constant fault cascades, and the suspended one comes back later when there's room.
+**"Does thrashing still happen?"**
+Yes, on memory-constrained systems and in containers with tight limits. Modern kernels respond by reclaiming pages and eventually invoking the OOM killer rather than thrashing indefinitely, which converts a hang into a crash of one process.
 
----
+**"How does the choice of Δ affect the working set?"**
+Too small a window underestimates the locality and causes faults; too large spans multiple localities and over-allocates, wasting frames that other processes need.
 
-### A lighter-weight alternative: Page Fault Frequency (PFF)
-
-Computing exact working sets is expensive. In practice, many OSes use a simpler proxy: watch each process's page fault *rate*.
-
-<Diagram>
-<Row>
-<Box label="Fault rate too high" sub="give it more frames" />
-<Box label="Safe zone" sub="leave it alone" />
-<Box label="Fault rate too low" sub="reclaim excess frames" />
-</Row>
-</Diagram>
-
-If a process's fault rate climbs above the upper threshold, it's starving — give it more frames, or suspend it if there's nothing left to give. If its rate drops below the lower threshold, it's holding more memory than it needs — the OS reclaims the excess to help everyone else.
+**The common wrong answer** is "thrashing is when memory is full". Memory being full is normal, since the kernel uses spare memory for cache. Thrashing is when the **active** demand exceeds physical memory, so pages are evicted while still in use.
 
 ---
 
 ### Say this in the interview
 
-*"Thrashing happens when total memory demand exceeds physical RAM, trapping the system in nonstop paging while real CPU work grinds to near zero. Denning's Working Set model says it's guaranteed once total demand D exceeds the available frames M. Operating systems prevent it by suspending a victim process when that happens, or more cheaply, by watching each process's page fault rate and adjusting its frame allocation up or down."*
+*"Thrashing is when a system spends more time servicing page faults than executing instructions. CPU utilisation collapses while disk utilisation saturates. It happens when the memory actively in use exceeds physical memory, so each process has fewer frames than its current locality needs and every eviction removes a page another process is about to touch.*
 
----
+*It is made worse by a feedback loop. A scheduler that reads low CPU utilisation as an underloaded CPU increases the degree of multiprogramming, which gives each process fewer frames, which increases faults and lowers utilisation further. That is why thrashing appears as a sudden cliff rather than a gradual slowdown.*
 
-### Code: observing the effect of locality on access patterns
+*Denning's Working Set Model makes locality measurable. The working set window, delta, is a number of recent references, and the working set is the distinct pages referenced in that window, with its size approximating the current locality. If the sum of all working set sizes exceeds the available frames, the system suspends a process; if it is comfortably below, another can be admitted. Choosing delta matters, and it is approximated with reference bits and a timer rather than exact counting.*
 
-```python
-import time
-import random
+*Page Fault Frequency is the more practical control: monitor each process's fault rate against upper and lower bounds, allocate more frames above the upper bound, reclaim frames below the lower bound, and suspend a process if the rate is high and nothing is free.*
 
-# Simulating memory access patterns
-PAGE_SIZE = 4096
-TOTAL_PAGES = 10000
-
-# 1. Sequential Access (High Spatial Locality -> ZERO Thrashing)
-def simulate_sequential():
-    start = time.time()
-    for page in range(TOTAL_PAGES):
-        # Accesses predictable, contiguous memory
-        _ = page * PAGE_SIZE
-    return time.time() - start
-
-# 2. Random Stride Access (Zero Locality -> Simulates Severe Thrashing)
-def simulate_random_thrash():
-    start = time.time()
-    for _ in range(TOTAL_PAGES):
-        # Jumps randomly across memory space, blowing past cache & working set
-        page = random.randint(0, TOTAL_PAGES - 1)
-        _ = page * PAGE_SIZE
-    return time.time() - start
-
-if __name__ == "__main__":
-    t_seq = simulate_sequential()
-    t_thrash = simulate_random_thrash()
-    
-    print(f"Sequential (Locality Intact) Time: {t_seq:.4f} sec")
-    print(f"Random Stride (Thrashing Pattern):  {t_thrash:.4f} sec")
-    print(f"Random stride incurred a {t_thrash / t_seq:.1f}x latency penalty due to loss of memory locality.")
-```
+*Modern systems reclaim at page granularity rather than swapping whole processes, and invoke the OOM killer under genuine exhaustion instead of thrashing indefinitely."*
