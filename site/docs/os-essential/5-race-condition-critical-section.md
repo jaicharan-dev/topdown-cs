@@ -1,185 +1,138 @@
 ---
 id: 5-race-condition-critical-section
 title: "Race Conditions & The Critical Section Problem"
-description: "Master concurrency hazards, race conditions, hardware atomic instructions (CAS/TAS), and the 3 formal critical section requirements."
+description: "One increment that is really three steps, and the three rules any fix must satisfy"
+
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is a race condition? What is the critical section problem, what three formal requirements must any solution satisfy, and why do pure software algorithms fail on modern hardware?"
 
-A race condition is what happens when two threads touch the same piece of data at the same time, and the result depends on which one happens to get there first. The piece of code where that shared data gets touched is called the **critical section** — and figuring out how to protect it safely is the **critical section problem**.
+---
+
+### Picture it
+
+Two people are updating the same attendance sheet, which currently reads 10.
+
+Each of them does three separate actions: read the number, add one in their head, write the new number down. If one finishes completely before the other starts, the sheet ends at 12, which is right.
+
+But suppose both read 10, both think 11, and both write 11. Two people were added and the sheet says 11. Nothing was corrupted and nobody made an arithmetic mistake. The update was simply not a single action, and they interleaved in the gap.
+
+The fix is a rule about the sheet, not about the arithmetic: only one person may be at the sheet at a time. And writing that rule down carefully is harder than it sounds. It must genuinely exclude two people at once, it must not leave the sheet unused while people are queuing for it, and nobody should be left waiting at the sheet forever while others keep nipping in front.
 
 ---
 
-### The analogy: a shared joint bank account
+### The proper terms
 
-Alice and Bob share a bank account with \$1,000 in it. At the exact same moment, Alice buys a \$1,000 laptop and Bob buys a \$1,000 phone.
+#### Race condition
 
-<Diagram>
-<Row>
-<Box label="Alice's terminal" sub="reads $1000, charges $1000" />
-<Arrow label="races with" />
-<Box label="Bob's terminal" sub="reads $1000, charges $1000" />
-</Row>
-</Diagram>
+A **race condition** is when the result depends on the **relative timing** of concurrent operations rather than on the program's logic alone. The classic case is a **read-modify-write** sequence such as `count++`, which compiles to a load, an add and a store. A context switch between any two of those steps lets another thread interleave, and one update is lost.
 
-Both terminals read the balance before either write lands. Both see \$1,000, both approve, both deduct \$1,000 — and the bank just let \$2,000 walk out the door from a \$1,000 account. That's a race condition.
+The defining property is that the code is correct in isolation and incorrect only under certain interleavings, which is why these bugs are intermittent and hard to reproduce.
+
+#### The critical section problem
+
+A **critical section** is the region of code that accesses shared data. The **critical section problem** is designing an **entry section** and an **exit section** around it so that concurrent processes cooperate safely. The remaining code is the remainder section.
+
+#### The three requirements
+
+Any correct solution must satisfy all three.
+
+**Mutual exclusion.** If one process is in its critical section, no other may be in its own critical section at the same time. This is the safety property.
+
+**Progress.** If no process is in its critical section and some processes want to enter, only those not in their remainder section may take part in the decision, and the choice cannot be postponed indefinitely. Informally: a free resource must not sit idle while someone is waiting for it.
+
+**Bounded waiting.** There must be a limit on how many times other processes may enter their critical sections after a process has requested entry and before it is granted. This is what rules out **starvation**.
+
+Mutual exclusion alone is easy, which is why the other two are the interesting ones. A lock that nobody can ever acquire provides perfect mutual exclusion and fails progress.
+
+#### Why software-only algorithms fail today
+
+**Peterson's algorithm** solves the problem for two processes using only shared variables, a `flag` array and a `turn` variable. It is correct on the abstract model, and it does not work reliably on real hardware for two reasons.
+
+**Instruction reordering.** Compilers and **out-of-order** CPUs reorder memory operations that look independent. Peterson's algorithm depends on `flag` being visible before `turn` is read, and nothing in the source enforces that ordering.
+
+**Cache coherence and visibility.** Each core has its own cache and **store buffer**. A write may sit in the store buffer, visible to its own core but not yet to others, so a process can read a stale `flag` and both enter.
+
+The fix is a **memory barrier**, or fence, which forces ordering and visibility at that point. Once you need a barrier, you are no longer in pure software: the solution depends on a hardware guarantee.
+
+In practice the real mechanism is an **atomic instruction**: **test-and-set**, **compare-and-swap** or **fetch-and-add**. These perform read-modify-write as one indivisible operation that the hardware guarantees cannot be interleaved, which is exactly what the attendance sheet lacked. Locks, semaphores and mutexes are all built from these.
+
+#### Disabling interrupts
+
+On a single processor, disabling interrupts prevents preemption and so provides mutual exclusion. It is used inside kernels for very short sections. It does not work on multiprocessors, since another core keeps running, and it is a **privileged** operation unavailable to user code.
 
 ---
 
-### Why `counter++` isn't safe
+### In code
 
-It looks like one line of code, but it's actually three CPU instructions:
+```c
+// The race, in full
+int count = 10;
 
-```assembly
-MOV EAX, [counter]   ; 1. READ: load value into a register
-ADD EAX, 1            ; 2. MODIFY: add one
-MOV [counter], EAX   ; 3. WRITE: store it back
+void *worker(void *arg) {
+    for (int i = 0; i < 100000; i++) {
+        count++;            // load, add, store: three steps, not one
+    }
+    return NULL;
+}
+// Two threads running this rarely produce 200010.
 ```
 
-If a thread gets interrupted between any of these steps, another thread can sneak in and corrupt the result:
+```text
+One interleaving that loses an update:
 
-| Step | Thread A | Thread B | `counter` in memory |
-| :--- | :--- | :--- | :--- |
-| t1 | reads `100` | — | 100 |
-| t2 | *(preempted)* | reads `100` | 100 |
-| t3 | — | computes `101` | 100 |
-| t4 | — | writes `101` | 101 |
-| t5 | computes `101` | — | 101 |
-| t6 | writes `101` | — | **101 (should be 102!)** |
+  Thread A            Thread B           count
+  load  -> 10                             10
+                      load  -> 10         10
+  add   -> 11                             10
+                      add   -> 11         10
+  store 11                                11
+                      store 11            11     <- two increments, one effect
+```
 
-Thread B's increment is silently lost. Both threads thought they were incrementing from a fresh value, but Thread A was actually working off stale data.
+```c
+// The fix: an atomic instruction the hardware cannot interleave
+__atomic_fetch_add(&count, 1, __ATOMIC_SEQ_CST);
+
+// Or a lock, which is itself built from such an instruction
+pthread_mutex_lock(&m);
+count++;                    // entry section / critical section / exit section
+pthread_mutex_unlock(&m);
+```
 
 ---
 
-### The three rules any fix must satisfy
+### What they ask next
 
-1. **Mutual exclusion** — while one thread is in its critical section, no other thread can be in theirs.
-2. **Progress** — if nobody's in the critical section and others want in, the decision of who goes next can't be stalled forever.
-3. **Bounded waiting** — there has to be a limit on how many times other threads can cut in line before a waiting thread gets its turn. No one waits forever.
+**"Is `count++` atomic in any language?"**
+Not by default in C, C++ or Java. It is a read-modify-write sequence. Java's `AtomicInteger` and C++'s `std::atomic` provide genuinely atomic versions built on hardware instructions.
 
----
+**"Does `volatile` solve a race condition?"**
+No. In Java it guarantees **visibility** and ordering but not atomicity, so `count++` on a volatile is still racy. In C and C++ it means even less, having nothing to do with threads.
 
-### The trap: why pure software locks don't work on modern CPUs
+**"What is the difference between a race condition and a data race?"**
+A **data race** is the narrower, formally defined case of two unsynchronised accesses to the same location with at least one write. A race condition is the broader notion of behaviour depending on timing, and can exist even in code with no data race, for example a check-then-act sequence where each step is individually synchronised.
 
-Textbooks teach lock-free algorithms like Peterson's or Dekker's that use only reads and writes — no hardware help. A sharp follow-up: *"Would that actually work on a real Intel or AMD chip today?"*
+**"Is Peterson's algorithm useless then?"**
+Not conceptually. It proves the problem is solvable with only shared memory, and it is still the clearest illustration of the three requirements. It simply needs memory barriers to run correctly on modern hardware.
 
-No. These algorithms assume memory operations happen in exactly the order they're written in code. Modern CPUs don't honor that — they reorder instructions, buffer writes, and execute out of order to go faster, which breaks the assumptions these algorithms rely on.
+**"What is a TOCTOU bug?"**
+Time-of-check to time-of-use: validating a condition and acting on it as separate steps, so the condition can change in between. Checking that a file exists and then opening it is the standard example, and it is a race condition with security consequences.
 
-That's why real synchronization leans on hardware instead:
-
-- **Test-And-Set (TAS)** — atomically checks and sets a flag in one indivisible step.
-- **Compare-And-Swap (CAS)** — atomically updates a value only if it still matches what you expected.
-- **Memory barriers** (`MFENCE` on x86) — stop the CPU from reordering memory operations across a specific point.
+**The common wrong answer** is "a race condition means two threads run at the same time". Concurrency alone is harmless. The problem is unsynchronised access to shared mutable state, and it happens on a single core too, since a context switch mid-sequence produces the same interleaving.
 
 ---
 
 ### Say this in the interview
 
-*"A race condition happens when threads interleave reads and writes on shared memory without coordination. Fixing it means satisfying mutual exclusion, progress, and bounded waiting. Pure software algorithms like Peterson's don't actually work on modern hardware because of instruction reordering — real fixes use hardware atomics like compare-and-swap and memory fences."*
+*"A race condition is when the outcome depends on the relative timing of concurrent operations rather than the program's logic. The classic case is a read-modify-write such as count++, which is a load, an add and a store, so an interleaving between those steps loses an update.*
 
----
+*A critical section is the code that accesses shared data, and the critical section problem is designing the entry section and exit section around it. Any solution must satisfy three requirements: mutual exclusion, so at most one process is in its critical section; progress, so a free resource is not left idle while processes wait to enter; and bounded waiting, so there is a limit on how many times others may enter first, which prevents starvation.*
 
-### Code: race condition vs. synchronized access
+*Pure software solutions like Peterson's algorithm fail on modern hardware for two reasons. Compilers and out-of-order CPUs reorder memory operations the algorithm depends on being ordered, and per-core caches and store buffers mean a write may not be visible to other cores immediately, so both processes can read a stale flag and enter. Correcting it requires memory barriers, at which point the solution depends on hardware anyway.*
 
-<Tabs groupId="programming-language">
-<TabItem value="c" label="C (pthread_mutex)">
-
-```c
-#include <stdio.h>
-#include <pthread.h>
-
-long counter = 0;
-pthread_mutex_t lock;
-
-void* safe_worker(void* arg) {
-    for (int i = 0; i < 50000; i++) {
-        pthread_mutex_lock(&lock);
-        counter++; // Critical Section protected by Mutex
-        pthread_mutex_unlock(&lock);
-    }
-    return NULL;
-}
-
-int main() {
-    pthread_t t1, t2;
-    pthread_mutex_init(&lock, NULL);
-
-    pthread_create(&t1, NULL, safe_worker, NULL);
-    pthread_create(&t2, NULL, safe_worker, NULL);
-
-    pthread_join(t1, NULL);
-    pthread_join(t2, NULL);
-
-    printf("Final Counter: %ld (Expected: 100000)\n", counter);
-    pthread_mutex_destroy(&lock);
-    return 0;
-}
-```
-
-</TabItem>
-<TabItem value="python" label="Python (threading.Lock)">
-
-```python
-import threading
-
-counter = 0
-lock = threading.Lock()
-
-def safe_increment():
-    global counter
-    for _ in range(50000):
-        with lock:
-            counter += 1 # Critical section protected by lock
-
-if __name__ == "__main__":
-    t1 = threading.Thread(target=safe_increment)
-    t2 = threading.Thread(target=safe_increment)
-
-    t1.start()
-    t2.start()
-    t1.join()
-    t2.join()
-
-    print(f"Final Counter: {counter} (Expected: 100000)")
-```
-
-</TabItem>
-<TabItem value="java" label="Java (AtomicInteger)">
-
-```java
-import java.util.concurrent.atomic.AtomicInteger;
-
-public class CriticalSectionDemo {
-    // Uses hardware Compare-And-Swap (CAS) instructions
-    private static final AtomicInteger atomicCounter = new AtomicInteger(0);
-
-    public static void main(String[] args) throws InterruptedException {
-        Runnable task = () -> {
-            for (int i = 0; i < 50000; i++) {
-                atomicCounter.incrementAndGet(); // Lock-free atomic increment
-            }
-        };
-
-        Thread t1 = new Thread(task);
-        Thread t2 = new Thread(task);
-
-        t1.start();
-        t2.start();
-        t1.join();
-        t2.join();
-
-        System.out.println("Final Counter: " + atomicCounter.get() + " (Expected: 100000)");
-    }
-}
-```
-
-</TabItem>
-</Tabs>
+*In practice synchronisation is built on atomic instructions such as test-and-set, compare-and-swap or fetch-and-add, which perform read-modify-write indivisibly. Disabling interrupts also gives mutual exclusion but only on a uniprocessor, and it is privileged."*

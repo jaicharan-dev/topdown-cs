@@ -1,178 +1,124 @@
 ---
 id: 3-preemptive-vs-non-preemptive-scheduling
 title: "Preemptive vs. Non-Preemptive CPU Scheduling"
-description: "Learn the mechanics of preemptive vs non-preemptive scheduling, the 4 formal decision points, timer interrupts, and the priority inversion trap."
+description: "Whether the CPU can be taken back, the four moments a decision is made, and the timer that makes it possible"
+
 sidebar_position: 3
 sidebar_class_name: sidebar-easy
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What is the difference between preemptive and non-preemptive scheduling? Under what four conditions does a CPU scheduler make decisions, and how does hardware enforce preemption?"
 
-When two processes both want the CPU, who decides who runs? That's all scheduling is. The question that actually matters: **can the OS forcibly kick a running process off the CPU, or does it have to wait for that process to step aside on its own?**
+---
+
+### Picture it
+
+Think of a meeting room with one microphone.
+
+**Under polite rules, the microphone is only passed on voluntarily.** Whoever is speaking keeps it until they finish or decide to pause. The chair never interrupts. This is simple and nobody is ever cut off mid-sentence, but one long-winded speaker can hold the room indefinitely and everyone else just waits.
+
+**Under chaired rules, the chair has a stopwatch.** When your time is up, the microphone is taken, whatever you were saying. Nobody can monopolise the room, and short contributions get heard promptly. The cost is interruptions, and the risk that someone is cut off halfway through writing on the whiteboard, leaving it in a confusing state for whoever follows.
+
+The second arrangement needs one thing the first does not: a clock that goes off independently of the person speaking. A chair who only notices the time when the speaker pauses cannot enforce anything.
 
 ---
 
-### The analogy: the grocery checkout lane
+### The proper terms
 
-- **Non-preemptive:** once a customer starts scanning groceries, nobody can interrupt them. Even with 200 items ahead of someone holding a single candy bar, that person waits for the whole cart. If the customer gets into an argument with the cashier, the line is stuck — forever.
-- **Preemptive:** the manager enforces a rule — *"everyone gets 3 minutes at the register."* When the timer rings, the cashier pauses that order, serves the next person, and comes back to finish the first one later.
+#### The two kinds
 
-Preemptive scheduling is what every modern OS uses, because it's the only way to stay responsive.
+**Non-preemptive** scheduling, also called **cooperative** scheduling, gives a process the CPU until it **voluntarily** releases it, either by blocking for I/O or by terminating. The scheduler cannot take it back.
 
----
+**Preemptive** scheduling allows the operating system to take the CPU from a running process and give it to another, typically when its **time quantum** expires or a higher-priority process becomes ready.
 
-### The four moments a scheduler can step in
+#### The four scheduling decision points
 
-1. **Running → Waiting:** the process asks for I/O or calls `wait()`.
-2. **Running → Ready:** a timer interrupt fires — its time slice is up.
-3. **Waiting → Ready:** an I/O operation finishes and wakes up a process (maybe a higher-priority one).
-4. **Running → Terminated:** the process finishes or calls `exit()`.
+A scheduling decision occurs when a process:
 
-The rule that separates the two scheduling styles:
+1. Switches from **running to waiting**, for example issuing an I/O request.
+2. Switches from **running to ready**, for example being preempted by a timer interrupt.
+3. Switches from **waiting to ready**, for example on I/O completion.
+4. Terminates.
 
-- Scheduler only acts on **1 and 4** → **non-preemptive**. The process keeps the CPU until it yields or finishes on its own.
-- Scheduler also acts on **2 and 3** → **preemptive**. The OS can yank the CPU away mid-execution.
+Cases 1 and 4 are the voluntary ones, where the process gives up the CPU by itself. Both schemes must decide here, because the CPU is idle and something has to be chosen.
 
----
+Cases 2 and 3 are the involuntary ones, and only a **preemptive** scheduler acts on them. Case 2 is the timer taking the CPU away; case 3 is a newly ready process possibly displacing the current one.
 
-### How does the OS actually force a process off the CPU?
+So the crisp statement is: non-preemptive scheduling decides only at 1 and 4, preemptive scheduling decides at all four.
 
-Good follow-up question: if a program hits `while(1) {}`, how does the OS ever get control back?
+#### How hardware enforces it
 
-In a non-preemptive OS (old Windows 3.1, classic Mac OS), it doesn't — the machine just freezes.
+Preemption cannot be implemented in software alone. A process that never yields would never be interrupted by code that only runs when it yields.
 
-Modern systems solve this with a hardware timer:
+The mechanism is the **programmable interval timer**, a hardware device set to raise an **interrupt** after a fixed interval. When it fires, the CPU stops the running process, switches to **kernel mode**, and transfers to the **timer interrupt handler** through the interrupt vector table. The handler charges the elapsed time to the process, and if its quantum is exhausted it invokes the scheduler.
 
-1. Before dispatching a process, the kernel arms a hardware timer (the PIT, or a local APIC timer).
-2. The timer counts down. When it hits zero, it fires a hardware interrupt.
-3. The CPU forces a switch from user mode to kernel mode, saves the process's registers, and jumps into the kernel's timer interrupt handler.
-4. That handler calls the scheduler, which picks the next process to run.
+Two supporting pieces matter. Setting the timer is a **privileged instruction**, so a user process cannot disable its own preemption. And the quantum is counted in timer ticks, where the tick rate is a kernel configuration choice.
 
-The process never gets a say in this — the hardware makes it happen.
+#### Trade-offs
 
----
+Preemptive scheduling gives better **response time** and prevents **starvation** by a long-running process, which is why every general-purpose and real-time system uses it. The costs are more **context switches**, hence more overhead, and the need for proper synchronisation, since a process can now be interrupted in the middle of updating shared data, creating **race conditions**.
 
-### The classic trap: priority inversion
+Non-preemptive scheduling has lower overhead and simpler reasoning about shared state, but one long job blocks everything behind it, which is the convoy effect.
 
-This is famous for once stalling the Mars Pathfinder rover. The setup:
-
-| Time | Low-priority task (L) | Medium-priority task (M) | High-priority task (H) |
-| :--- | :--- | :--- | :--- |
-| T1 | Acquires Lock A | — | sleeping |
-| T2 | — | — | wakes up, needs Lock A — **blocked**, waiting on L |
-| T3 | — | preempts L (M > L in priority) | still blocked — now indirectly stuck behind M too |
-
-H is blocked waiting on a lock held by L. Then M — which has nothing to do with that lock — shows up and preempts L simply because M has higher priority than L. Now M is accidentally delaying H, even though H outranks M. Their priorities have effectively flipped.
-
-**The fix: priority inheritance.** While L holds a lock that H needs, bump L's priority up to match H's, temporarily. Now M can't preempt L anymore, L finishes fast, releases the lock, and H runs.
+Algorithms split along the same line. **FCFS** and plain **SJF** are non-preemptive. **Round Robin**, Shortest Remaining Time First and preemptive **priority scheduling** are preemptive.
 
 ---
 
-### Comparison
+### In code
 
-| Feature | Preemptive | Non-Preemptive |
-| :--- | :--- | :--- |
-| **Control** | OS can forcibly interrupt | Process gives up the CPU voluntarily |
-| **Needs hardware timer** | Yes | No |
-| **Responsiveness** | High — needed for desktop/mobile | Low — one long job can freeze everything |
-| **Overhead** | Higher (more context switches) | Lower |
-| **Examples** | Round Robin, Shortest Remaining Time First | FCFS, Shortest Job First |
+```text
+The four decision points, and who acts on them:
+
+                                            non-preemptive   preemptive
+  1. running -> waiting   (I/O request)          yes             yes
+  2. running -> ready     (timer preempt)        no              yes
+  3. waiting -> ready     (I/O completion)       no              yes
+  4. running -> exit      (terminates)           yes             yes
+```
+
+```text
+How a timer preemption actually unfolds:
+
+  1. process P is running in user mode
+  2. the interval timer reaches zero and raises an interrupt
+  3. the CPU switches to kernel mode and consults the interrupt vector table
+  4. the timer interrupt handler runs and charges the tick to P
+  5. P's quantum is exhausted, so the handler calls the scheduler
+  6. the scheduler picks Q, and the dispatcher performs the context switch
+  7. Q resumes in user mode
+```
+
+---
+
+### What they ask next
+
+**"Is Shortest Job First preemptive?"**
+Plain SJF is not. Its preemptive variant is **Shortest Remaining Time First**, which reconsiders whenever a new process arrives with a shorter remaining burst than the running one.
+
+**"Why can't preemption be done purely in software?"**
+Because the code performing it would only run when the process yields, and a process that never yields would never be preempted. An external interrupt source is required.
+
+**"What happens if the quantum is very large or very small?"**
+A very large quantum degenerates into FCFS, since processes finish before being preempted. A very small one spends an increasing share of time on context switches rather than useful work.
+
+**"Does preemption apply to kernel code?"**
+It depends. A **non-preemptive kernel** will not preempt a process executing a system call, which simplifies locking. A **preemptive kernel** will, improving latency at the cost of needing careful synchronisation inside the kernel itself. Linux has been preemptible since 2.6.
+
+**"Which real systems use non-preemptive scheduling?"**
+Early Windows and classic Mac OS used cooperative multitasking, and some embedded and batch systems still do where the workload is known and trusted. General-purpose systems do not, because one misbehaving program would freeze the machine.
+
+**The common wrong answer** is "preemptive means the scheduler runs more often". It runs at the same four points; the difference is that a preemptive scheduler is allowed to **act** at points 2 and 3.
 
 ---
 
 ### Say this in the interview
 
-*"Non-preemptive scheduling only switches when a process blocks or finishes on its own. Preemptive scheduling uses a hardware timer interrupt to forcibly reclaim the CPU when a time slice runs out or a higher-priority task wakes up. In priority-based systems, you need priority inheritance, or a low-priority task holding a shared lock can end up indirectly starving a high-priority one — priority inversion."*
+*"Non-preemptive or cooperative scheduling gives a process the CPU until it voluntarily releases it by blocking or terminating. Preemptive scheduling lets the operating system take the CPU back, typically when the time quantum expires or a higher-priority process becomes ready.*
 
----
+*Scheduling decisions arise at four points: running to waiting on an I/O request, running to ready on a timer preemption, waiting to ready on I/O completion, and termination. The first and fourth are voluntary, so both schemes act on them. The second and third are involuntary, and only a preemptive scheduler acts there.*
 
-### Code: cooperative vs. preemptive concurrency
+*Preemption is enforced by hardware. A programmable interval timer raises an interrupt, the CPU switches to kernel mode and vectors to the timer interrupt handler, which charges the tick to the running process and invokes the scheduler if the quantum is exhausted. Setting the timer is a privileged instruction, so a user process cannot disable its own preemption.*
 
-<Tabs groupId="programming-language">
-<TabItem value="c" label="C (POSIX Threads)">
-
-```c
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <sched.h>
-#include <unistd.h>
-
-void* cooperative_worker(void* arg) {
-    for (int i = 0; i < 3; i++) {
-        printf("[Cooperative Thread %ld] Running step %d\n", (long)arg, i);
-        // Explicitly yields CPU back to OS scheduler
-        sched_yield();
-    }
-    return NULL;
-}
-
-int main() {
-    pthread_t t1, t2;
-    // POSIX pthreads are preemptively scheduled by the Linux kernel,
-    // but threads can also cooperatively yield control:
-    pthread_create(&t1, NULL, cooperative_worker, (void*)1);
-    pthread_create(&t2, NULL, cooperative_worker, (void*)2);
-
-    pthread_join(t1, NULL);
-    pthread_join(t2, NULL);
-    return 0;
-}
-```
-
-</TabItem>
-<TabItem value="python" label="Python">
-
-```python
-import threading
-import time
-
-def busy_worker(thread_name):
-    for i in range(3):
-        print(f"[{thread_name}] Running step {i}")
-        # time.sleep(0) or explicit sleep causes thread to cooperatively yield
-        time.sleep(0.01)
-
-if __name__ == "__main__":
-    # Python threads are preemptively time-sliced by the interpreter / OS:
-    t1 = threading.Thread(target=busy_worker, args=("Thread-1",))
-    t2 = threading.Thread(target=busy_worker, args=("Thread-2",))
-    
-    t1.start()
-    t2.start()
-    t1.join()
-    t2.join()
-```
-
-</TabItem>
-<TabItem value="java" label="Java">
-
-```java
-public class SchedulingDemo {
-    public static void main(String[] args) throws InterruptedException {
-        Runnable task = () -> {
-            for (int i = 0; i < 3; i++) {
-                System.out.println("[" + Thread.currentThread().getName() + "] Step " + i);
-                // Thread.yield() advises the short-term scheduler to switch
-                Thread.yield();
-            }
-        };
-
-        Thread t1 = new Thread(task, "Worker-1");
-        Thread t2 = new Thread(task, "Worker-2");
-
-        t1.start();
-        t2.start();
-        t1.join();
-        t2.join();
-    }
-}
-```
-
-</TabItem>
-</Tabs>
+*The trade-off is that preemption gives better response time and prevents starvation, at the cost of more context switches and the need for synchronisation, since a process can be interrupted mid-update and create race conditions. FCFS and plain SJF are non-preemptive; Round Robin, Shortest Remaining Time First and preemptive priority scheduling are preemptive."*
