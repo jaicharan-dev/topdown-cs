@@ -1,119 +1,149 @@
 ---
 id: 18-garbage-collection-stack-heap
 title: "Garbage Collection: Stack vs. Heap Memory"
-description: "Differentiate between Stack memory and Heap memory, and understand how the Garbage Collector reclaims space using the Generational Hypothesis."
+description: "Reachability rather than reference counting, and why the heap is split by age"
 
 sidebar_position: 18
 sidebar_class_name: sidebar-hard
 ---
 
-import { GenerationalHeapFigure } from '@site/src/components/Figures/GarbageCollection';
-
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
 > **Interview Question:** "Walk me through how Garbage Collection works in Java. What are GC Roots, how does the Generational Hypothesis divide heap memory, and how do Stack and Heap differ?"
 
-Every thread gets its own **stack**: a small, private workspace for whatever method it's currently running: local variables, method parameters, and pointers to objects. When a method returns, its slice of the stack just pops off. No cleanup needed, no garbage collector involved: it's automatic and instant.
+---
 
-The **heap** is different: one shared space, used by every thread, holding every object you create with `new`. Nothing on the heap cleans itself up automatically, so Java runs a background process, the **Garbage Collector (GC)**, that figures out which objects are still in use and frees the rest.
+### Picture it
 
-### Stack vs. Heap
+Think of a warehouse with a reception desk.
 
-| Feature | The Stack | The Heap |
-|---|---|---|
-| **What It Stores** | Primitives, method call frames, pointers to objects. | The actual objects (anything made with `new`). |
-| **Scope & Concurrency** | Private to each thread. | Shared by every thread. |
-| **Memory Reclamation** | Automatic, instant: pops when the frame pops. | Non-deterministic: reclaimed later by the GC. |
-| **Failure Mode** | `StackOverflowError` (recursion too deep). | `OutOfMemoryError` (heap full). |
+**The reception desk is a stack of job sheets.** A visitor arrives, you put their sheet on top; they leave, you take it off. Sheets are added and removed in strict order, the desk is small and fast to work with, and nobody has to decide when to clear a sheet away: it goes the moment that visit ends.
 
-### How the GC decides what's garbage: GC Roots
+**The warehouse floor holds the actual goods.** Items are placed anywhere there is space, they outlive the visit that ordered them, and the floor is large.
 
-Java doesn't just count references (that approach breaks the moment two objects point at each other in a cycle). Instead it asks: **can this object still be reached from somewhere that's definitely alive?**
+**Clearing the floor is the hard part.** You cannot ask each item whether it is still wanted, because items refer to each other and a cluster of them can happily insist they are all needed while nobody outside wants any of them.
 
-Those "definitely alive" starting points are called **GC Roots**: things like local variables on a running thread's stack, active threads themselves, static fields, and a few native-code pointers. The GC walks outward from every root, following references. Anything it never reaches is garbage: nobody can get to it anymore, so it's safe to free.
+So the warehouse does not ask. It starts from the **doors into the building** and walks every route inward, marking whatever it reaches. Anything unmarked after that walk is unreachable from outside, and goes, whatever it claims about itself.
 
-### Why the heap is split into generations
-
-Most objects die young: a loop variable, a temporary string, a short-lived request object. Production garbage collectors (G1, ZGC, Parallel) lean into this pattern, called the **Weak Generational Hypothesis**, by splitting the heap into generations instead of scanning the entire thing every time:
-
-<GenerationalHeapFigure />
-
-- **Young Generation:** New objects land in **Eden**. When Eden fills up, a quick **Minor GC** runs. Whatever survives moves into one of the two **Survivor spaces** (S0 and S1, alternating each cycle), and each survivor gets an age counter bumped up.
-- **Old Generation:** Once an object survives enough Minor GC cycles (15, by default in HotSpot), it gets promoted here - it's clearly a long-lived object, not worth re-checking every cycle. Cleaning the Old Generation is a **Major GC**, and it's slower: it often needs a **Stop-The-World pause**, where every application thread briefly freezes.
-
-This split matters because Minor GCs - the common case - only need to scan the small Young Generation, not the whole heap. That keeps garbage collection cheap most of the time.
-
-### Does everything really go on the heap?
-
-Not always. The JIT compiler can perform **Escape Analysis**: if it can prove an object never leaves the method it was created in - never gets returned, stored somewhere external, or handed to another thread - it doesn't need heap allocation at all. It can:
-
-- **Allocate it on the stack instead**, so it disappears the instant the method returns, with zero GC involvement.
-- **Scalar-replace it** - break the object apart into its individual fields as plain local variables, skipping allocation entirely.
+Those doors are the GC roots, and that walk is the whole idea.
 
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+### The proper terms
 
-### Clean Code Example
+#### Stack and heap
 
-Here is how memory lifecycle and deallocation behave across languages:
+The **stack** holds one **stack frame** per method call, containing local variables and partial results. It is per-thread, allocated and freed in **LIFO** order, and deallocation is automatic when a method returns. It is fast, small, and overflowing it raises **StackOverflowError**, typically from unbounded recursion.
 
-<Tabs groupId="programming-language">
-<TabItem value="java" label="Java" default>
+The **heap** holds all objects and arrays. It is shared across threads, objects live until collected, and exhausting it raises **OutOfMemoryError**.
+
+The connection is that a local variable on the stack holds a **reference**, while the object it names lives on the heap. Primitives declared locally live entirely on the stack.
+
+#### GC roots and reachability
+
+Java uses **reachability**, not **reference counting**. Counting references cannot reclaim a **cyclic reference**, where two objects point at each other and nothing else points at either, since both counts stay above zero forever.
+
+Instead the collector starts from the **GC roots** and marks everything reachable. The roots include local variables in every active stack frame, static fields, JNI references, and live threads themselves.
+
+Anything not reached is garbage, by definition, which handles cycles naturally: a cycle with no route from a root is simply never marked.
+
+#### The generational hypothesis
+
+The **weak generational hypothesis** is the observation that **most objects die young**. A small fraction survive long, and references from old objects to young ones are rare.
+
+The heap is therefore split. The **Young Generation** holds new objects and is divided into **Eden** and two **survivor spaces**, S0 and S1. The **Old Generation**, or tenured space, holds objects that have survived several collections.
+
+Allocation happens in Eden. When Eden fills, a **Minor GC** runs: live objects are copied into a survivor space and everything else is discarded wholesale, which is cheap precisely because so little survives. Objects that survive enough rounds, governed by a **tenuring threshold**, are **promoted** to the Old Generation.
+
+A **Major GC**, or Full GC, collects the Old Generation. It is far more expensive and causes longer **stop-the-world** pauses, where application threads are suspended.
+
+Since Java 8, class metadata sits in **Metaspace** in native memory, replacing the fixed-size **PermGen**.
+
+#### Algorithms
+
+**Mark and sweep** marks reachable objects then frees the rest, leaving **fragmentation**. **Mark-compact** adds a step that slides survivors together, removing fragmentation at the cost of more work. **Copying** collectors move live objects to a fresh space, which is what the young generation does.
+
+Common collectors: Serial, Parallel (throughput-oriented), **G1**, the default since Java 9, which divides the heap into regions and targets a pause goal, and **ZGC** and **Shenandoah**, which aim for pauses under a few milliseconds on very large heaps.
+
+#### What you cannot control
+
+`System.gc()` is a **request**, not a command, and the JVM may ignore it. Calling it is discouraged because it usually triggers a Full GC at the worst moment.
+
+Memory leaks still happen in Java, not from forgotten frees but from unintended reachability: objects still referenced from a static collection, a cache without eviction, an unremoved listener, or a non-static inner class pinning its enclosing instance.
+
+---
+
+### In code
 
 ```java
-public class MemoryDemo {
-    public static void main(String[] args) {
-        // 'dog' is on the Stack; new Dog() is in the Heap (Eden Space)
-        Dog dog = new Dog("Buddy");
+import java.util.ArrayList;
+import java.util.List;
 
-        // Severing the GC Root reference:
-        // The Dog object is now unreachable and eligible for Minor GC
-        dog = null; 
+public class Demo {
+
+    private static final List<byte[]> CACHE = new ArrayList<>();   // a GC root
+
+    static void allocate() {
+        byte[] local = new byte[1024];      // reference on the stack, array on the heap
+        // 'local' dies when this method returns, so the array becomes unreachable
+    }
+
+    static void leak() {
+        CACHE.add(new byte[1024 * 1024]);   // reachable from a static field forever
+    }
+
+    static class Node { Node partner; }
+
+    static void cycle() {
+        Node a = new Node();
+        Node b = new Node();
+        a.partner = b;
+        b.partner = a;                      // they reference each other
+        // Once a and b leave scope, no route from any root reaches them,
+        // so reachability collects both. Reference counting could not.
+    }
+
+    public static void main(String[] args) {
+        allocate();
+        cycle();
+        leak();                             // this one is never reclaimed
     }
 }
 ```
 
-</TabItem>
-<TabItem value="cpp" label="C++">
+`cycle` and `leak` are the contrast worth remembering. A reference cycle is not a leak under a reachability collector. A live static collection is, even though nothing is circular about it.
 
-```cpp
-#include <iostream>
-#include <memory>
+---
 
-class Dog {
-public:
-    Dog() { std::cout << "Allocated\n"; }
-    ~Dog() { std::cout << "Destroyed deterministically via RAII\n"; }
-};
+### What they ask next
 
-int main() {
-    // In C++, RAII (Resource Acquisition Is Initialization) deallocates instantly:
-    {
-        std::unique_ptr<Dog> dog = std::make_unique<Dog>();
-    } // Out of scope: Dog is destroyed immediately here without any GC pause!
-    return 0;
-}
-```
+**"Why not use reference counting?"**
+It cannot reclaim cycles, and maintaining counts on every assignment is costly. Its advantage is immediate reclamation, which is why languages like Swift and Python use it, with Python adding a cycle detector.
 
-</TabItem>
-<TabItem value="python" label="Python">
+**"Can you force garbage collection?"**
+No. `System.gc()` is advisory. If you need deterministic cleanup, use try-with-resources and `AutoCloseable` rather than relying on the collector.
 
-```python
-import sys
+**"What replaced `finalize()`?"**
+It is deprecated and removed. The replacements are try-with-resources for scoped resources and `java.lang.ref.Cleaner` for a safety net, since finalizers ran unpredictably and could resurrect objects.
 
-class Dog:
-    pass
+**"Why are survivor spaces in a pair?"**
+Copying collection needs a destination. Each minor GC copies live objects from Eden and the occupied survivor space into the empty one, then swaps their roles, which compacts automatically and leaves no fragmentation.
 
-# Python uses Reference Counting combined with a Generational Cyclic Collector
-d1 = Dog()
-print(sys.getrefcount(d1)) # 2 (d1 and getrefcount parameter)
+**"Where do local primitives live?"**
+On the stack, inside the frame. Only objects and arrays are on the heap, and escape analysis may even allocate a non-escaping object on the stack.
 
-d2 = d1 # Reference count increments
-del d1  # Reference count decrements
-del d2  # Reference count hits 0: memory freed immediately!
-```
+**The common wrong answer** is "the GC frees objects with no references". It frees objects **not reachable from a root**, which is what makes cycles collectable.
 
-</TabItem>
-</Tabs>
+---
+
+### Say this in the interview
+
+*"The stack holds a stack frame per method call with local variables, is per-thread, is freed in LIFO order when a method returns, and overflowing it gives StackOverflowError. The heap holds all objects and arrays, is shared between threads, and exhausting it gives OutOfMemoryError. A local variable on the stack holds a reference to an object on the heap.*
+
+*Java collects by reachability rather than reference counting, because reference counting cannot reclaim a cyclic reference. The collector starts from the GC roots, which are local variables in active stack frames, static fields, JNI references and live threads, and marks everything reachable. Whatever is unmarked is garbage, which handles cycles naturally.*
+
+*The weak generational hypothesis is that most objects die young, so the heap is split. The Young Generation has Eden and two survivor spaces; allocation happens in Eden, and a Minor GC copies the few survivors into a survivor space, which is cheap because so little lives. Objects surviving past the tenuring threshold are promoted to the Old Generation, collected by a more expensive Major GC with longer stop-the-world pauses. Class metadata moved to Metaspace in Java 8, replacing PermGen.*
+
+*Algorithms include mark and sweep, which leaves fragmentation, mark-compact, which removes it, and copying collectors for the young generation. G1 has been the default since Java 9, with ZGC and Shenandoah for low pause times.*
+
+*System.gc() is only a request. Leaks in Java come from unintended reachability, such as static collections, unbounded caches and unremoved listeners."*

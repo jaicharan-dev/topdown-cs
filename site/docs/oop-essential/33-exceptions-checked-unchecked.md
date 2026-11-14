@@ -1,134 +1,161 @@
 ---
 id: 33-exceptions-checked-unchecked
 title: "Exceptions: Checked vs. Unchecked"
-description: "Understand the architectural differences, resource management patterns, and use cases for checked versus unchecked exceptions."
+description: "Which failures the compiler forces you to acknowledge, and why newer languages stopped forcing any"
 
 sidebar_position: 21
 sidebar_class_name: sidebar-medium
 ---
 
-import { ThrowableTreeFigure } from '@site/src/components/Figures/ExceptionHierarchy';
-
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "How do you distinguish between checked and unchecked exceptions? Why have modern languages largely abandoned checked exceptions, how does try-with-resources improve resource safety, and what is the Spring transaction rollback trap?"
 
-Think of it as two different kinds of risk. A **checked exception** is a risk you should have seen coming - the file might not exist, the network might drop - so the compiler won't even let you compile the code until you deal with it, either by catching it or by declaring `throws`. An **unchecked exception** is a bug - a null you forgot to check, an index you got wrong. Nothing forces you to plan for it ahead of time, because the real fix is to not write the bug in the first place.
+---
 
-Here's the road trip version: a snow forecast is a checked exception. The highway patrol makes you carry chains before you drive the pass - you might not need them, but the risk was known in advance, so you're required to prepare. Running a red light is an unchecked exception. Nobody makes you carry a "ran a red light" contingency kit, because the expectation is simply: don't do that. It's a failure of your own logic, not an external risk.
+### Picture it
 
-### Comparing the two
+Think of two kinds of thing that can go wrong when you post a letter.
 
-| Feature | Checked Exceptions | Unchecked Exceptions |
-|---|---|---|
-| **Checked When?** | At compile time - the compiler verifies you handled it. | At run time - you find out when it happens. |
-| **Class Hierarchy** | Extends `java.lang.Exception` (not `RuntimeException`). | Extends `java.lang.RuntimeException`. |
-| **Handling Rule** | Mandatory - catch it or declare `throws`. | Optional - the compiler won't stop you either way. |
-| **Typical Cause** | Something external went wrong. | A bug in your own code or bad input from a caller. |
-| **Examples** | `IOException`, `SQLException`, `FileNotFoundException`. | `NullPointerException`, `IllegalArgumentException`. |
+**The post office might lose it.** This has nothing to do with you. However carefully you addressed it, it can still happen, so a sensible system makes you say in advance what you will do if it does.
 
-### What about `Error`?
+**You might not have written an address.** That is not bad luck, it is a mistake in what you did. The remedy is to fix the letter, not to plan around the failure.
 
-Java's exception tree starts at `Throwable`, which splits into two branches. `Exception` is for things your code might reasonably recover from. `Error` is different - it means something has gone catastrophically wrong at the JVM level (`OutOfMemoryError`, `StackOverflowError`), and you should never try to catch or recover from it. If you're seeing an `Error`, the platform itself is in trouble, not just your code.
+Java draws exactly this line. Failures that are **outside your control** are **checked**: the compiler forces you to acknowledge them. Failures that are **bugs in your code** are **unchecked**: the compiler stays quiet, because the fix is to correct the code.
 
-<ThrowableTreeFigure />
-
-### Why most modern languages dropped checked exceptions
-
-Java is pretty much alone among modern languages in having checked exceptions - Kotlin, C#, Python, Go, and Rust all skip them. The problem is leakage: if some low-level repository throws `SQLException`, every layer above it - every service, every controller - now has to either declare `throws SQLException` too (exposing a database detail nobody above should care about) or wrap it. In practice, most production Java codebases end up converting checked exceptions into unchecked ones on purpose:
-
-```java
-try {
-    database.connect();
-} catch (SQLException e) {
-    throw new DatabaseAccessException("Failed to connect", e); // Wrapped as unchecked
-}
-```
-
-### Closing resources safely: `try-with-resources`
-
-Older code closed resources in a `finally` block. That's fragile - if the `try` block throws, and then the `finally` block *also* throws while closing, the second exception replaces the first, and you lose the real cause of the failure.
-
-`try-with-resources` (Java 7+) fixes this for anything that implements `AutoCloseable`. It closes resources automatically, in reverse order of declaration, and if both the body and the close both fail, it keeps the original exception and attaches the close failure as a suppressed exception (`e.getSuppressed()`) instead of throwing the original away.
-
-### A trap worth knowing: Spring and checked exceptions
-
-Spring's `@Transactional` only rolls back the database transaction on unchecked exceptions by default. Throw a checked exception - like `IOException` - out of a `@Transactional` method, and Spring commits the transaction anyway, as if nothing went wrong. If you want checked exceptions to trigger a rollback too, you have to say so explicitly:
-
-```java
-@Transactional(rollbackFor = Exception.class)
-```
+The argument that followed, for twenty-five years, is about how well that line survives contact with real programs.
 
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+### The proper terms
 
-### Clean Code Example
+#### The hierarchy
 
-Here is how exception handling and safe resource management evaluate across languages:
+Everything throwable descends from **`Throwable`**, which has two branches.
 
-<Tabs groupId="programming-language">
-<TabItem value="java" label="Java" default>
+**`Error`** signals that the JVM itself is in trouble, such as `OutOfMemoryError` or `StackOverflowError`. You do not catch these.
+
+**`Exception`** is the application branch. Everything under it is **checked**, except the subtree rooted at **`RuntimeException`**, which is **unchecked**.
+
+#### Checked and unchecked
+
+A **checked exception** must be either caught or declared in the method's **`throws`** clause. The compiler enforces this, which is the **catch or specify** requirement. Examples are `IOException` and `SQLException`, representing conditions a correct program can still meet.
+
+An **unchecked exception** extends `RuntimeException` and needs no declaration. Examples are `NullPointerException`, `IllegalArgumentException` and `IndexOutOfBoundsException`, which generally signal **programming errors**.
+
+The intended rule: use checked for recoverable conditions a caller can reasonably handle, and unchecked for violations of a method's contract.
+
+#### Why modern languages dropped them
+
+Java is almost alone in having them. C#, Kotlin, Scala and Python have none, for three reasons that experience exposed.
+
+**Exception swallowing.** Forced handling produces empty `catch` blocks written to silence the compiler, which hides failures more thoroughly than not checking at all.
+
+**Broken encapsulation.** A `throws` clause is part of the public signature, so changing an implementation from file storage to a network call changes every caller's signature. The abstraction leaks.
+
+**Hostility to lambdas.** Functional interfaces such as `Function` and `Supplier` do not declare checked exceptions, so any lambda body throwing one must wrap it. This friction became obvious once streams arrived in Java 8.
+
+The usual modern practice in Java is to wrap checked exceptions in unchecked ones at the boundary, which is what Spring does with `DataAccessException`.
+
+#### try-with-resources
+
+Before Java 7, releasing a resource meant a `finally` block, which had two problems: it was verbose, and `close()` could itself throw, discarding the original exception and leaving a misleading one.
+
+**try-with-resources** declares resources in the `try` header. Any resource implementing **`AutoCloseable`** is closed automatically when the block exits, in **reverse order** of declaration, whether or not an exception was thrown.
+
+It also fixes the lost-exception problem with **suppressed exceptions**. If the body throws and `close()` also throws, the body's exception propagates and the close failure is attached to it, retrievable through `getSuppressed()`. Nothing is silently lost.
+
+#### The Spring rollback trap
+
+Spring's **`@Transactional`**, by default, rolls back only on **unchecked** exceptions and `Error`. If a method throws a **checked** exception, the transaction **commits**.
+
+This surprises people, since a checked exception usually means something failed. The intent was to follow EJB convention and treat checked exceptions as expected business outcomes rather than system faults.
+
+The fix is to declare it: `@Transactional(rollbackFor = Exception.class)`.
+
+A second, related trap: `@Transactional` is applied through a **proxy**, so calling an annotated method from another method of the same class bypasses the proxy entirely and no transaction starts. This is **self-invocation**.
+
+---
+
+### In code
 
 ```java
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
 
-public class ExceptionDemo {
-    // 1. try-with-resources: Automatically closes BufferedReader via AutoCloseable
-    public static void readFile(String path) {
-        try (BufferedReader reader = new BufferedReader(new FileReader(path))) {
-            System.out.println(reader.readLine());
-        } catch (IOException e) { // 2. Handling Checked Exception
-            System.err.println("Handled I/O failure: " + e.getMessage());
-            // 3. Modern pattern: wrap checked into unchecked domain exception
-            throw new RuntimeException("Service failed reading file", e);
+class Loader {
+
+    // Checked: the compiler forces the caller to catch or declare
+    String read(String path) throws IOException {
+        try (BufferedReader in = new BufferedReader(new FileReader(path))) {
+            return in.readLine();           // closed automatically, even on throw
+        }                                   // close() failures are suppressed, not lost
+    }
+
+    // Unchecked: a contract violation, so no declaration is needed
+    int parsePositive(String text) {
+        int value = Integer.parseInt(text);
+        if (value <= 0) {
+            throw new IllegalArgumentException("must be positive: " + value);
+        }
+        return value;
+    }
+
+    void demo() {
+        try {
+            read("missing.txt");
+        } catch (IOException e) {
+            // real handling, or wrap it; never leave this empty
+            throw new UncheckedIOException(e);
         }
     }
 }
 ```
 
-</TabItem>
-<TabItem value="cpp" label="C++">
+```java
+// Spring: this commits despite the failure, because IOException is checked
+@Transactional
+public void importFile() throws IOException {
+    throw new IOException("boom");
+}
 
-```cpp
-#include <iostream>
-#include <fstream>
-#include <stdexcept>
-#include <string>
-
-// In C++, all exceptions are unchecked. Resource cleanup relies on RAII:
-void readFile(const std::string& path) {
-    std::ifstream file(path); // File stream automatically closes when going out of scope
-    if (!file.is_open()) {
-        throw std::runtime_error("File could not be opened: " + path);
-    }
-
-    std::string line;
-    if (std::getline(file, line)) {
-        std::cout << line << std::endl;
-    }
+// Correct: rollback is requested explicitly
+@Transactional(rollbackFor = Exception.class)
+public void importFileSafely() throws IOException {
+    throw new IOException("boom");
 }
 ```
 
-</TabItem>
-<TabItem value="python" label="Python">
+---
 
-```python
-# In Python, all exceptions are unchecked.
-# Resource cleanup uses the 'with' context manager (similar to try-with-resources):
+### What they ask next
 
-def read_file(path: str) -> None:
-    try:
-        with open(path, "r") as file:
-            print(file.readline())
-    except FileNotFoundError as e:
-        print(f"Handled error: {e}")
-        # Re-raise or wrap into custom exception
-        raise RuntimeError("Service failure") from e
-```
+**"Can you catch `Error`?"**
+Syntactically yes, practically no. After an `OutOfMemoryError` the JVM is already compromised, and catching it usually makes diagnosis harder.
 
-</TabItem>
-</Tabs>
+**"What happens if `finally` contains a `return`?"**
+It discards any exception in flight and overrides the `try` block's return value, so a failure vanishes silently. Returning from `finally` should be avoided.
+
+**"Which happens first, `finally` or the return value evaluation?"**
+The return expression is evaluated, then `finally` runs, then the method returns. A `finally` block mutating the returned variable does not change the already-evaluated value for primitives.
+
+**"How do you throw a checked exception from a lambda?"**
+Wrap it in an unchecked exception inside the lambda, or define your own functional interface that declares the checked exception.
+
+**"Why does `@Transactional` not roll back on checked exceptions?"**
+It follows the EJB convention of treating checked exceptions as expected business outcomes. Override it with `rollbackFor`.
+
+**The common wrong answer** is "checked means it must be caught". It must be caught **or declared**, and declaring it pushes the obligation to the caller.
+
+---
+
+### Say this in the interview
+
+*"Everything throwable extends Throwable, which splits into Error for JVM-level failures you do not catch, and Exception for application failures. Everything under Exception is checked except the RuntimeException subtree, which is unchecked.*
+
+*A checked exception must be caught or declared in the throws clause, which the compiler enforces as catch or specify. The intent is that checked exceptions represent recoverable conditions outside the program's control, like IOException, while unchecked exceptions signal programming errors, like NullPointerException or IllegalArgumentException.*
+
+*Modern languages dropped them for three reasons: they encourage exception swallowing in empty catch blocks, they break encapsulation because the throws clause is part of the signature and leaks implementation choices to callers, and they interact badly with lambdas, since standard functional interfaces do not declare them. Common Java practice now is to wrap checked exceptions in unchecked ones at the boundary.*
+
+*try-with-resources closes anything implementing AutoCloseable automatically, in reverse order of declaration, and if both the body and close throw, the body's exception propagates with the close failure attached through suppressed exceptions rather than replacing it.*
+
+*The Spring trap is that @Transactional rolls back only on unchecked exceptions and Error by default, so a checked exception commits the transaction. The fix is rollbackFor = Exception.class. A related trap is self-invocation: calling an annotated method from within the same class bypasses the proxy, so no transaction starts."*

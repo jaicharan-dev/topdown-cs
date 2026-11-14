@@ -1,120 +1,171 @@
 ---
 id: 17-hash-collision
 title: "Hash Collisions: The Pigeonhole Principle in Practice"
-description: "Learn how hash collisions occur via the pigeonhole principle and compare separate chaining against open addressing strategies."
+description: "Collisions are unavoidable, and the two families of fix behave very differently"
 
 sidebar_position: 17
 sidebar_class_name: sidebar-easy
 ---
 
-import { CollisionFigure } from '@site/src/components/Figures/HashCollision';
-
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What causes hash collisions, and how do separate chaining and open addressing resolve them? What are primary clustering and the tombstone problem in open addressing?"
 
-A hash collision is when two different keys hash to the same array index. This isn't a bug - it's guaranteed to happen eventually. You have an unlimited number of possible keys but only a fixed number of slots in the array, so sooner or later two keys have to share a slot. That's just the pigeonhole principle: put more pigeons than holes, and some hole gets two.
+---
 
-The only question is what you do when it happens. There are two main answers: **separate chaining** (let a bucket hold more than one item, usually as a small list) and **open addressing** (if your slot is taken, go find another empty one in the array).
+### Picture it
 
-<CollisionFigure />
+Put twenty letters into sixteen pigeonholes and at least one hole gets two letters. No cleverness avoids it: there are simply more letters than holes.
 
-### Chaining vs. open addressing
+That is the whole cause. A hash function squeezes an unlimited set of possible keys into a fixed number of slots, so two different keys are guaranteed to share one eventually. Collisions are not a bug or a sign of a poor hash. They are arithmetic. A good hash only makes them **rare and evenly spread**, never absent.
 
-| Dimension | Separate Chaining | Open Addressing |
-|---|---|---|
-| **Storage Model** | Colliding items live outside the array, linked together. | Everything lives directly inside the array - no separate nodes. |
-| **Max Load Factor** | Can go above 1.0 - a bucket can hold many items. | Must stay below 1.0 (usually resizes around 0.5–0.7 full). |
-| **Cache Locality** | Weaker - following links jumps around in memory. | Strong - scanning nearby array slots is cache-friendly. |
-| **Who Uses It** | Java `HashMap`, C++ `std::unordered_map`. | Python `dict`, Ruby `Hash`. |
+Given that, there are two ways to cope.
 
-### How open addressing finds the next slot
+**Hang a bag on each pigeonhole.** Two letters for hole 4 both go in hole 4's bag, and you look through the bag.
 
-When your target slot is taken, you need a rule for where to look next. There are three common ones:
-
-1. **Linear probing** - just check the next slot, then the next, then the next (`+1, +2, +3...`). Simple, but occupied slots tend to clump into long runs (**primary clustering**), and any key landing in that run has to walk past the whole thing.
-2. **Quadratic probing** - jump by increasing squared steps (`+1, +4, +9...`) instead of by one. This avoids primary clustering, but keys that start at the same slot still follow the exact same path after that (**secondary clustering**).
-3. **Double hashing** - use a second, independent hash function to decide the step size. Because the step size itself varies by key, this spreads things out the most evenly, with almost no clustering.
-
-### Why you can't just delete by writing null
-
-In open addressing, deleting a key isn't as simple as clearing its slot. Say key A sits at slot 4, and key B collided with it and got probed into slot 5. Now delete A and set slot 4 back to empty. Later, you search for B: you hash to slot 4, find it empty, and conclude B was never inserted - even though it's sitting right there in slot 5. The search stopped too early.
-
-The fix is a **tombstone**: instead of marking the slot truly empty, mark it `DELETED`. A search keeps probing past a `DELETED` marker (it might find what it's looking for further along), while a new insertion is free to overwrite a `DELETED` slot with fresh data.
+**Put the letter in the next free hole.** Hole 4 is taken, so try hole 5, then 6. Nothing hangs off the holes, but letters end up away from home, and finding one means retracing the same walk.
 
 ---
 
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
+### The proper terms
 
-### Clean Code Example
+#### Why collisions are inevitable
 
-Here is how collision strategies are utilized in standard language collections:
+The **pigeonhole principle** says that placing more items than containers forces at least one container to hold two. Since the set of possible keys is effectively unbounded and the table is finite, collisions are unavoidable.
 
-<Tabs groupId="programming-language">
-<TabItem value="java" label="Java" default>
+A good **hash function** therefore aims for **uniform distribution**, spreading keys evenly, and the **avalanche effect**, where a small change in the key changes many bits of the hash.
+
+#### Separate chaining
+
+**Separate chaining** gives each bucket a secondary structure, traditionally a **linked list**, holding every entry that hashed there. Lookup finds the bucket then walks it comparing with `equals`.
+
+It degrades gracefully: with every key colliding, lookup is **O(n)** but the table still works. Java's HashMap converts long chains to a **red-black tree**, bounding that at **O(log n)**.
+
+It can also hold more entries than it has buckets, so the **load factor** may exceed 1. The costs are the memory for node objects and poorer **cache locality**, since list nodes are scattered in memory.
+
+#### Open addressing
+
+**Open addressing** stores every entry inside the table itself. On a collision it **probes** for another slot by a fixed rule, and a lookup repeats the same sequence until it finds the key or an empty slot.
+
+**Linear probing** tries the next slot, then the next. It has excellent cache locality, since the probe walks adjacent memory.
+
+**Quadratic probing** tries offsets of 1, 4, 9 and so on, spreading probes further apart.
+
+**Double hashing** computes the step size with a second hash function, so different keys follow different probe sequences.
+
+Because everything lives in the table, the load factor can never exceed 1, and performance falls off sharply above roughly 0.7.
+
+#### Primary clustering
+
+**Primary clustering** is the specific weakness of linear probing. Once a run of occupied slots forms, any key hashing anywhere into that run must walk to its end, which extends the run, which makes future collisions more likely. Clusters grow by feeding on themselves, and long probe sequences follow.
+
+Quadratic probing avoids it but suffers **secondary clustering**, where keys with the same initial hash follow identical probe paths. Double hashing avoids both, because the step size varies per key.
+
+#### The tombstone problem
+
+Deletion is the awkward part of open addressing. Clearing a slot outright breaks lookups for anything that probed **past** it, because the now-empty slot makes the search stop early and report the key as absent.
+
+The fix is a **tombstone**, a marker meaning "occupied once, now deleted". Searches treat it as occupied and keep probing; insertions may reuse it.
+
+The cost is that tombstones accumulate, lengthening probe sequences even when the table is nearly empty. Periodic rehashing clears them. Separate chaining has no equivalent problem, since removing a node from a list leaves nothing behind.
+
+---
+
+### In code
 
 ```java
-import java.util.HashMap;
+// Separate chaining: each bucket holds a list
+class ChainedMap {
+    private final java.util.List<java.util.List<String>> buckets = new java.util.ArrayList<>();
 
-// Java uses SEPARATE CHAINING (LinkedList -> Red-Black Tree)
-public class CollisionDemo {
-    public static void main(String[] args) {
-        // Strings "Aa" and "BB" famously produce the identical Java hashCode: 2112
-        String key1 = "Aa";
-        String key2 = "BB";
+    ChainedMap(int capacity) {
+        for (int i = 0; i < capacity; i++) buckets.add(new java.util.ArrayList<>());
+    }
 
-        System.out.println(key1.hashCode()); // 2112
-        System.out.println(key2.hashCode()); // 2112
+    void put(String key) {
+        buckets.get(index(key)).add(key);          // collisions simply pile up
+    }
 
-        HashMap<String, String> map = new HashMap<>();
-        map.put(key1, "First Value");
-        map.put(key2, "Second Value"); // Stored in the same bucket via separate chaining
+    boolean contains(String key) {
+        return buckets.get(index(key)).contains(key);
+    }
 
-        System.out.println(map.get(key1)); // "First Value"
-        System.out.println(map.get(key2)); // "Second Value"
+    private int index(String key) {
+        return Math.abs(key.hashCode()) % buckets.size();
+    }
+}
+
+// Open addressing with linear probing and tombstones
+class ProbedMap {
+    private static final String TOMBSTONE = new String("<deleted>");
+    private final String[] slots;
+
+    ProbedMap(int capacity) { slots = new String[capacity]; }
+
+    void put(String key) {
+        int i = index(key);
+        while (slots[i] != null && slots[i] != TOMBSTONE) {
+            i = (i + 1) % slots.length;            // linear probe
+        }
+        slots[i] = key;
+    }
+
+    boolean contains(String key) {
+        int i = index(key);
+        while (slots[i] != null) {                 // a tombstone keeps the walk going
+            if (slots[i] != TOMBSTONE && slots[i].equals(key)) return true;
+            i = (i + 1) % slots.length;
+        }
+        return false;                              // only a genuine null ends it
+    }
+
+    void remove(String key) {
+        int i = index(key);
+        while (slots[i] != null) {
+            if (slots[i] != TOMBSTONE && slots[i].equals(key)) {
+                slots[i] = TOMBSTONE;              // not null, or lookups break
+                return;
+            }
+            i = (i + 1) % slots.length;
+        }
+    }
+
+    private int index(String key) {
+        return Math.abs(key.hashCode()) % slots.length;
     }
 }
 ```
 
-</TabItem>
-<TabItem value="cpp" label="C++">
+The single most important line is `slots[i] = TOMBSTONE`. Writing `null` there would make any key that probed past this slot suddenly unfindable.
 
-```cpp
-#include <iostream>
-#include <unordered_map>
-#include <string>
+---
 
-// C++ std::unordered_map is mandated by the standard to use SEPARATE CHAINING
-int main() {
-    std::unordered_map<std::string, int> map;
-    map["alpha"] = 1;
-    map["beta"] = 2;
+### What they ask next
 
-    // Check bucket allocation
-    size_t b1 = map.bucket("alpha");
-    size_t b2 = map.bucket("beta");
+**"Which does Java use?"**
+`HashMap` and `ConcurrentHashMap` use separate chaining with treeification. `IdentityHashMap` uses linear probing, and many high-performance third-party maps use open addressing for the cache locality.
 
-    std::cout << "Alpha Bucket: " << b1 << ", Beta Bucket: " << b2 << std::endl;
-    return 0;
-}
-```
+**"Which performs better?"**
+Open addressing is usually faster at low load factors because of cache locality. Separate chaining degrades more gracefully as the table fills and handles deletion cleanly. The deciding factors are the expected load factor and how often entries are removed.
 
-</TabItem>
-<TabItem value="python" label="Python">
+**"Can you avoid collisions entirely?"**
+Only with **perfect hashing**, which requires the complete key set in advance. For a fixed known set, such as language keywords, that is possible; for a general-purpose map it is not.
 
-```python
-# Python dictionaries use OPEN ADDRESSING with pseudo-random perturbation,
-# rather than separate chaining. All key-value entries reside in a compact array.
+**"What is a hash DoS attack?"**
+An attacker submits keys deliberately chosen to collide, turning every operation into a worst-case scan. Mitigations are randomised hash seeds and treeification, which caps the damage at logarithmic.
 
-d = {}
-d["key1"] = "val1"
-d["key2"] = "val2"
+**The common wrong answer** is "a good hash function prevents collisions". It cannot. The pigeonhole principle rules it out, and saying so is the point of the question.
 
-# Python's dict resolves collisions by probing internally,
-# keeping lookup time O(1) without linked list pointer indirection.
-print(d["key1"]) # "val1"
-```
+---
 
-</TabItem>
-</Tabs>
+### Say this in the interview
+
+*"Collisions are unavoidable by the pigeonhole principle: the key space is effectively unbounded and the table is finite, so two keys must eventually share a slot. A good hash function only makes them rare and evenly spread, aiming for uniform distribution and the avalanche effect.*
+
+*Separate chaining gives each bucket a secondary structure, usually a linked list, so colliding entries accumulate there and lookup walks the bucket. It degrades gracefully to O(n), or O(log n) in Java once a chain is treeified into a red-black tree, and it allows a load factor above 1.*
+
+*Open addressing stores entries in the table itself and probes for another slot on collision, using linear probing, quadratic probing or double hashing. It has better cache locality but the load factor cannot exceed 1 and performance drops sharply past about 0.7.*
+
+*Primary clustering is linear probing's weakness: a run of occupied slots absorbs any key hashing into it, extending the run, so clusters grow on themselves. Quadratic probing avoids that but has secondary clustering; double hashing avoids both.*
+
+*The tombstone problem is about deletion. Clearing a slot to null breaks lookups for keys that probed past it, since the search stops early, so deleted slots are marked with a tombstone that searches treat as occupied. Tombstones accumulate and lengthen probes, so the table is rehashed periodically. Chaining has no such issue."*
