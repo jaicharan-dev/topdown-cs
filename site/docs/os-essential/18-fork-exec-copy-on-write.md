@@ -1,102 +1,156 @@
 ---
 id: 18-fork-exec-copy-on-write
 title: "fork(), exec(), and Copy-on-Write"
-description: "Understand how fork() creates processes instantly using Copy-on-Write, why that matters for exec(), and what happens when memory gets overcommitted."
+description: "Duplicating a process without duplicating its memory, and why that pays off most when the copy is discarded"
+
 sidebar_position: 18
 sidebar_class_name: sidebar-medium
 ---
-
-import { Diagram, Row, Box, Arrow } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What happens internally when a process calls fork()? How does Copy-on-Write (COW) work, what happens when memory is overcommitted, and why is COW critical for the fork-exec pattern?"
 
-`fork()` creates a new process by cloning the current one. The old, naive way to do that was to physically copy all of the parent's memory — which is slow and, as you'll see below, usually pointless. Modern OSs use a trick called **Copy-on-Write** to make `fork()` almost instant.
+---
 
-Think of it like two people sharing a textbook instead of photocopying it. You and a colleague both need to read the same 1,000-page physics book. Instead of spending three hours at the copier, you just put one book on the desk between you — you both read the same physical pages. Only if one of you picks up a pen and starts writing notes on page 42 does anyone bother making a copy — and even then, only that one page gets copied. The other 999 stay shared.
+### Picture it
+
+An office needs a second team working from the same thousand-page manual.
+
+**The obvious approach is to photocopy the manual.** A thousand pages, slow and expensive, and the moment it is done you discover the second team only needed to read page 12 before being handed a completely different manual. The photocopying was entirely wasted.
+
+**The better approach is to share the original and watch for edits.** Both teams read the same copy. The pages are marked "reference only", so an attempt to write on a page is noticed, and only **that page** is photocopied for the person writing. Teams that only read never trigger a single copy.
+
+This is efficient in the ordinary case and spectacular in the common one. The usual reason to create a second team is to immediately hand them a different manual, at which point the shared pages are dropped unread and nothing was copied at all.
+
+One caveat the office must accept. Promising both teams they may write on any page, while only buying paper when they actually do, means promising more paper than is in the cupboard. Usually fine; occasionally there is a day when everybody writes at once.
 
 ---
 
-### Shared until someone writes
+### The proper terms
 
-<Diagram>
-<Row>
-<Box label="Parent" sub="page table" />
-<Arrow />
-<Box label="Frame 842" sub="read-only, shared" />
-<Arrow />
-<Box label="Child" sub="page table" />
-</Row>
-</Diagram>
+#### What fork does
 
-Here's what actually happens, step by step:
+**`fork()`** creates a new process by duplicating the calling one. The new process is the **child** and the original the **parent**.
 
-1. **`fork()` copies only the page table**, not the memory itself. Both parent and child's page table entries point at the exact same physical frames. Zero bytes of RAM are duplicated.
-2. **Those shared pages get marked read-only** in both processes' page tables — even pages that were originally writable.
-3. **Either process tries to write** to one of those pages — say, `counter = 42`.
-4. **The CPU's memory management unit catches it.** Writing to a read-only page triggers a hardware page fault.
-5. **The kernel steps in.** It recognizes this as a COW fault (not a real error), allocates one new physical frame, copies the 4KB of data into it, points the faulting process's page table at the new frame, marks both the original and new frame read-write again, and replays the write instruction — all transparently. The app never knows this happened.
+The kernel creates a new **task_struct** and **PCB**, assigns a fresh **PID**, and copies the parent's **page tables**, not its memory. The child inherits copies of the parent's **file descriptors**, which refer to the **same open file descriptions**, so they share a file offset.
 
-So the parent and child only diverge in memory exactly where one of them actually writes. Everything else stays shared for free.
+The distinguishing feature is that **fork returns twice**: **0** in the child, and the **child's PID** in the parent. On failure it returns **-1**, typically with **EAGAIN** when the process or PID limit is reached.
+
+#### Copy-on-write
+
+**Copy-on-write**, or **COW**, is what makes fork cheap.
+
+Instead of copying the parent's memory, the kernel maps the **same physical frames** into both processes and marks every writable page **read-only** in both page tables, while recording its true permissions.
+
+Reads proceed normally from the shared frames. When either process **writes**, the hardware raises a **protection fault**, which is a **minor page fault**. The kernel recognises it as a COW fault, allocates a new frame, **copies only that page**, updates the writing process's page table to point at the private copy with write permission restored, and restarts the instruction.
+
+So the copy is **deferred**, **per page**, and happens **only for pages actually written**. The fork itself costs only page table duplication, which is proportional to the number of pages mapped rather than the memory used.
+
+The kernel also maintains a **reference count** per shared frame. When it drops to one, the remaining process's page can be made writable again directly, with no copy needed.
+
+#### Why it matters for fork-exec
+
+The dominant use of fork is the **fork-exec pattern**: a shell or server forks and the child immediately calls **`exec()`**, which **replaces** the entire process image with a new program.
+
+`exec` discards the address space completely. Without COW, the kernel would copy the parent's entire memory and then throw all of it away microseconds later. For a large parent, such as a database or JVM forking to run a small helper, that is an enormous waste.
+
+With COW, essentially nothing is copied, because the child writes almost nothing before calling exec. This is why the pattern is viable at all, and why Unix kept two separate calls instead of a single "spawn".
+
+Note what `exec` preserves: the **PID**, open file descriptors not marked **close-on-exec**, and the working directory. That is precisely how a shell implements redirection, by forking, rearranging file descriptors in the child, and then exec'ing.
+
+**`vfork()`** was the historical optimisation for this case, suspending the parent and sharing its address space outright. COW made it largely unnecessary, and it is error-prone.
+
+#### Overcommit
+
+COW means the kernel promises memory it has not reserved. **Overcommit** is allowing the total promised to exceed physical memory plus swap, on the assumption that most of it is never written.
+
+Linux exposes `vm.overcommit_memory`: **0** is a heuristic default, **1** always allows, and **2** enforces a strict limit based on a configured ratio.
+
+The failure mode is that allocation succeeds but the memory is not there when written. Since there is nothing sensible to return from a page fault, the kernel invokes the **OOM killer**, which selects a victim by an **oom_score** weighted by memory footprint and terminates it with **SIGKILL**.
+
+The uncomfortable consequence is that the process killed is often **not** the one that overcommitted, but simply the largest. Databases and JVMs are frequent victims, which is why production systems often tune the OOM score for critical services or disable overcommit outright.
 
 ---
 
-### Why this matters: `fork()` is almost always followed by `exec()`
+### In code
 
-In Unix, running any program — even just `ls` in your shell — means the shell calls `fork()` to clone itself, then immediately calls `execve()` in the child to replace that clone's entire memory with a new program.
+```c
+// fork returns twice, which is the first surprising thing about it
+pid_t pid = fork();
 
-If `fork()` had actually copied, say, 4GB of RAM, all of that work would be thrown away a few microseconds later when `execve()` wipes the child's address space clean. Copy-on-write means `fork()` is a cheap, constant-time pointer copy — no wasted work, no matter how much memory the parent is using.
+if (pid < 0) {
+    perror("fork");                       // -1: failure, often EAGAIN
+} else if (pid == 0) {
+    printf("child, pid %d\n", getpid());  // 0 in the child
+    _exit(0);
+} else {
+    printf("parent of %d\n", pid);        // child's PID in the parent
+    wait(NULL);                           // reap, or it becomes a zombie
+}
+```
+
+```text
+Copy-on-write, step by step:
+
+  before fork        parent ──► [ page A ]  rw
+
+  after fork         parent ──► [ page A ]  r-   (shared, marked read-only)
+                     child  ──► [ page A ]  r-    refcount = 2
+
+  child reads A      no fault, reads the shared frame
+
+  child writes A     protection fault -> minor page fault
+                     kernel allocates a new frame, copies A into it
+
+                     parent ──► [ page A  ]  rw   refcount = 1
+                     child  ──► [ page A' ]  rw   its own private copy
+
+  Only the written page was ever copied.
+```
+
+```c
+// The fork-exec pattern: COW's best case, since nothing survives the exec
+pid_t pid = fork();
+if (pid == 0) {
+    int fd = open("out.txt", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+    dup2(fd, STDOUT_FILENO);              // redirection: rearrange fds first
+    close(fd);
+    execlp("ls", "ls", "-l", NULL);       // the address space is discarded here
+    _exit(127);                           // only reached if exec failed
+}
+wait(NULL);
+```
 
 ---
 
-### The dark side: memory overcommit and the OOM killer
+### What they ask next
 
-Because COW delays the actual memory allocation until someone writes, Linux lets you **overcommit** memory — a machine with 16GB of RAM can happily fork processes that together claim 32GB of virtual memory, betting that they won't all write to everything at once.
+**"How can fork return twice?"**
+It returns once in each process. The kernel creates the child with its return register set to 0 and returns the child's PID in the parent, so one call site produces two outcomes in two different processes.
 
-Usually that bet pays off. But if parent and child both start writing to all their shared pages at the same time, and physical RAM actually runs out with no swap space left, the kernel has a problem: a COW page fault it literally cannot satisfy. Its last resort is the **OOM killer** — it scores every process (roughly, by how much memory it's using) and force-kills the worst offender with `SIGKILL` to free up RAM before the whole system locks up.
+**"Does COW copy on read?"**
+No. Reads are served from the shared frame with no fault at all. Only a write triggers the protection fault, and only the written page is copied.
+
+**"What is the difference between a COW fault and a normal page fault?"**
+A COW fault is a **minor** fault: the page is already in memory and only the permissions and sharing need resolving, so it costs microseconds. A **major** fault requires disk I/O and costs milliseconds.
+
+**"Why does `exec` not create a new process?"**
+Because fork already did. `exec` replaces the image of the current process, keeping its PID, its non-close-on-exec file descriptors and its working directory. Separating the two is what lets the shell redirect output between them.
+
+**"What is the risk of overcommit?"**
+Memory is promised that may not exist. When it is written and unavailable, the OOM killer terminates a process chosen by oom_score, which is frequently the largest process rather than the one responsible.
+
+**The common wrong answer** is "fork copies the whole address space". It copies page tables and shares the frames. The copying is deferred per page, and in the fork-exec case almost none of it ever happens.
 
 ---
 
 ### Say this in the interview
 
-*"`fork()` doesn't copy memory — it copies the page table and marks the shared physical pages read-only in both processes. The first write to any shared page triggers a hardware page fault, and the kernel copies just that one 4KB page before letting the write through. This makes `fork()` essentially free, which matters because it's almost always immediately followed by `exec()`, which throws the copied memory away anyway. The tradeoff is memory overcommit — if too many COW pages get dirtied at once and RAM runs out, the OOM killer starts force-killing processes."*
+*"fork creates a child process by duplicating the caller. The kernel allocates a new task structure and PID and copies the page tables rather than the memory, and the child inherits the parent's file descriptors, which still refer to the same open file descriptions. It returns twice: 0 in the child, the child's PID in the parent, and -1 on failure.*
 
----
+*Copy-on-write is what makes that cheap. Both processes map the same physical frames, with writable pages marked read-only in both page tables. Reads are served from the shared frames. On a write, the hardware raises a protection fault, which is a minor page fault, and the kernel allocates a new frame, copies just that page, restores write permission for the writer and restarts the instruction. So copying is deferred, per page, and only for pages actually written, with a reference count tracking sharing.*
 
-### Code: watching Copy-on-Write happen
+*It matters most for the fork-exec pattern. exec replaces the whole address space, so without copy-on-write the kernel would duplicate the parent's memory and discard it microseconds later, which is ruinous when a large process forks a small helper. With copy-on-write almost nothing is copied. exec preserves the PID, the working directory, and file descriptors not marked close-on-exec, which is how a shell implements redirection.*
 
-```c
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/wait.h>
-
-int global_val = 100;
-
-int main() {
-    printf("[Initial] global_val address: %p | value: %d\n", (void*)&global_val, global_val);
-
-    pid_t pid = fork();
-
-    if (pid == 0) {
-        // Child Process
-        printf("[Child Before Write] Virtual Address: %p | value: %d\n", 
-               (void*)&global_val, global_val);
-        
-        // This write triggers a hardware protection page fault and COW frame copy!
-        global_val = 999;
-        
-        // Virtual address remains IDENTICAL in child, but now maps to a different physical frame!
-        printf("[Child After Write]  Virtual Address: %p | value: %d\n", 
-               (void*)&global_val, global_val);
-        exit(0);
-    } else {
-        // Parent Process
-        wait(NULL);
-        printf("[Parent After Child] Virtual Address: %p | value: %d\n", 
-               (void*)&global_val, global_val);
-    }
-    return 0;
-}
-```
+*Overcommit is the consequence: the kernel promises more memory than exists, assuming most is never written. If that assumption fails there is nothing sensible to return from a page fault, so the OOM killer selects a victim by oom_score and sends SIGKILL, often killing the largest process rather than the one responsible."*

@@ -1,122 +1,152 @@
 ---
 id: 19-paging-vs-segmentation
 title: "Paging vs. Segmentation"
-description: "Compare paging (fixed-size blocks) with segmentation (variable-size logical units), how address translation works for each, and why x86-64 dropped segmentation."
+description: "Equal-sized slots the programmer never sees against variable-sized regions that match the program's structure"
+
 sidebar_position: 19
 sidebar_class_name: sidebar-medium
 ---
-
-import { Diagram, Row, Box } from '@site/src/components/SimpleDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is the difference between paging and segmentation? How does hardware translate addresses under each model, why do modern OSs standardize on paging, and why did x86-64 deprecate segmentation?"
 
-Both paging and segmentation answer the same question: how do you cut up memory into pieces you can hand out to processes? They just disagree on how to cut it.
+---
 
-Picture a 100-page manuscript you need to store in lockers:
-- **Paging** is the guillotine approach — you cut it every 10 inches with a ruler, without reading a word. Sentences get sliced in half, but every chunk is the same size, so it fits any locker with zero wasted shelf space.
-- **Segmentation** is the chapter approach — you cut along the natural boundaries: Introduction, Main Body, Conclusion. The meaning stays intact, but now your chunks are all different sizes, and lockers that fit one chapter leave awkward gaps for the next.
+### Picture it
 
-That tradeoff — uniform-but-arbitrary vs. meaningful-but-irregular — is the whole story.
+Two ways to store a company's belongings in a warehouse.
+
+**Identical lockers.** Every locker is the same size, and anything that does not fit goes into as many lockers as it needs. A locker is always available if any are free, because any item fits any locker. The warehouse never has to hunt for a space of the right shape. The waste is that the last locker of each set is usually part empty, and nothing about a locker tells you whether it holds invoices or furniture.
+
+**Rooms sized to their contents.** The filing room is as big as the filing needs; the furniture room as big as the furniture. The arrangement matches how the company actually thinks, and you can lock the filing room and leave the furniture room open. The problem is that as rooms come and go, the free space ends up as awkward gaps: plenty of total space, none of it a single room big enough for what you need next.
+
+The first is paging. The second is segmentation. Modern systems chose the lockers and recovered the useful part of rooms some other way.
 
 ---
 
-<Diagram>
-<Row>
-<Box label="Paging" sub="fixed-size frames" />
-<Box label="Segmentation" sub="variable-size units" />
-</Row>
-</Diagram>
+### The proper terms
 
-### How each one translates an address
+#### Paging
 
-**Paging:** a virtual address splits into a page number and an offset. The page table maps the page number to a physical frame number; the offset just comes along unchanged. Since page sizes are always a power of two (4096 bytes, say), the offset can never accidentally spill into the next page — there's no limit check needed.
+**Paging** divides the virtual address space into fixed-size **pages** and physical memory into equally sized **frames**, typically **4 KB**. Any page can go in any frame.
 
-**Segmentation:** a virtual address splits into a segment index and an offset. The segment table stores a `(base, limit)` pair for each segment. Hardware checks: is the offset less than the limit? If yes, the physical address is just `base + offset`. If no, the CPU raises a fault — a real segmentation violation.
+An address is split by the hardware into a **page number** and an **offset**. The page number indexes the **page table** to find a frame number, and the frame number is combined with the same offset to produce the physical address. Because page sizes are powers of two, this is bit slicing rather than arithmetic.
+
+Paging is **invisible to the programmer**. It is a memory management technique, not a way of expressing program structure.
+
+Its defining property is that it eliminates **external fragmentation**, since any free frame serves any page, while introducing **internal fragmentation**, because the final page of an allocation is usually partly unused, averaging half a page per region.
+
+#### Segmentation
+
+**Segmentation** divides the address space into variable-sized **segments** that correspond to logical units: code, data, stack, heap.
+
+An address is a pair, **segment number** and **offset**. The segment number indexes the **segment table**, which holds a **base** and a **limit** for that segment. The hardware checks the offset against the limit, raising a **segmentation fault** if it exceeds it, then **adds** the base to the offset.
+
+Note the mechanical difference: paging **concatenates** a frame number with an offset, while segmentation **adds** a base to an offset and must perform a bounds check.
+
+Segmentation is **visible to the programmer** and matches program structure, which gives it two genuine advantages: **protection** can be set per logical unit, and **sharing** a code segment between processes is natural.
+
+Its defining problem is **external fragmentation**. Variable-sized segments come and go, leaving gaps that are individually too small to be useful, which eventually requires **compaction**, an expensive relocation of everything.
+
+#### Why paging won
+
+**No external fragmentation**, so no compaction is ever needed. This is the decisive advantage.
+
+**Simpler allocation.** Any free frame will do, so allocation is taking a frame off a free list rather than searching for a run of the right size with first-fit or best-fit.
+
+**Swapping works naturally.** Fixed-size pages can be written to and read from disk individually. Swapping a variable-sized segment means moving the whole thing.
+
+**Internal fragmentation is bounded and small**, averaging half a page per region, which is predictable in a way external fragmentation is not.
+
+Modern systems keep segmentation's benefits without its mechanism. Protection and sharing per logical region are provided by **protection bits in page table entries** and by kernel structures describing regions, such as Linux's **VMAs**. You get per-region read, write and execute permissions without variable-sized physical allocation.
+
+#### Why x86-64 deprecated segmentation
+
+x86-32 supported **segmentation with paging**, where segmentation produced a linear address that paging then translated. Operating systems made this a formality by using the **flat memory model**: all segments set to base 0 and the maximum limit, so segmentation became an identity transformation and only paging did real work.
+
+**x86-64 made that official.** In **long mode**, the **CS**, **DS**, **ES** and **SS** segment bases are **forced to zero** and their limits ignored, so segmentation is effectively disabled. The hardware stopped supporting a feature nobody used.
+
+Two registers survive because they were useful for something else: **FS** and **GS** retain functioning bases, used for **thread-local storage** in user space and for per-CPU data in the kernel.
+
+So segmentation was not removed on principle. It was removed because paging already did the job, and every operating system had been neutralising segmentation for years.
 
 ---
 
-### Side by side
+### In code
 
-| | Paging | Segmentation |
-| :--- | :--- | :--- |
-| **Block size** | Fixed (typically 4KB) | Variable — matches logical chunks like code, heap, stack |
-| **Who it's for** | Hardware/OS — invisible to the programmer | Programmer/compiler — maps to real program structure |
-| **Fragmentation** | Internal (wastes space inside a block) | External (wastes space between blocks) |
-| **Hardware needed** | Multi-level page tables + TLB | Segment tables + limit-check hardware |
-| **Where it stands today** | The universal standard | Mostly dropped from modern hardware |
+```text
+Address translation, side by side:
+
+  PAGING                              SEGMENTATION
+
+  virtual: | page no | offset |       virtual: | seg no | offset |
+                │        │                         │        │
+                ▼        │                         ▼        │
+          page table     │                   segment table  │
+          -> frame no    │                   -> base, limit │
+                │        │                         │        │
+                │        │                   offset < limit ?
+                │        │                     no -> FAULT
+                ▼        ▼                         ▼        ▼
+  physical: | frame no | offset |      physical:  base  +  offset
+
+  concatenation, no bounds check      addition, with a bounds check
+  (the offset cannot overflow         (the offset can exceed the
+   a fixed-size page)                  segment, hence the check)
+```
+
+```text
+Fragmentation, which is the real trade:
+
+  paging         frames: [ P ][ P ][ P ][ P ]   all identical, always usable
+                 waste:  part of the last page of each region
+                 -> internal fragmentation, bounded at ~half a page
+
+  segmentation   memory: [ seg A ][gap][ seg B ][ gap ][ seg C ]
+                 waste:  gaps too small to hold the next segment
+                 -> external fragmentation, needs compaction
+```
+
+```text
+x86-64 long mode:
+
+  CS, DS, ES, SS    base forced to 0, limit ignored   -> segmentation off
+  FS, GS            bases still work                  -> thread-local storage,
+                                                         per-CPU kernel data
+```
 
 ---
 
-### Why paging won
+### What they ask next
 
-1. **No external fragmentation.** Variable-size segments leave scattered holes that need expensive compaction (pausing execution to shuffle gigabytes of RAM around). Uniform pages never do this.
-2. **Constant-time allocation.** The OS just keeps a free list of identical 4KB frames and pops one off — no searching for a big-enough gap.
-3. **Swapping is simple.** Moving a uniform 4KB block to and from disk is a clean, predictable operation.
+**"Can you use both at once?"**
+Yes, and x86-32 did: segmentation produced a linear address that paging translated. In practice operating systems used the flat model to neutralise the segmentation stage, which is why x86-64 could drop it.
 
----
+**"Why does segmentation need a bounds check when paging does not?"**
+Because a segment has a variable length, so an offset can exceed it. A page has a fixed power-of-two size, and the offset field is exactly wide enough to address within it, so it cannot overflow by construction.
 
-### Why x86-64 dropped segmentation in hardware
+**"Is a segmentation fault related to segmentation?"**
+The name is a historical inheritance. The modern signal is raised by the paging system when a process accesses an address that is not mapped or whose protection bits forbid the access. The name outlived the mechanism.
 
-32-bit x86 had segmentation baked deep into the hardware, with dedicated segment registers (`CS`, `DS`, `SS`, `ES`, `FS`, `GS`). When Intel and AMD designed 64-bit mode, they deliberately killed it: segment base addresses are forced to 0, limit checks are disabled, and the whole address space becomes one flat space.
+**"How do modern systems get per-region protection without segments?"**
+Through protection bits in each page table entry, read, write and execute, together with kernel structures describing regions, such as Linux's virtual memory areas. Hardware **NX** support made per-region no-execute practical.
 
-So how do you get segmentation's benefits — protecting code from being written, marking some pages non-executable — without hardware segments? You apply those same permissions (`read`, `write`, `no-execute`) directly to pages in the page table instead. You get the protection, minus the fragmentation problem.
+**"What are FS and GS used for now?"**
+FS typically holds the base of thread-local storage in user space, and GS holds per-CPU data in the kernel, swapped on kernel entry with `SWAPGS`. They survived precisely because they are useful as a fast per-thread or per-CPU pointer.
+
+**The common wrong answer** is that paging eliminates fragmentation. It eliminates **external** fragmentation and **causes** internal fragmentation. Trading an unbounded, unpredictable problem for a small bounded one is the actual argument.
 
 ---
 
 ### Say this in the interview
 
-*"Paging splits memory into fixed-size physical frames — simple, fast, but wastes space inside the last frame of an allocation (internal fragmentation). Segmentation splits memory into variable-size logical units that match program structure, but leaves scattered gaps between them (external fragmentation), which needs expensive compaction. Modern OSs standardized on paging because fragmentation is easier to live with than memory compaction, and x86-64 dropped hardware segmentation entirely — any protection it used to offer now comes from permission bits on pages instead."*
+*"Paging divides the address space into fixed-size pages and physical memory into equally sized frames, typically 4 KB, and any page fits any frame. The hardware splits an address into a page number and an offset, indexes the page table for a frame number, and concatenates it with the same offset. It is invisible to the programmer.*
 
----
+*Segmentation divides the address space into variable-sized segments matching logical units like code, data and stack. An address is a segment number and an offset; the segment table gives a base and a limit, the hardware checks the offset against the limit and raises a fault if it exceeds it, then adds the base. So paging concatenates while segmentation adds and bounds-checks, and segmentation is visible to the programmer, which makes per-unit protection and sharing natural.*
 
-### Code: a paging MMU and a segmentation MMU, side by side
+*The trade is fragmentation. Paging eliminates external fragmentation, since any free frame serves any page, but introduces internal fragmentation of about half a page per region. Segmentation has no internal fragmentation but suffers external fragmentation, leaving gaps that eventually require expensive compaction.*
 
-```python
-class PagingMMU:
-    def __init__(self, page_size=4096):
-        self.page_size = page_size
-        self.page_table = {0: 5, 1: 12, 2: 8} # virtual page -> physical frame
+*Paging won because no compaction is ever needed, allocation is just taking a frame off a free list, and fixed-size pages swap to disk individually. Modern systems recover segmentation's benefits through protection bits in page table entries and kernel region structures like Linux's VMAs.*
 
-    def translate(self, virtual_address):
-        page_num = virtual_address // self.page_size
-        offset = virtual_address % self.page_size
-        if page_num not in self.page_table:
-            raise RuntimeError(f"Page Fault! Virtual page {page_num} not in RAM.")
-        frame_num = self.page_table[page_num]
-        physical_address = (frame_num * self.page_size) + offset
-        return physical_address
-
-class SegmentationMMU:
-    def __init__(self):
-        # segment_id: (base_address, limit_size)
-        self.segment_table = {
-            0: (10000, 2000), # Code Segment: Base 10000, Limit 2000 bytes
-            1: (20000, 5000), # Heap Segment: Base 20000, Limit 5000 bytes
-        }
-
-    def translate(self, segment_id, offset):
-        if segment_id not in self.segment_table:
-            raise RuntimeError(f"Invalid Segment ID {segment_id}")
-        base, limit = self.segment_table[segment_id]
-        
-        # Hardware Limit Check:
-        if offset >= limit:
-            raise ValueError(f"SIGSEGV! Offset {offset} exceeds segment limit {limit}.")
-            
-        return base + offset
-
-if __name__ == "__main__":
-    paging = PagingMMU()
-    print(f"Paging Translation (VA 4200): PA = {paging.translate(4200)}")
-
-    seg = SegmentationMMU()
-    print(f"Segmentation Translation (Seg 0, Offset 500): PA = {seg.translate(0, 500)}")
-    
-    try:
-        # Triggering a segmentation violation:
-        seg.translate(0, 2500) # Limit is 2000!
-    except ValueError as e:
-        print(f"Hardware Exception Caught: {e}")
-```
+*x86-32 supported both, but operating systems used the flat memory model with all segment bases at zero, so segmentation did nothing. x86-64 made that official: in long mode CS, DS, ES and SS have their bases forced to zero and limits ignored. FS and GS kept working bases because they are useful for thread-local storage and per-CPU kernel data."*
