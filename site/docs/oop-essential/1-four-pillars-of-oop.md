@@ -1,117 +1,97 @@
 ---
 id: 1-four-pillars-of-oop
 title: "The Four Pillars of OOP: Abstraction vs. Encapsulation"
-description: "Clearly differentiate between Abstraction and Encapsulation with real-world analogies that make the four pillars easy to explain."
+description: "All four pillars through one bank account, and where abstraction ends and encapsulation begins"
 
 sidebar_position: 1
 sidebar_class_name: sidebar-easy
 ---
 
-import {
-  AbstractionFigure,
-  EncapsulationFigure,
-  InheritanceFigure,
-  PolymorphismFigure,
-} from '@site/src/components/Figures/FourPillars';
-
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
 > **Interview Question:** "What are the four pillars of OOP? More specifically, I hear people mix up abstraction and encapsulation all the time. How do you draw the line between them?"
 
-Abstraction and encapsulation sound similar, so people mix them up. Here's a simple way to tell all four pillars apart, using one example: **your bank account.**
+---
+
+### Picture it
+
+Think about your bank account. One example is enough to see all four ideas.
+
+**You use an ATM.** You press Withdraw, type an amount, and cash comes out. Behind the screen there are fraud checks and database updates, and you never see any of them. The screen gives you a short menu of things you can do, and keeps everything else out of your way.
+
+**The bank guards your balance.** Your balance is not a number anyone can reach in and change. The only way to change it is to deposit or withdraw, and both of those check the rules first. No negative deposits. No taking out more than you are allowed.
+
+**There are different kinds of account.** A savings account and a current account are both still accounts. Both hold a balance and both accept deposits. They differ in one rule: savings can never go below zero, while current may dip into an overdraft.
+
+**The same request gets different results.** Ask both accounts to withdraw 100 when each holds 50. The savings account refuses. The current account allows it. You asked the same thing both times, and each account answered by its own rules.
+
+Those four paragraphs are the four pillars. The rest of this page gives each one its proper name.
 
 ---
 
-### 1. Abstraction - show the "what", hide the "how"
+### The proper terms
 
-Think about an ATM. You press **Withdraw**, type an amount, and get cash. You don't see the fraud checks or the database updates happening behind the screen - you don't need to. The screen shows a simple menu. Everything else stays hidden.
+#### Abstraction
 
-<AbstractionFigure />
+The ATM menu is **abstraction**: showing the caller only the essential operations and hiding the **implementation details** behind them. It answers the question "what can this object do?"
 
-That's abstraction: **show only the actions someone needs (`deposit`, `withdraw`, `getBalance`), and hide how they work.** In code, this is why we write an `interface` or `abstract class` - it's the menu a caller is allowed to see.
+In code, the menu is written as an **interface** or an **abstract class**. It lists the operations, such as `deposit`, `withdraw` and `getBalance`, and says nothing about how they work.
 
-### 2. Encapsulation - lock the data, control the door
+#### Encapsulation
 
-Now look at the bank's side. Your balance isn't an open number that anyone can change directly - it's locked inside the account. The only way to change it is through `deposit()` and `withdraw()`, and both check the rules first: no negative deposits, no withdrawing more than you have.
+The guarded balance is **encapsulation**: bundling the data together with the methods that operate on it, and restricting direct access to that data. It answers the question "who is allowed to touch this?"
 
-<EncapsulationFigure />
+The restricting is done with **access modifiers**. The field is marked `private`, so outside code cannot reach it, and the `public` methods are the only way in. Keeping the data out of reach like this is what textbooks call **data hiding**. The payoff is that the object can never be pushed into an invalid state, like a negative savings balance, because every change has to pass through a method that checks the rules.
 
-That's encapsulation: **keep the data (`balance`) together with the methods allowed to touch it, and lock out everything else.** This keeps the object from ever reaching an invalid state, like a negative balance.
+#### The line between the two
 
-#### So what's actually different?
+Both are described as "hiding", which is why they get mixed up. They hide different things for different reasons.
 
-| | Abstraction | Encapsulation |
-|---|---|---|
-| **Question it answers** | "What can the caller do?" | "Who's allowed to touch the data?" |
-| **What it hides** | How the operation works internally (the logic) | The raw data itself (the variables) |
-| **Main goal** | Keep things simple for whoever is *using* the class | Keep the object's data safe and valid |
-| **Built with** | Interfaces, abstract classes | `private`/`protected` fields, getters/setters |
+Abstraction hides **complexity**. It is a design decision about what to show the caller, and it exists to make the object simple to use. Encapsulation hides **data**. It is an implementation decision about how the object's state is protected, and it exists to keep the object valid.
 
-**One-liner to say out loud in an interview:**
-*"Abstraction hides the complexity you don't need to see. Encapsulation hides the data you're not allowed to touch."*
+Put shortly: abstraction hides what you don't need to see, and encapsulation hides what you are not allowed to touch.
 
-### 3. Inheritance - share a blueprint, specialize from it
+#### Inheritance
 
-`SavingsAccount` and `CurrentAccount` are both still "an account" - both have a balance, both can report it. They share one base blueprint, `Account`, and each adds its own rule: Savings blocks the balance from going below zero. Current allows it to dip into an overdraft limit.
+The two kinds of account are **inheritance**: a **subclass** takes on the fields and methods of a **superclass** and changes only what is different. `SavingsAccount` and `CurrentAccount` both extend one shared account class.
 
-<InheritanceFigure />
+Two phrases go with it. The relationship it models is called **IS-A**, since a savings account is an account. The benefit it gives is **code reuse**, since deposit and balance logic is written once and shared.
 
-That's inheritance: **a child class reuses a parent class's fields and methods, and only changes what's different.** This is called an "IS-A" relationship - a `SavingsAccount` *is an* `Account`.
+Inheritance is easy to overuse. If two classes are not a true IS-A fit, forcing them into parent and child makes the code fragile. [Composition vs. Inheritance](/docs/oop-essential/10-composition-vs-inheritance) covers when to choose which.
 
-> 💡 **Going deeper:** Inheritance can be overused. If two classes aren't truly an "IS-A" fit, forcing one into a parent/child shape makes the code fragile. See [Composition vs. Inheritance](/docs/oop-essential/10-composition-vs-inheritance) for when to use one over the other.
+#### Polymorphism
 
-### 4. Polymorphism - same call, different behavior
+One request with different results is **polymorphism**: the same method call behaves differently depending on the object it is called on. The word means "many forms". It comes in two kinds, and interviewers expect both names.
 
-Say your app has a list of accounts - some `SavingsAccount`, some `CurrentAccount`, each holding ₹50. It calls `.withdraw(100)` on every one of them, the same line of code, without ever checking the type:
+**Method overloading** is several methods with the same name and different parameter lists, such as `deposit(amount)` and `deposit(amount, note)`. The compiler picks one by looking at the arguments, so this is decided at **compile time**.
 
-<PolymorphismFigure />
-
-That's polymorphism: **the same method call produces different behavior depending on the actual object it's called on.** Two forms show up in interviews:
-- **Overloading** (compile-time): same method name, different parameters, chosen by the compiler - e.g. `deposit(amount)` vs `deposit(amount, note)`.
-- **Overriding** (runtime): a child class replaces a parent's method with its own version, chosen automatically based on the real object - what `SavingsAccount.withdraw()` and `CurrentAccount.withdraw()` do above.
+**Method overriding** is a subclass replacing a method it inherited with its own version, as both account types do with `withdraw`. Which version runs depends on the actual object, so this is decided at **runtime**.
 
 ---
 
-### Putting it all together
+### In code
 
-- **Abstraction**: the ATM screen only shows `deposit`, `withdraw`, `getBalance` - nothing about how they work.
-- **Encapsulation**: the balance is private; only those three methods can touch it.
-- **Inheritance**: `SavingsAccount` and `CurrentAccount` both reuse the same `Account` blueprint.
-- **Polymorphism**: calling `.withdraw()` on either one runs different logic automatically.
-
-One bank account. Four pillars.
-
----
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-
-### Clean Code Example
-
-Here's the full picture - interface, private state, two subclasses, and a polymorphic call - in one place:
-
-<Tabs groupId="programming-language">
-<TabItem value="java" label="Java" default>
+The same bank account in Java, with each pillar marked where it appears.
 
 ```java
-// 1. ABSTRACTION: the menu of actions a caller is allowed to see.
+import java.util.List;
+
+// Abstraction: the caller sees these three operations and nothing else
 interface Account {
     void deposit(double amount);
     void withdraw(double amount);
     double getBalance();
 }
 
-// 2. ENCAPSULATION + the shared blueprint used by inheritance.
+// Encapsulation: balance is private, and every change passes through a check
 abstract class BaseAccount implements Account {
-    private double balance; // locked away - only this class can touch it directly
-
-    protected BaseAccount(double initialBalance) {
-        this.balance = Math.max(initialBalance, 0);
-    }
+    private double balance;
 
     @Override
     public void deposit(double amount) {
-        if (amount <= 0) throw new IllegalArgumentException("Deposit must be positive.");
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Deposit must be positive");
+        }
         balance += amount;
     }
 
@@ -120,171 +100,70 @@ abstract class BaseAccount implements Account {
         return balance;
     }
 
-    protected void setBalance(double newBalance) {
-        this.balance = newBalance;
+    // the only way a subclass can take money out, and it cannot skip the limit
+    protected void debit(double amount, double lowestAllowed) {
+        if (balance - amount < lowestAllowed) {
+            throw new IllegalStateException("Insufficient funds");
+        }
+        balance -= amount;
     }
 }
 
-// 3. INHERITANCE: reuses deposit()/getBalance(), only customizes withdraw().
+// Inheritance: both reuse deposit() and getBalance(), and only withdraw() differs
 class SavingsAccount extends BaseAccount {
-    public SavingsAccount(double initialBalance) { super(initialBalance); }
-
     @Override
     public void withdraw(double amount) {
-        if (amount > getBalance()) throw new IllegalStateException("Insufficient funds.");
-        setBalance(getBalance() - amount);
+        debit(amount, 0);                 // may never go below zero
     }
 }
 
 class CurrentAccount extends BaseAccount {
-    private final double overdraftLimit;
-
-    public CurrentAccount(double initialBalance, double overdraftLimit) {
-        super(initialBalance);
-        this.overdraftLimit = overdraftLimit;
-    }
+    private final double overdraftLimit = 500;
 
     @Override
     public void withdraw(double amount) {
-        if (getBalance() - amount < -overdraftLimit) throw new IllegalStateException("Over overdraft limit.");
-        setBalance(getBalance() - amount);
+        debit(amount, -overdraftLimit);   // may dip into the overdraft
     }
 }
 
-// 4. POLYMORPHISM: same method call, different behavior per actual object.
+// Polymorphism: one call, and each object runs its own withdraw()
 public class Demo {
     public static void main(String[] args) {
-        List<Account> allAccounts = List.of(
-            new SavingsAccount(200),
-            new CurrentAccount(200, 500)
-        );
-        for (Account acc : allAccounts) {
-            acc.withdraw(100); // each object runs its own withdraw() rules
+        List<Account> accounts = List.of(new SavingsAccount(), new CurrentAccount());
+
+        for (Account account : accounts) {
+            account.deposit(50);
+            try {
+                account.withdraw(100);    // Savings refuses, Current allows it
+            } catch (IllegalStateException e) {
+                System.out.println("Refused: " + e.getMessage());
+            }
         }
     }
 }
 ```
 
-</TabItem>
-<TabItem value="cpp" label="C++">
+Notice that even the subclasses cannot touch `balance` directly. They have to go through `debit`, which checks the limit. That is encapsulation holding inside the class hierarchy, not just against outside code.
 
-```cpp
-#include <vector>
-#include <memory>
-#include <stdexcept>
+---
 
-// 1. ABSTRACTION: pure virtual interface - the menu of actions.
-class Account {
-public:
-    virtual ~Account() = default;
-    virtual void deposit(double amount) = 0;
-    virtual void withdraw(double amount) = 0;
-    virtual double getBalance() const = 0;
-};
+### What they ask next
 
-// 2. ENCAPSULATION + shared blueprint for inheritance.
-class BaseAccount : public Account {
-protected:
-    double balance; // protected, not public - still guarded by the methods below
+**"If every field has a getter and a setter, is the class encapsulated?"**
+No. A setter that assigns whatever it is given is a public field with extra typing. Encapsulation means the object controls its own changes, so the methods have to enforce the rules. The account above has no `setBalance` at all, and that is deliberate.
 
-public:
-    explicit BaseAccount(double initialBalance) : balance(initialBalance > 0 ? initialBalance : 0) {}
+**"Can you have one without the other?"**
+Yes, which is the best proof they are different things. A class with private fields and no interface has encapsulation without abstraction. An interface whose implementing class leaves its fields public has abstraction without encapsulation.
 
-    void deposit(double amount) override {
-        if (amount <= 0) throw std::invalid_argument("Deposit must be positive.");
-        balance += amount;
-    }
+**"Is overloading really polymorphism?"**
+It is the compile-time form, and some people call it static binding. Overriding is the runtime form, and the mechanism that picks the right method while the program runs is called dynamic dispatch. When an interviewer says "polymorphism" with no qualifier, they almost always mean overriding.
 
-    double getBalance() const override { return balance; }
-};
+**The common wrong answer** is "abstraction and encapsulation both hide things", left at that. Always finish the sentence: say what each one hides, and why.
 
-// 3. INHERITANCE: each subclass only overrides withdraw().
-class SavingsAccount : public BaseAccount {
-public:
-    explicit SavingsAccount(double initialBalance) : BaseAccount(initialBalance) {}
+---
 
-    void withdraw(double amount) override {
-        if (amount > balance) throw std::runtime_error("Insufficient funds.");
-        balance -= amount;
-    }
-};
+### Say this in the interview
 
-class CurrentAccount : public BaseAccount {
-    double overdraftLimit;
-public:
-    CurrentAccount(double initialBalance, double overdraftLimit)
-        : BaseAccount(initialBalance), overdraftLimit(overdraftLimit) {}
+*"OOP rests on four pillars. Abstraction exposes only the essential operations of an object, usually through an interface or an abstract class, and hides the implementation details. Encapsulation bundles data with the methods that operate on it and uses access modifiers to restrict direct access, which is data hiding. Inheritance lets a subclass reuse and extend a superclass. It models an IS-A relationship and gives code reuse. Polymorphism lets the same call behave differently depending on the object: method overloading is resolved at compile time, and method overriding at runtime.*
 
-    void withdraw(double amount) override {
-        if (balance - amount < -overdraftLimit) throw std::runtime_error("Over overdraft limit.");
-        balance -= amount;
-    }
-};
-
-// 4. POLYMORPHISM: same call, different behavior via virtual dispatch.
-int main() {
-    std::vector<std::unique_ptr<Account>> allAccounts;
-    allAccounts.push_back(std::make_unique<SavingsAccount>(200));
-    allAccounts.push_back(std::make_unique<CurrentAccount>(200, 500));
-
-    for (auto& acc : allAccounts) {
-        acc->withdraw(100); // each object runs its own withdraw() rules
-    }
-}
-```
-
-</TabItem>
-<TabItem value="python" label="Python">
-
-```python
-from abc import ABC, abstractmethod
-
-# 1. ABSTRACTION: the menu of actions a caller is allowed to see.
-class Account(ABC):
-    @abstractmethod
-    def deposit(self, amount: float) -> None: ...
-
-    @abstractmethod
-    def withdraw(self, amount: float) -> None: ...
-
-    @abstractmethod
-    def get_balance(self) -> float: ...
-
-# 2. ENCAPSULATION + shared blueprint for inheritance.
-class BaseAccount(Account):
-    def __init__(self, initial_balance: float = 0.0):
-        self._balance = max(initial_balance, 0)  # "_" signals: internal, don't touch directly
-
-    def deposit(self, amount: float) -> None:
-        if amount <= 0:
-            raise ValueError("Deposit must be positive.")
-        self._balance += amount
-
-    def get_balance(self) -> float:
-        return self._balance
-
-# 3. INHERITANCE: each subclass only customizes withdraw().
-class SavingsAccount(BaseAccount):
-    def withdraw(self, amount: float) -> None:
-        if amount > self._balance:
-            raise ValueError("Insufficient funds.")
-        self._balance -= amount
-
-class CurrentAccount(BaseAccount):
-    def __init__(self, initial_balance: float, overdraft_limit: float):
-        super().__init__(initial_balance)
-        self._overdraft_limit = overdraft_limit
-
-    def withdraw(self, amount: float) -> None:
-        if self._balance - amount < -self._overdraft_limit:
-            raise ValueError("Over overdraft limit.")
-        self._balance -= amount
-
-# 4. POLYMORPHISM: same call, different behavior depending on the real object.
-all_accounts = [SavingsAccount(200), CurrentAccount(200, overdraft_limit=500)]
-for acc in all_accounts:
-    acc.withdraw(100)  # each object runs its own withdraw() rules
-```
-
-</TabItem>
-</Tabs>
+*The line between the first two is this. Abstraction hides complexity, and it is about what an object does. Encapsulation hides data, and it is about how the object's state is protected."*
