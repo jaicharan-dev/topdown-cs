@@ -35,7 +35,7 @@ One caveat the office must accept. Promising both teams they may write on any pa
 
 The kernel creates a new **task_struct** and **PCB**, assigns a fresh **PID**, and copies the parent's **page tables**, not its memory. The child inherits copies of the parent's **file descriptors**, which refer to the **same open file descriptions**, so they share a file offset.
 
-The distinguishing feature is that **fork returns twice**: **0** in the child, and the **child's PID** in the parent. On failure it returns **-1**, typically with **EAGAIN** when the process or PID limit is reached.
+The distinguishing feature is that fork returns twice: **0** in the child, and the **child's PID** in the parent. On failure it returns **-1**, typically with **EAGAIN** when the process or PID limit is reached.
 
 #### Copy-on-write
 
@@ -43,7 +43,7 @@ The distinguishing feature is that **fork returns twice**: **0** in the child, a
 
 Instead of copying the parent's memory, the kernel maps the **same physical frames** into both processes and marks every writable page **read-only** in both page tables, while recording its true permissions.
 
-Reads proceed normally from the shared frames. When either process **writes**, the hardware raises a **protection fault**, which is a **minor page fault**. The kernel recognises it as a COW fault, allocates a new frame, **copies only that page**, updates the writing process's page table to point at the private copy with write permission restored, and restarts the instruction.
+Reads proceed normally from the shared frames. When either process writes, the hardware raises a **protection fault**, which is a **minor page fault**. The kernel recognises it as a COW fault, allocates a new frame, copies only that page, updates the writing process's page table to point at the private copy with write permission restored, and restarts the instruction.
 
 So the copy is **deferred**, **per page**, and happens **only for pages actually written**. The fork itself costs only page table duplication, which is proportional to the number of pages mapped rather than the memory used.
 
@@ -147,10 +147,10 @@ Memory is promised that may not exist. When it is written and unavailable, the O
 
 ### Say this in the interview
 
-*"fork creates a child process by duplicating the caller. The kernel allocates a new task structure and PID and copies the page tables rather than the memory, and the child inherits the parent's file descriptors, which still refer to the same open file descriptions. It returns twice: 0 in the child, the child's PID in the parent, and -1 on failure.*
+*"fork creates a child process by duplicating the caller. The kernel allocates a new task_struct, which is the PCB, and a PID and copies the page tables rather than the memory, and the child inherits the parent's file descriptors, which still refer to the same open file descriptions. It returns twice: 0 in the child, the child's PID in the parent, and -1 on failure, typically with EAGAIN at the process limit.*
 
-*Copy-on-write is what makes that cheap. Both processes map the same physical frames, with writable pages marked read-only in both page tables. Reads are served from the shared frames. On a write, the hardware raises a protection fault, which is a minor page fault, and the kernel allocates a new frame, copies just that page, restores write permission for the writer and restarts the instruction. So copying is deferred, per page, and only for pages actually written, with a reference count tracking sharing.*
+*Copy-on-write, or COW, is what makes that cheap. Both processes map the same physical frames, with writable pages marked read-only in both page tables. Reads are served from the shared frames. On a write, the hardware raises a protection fault, which is a minor page fault, and the kernel allocates a new frame, copies just that page, restores write permission for the writer and restarts the instruction. So copying is deferred, per page, and only for pages actually written, with a reference count tracking sharing.*
 
 *It matters most for the fork-exec pattern. exec replaces the whole address space, so without copy-on-write the kernel would duplicate the parent's memory and discard it microseconds later, which is ruinous when a large process forks a small helper. With copy-on-write almost nothing is copied. exec preserves the PID, the working directory, and file descriptors not marked close-on-exec, which is how a shell implements redirection.*
 
-*Overcommit is the consequence: the kernel promises more memory than exists, assuming most is never written. If that assumption fails there is nothing sensible to return from a page fault, so the OOM killer selects a victim by oom_score and sends SIGKILL, often killing the largest process rather than the one responsible."*
+*Overcommit is the consequence: the kernel promises more memory than exists, assuming most is never written. If that assumption fails there is nothing sensible to return from a page fault, so the OOM killer selects a victim by oom_score and sends SIGKILL, often killing the largest process rather than the one responsible. Linux exposes the policy as vm.overcommit_memory, where 2 enforces a strict limit instead of overcommitting."*

@@ -51,7 +51,7 @@ The rule is that an instruction is privileged if executing it could compromise i
 
 **Interrupt control**, `CLI` and `STI`, because disabling interrupts would prevent the timer from ever preempting the process, defeating the scheduler.
 
-**Loading descriptor tables**, `LGDT` and `LIDT`, because they control the interrupt vectors and segment definitions.
+**Loading the descriptor tables**, `LGDT` and `LIDT`, because they control the interrupt vectors and segment definitions.
 
 **Setting the timer**, for the same reason as interrupt control.
 
@@ -138,10 +138,10 @@ Normally no. The kernel can grant access to specific ports through an I/O permis
 
 *"CPUs have a mode bit, or privilege level, deciding which instructions may run. User mode is restricted and runs application code; kernel mode, or supervisor mode, is unrestricted and runs the operating system. On x86 these are rings, with Ring 0 as kernel and Ring 3 as user, and Ring -1 added for hypervisors. The purpose is protection: without it any program could halt the machine or read another process's memory.*
 
-*Privileged instructions are those that could compromise isolation. I/O instructions like IN and OUT, HLT, loading the page table base register CR3, interrupt control with CLI and STI, loading the descriptor tables with LGDT and LIDT, setting the timer, and changing the mode bit itself. Attempting one in user mode raises a general protection fault, which the kernel turns into a signal.*
+*Privileged instructions are those that could compromise isolation. I/O instructions like IN and OUT, HLT, loading the page table base register CR3, interrupt control with CLI and STI, loading the descriptor tables with LGDT and LIDT, setting the timer, and changing the mode bit itself. Attempting one in user mode raises a general protection fault, which the kernel turns into a signal, typically SIGSEGV or SIGILL.*
 
 *A mode switch changes only the privilege level. The same process continues, the address space is unchanged because the kernel is mapped into every process, and it costs on the order of a hundred nanoseconds. It happens on every system call, interrupt and exception.*
 
-*A context switch changes which process runs. It saves the full register set to the Process Control Block, loads another, and changes the address space, which flushes or invalidates the TLB and leaves the caches cold, costing about a microsecond plus indirect effects.*
+*A context switch changes which process runs. It saves the full register set to the process control block, the PCB, loads another, and changes the address space, which flushes or invalidates the TLB and leaves the caches cold, costing about a microsecond plus indirect effects.*
 
 *So every context switch includes a mode switch, but most mode switches are not context switches: a system call returns to the same process."*

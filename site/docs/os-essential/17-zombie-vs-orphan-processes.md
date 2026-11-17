@@ -37,11 +37,11 @@ When a process exits, the kernel releases almost everything: its memory, open fi
 
 That entry is kept because the parent may still want it. The parent collects it by calling **wait()** or **waitpid()**, an act called **reaping** the child. Once reaped, the entry is freed and the zombie disappears.
 
-So a zombie consumes **no CPU and no memory**, only a process table entry. A handful are harmless and normal, briefly, between a child exiting and its parent reaping.
+So a zombie consumes no CPU and no memory, only a process table entry. A handful are harmless and normal, briefly, between a child exiting and its parent reaping.
 
 #### Orphan process
 
-An **orphan** is a process whose **parent has terminated** while it is still running.
+An **orphan** is a process whose parent has terminated while it is still running.
 
 The kernel immediately **reparents** it, traditionally to **PID 1**, the **init** process, or on modern Linux to the nearest ancestor marked as a **subreaper**, such as a systemd user manager.
 
@@ -153,7 +153,7 @@ Not in itself, since init reaps it. The practical concern is that an orphan may 
 
 *An orphan is a process whose parent terminated while it was still running. The kernel reparents it to PID 1, init, or to the nearest subreaper. Orphans are harmless because init reaps continuously. A daemon is a deliberate orphan.*
 
-*kill -9 cannot remove a zombie because the process is already dead. Signals are delivered to running processes, and a zombie has no execution context to terminate. What remains is a record, and records are cleared by being read, not signalled. So you either prompt the parent to reap, or kill the parent, after which init adopts the zombie and reaps it immediately.*
+*kill -9 cannot remove a zombie because the process is already dead. Signals are delivered to running processes, and SIGKILL terminates a process that is executing, whereas a zombie has no execution context to terminate. What remains is a record, and records are cleared by being read, not signalled. So you either prompt the parent to reap, or kill the parent, after which init adopts the zombie and reaps it immediately.*
 
 *PID starvation is the real danger. The process table is finite, with pid_max commonly 32768, so a parent that forks without reaping can exhaust it, after which fork fails with EAGAIN and no new process can start anywhere on the system.*
 

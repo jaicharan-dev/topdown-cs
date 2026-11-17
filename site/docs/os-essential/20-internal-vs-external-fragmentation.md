@@ -33,7 +33,7 @@ The first wastes a predictable amount in a place nobody else wanted. The second 
 
 **External fragmentation** is memory wasted **between** allocated blocks. Enough total memory is free to satisfy a request, but it is not **contiguous**, so the request fails anyway.
 
-The crisp distinction: internal is unused space **you were given**, external is free space **you cannot use**.
+The crisp distinction: internal is unused space you were given, external is free space you cannot use.
 
 #### Why paging causes one and removes the other
 
@@ -41,7 +41,7 @@ The crisp distinction: internal is unused space **you were given**, external is 
 
 **Internal fragmentation is introduced** because allocations are rounded up to whole pages. A process needing 9 KB with a 4 KB page size receives three pages, 12 KB, wasting 3 KB in the last one. On average the waste is **half a page per region**, which with 4 KB pages is about 2 KB.
 
-The trade is deliberate and favourable. Internal fragmentation is **bounded and predictable**, and it never causes an allocation to fail. External fragmentation is **unbounded and unpredictable**, and it causes failures while memory is apparently available.
+The trade is deliberate and favourable. Internal fragmentation is bounded and predictable, and it never causes an allocation to fail. External fragmentation is unbounded and unpredictable, and it causes failures while memory is apparently available.
 
 Larger pages make this worse. **Huge pages** of 2 MB cut TLB misses but waste up to 2 MB per partly used region, which is why they are applied selectively.
 
@@ -148,10 +148,10 @@ It is designed for many same-sized objects. Large or highly variable allocations
 
 *"Internal fragmentation is memory wasted inside an allocated block because the block is bigger than the request. External fragmentation is memory wasted between blocks: enough is free in total but it is not contiguous, so the request fails anyway.*
 
-*Paging eliminates external fragmentation because allocation is in fixed-size frames and any free frame serves any page, so no compaction is ever needed. It introduces internal fragmentation because allocations round up to whole pages, averaging about half a page per region, so a 9 KB request with 4 KB pages takes three pages and wastes 3 KB. That trade is favourable: internal fragmentation is bounded and never causes a failure, while external fragmentation is unbounded and does.*
+*Paging eliminates external fragmentation because allocation is in fixed-size frames and any free frame serves any page, so no compaction is ever needed. It introduces internal fragmentation because allocations round up to whole pages, averaging about half a page per region, so a 9 KB request with 4 KB pages takes three pages and wastes 3 KB. That trade is favourable: internal fragmentation is bounded and never causes a failure, while external fragmentation is unbounded and does. Larger pages make it worse, which is why 2 MB huge pages are applied selectively.*
 
 *Paging only solves allocation at page granularity, and kernels allocate many objects much smaller than a page, so two allocators sit underneath.*
 
-*The buddy allocator manages physical pages in power-of-two blocks. It splits a block in half repeatedly until it reaches the required size, and on free it checks whether the block's buddy is also free and coalesces them back. The buddy's address is a single XOR away, which is why sizes are powers of two. It fights external fragmentation at the page level but has internal fragmentation, since a 5-page request gets 8.*
+*The buddy allocator manages physical pages in power-of-two blocks indexed by order. It splits a block in half repeatedly until it reaches the required size, and on free it checks whether the block's buddy is also free and coalesces them back. The buddy's address is a single XOR away, which is why sizes are powers of two. It fights external fragmentation at the page level but has internal fragmentation, since a 5-page request gets 8.*
 
-*The slab allocator sits on top for small same-sized kernel objects. A cache per object type takes slabs of contiguous pages from the buddy allocator and divides them into exact-sized slots, so there is almost no internal fragmentation, allocation is a fast list operation, and freed objects can stay pre-initialised for reuse. Linux has used SLAB, SLUB, which is the current default, and SLOB."*
+*The slab allocator sits on top for small, same-sized kernel objects. A cache per object type takes slabs of contiguous pages from the buddy allocator and divides them into exact-sized slots, so there is almost no internal fragmentation, allocation is a fast list operation, freed objects can stay pre-initialised for reuse, and cache locality improves because objects of one type are packed together. Linux has used SLAB, SLUB, which is the current default, and SLOB."*
