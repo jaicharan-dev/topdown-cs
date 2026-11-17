@@ -1,14 +1,11 @@
 ---
 id: 7-http-request-https
 title: "HTTP Request Components, HTTPS & TLS"
-description: "The anatomy of an HTTP request, safe vs idempotent methods, how HTTPS/TLS secures traffic, TLS 1.2 vs TLS 1.3, and the status codes that come up most."
+description: "What is actually in a request, which requests are safe to repeat, and how one round trip was removed from every connection"
+
 sidebar_position: 7
 sidebar_class_name: sidebar-easy
 ---
-
-import { Diagram, Row, Box } from '@site/src/components/SimpleDiagram';
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
 
 <span className="badge badge--success margin-bottom--md">Easy</span>
 
@@ -16,147 +13,217 @@ import TabItem from '@theme/TabItem';
 
 ---
 
-### Anatomy of an HTTP request
+### Picture it
 
-Think of an HTTP request like a letter: an address line on the envelope, some notes on the outside, and a letter inside. An HTTP/1.1 request is literally a text message with three parts:
+**A request is a filled-in form.** The top line says what you want done and to what: "collect parcel, locker 14". Below it are the boxes: who you are, what formats you can accept, how long the attachment is. Then a blank line, which is the form saying "the boxes are finished". Then the attachment itself, if there is one. The blank line matters more than it looks: without it, nobody knows where the boxes end and the attachment begins.
 
-```http
-POST /api/v1/orders HTTP/1.1
-Host: api.example.com
-User-Agent: Mozilla/5.0
-Content-Type: application/json
-Content-Length: 42
-Authorization: Bearer eyJhbGciOi...
+**Safe and idempotent are two different questions about the same form.** "Read me the meter" changes nothing, so you can submit it as often as you like and even submit it speculatively, before anyone asks. "Set the meter to 50" **does** change something, but submitting it five times leaves the meter at 50 just the same. "Add 10 to the meter" is different again: submit it twice and you have added 20. So "does it change anything" and "does repeating it change anything more" are separate questions, and the second one is what decides whether a request can be safely retried after a timeout.
 
-{"item_id": 1042, "quantity": 2, "price": 49.99}
+**Now the envelope.** HTTPS is sending that form in a tamper-evident sealed envelope to a recipient whose identity you checked first, in that order: you verify who you are talking to, then you agree a seal only the two of you can open, then you send the form. Checking identity first is the part people skip when explaining it, and it is the part that makes the rest worth anything, because a perfectly encrypted conversation with an impostor is of no use at all.
+
+---
+
+### The proper terms
+
+#### The components of an HTTP request
+
+Four parts, in this order.
+
+**The request line.** The **method**, the **request target**, and the HTTP version: `GET /search?q=tcp HTTP/1.1`. The target carries the path and the **query string**.
+
+**The headers.** Key and value pairs of **metadata**. `Host` is mandatory in HTTP/1.1, because one IP address serves many sites and the server needs to know which was asked for. Others in constant use are `User-Agent`, `Accept`, `Authorization`, `Cookie`, `Content-Type` and `Content-Length`.
+
+**An empty line.** A bare **CRLF** marking the end of the headers. It is structurally necessary: it is what tells the parser the body begins.
+
+**The body.** Optional, and present on POST, PUT and PATCH but normally absent on GET. Its length is given by `Content-Length`, or its end is signalled by **chunked transfer encoding**.
+
+#### Safe versus idempotent
+
+Two properties that are often conflated, and the distinction is the point of the question.
+
+**Safe** means the method is **read-only**: it is not intended to change server state. `GET`, `HEAD`, `OPTIONS` and `TRACE` are safe.
+
+**Idempotent** means that making the request **many times has the same effect as making it once**. `GET`, `HEAD`, `OPTIONS`, `TRACE`, `PUT` and `DELETE` are idempotent.
+
+| Method | Safe | Idempotent |
+| --- | --- | --- |
+| GET, HEAD, OPTIONS | yes | yes |
+| PUT | no | yes |
+| DELETE | no | yes |
+| POST | no | no |
+| PATCH | no | not necessarily |
+
+Every safe method is idempotent. The reverse is false, and `PUT` and `DELETE` are the cases that prove it: both change state, but `PUT /users/7` with the same body twice leaves exactly one user 7 with that content, and deleting twice leaves the resource equally absent.
+
+Why it matters in practice:
+
+**Safety governs caching and prefetching.** A browser, proxy or CDN may cache a safe response and may fetch it speculatively, which it could never do for a POST.
+
+**Idempotency governs retries.** When a request times out, the client does not know whether the server acted. An idempotent request can simply be resent. A `POST` cannot, which is why payment APIs require an **idempotency key**: a client-supplied identifier that lets the server recognise a repeat and return the original result instead of charging twice.
+
+`DELETE` is the usual trap. It is idempotent by **effect**, not by **response**: the first call returns 204 and the second 404, and that difference does not make it non-idempotent, because the resource's state is identical either way.
+
+#### How HTTPS secures traffic
+
+**HTTPS** is HTTP carried over **TLS**, on port **443**. It provides three things, and naming all three is the complete answer.
+
+**Confidentiality**, so the network cannot read the traffic.
+
+**Integrity**, so tampering is detected rather than silently accepted.
+
+**Authentication**, so the client knows which server it reached.
+
+The design is **hybrid cryptography**, because the two kinds of cryptography are good at different things.
+
+**Asymmetric cryptography** handles **authentication and key exchange**. The server holds a private key and presents a **certificate** containing its public key and identity, signed by a **certificate authority**. The client validates the **chain of trust** up to a root it already holds, checks the hostname matches, checks the validity dates, and checks revocation.
+
+**Symmetric cryptography** handles the **bulk data**, with **AES-GCM** or **ChaCha20-Poly1305**, because it is orders of magnitude faster. These are **AEAD** ciphers, which provide confidentiality and integrity in one operation.
+
+The bridge between them is the key exchange, and modern TLS uses **ECDHE**, ephemeral elliptic-curve Diffie-Hellman. Both sides derive the same session key without it ever crossing the wire, and because the key pair is **ephemeral**, it is discarded afterwards. That gives **forward secrecy**: an attacker who records the traffic and later obtains the server's private key still cannot decrypt the old sessions. Under the old static RSA exchange, they could decrypt everything they had ever recorded.
+
+#### TLS 1.2 versus TLS 1.3
+
+The headline is **one round trip instead of two**, but the security changes matter as much.
+
+**Handshake latency.** TLS 1.2 needs two round trips before application data flows, because the client cannot guess the server's chosen key exchange parameters and must wait to be told. TLS 1.3 needs one: the client **guesses** the key share in its first message, and since there are now few enough supported groups to guess correctly almost always, the server can reply with everything needed. On top of TCP's own handshake, that is three round trips reduced to two.
+
+**0-RTT resumption.** On a repeat visit, TLS 1.3 can send application data in the very first message using a **pre-shared key** from the previous session. The caveat is serious: 0-RTT data is **replayable**, because the server has no fresh randomness to bind it to, so it must be restricted to **safe, idempotent requests**.
+
+**Forward secrecy is mandatory.** Static RSA key exchange is **removed**, so every TLS 1.3 connection is forward secret. This is the single most important change.
+
+**Weak cryptography is removed.** No **RC4**, no **3DES**, no **CBC-mode** ciphers and their padding-oracle family of attacks, no **MD5** or **SHA-1** signatures, no custom Diffie-Hellman groups, and no **compression**, which killed the CRIME attack. Only AEAD ciphers remain, and the cipher suite list shrank from hundreds to five.
+
+**More of the handshake is encrypted.** In TLS 1.3 the certificate is encrypted, so a passive observer no longer learns which certificate was served. Only the ClientHello and ServerHello remain in the clear, and the handshake **transcript is signed** to prevent downgrade attacks. The **SNI** field, which names the host being requested, is still visible, which is what encrypted client hello, or **ECH**, addresses.
+
+**Renegotiation is gone**, replaced by a clean key update, removing a long-standing class of attack.
+
+#### The status codes they ask about
+
+**301 versus 302.** `301 Moved Permanently` says the resource has a new home and the client should update its records. Browsers cache it aggressively and often indefinitely, so a mistaken 301 is extremely hard to retract from users' browsers. `302 Found` is temporary and not cached by default.
+
+There is a second, subtler difference. Historically both **changed the method to GET** when following a redirect of a POST, which clients did in violation of the specification and which became the de facto behaviour. That is why **307 Temporary Redirect** and **308 Permanent Redirect** were added: they are the same as 302 and 301 but preserve the method and body. If you are redirecting a POST, you want 307 or 308.
+
+**401 versus 403.** `401 Unauthorized` is misnamed; it means **unauthenticated**. The server does not know who you are, and the response must include a **WWW-Authenticate** header saying how to authenticate. Retrying with credentials may succeed.
+
+`403 Forbidden` means the server knows who you are and you are not permitted. Retrying with the same credentials will never succeed. A deliberate variation is answering `404` instead of `403` for resources whose existence should not be disclosed.
+
+The one-line discriminator: **401 is "who are you?", 403 is "I know who you are, and no".**
+
+---
+
+### In code
+
+```text
+The four parts of a request, with the blank line that matters:
+
+  POST /api/orders?notify=1 HTTP/1.1      <- request line
+  Host: shop.example.com                  <- headers begin
+  Content-Type: application/json
+  Content-Length: 27
+  Authorization: Bearer eyJhbGci...
+                                          <- EMPTY LINE ends the headers
+  {"sku":"A12","quantity":3}              <- body
+
+  Host is mandatory in HTTP/1.1: one IP serves many sites.
+  Remove the empty line and the parser cannot find the body.
 ```
 
-1. **The request line** — what you want to do (`GET`, `POST`, `PUT`, `PATCH`, `DELETE`, ...), what resource you want (`/api/v1/orders?status=active`), and which HTTP version.
-2. **Headers** — key-value metadata. `Host` says which site you mean (needed because one server can host many domains), `Content-Type` says what format the body is in, `Authorization` carries credentials, `Accept-Encoding` says what compression you can handle.
-3. **The body** — the actual payload, separated from the headers by a blank line. Present for `POST`/`PUT`/`PATCH`, usually absent for `GET`/`HEAD`/`DELETE`.
+```text
+Safe and idempotent, and why each one is useful:
+
+                safe?   idempotent?   so you may...
+  GET            yes       yes        cache it, prefetch it, retry it
+  HEAD           yes       yes        same, without the body
+  PUT            no        yes        retry it after a timeout
+  DELETE         no        yes        retry it after a timeout
+  POST           no        no         NOT retry it blindly
+  PATCH          no        maybe      depends on the patch itself
+
+  safe      -> may be cached and prefetched
+  idempotent -> may be retried automatically
+
+  POST is why payment APIs want an idempotency key: the client
+  supplies an id, and a repeat returns the original result
+  instead of charging the card twice.
+```
+
+```text
+TLS 1.2 vs TLS 1.3 handshakes:
+
+  TLS 1.2, two round trips before any data
+
+    client --- ClientHello ------------------>
+           <-- ServerHello, Certificate, ------
+               ServerKeyExchange, Done
+    client --- ClientKeyExchange, Finished -->
+           <-- Finished -----------------------
+    client --- application data ------------->
+
+  TLS 1.3, one round trip
+
+    client --- ClientHello + key share ------>
+           <-- ServerHello + key share, -------
+               {Certificate, Finished}          <- encrypted
+    client --- Finished + application data -->
+
+  The client guesses the key share up front. Few enough groups
+  are supported that the guess is almost always right.
+
+  TLS 1.3 0-RTT, on a return visit
+
+    client --- ClientHello + PSK + data ----->   data in message one
+               but it is replayable, so only for
+               safe, idempotent requests
+```
+
+```text
+Redirects and auth failures, chosen by what you want the client to do:
+
+  301  permanent, method may become GET    cached hard, hard to undo
+  308  permanent, method preserved         use this for a POST
+  302  temporary, method may become GET    not cached by default
+  307  temporary, method preserved         use this for a POST
+
+  401  "who are you?"        must send WWW-Authenticate
+                             retry WITH credentials may work
+  403  "I know. No."         retry with the same credentials never works
+                             (404 instead, if existence is a secret)
+```
 
 ---
 
-### Safe vs. idempotent — a distinction interviewers love
+### What they ask next
 
-- **Safe** means the method doesn't change anything on the server — it's read-only. That's why `GET` requests can be cached, prefetched, and crawled freely.
-- **Idempotent** means doing it once and doing it five times leave the server in the exact same state. The response codes might differ (a second `DELETE` might return `404` instead of `200`), but the underlying data ends up identical either way.
+**"Is GET guaranteed not to change anything?"**
+No. Safety is a promise the **method** makes about intent, not something the protocol enforces. A server can be written so that GET deletes a record, and plenty have been, which then breaks badly when a crawler or prefetcher follows the link. The guarantee is contractual, and clients rely on it.
 
-| HTTP Method | Safe? | Idempotent? | What it does |
-| :--- | :---: | :---: | :--- |
-| **`GET`** | Yes | Yes | Read a resource, no side effects. |
-| **`HEAD`** | Yes | Yes | Like `GET` but headers only, no body. |
-| **`OPTIONS`** | Yes | Yes | Lists supported options / CORS preflight. |
-| **`PUT`** | No | Yes | Fully replaces a resource — doing it 5 times gives the same end state as once. |
-| **`DELETE`** | No | Yes | Removes a resource — once gone, repeating it changes nothing further. |
-| **`POST`** | No | No | Creates something new — each call typically adds another record. |
-| **`PATCH`** | No | Usually not | Partial update — repeating "append to array" keeps growing the array. |
+**"Why is 401 called Unauthorized if it means unauthenticated?"**
+A naming mistake frozen by compatibility. The specification itself notes that 401 means authentication is required, and 403 is the one about authorization.
 
----
+**"Why is a bad 301 so dangerous?"**
+Because browsers may cache it permanently. Visitors keep being redirected long after the server stops sending it, and there is no way to reach into their caches. Use 302 or 307 unless the move really is permanent.
 
-### HTTPS: HTTP wrapped in a lock
+**"What does forward secrecy actually protect against?"**
+An attacker recording traffic now and compromising the server's private key later. With ephemeral Diffie-Hellman the session keys were never transmitted and were discarded, so past sessions stay unreadable. With static RSA, one key compromise retroactively decrypts everything.
 
-Plain HTTP sends everything as readable text — anyone on the network path can see it. HTTPS fixes that by routing HTTP through **TLS** before anything leaves the machine. TLS gives you three guarantees:
+**"Why is 0-RTT risky?"**
+Because the server cannot bind the data to fresh randomness, so an attacker who captures the first message can replay it. For a GET that is harmless; for anything that changes state it is not, so 0-RTT must be limited to idempotent requests.
 
-1. **Confidentiality** — the data is encrypted (AES-256-GCM, ChaCha20-Poly1305), so eavesdroppers see gibberish.
-2. **Integrity** — any tampering in transit breaks the decryption, so modified data gets caught, not silently delivered.
-3. **Authentication** — the server proves who it is with an X.509 certificate, which your browser verifies against a trusted Certificate Authority.
+**"Does HTTPS hide which site I am visiting?"**
+Not fully. The IP address is visible, and the **SNI** field in the ClientHello names the hostname in cleartext so the server can select a certificate. TLS 1.3 encrypted the certificate but not SNI, which is what ECH is for.
 
----
-
-### TLS 1.2 vs. TLS 1.3: one round trip instead of two
-
-Before any encrypted data can flow, client and server have to agree on keys. TLS 1.2 needed two full round trips to do that; TLS 1.3 does it in one.
-
-<Diagram>
-<Row>
-<Box label="TLS 1.2" sub="2 round trips" />
-<Box label="TLS 1.3" sub="1 round trip" />
-</Row>
-</Diagram>
-
-Why TLS 1.3 wins:
-
-1. **Faster handshake (1-RTT):** instead of waiting to agree on an algorithm first, the client just guesses the common case (X25519) and sends its key share in the very first message. Returning visitors can even get **0-RTT** — sending encrypted data on the first packet using a saved key — though that's only safe for non-state-changing requests like `GET`, since 0-RTT data can be replayed by an attacker.
-2. **Forward secrecy is now mandatory:** TLS 1.2 allowed a mode where, if an attacker ever stole the server's private key, they could decrypt *all* previously recorded traffic. TLS 1.3 bans that outright and requires fresh, temporary keys (ECDHE/DHE) for every session — stealing the server's long-term key later doesn't unlock old conversations.
-3. **Dead weight removed:** RC4, CBC-mode ciphers, SHA-1, MD5 — all the algorithms with known weaknesses are gone. The cipher suite list went from hundreds of options down to 5.
-
----
-
-### Status codes worth knowing cold
-
-**Redirects — `301` vs `302` vs `307` vs `308`:**
-- `301 Moved Permanently` — resource moved for good; search engines transfer ranking to the new URL; browsers cache it aggressively. Historically browsers would wrongly turn a `POST` into a `GET` when following it.
-- `302 Found` — temporary move, not cached long-term. Same historical `POST`→`GET` quirk.
-- `307 Temporary Redirect` — like 302, but guarantees the method doesn't change.
-- `308 Permanent Redirect` — like 301, but guarantees the method doesn't change.
-
-**Auth — `401` vs `403`:**
-- `401 Unauthorized` — really means "unauthenticated": you haven't proven who you are. The server should send a `WWW-Authenticate` header saying how to log in.
-- `403 Forbidden` — you *are* authenticated, the server knows who you are, but you're not allowed to do this. Logging in again with the same account won't help.
-
-**`429 Too Many Requests`** — you've hit a rate limit. Usually comes with `Retry-After` and `X-RateLimit-*` headers telling you when to try again.
-
-**Gateway errors — `502` vs `504`:**
-- `502 Bad Gateway` — the proxy reached the backend, but the backend crashed or sent garbage back.
-- `504 Gateway Timeout` — the proxy reached the backend, but it took too long to answer.
+**The common wrong answer** is that HTTPS "encrypts traffic", stopping there. Encryption without **authentication** is worthless: you would have a private conversation with whoever intercepted you. The certificate chain is what makes the encryption meaningful.
 
 ---
 
 ### Say this in the interview
 
-*"An HTTP request has three parts: a request line (method, path, version), headers (metadata like Host and Authorization), and an optional body. Safe methods like GET don't change server state; idempotent methods like PUT and DELETE leave the server the same whether you call them once or five times; POST is neither. HTTPS wraps HTTP in TLS for confidentiality, integrity, and server authentication. TLS 1.3 cut the handshake from 2 round trips to 1, made forward secrecy mandatory so a leaked server key can't decrypt old traffic, and dropped weak ciphers like RC4 and CBC. For status codes: 401 means not authenticated, 403 means authenticated but not allowed; 301/302 may silently flip POST to GET on redirect, but 307/308 guarantee the method stays the same."*
+*"An HTTP request has four parts. The request line with the method, the request target including any query string, and the version. The headers, which are metadata, where Host is mandatory in HTTP/1.1 because one IP address serves many sites. An empty CRLF line, which is structurally necessary because it marks where the headers end and the body begins. Then the optional body, with its length from Content-Length or delimited by chunked transfer encoding.*
 
----
+*Safe means read-only, not intended to change server state: GET, HEAD, OPTIONS and TRACE. Idempotent means repeating the request has the same effect as making it once: those four plus PUT and DELETE. Every safe method is idempotent but not the reverse, and PUT and DELETE prove it, since they change state but repeating leaves the same end state. POST is neither, and PATCH is not necessarily idempotent. The practical consequence is that safety governs caching and prefetching, while idempotency governs automatic retries, which is why payment APIs need an idempotency key for POST. DELETE is idempotent by effect, not response: the first call returns 204 and the second 404, and the state is identical either way.*
 
-### Code: inspecting an HTTPS/TLS connection
+*HTTPS is HTTP over TLS on port 443, and it provides confidentiality, integrity and authentication. It is hybrid cryptography: asymmetric for authentication and key exchange, where the server presents a certificate containing its public key signed by a certificate authority and the client validates the chain of trust, the hostname and the dates; and symmetric for the bulk data, with AEAD ciphers like AES-GCM or ChaCha20-Poly1305 because they are far faster. The key exchange is ephemeral elliptic-curve Diffie-Hellman, ECDHE, so the session key never crosses the wire and is discarded afterwards, which gives forward secrecy.*
 
-```python
-import socket
-import ssl
+*TLS 1.3's headline change is one round trip instead of two, because the client guesses the key share in its first message rather than waiting to be told, and there are few enough supported groups that the guess is almost always right. It can also do 0-RTT resumption with a pre-shared key, sending data in the first message, but that data is replayable so it must be limited to safe, idempotent requests. On security, static RSA key exchange is removed so forward secrecy is mandatory, which is the most important change. RC4, 3DES, CBC-mode ciphers, MD5 and SHA-1 signatures, custom Diffie-Hellman groups and compression are all gone, leaving only AEAD ciphers and about five cipher suites. More of the handshake is encrypted, including the certificate, the transcript is signed to prevent downgrades, and renegotiation is replaced by a clean key update. SNI is still cleartext, which is what encrypted client hello, ECH, addresses.*
 
-def inspect_https_connection(hostname: str, port: int = 443):
-    print(f"[*] Connecting to {hostname}:{port}...")
-
-    # 1. Create a secure default SSL/TLS context
-    context = ssl.create_default_context()
-
-    # 2. Open a standard TCP socket (Layer 4)
-    raw_socket = socket.create_connection((hostname, port), timeout=5.0)
-
-    # 3. Wrap socket with TLS Handshake (Layer 5/6/7)
-    with context.wrap_socket(raw_socket, server_hostname=hostname) as tls_socket:
-        print("[+] TLS Handshake Successful!")
-        print(f"    - Protocol Version: {tls_socket.version()}")
-        cipher_name, proto_version, secret_bits = tls_socket.cipher()
-        print(f"    - Negotiated Cipher Suite: {cipher_name}")
-        print(f"    - Encryption Bits: {secret_bits}")
-        
-        # Verify Perfect Forward Secrecy
-        is_pfs = "ECDHE" in cipher_name or "DHE" in cipher_name or "TLS_AES" in cipher_name
-        print(f"    - Perfect Forward Secrecy (PFS): {'YES' if is_pfs else 'NO'}")
-
-        # 4. Inspect Server Certificate
-        cert = tls_socket.getpeercert()
-        subject = dict(item[0] for item in cert.get('subject', ()))
-        issuer = dict(item[0] for item in cert.get('issuer', ()))
-        print(f"    - Certificate Subject: {subject.get('commonName')}")
-        print(f"    - Certificate Issuer (CA): {issuer.get('organizationName', issuer.get('commonName'))}")
-
-        # 5. Send a raw HTTP/1.1 GET request over the encrypted tunnel
-        http_request = (
-            f"GET / HTTP/1.1\r\n"
-            f"Host: {hostname}\r\n"
-            f"User-Agent: AntigravityTLSInspector/1.0\r\n"
-            f"Connection: close\r\n\r\n"
-        )
-        tls_socket.sendall(http_request.encode('utf-8'))
-
-        # 6. Read and parse the HTTP status line and headers
-        response = tls_socket.recv(4096).decode('utf-8', errors='replace')
-        status_line = response.split('\r\n')[0]
-        print(f"\n[+] HTTP Response Status Line: {status_line}")
-
-if __name__ == "__main__":
-    inspect_https_connection("www.cloudflare.com")
-```
+*On status codes: 301 is a permanent move and browsers cache it aggressively, often indefinitely, so a mistake is very hard to retract, while 302 is temporary and not cached by default. Both historically changed the method to GET when redirecting a POST, which is why 307 Temporary Redirect and 308 Permanent Redirect exist, preserving the method and body. 401 is misnamed and means unauthenticated, so the response must carry WWW-Authenticate and retrying with credentials may work. 403 means the server knows who you are and refuses, so retrying with the same credentials never helps, and some servers answer 404 instead when even the resource's existence is sensitive. The short version is that 401 is who are you, and 403 is I know who you are, and no."*
