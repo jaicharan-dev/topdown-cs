@@ -1,266 +1,337 @@
 ---
 id: 2-producer-consumer-bounded-buffer
-title: "The Producer-Consumer Problem: Semaphores & Bounded Buffers"
-description: "Solve the classic producer-consumer problem with a mutex and two semaphores, and see why acquiring them in the wrong order deadlocks."
+title: "Producer-Consumer (Bounded Buffer)"
+description: "Three separate problems needing three separate primitives, and the lock order that makes it unrecoverable"
+
 sidebar_position: 2
 sidebar_class_name: sidebar-medium
 ---
-
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Explain the Producer-Consumer (Bounded Buffer) problem. What synchronization primitives are required to solve it, what role does each play, and why does inverting the lock order cause an irrecoverable deadlock?"
 
-Producer-consumer is about one or more threads generating items (producers) and one or more threads consuming them (consumers), passing items through a fixed-size buffer in between. Get the synchronization wrong and you either overflow the buffer, read garbage from an empty buffer, or corrupt it with a race condition.
+---
+
+### Picture it
+
+A bakery with a shelf that holds exactly ten loaves. Bakers put loaves on it; customers take them off.
+
+Three different things can go wrong, and noticing that they are **three different things** is most of the answer.
+
+**Two people reaching at once.** A baker places a loaf in slot 4 at the same instant another baker does, and one loaf is lost, or the count of loaves is wrong. This is about **not touching the shelf simultaneously**.
+
+**A baker arriving at a full shelf.** There is nowhere to put the loaf. The baker must **wait until a space exists**.
+
+**A customer arriving at an empty shelf.** There is nothing to take. The customer must **wait until a loaf exists**.
+
+The first problem is solved by a rule about **taking turns**. The second and third are solved by something quite different: **waiting for a condition to become true**. A turn-taking rule cannot make you wait for bread to appear, and waiting for bread does not stop two people reaching at once. Different problems, different tools, and trying to solve all three with one tool is where people go wrong.
+
+**Now the part that causes the deadlock.**
+
+Imagine a baker who **walks into the shelf room, locks the door behind them**, and only then notices the shelf is full. So they stand inside the locked room, waiting for a space.
+
+Who creates a space? A customer. How does a customer get to the shelf? **Through the door the baker locked.** The customer knocks and waits. The baker waits for the customer. Neither will move again, ever.
+
+Nothing can rescue this. The baker cannot unlock the door, because unlocking it is something they would do **after** placing the loaf, and they never will. No amount of time passing helps, because the thing the baker is waiting for can only be delivered by somebody who needs what the baker is holding.
+
+The fix is just an ordering rule: **check that a space exists before you lock the door.** Wait outside, come in when you know you can finish, and leave.
 
 ---
 
-### The analogy: the chef and the waiter
+### The proper terms
 
-A diner kitchen has a heating tray that holds at most 5 burgers.
+#### The problem
 
-<Diagram>
-<Row>
-<Box title="Chef (Producer)" accent="#60a5fa">
-<Field icon="📤" code="cooks burgers" variant="neutral" />
-</Box>
-<Arrow />
-<Box title="Heating Tray" accent="#818cf8">
-<Field icon="📦" code="holds up to 5" hint="blocks chef when full, blocks waiter when empty" variant="neutral" />
-</Box>
-<Arrow />
-<Box title="Waiter (Consumer)" accent="#34d399">
-<Field icon="📥" code="delivers burgers" variant="neutral" />
-</Box>
-</Row>
-</Diagram>
+The **bounded buffer problem** has **producers** adding items to a fixed-capacity buffer and **consumers** removing them, with three requirements:
 
-Three rules keep the kitchen from breaking:
-1. **Full tray:** if there are already 5 burgers on it, the chef has to stop cooking and wait — a 6th burger has nowhere to go.
-2. **Empty tray:** if there are 0 burgers, the waiter can't deliver one and has to wait.
-3. **No collisions:** the chef and waiter can never touch the same slot on the tray at the same time, or a burger gets dropped.
+**Mutual exclusion.** The buffer's internal state must not be modified by two threads at once.
 
----
+**A producer must block on a full buffer**, rather than overwriting or failing.
 
-### The three primitives you need
+**A consumer must block on an empty buffer**, rather than reading garbage.
 
-To solve this without the chef or waiter spinning in a busy-wait loop, you need exactly three synchronization primitives:
+#### The three primitives, and what each one is for
 
-| Primitive | What it is | Starts at | What it does |
-| :--- | :--- | :--- | :--- |
-| **`empty`** | Counting semaphore | N (buffer capacity) | Counts free slots. Producer calls `wait(empty)` before inserting; if it's 0, the producer sleeps until a consumer frees a slot. |
-| **`full`** | Counting semaphore | 0 | Counts filled slots. Consumer calls `wait(full)` before removing; if it's 0, the consumer sleeps until a producer adds an item. |
-| **`mutex`** | Binary lock | 1 (unlocked) | Protects the buffer array and its read/write index pointers from being touched by two threads at once. |
+The reason three are needed is that **mutual exclusion and condition synchronisation are different problems**, and this is the insight the question is testing.
 
----
+**`mutex`**, a binary semaphore initialised to **1**. It provides **mutual exclusion** over the buffer's data structure, so insertions and removals do not interleave.
 
-### The implementation
+**`empty`**, a **counting semaphore** initialised to N, the buffer's capacity. It counts **free slots**. A producer performs `wait(empty)` to claim one and blocks when none remain; a consumer performs `signal(empty)` when it frees one.
 
-The buffer is a circular array of size N, with `in` tracking the next write slot and `out` the next read slot:
+**`full`**, a counting semaphore initialised to 0. It counts **occupied slots**. A consumer performs `wait(full)` to claim an item and blocks when there are none; a producer performs `signal(full)` after adding one.
 
-```c
-#define N 5
-int buffer[N];
-int in = 0, out = 0;
+Stated as roles:
 
-semaphore empty = N;   // N available spaces
-semaphore full  = 0;   // 0 items ready
-mutex_t   mutex = 1;   // Protects buffer indices
+**The mutex answers "may I touch the buffer right now?"**
+
+**The counting semaphores answer "is there anything to do yet?"**
+
+A mutex **cannot** do the second job. It can make a thread wait for another thread to leave a critical section, but it has no way to make a thread wait until the buffer becomes non-empty, because that is a condition on **data**, not on **occupancy of a code region**. That is precisely why counting semaphores, or condition variables, exist.
+
+A useful invariant: at any moment, **`empty + full + (items in flight inside critical sections) = N`**.
+
+#### Why the lock order causes an irrecoverable deadlock
+
+The correct order is **always acquire the counting semaphore first, then the mutex**:
+
+```text
+producer: wait(empty); wait(mutex); insert; signal(mutex); signal(full);
+consumer: wait(full);  wait(mutex); remove; signal(mutex); signal(empty);
 ```
 
-**Producer:**
+Invert it, taking the mutex first, and the system deadlocks the moment the buffer fills:
+
+```text
+producer: wait(mutex); wait(empty); insert; signal(empty); signal(mutex);
+```
+
+The sequence:
+
+The buffer is **full**, so `empty` is **0**.
+
+A producer executes `wait(mutex)` and **acquires it**.
+
+It then executes `wait(empty)` and **blocks**, because `empty` is 0. It is now **asleep while holding the mutex**.
+
+A consumer arrives, ready to remove an item and free a slot. Its first action is `wait(mutex)`, which **blocks**, because the producer holds it.
+
+Nothing further can happen. The producer is waiting for `empty`, which **only a consumer can signal**. The consumer is waiting for `mutex`, which **only that producer can release**. That is a **circular wait**, and all four Coffman conditions hold.
+
+Why it is **irrecoverable** rather than merely slow, which is the specific word in the question:
+
+**The producer is blocked inside its critical section.** Releasing the mutex is an instruction it will execute **after** the insert, and it will never reach the insert. There is no path by which it releases the lock.
+
+**Time does not help.** This is not contention that clears; the required event can only be generated by a thread that needs the held resource.
+
+**Preemption does not help.** Taking the CPU from the producer does not take the mutex from it; the lock is held across the sleep.
+
+**No external agent can intervene.** Unlike a database, there is no deadlock detector or victim selection. Recovery means killing a process, which means losing the buffer's state.
+
+The general lesson, which is worth stating beyond this problem: **never block on a condition while holding a lock that the thread which would satisfy the condition needs to acquire.**
+
+#### Condition variables, and why they are immune
+
+The same problem written with a mutex plus **condition variables** looks like it violates that rule, and does not, because of one property of `wait`.
+
+**`pthread_cond_wait` atomically releases the mutex and sleeps**, then reacquires it before returning. So the thread is **not holding the lock while asleep**, which is exactly what breaks **hold-and-wait**.
+
+Two rules that follow:
+
+**Always wait in a `while` loop, never an `if`.** Two reasons: **spurious wakeups** are permitted by the specification, and under **Mesa semantics**, which is what pthreads implements, a signalled thread does not run immediately. It must reacquire the mutex, and another thread can change the state in between, so the condition must be rechecked after waking.
+
+**Signal while holding the mutex, or immediately after releasing it**, consistently, to avoid a lost wakeup where the signal happens between a waiter's check and its sleep.
+
+#### Where this breaks down at scale
+
+Worth a sentence, because it shows practical awareness.
+
+**The mutex is a single point of contention.** With many producers and consumers, all of them serialise on one lock, so throughput stops improving with cores.
+
+**Common mitigations:** per-producer and per-consumer queues with **work stealing**; a **ring buffer** with separate head and tail indices so a single producer and single consumer never touch the same cache line; and lock-free SPSC queues using atomic indices, which eliminate the mutex entirely for the one-producer, one-consumer case.
+
+**Batching** also helps disproportionately, since acquiring the lock once for ten items amortises the synchronisation cost tenfold.
+
+---
+
+### In code
+
 ```c
-void* producer(void* arg) {
+// The three primitives, each doing a different job
+sem_t mutex;   // init 1   mutual exclusion on the buffer
+sem_t empty;   // init N   counts FREE slots      (condition sync)
+sem_t full;    // init 0   counts OCCUPIED slots  (condition sync)
+
+void producer(void) {
     while (1) {
-        item_t item = produce_item();
+        item_t x = produce();
+        sem_wait(&empty);        // 1. claim a free slot (may block)
+        sem_wait(&mutex);        // 2. THEN take the lock
+        buffer_insert(x);        //    critical section: short
+        sem_post(&mutex);
+        sem_post(&full);         // 3. announce an item is available
+    }
+}
 
-        sem_wait(&empty);          // 1. Decrement available empty slots (blocks if buffer is full)
-        pthread_mutex_lock(&mutex); // 2. Acquire exclusive access to buffer array
-
-        buffer[in] = item;         // CRITICAL SECTION: Insert item
-        in = (in + 1) % N;         // Advance circular write pointer
-
-        pthread_mutex_unlock(&mutex); // 3. Release exclusive buffer lock
-        sem_post(&full);           // 4. Increment full slots (wakes sleeping consumers)
+void consumer(void) {
+    while (1) {
+        sem_wait(&full);         // 1. claim an item (may block)
+        sem_wait(&mutex);        // 2. THEN take the lock
+        item_t x = buffer_remove();
+        sem_post(&mutex);
+        sem_post(&empty);        // 3. announce a slot is free
+        consume(x);
     }
 }
 ```
 
-**Consumer:**
+```text
+Why a mutex alone cannot solve this:
+
+  a MUTEX can make a thread wait until another thread LEAVES a
+  critical section.
+
+  it CANNOT make a thread wait until the buffer BECOMES NON-EMPTY,
+  because that is a condition on DATA, not on occupancy of a code
+  region.
+
+  so:
+     mutex              "may I touch the buffer right now?"
+     empty / full       "is there anything to do yet?"
+
+  different questions, different primitives. Trying to answer the
+  second with the first is where people go wrong.
+
+  invariant:  empty + full + (items inside critical sections) = N
+```
+
+```text
+Inverting the order: the deadlock, step by step
+
+  WRONG
+     producer: wait(mutex); wait(empty); insert; ...
+
+  buffer is FULL, so empty == 0
+
+  t0  producer: wait(mutex)   -> ACQUIRES the mutex
+  t1  producer: wait(empty)   -> BLOCKS (empty is 0)
+                              -> now ASLEEP WHILE HOLDING THE MUTEX
+  t2  consumer: wait(mutex)   -> BLOCKS (the producer holds it)
+
+      producer waits for EMPTY, which only a CONSUMER can signal
+      consumer waits for MUTEX, which only that PRODUCER can release
+
+           producer --needs--> empty --only from--> consumer
+               ^                                       |
+               +------------- needs mutex -------------+
+
+  all four Coffman conditions hold. Nothing moves again.
+```
+
+```text
+Why IRRECOVERABLE, which is the specific word in the question:
+
+  1. the producer is blocked INSIDE its critical section.
+     releasing the mutex is an instruction AFTER the insert, and it
+     will never reach the insert. There is no path to the release.
+
+  2. TIME does not help. This is not contention that clears; the
+     required event can only be produced by a thread that needs the
+     resource being held.
+
+  3. PREEMPTION does not help. Taking the CPU from the producer does
+     not take the MUTEX from it. The lock is held across the sleep.
+
+  4. NOTHING CAN INTERVENE. Unlike a database there is no deadlock
+     detector and no victim selection. Recovery means killing the
+     process, which loses the buffer's contents.
+
+  the general rule, well beyond this problem:
+     NEVER block on a condition while holding a lock that the thread
+     which would satisfy that condition needs to acquire.
+```
+
 ```c
-void* consumer(void* arg) {
-    while (1) {
-        sem_wait(&full);           // 1. Decrement available full slots (blocks if buffer is empty)
-        pthread_mutex_lock(&mutex); // 2. Acquire exclusive access to buffer array
+// Condition variables: immune, because of ONE property of cond_wait
+pthread_mutex_t      lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t  not_full  = PTHREAD_COND_INITIALIZER;
+pthread_cond_t  not_empty = PTHREAD_COND_INITIALIZER;
+int count = 0;
 
-        item_t item = buffer[out]; // CRITICAL SECTION: Extract item
-        out = (out + 1) % N;       // Advance circular read pointer
+void producer(void) {
+    item_t x = produce();
+    pthread_mutex_lock(&lock);
 
-        pthread_mutex_unlock(&mutex); // 3. Release exclusive buffer lock
-        sem_post(&empty);          // 4. Increment empty slots (wakes sleeping producers)
-
-        consume_item(item);
-    }
+    while (count == N)                       // WHILE, never IF
+        pthread_cond_wait(&not_full, &lock); // ATOMICALLY releases the
+                                             // lock and sleeps, then
+                                             // reacquires on wake
+    buffer_insert(x);
+    count++;
+    pthread_cond_signal(&not_empty);
+    pthread_mutex_unlock(&lock);
 }
+```
+
+```text
+Why cond_wait does not deadlock, and why WHILE is mandatory:
+
+  cond_wait ATOMICALLY releases the mutex and sleeps.
+  So the thread is NOT holding the lock while asleep.
+  -> hold-and-wait is broken -> the deadlock above cannot form.
+
+  WHILE, not IF, for two separate reasons:
+
+    1. SPURIOUS WAKEUPS are permitted by the specification. A thread
+       may wake with the condition still false.
+
+    2. MESA SEMANTICS (what pthreads implements): a signalled thread
+       does NOT run immediately. It must reacquire the mutex, and
+       another thread can change the state in between.
+
+         signal  ->  waiter is made runnable
+                     ... another thread runs and takes the item ...
+         waiter  ->  reacquires the mutex, buffer is empty again
+
+       with IF, it proceeds on a false condition. With WHILE, it
+       rechecks and sleeps again.
+```
+
+```text
+At scale, the single mutex becomes the ceiling:
+
+  many producers + many consumers all serialise on ONE lock
+  -> throughput stops improving with cores
+
+  mitigations:
+     per-thread queues + WORK STEALING
+     a RING BUFFER with separate head and tail indices, so one
+        producer and one consumer never touch the same cache line
+     LOCK-FREE SPSC queues using atomic indices, removing the mutex
+        entirely for the single-producer single-consumer case
+     BATCHING: taking the lock once for ten items amortises the
+        synchronisation cost tenfold
 ```
 
 ---
 
-### The trap: swapping the lock order deadlocks everything
+### What they ask next
 
-A classic interview follow-up: *"what if we swap these two lines in the producer?"*
+**"Why can you not do this with one mutex?"**
+Because a mutex only provides mutual exclusion. It can make a thread wait for another to leave a critical section, but it cannot make a thread wait until the buffer becomes non-empty, which is a condition on data. Condition synchronisation is a separate problem needing a separate primitive.
 
-```c
-// DEADLOCK BUG: Inverting the semaphore and mutex order!
-pthread_mutex_lock(&mutex); // Lock mutex FIRST
-sem_wait(&empty);          // Wait for empty slot SECOND
-```
+**"What happens if you swap `signal(mutex)` and `signal(full)`?"**
+Nothing breaks. Signalling order after the critical section affects only which thread wakes first, not correctness. It is the **acquisition** order that matters, because that is what creates hold-and-wait.
 
-Here's how that locks up the whole system:
+**"Why is `while` required rather than `if` with condition variables?"**
+Two independent reasons: spurious wakeups are explicitly permitted, and Mesa semantics mean a signalled thread must reacquire the mutex, during which another thread can invalidate the condition. Either alone makes `if` incorrect.
 
-1. The buffer is completely full (`empty == 0`).
-2. The producer grabs `mutex` first, then calls `sem_wait(&empty)`.
-3. Since `empty == 0`, the producer goes to sleep — but it's still holding `mutex`.
-4. A consumer wakes up to free some space. It calls `sem_wait(&full)`, which succeeds.
-5. The consumer then tries `pthread_mutex_lock(&mutex)` — and blocks immediately, because the sleeping producer still owns it.
-6. Now both are stuck: the producer is waiting for the consumer to free a slot, and the consumer is waiting for the producer to release the mutex it's sleeping on. Neither can ever happen.
+**"Could a timeout fix the deadlock?"**
+A timed wait turns a permanent deadlock into a detectable error, so the producer could give up and release the mutex. That is error handling, not a solution: the correct fix is the acquisition order, which makes the deadlock impossible rather than survivable.
 
-<Diagram>
-<Row>
-<Box title="Producer" accent="#60a5fa">
-<Field icon="🔒" code="holds mutex" hint="sleeping, waiting on empty slot" variant="neutral" />
-</Box>
-<Arrow label="waits on" />
-<Box title="Consumer" accent="#34d399">
-<Field icon="⏳" code="has freed a slot" hint="blocked trying to grab mutex" variant="neutral" />
-</Box>
-</Row>
-</Diagram>
+**"What is the invariant of a correct solution?"**
+`empty + full` plus any items currently being inserted or removed equals the capacity. The two semaphores partition the slots between free and occupied, and the mutex protects the moment of transition.
 
-**The rule:** always acquire the counting semaphore (`empty`/`full`) *before* the mutex — never the other way around.
+**"How does this map to real systems?"**
+It is exactly a thread pool's work queue, a Go buffered channel, Java's `ArrayBlockingQueue`, and a kernel's socket receive buffer. The bounded buffer is the canonical form of backpressure: a full buffer blocking producers is how a system stops a fast producer overwhelming a slow consumer.
 
----
+**"Why does batching help so much?"**
+Because the cost is dominated by synchronisation rather than by the work. Taking the lock once for ten items divides the per-item synchronisation cost by ten, and it also reduces cache-line ping-ponging between cores.
 
-### If you use condition variables instead: use `while`, not `if`
-
-With POSIX condition variables instead of semaphores, you must re-check the condition in a loop:
-
-```c
-pthread_mutex_lock(&mutex);
-// WRONG: if (count == N) pthread_cond_wait(&not_full, &mutex);
-// CORRECT: Guard with a while loop!
-while (count == N) {
-    pthread_cond_wait(&not_full, &mutex);
-}
-// Insert item...
-pthread_cond_signal(&not_empty);
-pthread_mutex_unlock(&mutex);
-```
-
-Why `while` and not `if`:
-1. **Mesa semantics:** a signaled thread doesn't run immediately — it just moves to the ready queue. By the time it actually gets the CPU and reacquires the mutex, a faster thread may have already taken the slot it was waiting for.
-2. **Spurious wakeups:** POSIX permits a condition variable to wake a thread up even with no signal at all. A `while` loop re-checks the actual condition instead of trusting the wakeup.
+**The common wrong answer** is listing the three primitives and stopping. The valuable part is **why three are needed**, which is that mutual exclusion and condition synchronisation are different problems, and **why the order matters**, which is that blocking on a condition while holding a lock creates a circular wait that nothing can break.
 
 ---
 
 ### Say this in the interview
 
-*"You need a mutex to protect the buffer indices, plus two counting semaphores — `empty` starting at N and `full` starting at 0 — so producers block when the buffer is full and consumers block when it's empty, without busy-waiting. The one deadlock trap is acquiring the mutex before the semaphore: if a thread blocks on the semaphore while still holding the mutex, nobody can ever unblock it."*
+*"The bounded buffer problem has producers adding to a fixed-capacity buffer and consumers removing from it, with three requirements: mutual exclusion on the buffer's state, a producer blocking on a full buffer, and a consumer blocking on an empty one.*
 
----
+*It needs three primitives because mutual exclusion and condition synchronisation are different problems. A mutex initialised to 1 provides mutual exclusion over the buffer. A counting semaphore empty initialised to N counts free slots, so a producer waits on it to claim a slot and a consumer signals it when it frees one. A counting semaphore full initialised to 0 counts occupied slots, so a consumer waits on it and a producer signals it after inserting. Stated as roles, the mutex answers may I touch the buffer right now, and the counting semaphores answer is there anything to do yet. A mutex cannot do the second job: it can make a thread wait for another to leave a critical section, but it cannot make a thread wait until the buffer becomes non-empty, because that is a condition on data rather than on occupancy of a code region. The invariant is that empty plus full plus anything in flight equals N.*
 
-### Python: a working bounded buffer with threads
+*The order must be to acquire the counting semaphore first and the mutex second. Invert it and the system deadlocks as soon as the buffer fills. The buffer is full so empty is zero. The producer takes the mutex, then blocks on empty, so it is now asleep while holding the mutex. A consumer arrives wanting to free a slot, and its first action is to take the mutex, which blocks. The producer waits for empty, which only a consumer can signal, and the consumer waits for the mutex, which only that producer can release. That is a circular wait with all four Coffman conditions.*
 
-```python
-"""
-Thread-Safe Bounded Buffer (Producer-Consumer) Simulation
-Demonstrates:
-  1. Circular buffer index management
-  2. Semaphore-controlled capacity constraints (empty & full)
-  3. Mutex-protected critical section
-"""
+*It is irrecoverable rather than merely slow for four reasons. The producer is blocked inside its critical section, and releasing the mutex is an instruction after the insert which it will never reach, so there is no path to the release. Time does not help, because the required event can only come from a thread that needs the held resource. Preemption does not help, because taking the CPU from the producer does not take the mutex from it. And nothing can intervene, since unlike a database there is no deadlock detector or victim selection, so recovery means killing the process and losing the buffer. The general rule is never to block on a condition while holding a lock that the thread which would satisfy that condition needs to acquire.*
 
-import threading
-import time
-import random
-from typing import List, Optional
+*Condition variables are immune to this because pthread_cond_wait atomically releases the mutex and sleeps, then reacquires it on waking, so the thread is not holding the lock while asleep, which breaks hold-and-wait. Two rules go with them: always wait in a while loop rather than an if, because spurious wakeups are permitted and because Mesa semantics mean a signalled thread must reacquire the mutex and another thread can change the state in between; and signal consistently while holding the mutex or immediately after releasing it, to avoid a lost wakeup.*
 
-class BoundedBuffer:
-    def __init__(self, capacity: int = 5):
-        self.capacity = capacity
-        self.buffer: List[Optional[int]] = [None] * capacity
-        self.in_idx = 0
-        self.out_idx = 0
-
-        # Synchronization primitives
-        self.empty = threading.Semaphore(capacity)  # Starts at N
-        self.full = threading.Semaphore(0)          # Starts at 0
-        self.mutex = threading.Lock()               # Binary exclusion
-
-    def produce(self, item: int, producer_id: str) -> None:
-        # Step 1: Wait for an available empty slot
-        self.empty.acquire()
-
-        # Step 2: Lock the critical section
-        with self.mutex:
-            self.buffer[self.in_idx] = item
-            print(f"[{producer_id}] Produced {item:3d} -> Buffer index {self.in_idx} "
-                  f"| Buffer: {[x for x in self.buffer if x is not None]}")
-            self.in_idx = (self.in_idx + 1) % self.capacity
-
-        # Step 3: Signal that a new filled slot is ready
-        self.full.release()
-
-    def consume(self, consumer_id: str) -> int:
-        # Step 1: Wait for an available item
-        self.full.acquire()
-
-        # Step 2: Lock the critical section
-        with self.mutex:
-            item = self.buffer[self.out_idx]
-            self.buffer[self.out_idx] = None
-            print(f"[{consumer_id}] Consumed {item:3d} <- Buffer index {self.out_idx} "
-                  f"| Buffer: {[x for x in self.buffer if x is not None]}")
-            self.out_idx = (self.out_idx + 1) % self.capacity
-
-        # Step 3: Signal that an empty slot has freed up
-        self.empty.release()
-        return item
-
-
-def producer_worker(buffer: BoundedBuffer, p_id: str, count: int):
-    for _ in range(count):
-        item = random.randint(100, 999)
-        buffer.produce(item, p_id)
-        time.sleep(random.uniform(0.01, 0.05))
-
-
-def consumer_worker(buffer: BoundedBuffer, c_id: str, count: int):
-    for _ in range(count):
-        buffer.consume(c_id)
-        time.sleep(random.uniform(0.02, 0.06))
-
-
-def main():
-    print("=== Multi-Threaded Producer-Consumer Simulation (Capacity = 5) ===\n")
-    buffer = BoundedBuffer(capacity=5)
-
-    # 2 Producers, 2 Consumers
-    threads = [
-        threading.Thread(target=producer_worker, args=(buffer, "Prod-1", 6)),
-        threading.Thread(target=producer_worker, args=(buffer, "Prod-2", 6)),
-        threading.Thread(target=consumer_worker, args=(buffer, "Cons-A", 6)),
-        threading.Thread(target=consumer_worker, args=(buffer, "Cons-B", 6)),
-    ]
-
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join()
-
-    print("\nAll items produced and consumed safely with zero race conditions or deadlocks!")
-
-if __name__ == "__main__":
-    main()
-```
+*At scale the single mutex becomes the ceiling, since all producers and consumers serialise on it and throughput stops improving with cores. The usual mitigations are per-thread queues with work stealing, a ring buffer with separate head and tail indices so a single producer and consumer never share a cache line, lock-free single-producer single-consumer queues using atomic indices, and batching, which amortises the synchronisation cost across many items."*
