@@ -1,201 +1,344 @@
 ---
 id: 23-abstract-class-constructors-private
 title: "Abstract Class Constructors & Private Constructors"
-description: "Why abstract classes still have constructors even though you can't 'new' them, the object initialization order, and why private constructors exist."
-sidebar_position: 5
+description: "A constructor that runs but is never called by you, the order that makes calling an overridable method from it catastrophic, and the constructor you hide on purpose"
+
+sidebar_position: 23
 sidebar_class_name: sidebar-medium
 ---
-
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "Can an abstract class have a constructor if it cannot be instantiated directly with `new`? What is the complete object initialization lifecycle, what catastrophic bug occurs if a constructor invokes an overridable method, and why would you ever declare a private constructor?"
 
-### The analogy
+---
 
-- **Abstract class constructor — the foundation.** You can't live in a bare concrete foundation on its own, so you'd never "build" just the foundation. But when you build an actual house on top of it, the crew still has to pour and cure that foundation first, before the walls go up. The foundation's own "constructor" still runs — it just never runs by itself.
-- **Private constructor — the door with no handle outside.** Nobody can just walk in and call `new`. The only way in is through a staff member inside who lets you through — that's a static factory method like `getInstance()`.
+### Picture it
+
+A building is constructed in layers: **foundations, then frame, then the fit-out**.
+
+**Nobody ever orders "a foundation".** You cannot live in one. But every house that gets built has one, and the foundation crew absolutely has a job: it is done **as part of building the house**, before anything above it. So "you cannot order it on its own" and "it has work to do" are entirely compatible, and that is the whole answer to the first part.
+
+The order is strict and it is **bottom-up**: the foundation is finished before the frame starts, and the frame is finished before the fit-out.
+
+**Now the disaster.**
+
+Suppose the foundation crew's checklist ends with "**ring the owner's decorator and ask them to hang the curtains**". The decorator arrives, goes to the window, and there is no window. There is no wall. **The fit-out has not happened**, because the foundation is not even finished yet.
+
+And the decorator does not fail loudly. They hang the curtains on nothing, report success, and leave. Later the owner looks round and finds the curtains missing, and **everything in the fit-out paperwork says they were hung**. The owner swears they specified curtains; the paperwork agrees; the curtains are not there.
+
+The cause is that the foundation crew called **forward in time**, to work that is scheduled to happen later. The fix is that the foundation crew only ever rings people whose work is **already complete**, or does the job itself.
+
+**And the locked door.** Sometimes a building is designed so that **nobody can order one directly** on purpose: perhaps because it should only ever be built through a specific agent, or because there should only ever be one of them, or because it is not a building at all but a toolshed full of equipment that nobody is meant to live in. Locking the front door from the inside is how you enforce that, and it has the useful side effect that **nobody can build an extension on it either**, because an extension has to connect to the original through that door.
 
 ---
 
-### Why abstract classes have constructors at all
+### The proper terms
 
-The question answers itself once you see it: an abstract class can't be instantiated on its own, but it's still **part of** every object built from a concrete subclass. Its constructor runs as part of building that subclass — it just never runs in isolation.
+#### Yes, an abstract class has a constructor
 
-- Abstract classes often hold private fields or set up invariants that only they can initialize.
-- A subclass can't reach into its parent's private fields directly — it has to ask the parent to do it, via `super(...)`.
-- If you don't write a constructor at all, Java quietly adds a no-arg one for you: `public AbstractClass() { super(); }`.
+An **abstract class can and usually should have a constructor**. It is never invoked by `new AbstractThing()`, which is forbidden, but it **is** invoked as part of constructing a **concrete subclass**, through the subclass's implicit or explicit `super(...)` call.
 
-<Diagram>
-<Row>
-<Box title="Object" accent="#a1a1aa"><Field icon="①" code="super()" hint="always runs first" variant="neutral" /></Box>
-<Arrow />
-<Box title="Animal (abstract)" accent="#818cf8"><Field icon="②" code="super(name)" hint="initializes inherited state" variant="neutral" /></Box>
-<Arrow />
-<Box title="Dog (concrete)" accent="#34d399"><Field icon="③" code="new Dog(...)" hint="runs last, finishes construction" variant="neutral" /></Box>
-</Row>
-</Diagram>
+Its purpose is to initialise the abstract class's own state: its fields, its invariants, anything every subclass needs. Putting that in one place means every subclass inherits it rather than repeating it, and it lets the abstract class enforce an invariant on construction, for example by rejecting a null required argument.
+
+If you write no constructor, the compiler inserts a **default no-arg constructor**, exactly as for any class. And if your abstract class declares **only** a constructor taking arguments, every subclass **must** call it explicitly, which is a useful way of forcing subclasses to supply something.
+
+#### The complete initialisation lifecycle
+
+The order matters enormously, and it is the key to the next section.
+
+**Before anything, once per class:** **static** fields are given default values, then **static initialisers and static field initialisers** run in **source order**, at **class initialisation** time. This happens once, not per instance.
+
+Then, per instance:
+
+**1. Memory is allocated and every instance field is set to its default**: `0`, `false`, `null`. This happens **before any user code runs**, which is why a field is never truly uninitialised.
+
+**2. The most-derived constructor is entered.**
+
+**3. It calls `this(...)` or `super(...)`.** If neither is written, the compiler inserts an implicit **`super()`**. This recurses **all the way up to `java.lang.Object`**, so nothing below has executed yet.
+
+**4. `Object`'s constructor completes.**
+
+**5. Then, on the way back down, for each class in turn:** its **instance initialiser blocks and instance field initialisers** run **in source order**, and **then** the rest of its constructor body.
+
+**6. Repeat down the chain** until the most-derived class's constructor body finishes.
+
+The consequence to hold onto: **a superclass is fully constructed, including its field initialisers and its constructor body, before any subclass field initialiser runs.**
+
+#### The catastrophic bug
+
+**Never invoke an overridable method from a constructor.** This is one of Joshua Bloch's rules in *Effective Java*, and the lifecycle above is exactly why.
+
+If a superclass constructor calls an overridable method, **the subclass's override runs**, because Java dispatches **virtually from the very start of construction**. But at that moment the subclass's **field initialisers have not run**, so every field it relies on is still at its **default**: `null`, `0`, `false`.
+
+The result is the worst kind of bug:
+
+**It does not throw at the point of the mistake.** The override simply sees nulls and zeros.
+
+**The code looks obviously correct.** The subclass clearly initialises the field, on the line above or below, and the debugger shows the value present **afterwards**.
+
+**It can corrupt `final` fields**, which is particularly disorienting, since a `final` field is observed holding `null` despite being assigned exactly once.
+
+This is a **Java-specific hazard** worth naming. **C++ does the opposite**: during base-class construction the object's dynamic type is the base class, so a virtual call reaches the **base** version. Java dispatches to the override from the first instruction, so the window is wide open.
+
+The same trap applies to **`clone()`** and **`readObject()`**, because both also produce an object whose subclass state is not yet established.
+
+The fixes:
+
+**Make the method `private`, `static` or `final`**, so no override can exist.
+
+**Pass the value up** through the `super(...)` arguments, so the superclass has what it needs without asking.
+
+**Use a static factory or builder**, constructing the object and then calling an initialisation method once it is fully built, which also removes the half-constructed object from view entirely.
+
+#### Why declare a private constructor
+
+Six reasons, and they come up in different guises.
+
+**A utility class.** A class of only static members, such as `java.lang.Math` or `Collections`, should never be instantiated. A private constructor prevents it **and** suppresses the implicit public no-arg constructor the compiler would otherwise generate. Adding `throw new AssertionError()` inside also defeats reflective instantiation from within the class.
+
+**A singleton.** The constructor is private so the class fully controls how many instances exist, exposing one through a static field or method.
+
+**Static factory methods.** Forcing construction through named methods such as `of`, `valueOf` or `from` gives you meaningful names, the freedom to **return a cached instance** rather than a new one, and the ability to return a subtype. `Integer.valueOf` and `List.of` both do this.
+
+**The builder pattern.** The object is constructible only through its builder, which lets the builder validate everything before any object exists.
+
+**Preventing subclassing.** A class whose constructors are all private cannot be subclassed, because a subclass constructor must call `super(...)` and cannot reach a private one. This is an alternative to `final`, and it is how classes such as `java.lang.Void` work.
+
+**Constructor chaining.** A private constructor holding the common logic, with the public constructors delegating to it through `this(...)`, which removes duplication without exposing the general form.
+
+One caution worth adding: a private constructor **does not stop reflection**. `Constructor.setAccessible(true)` will invoke it, which is why a singleton that must be genuinely unbreakable is written as an **enum**, since the JVM guarantees enum instantiation cannot be subverted by reflection or deserialisation.
 
 ---
 
-### Comparison
-
-| | Abstract Class Constructor | Private Constructor | Normal Public Constructor |
-| :--- | :--- | :--- | :--- |
-| **Visibility** | Usually `protected` or `public` | Internal to its own class only | `public` |
-| **Can you `new` it directly?** | No | No, not from outside the class | Yes |
-| **Can subclasses call it (`super()`)?** | Yes — this is the whole point | No — blocks subclassing | Yes |
-| **Used for** | Initializing shared/inherited state | Utility classes, singletons, factory methods | Normal object creation |
-
----
-
-### The order things actually initialize in
-
-When you call `new Child()`, here's the exact order:
-
-1. **Once per class load:** parent's static fields/blocks run, then the child's.
-2. **Every time you call `new`:** parent's instance fields and instance blocks run, then the parent's constructor body, *then* the child's instance fields and instance blocks, then the child's constructor body.
-
-The short version: everything about the parent finishes before the child's own fields are even touched.
-
----
-
-### The trap: calling an overridable method from a constructor
-
-This is a famous warning from Joshua Bloch's *Effective Java*: never call an overridable method from a constructor. Here's why it's dangerous:
+### In code
 
 ```java
-abstract class Parent {
-    public Parent() {
-        init(); // dangerous: calls an overridable method
-    }
-    public abstract void init();
+// An abstract class absolutely has a constructor, and it runs
+abstract class Shape {
+    private final String name;
+
+    protected Shape(String name) {                  // never called by new
+        if (name == null) throw new IllegalArgumentException();
+        this.name = name;                           // but ALWAYS runs,
+    }                                               // as part of building
+                                                    // a subclass
+    abstract double area();
+    public String getName() { return name; }
 }
 
-class Child extends Parent {
-    private String resource;
-
-    public Child() {
-        this.resource = "CRITICAL_DATABASE_CONNECTION";
+class Circle extends Shape {
+    private final double r;
+    Circle(double r) {
+        super("circle");       // REQUIRED: Shape has no no-arg constructor
+        this.r = r;
     }
+    @Override double area() { return Math.PI * r * r; }
+}
 
-    @Override
-    public void init() {
-        // this runs DURING Parent's constructor, before Child's constructor has run!
-        System.out.println("Resource length: " + resource.length()); // throws NullPointerException!
+// new Shape("x");   // COMPILE ERROR: Shape is abstract
+new Circle(2.0);     // runs Shape's constructor, then Circle's
+```
+
+```text
+The complete initialisation order:
+
+  ONCE PER CLASS, at class initialisation:
+     static fields -> defaults
+     static initialisers and static field initialisers, IN SOURCE ORDER
+
+  PER INSTANCE:
+   1. memory allocated; EVERY instance field set to its default
+      (0, false, null) BEFORE any user code runs
+   2. the MOST-DERIVED constructor is entered
+   3. it calls this(...) or super(...); if neither is written, an
+      implicit super() is inserted
+      -> this recurses ALL THE WAY UP to java.lang.Object
+         (nothing below has executed yet)
+   4. Object's constructor completes
+   5. on the way back DOWN, for each class in turn:
+         its instance initialiser blocks and field initialisers,
+         IN SOURCE ORDER
+         THEN the rest of its constructor body
+   6. repeat down the chain to the most-derived class
+
+  THE CONSEQUENCE THAT MATTERS:
+     a superclass is FULLY constructed, including its field
+     initialisers and constructor body, BEFORE any subclass field
+     initialiser runs.
+```
+
+```java
+// THE CATASTROPHIC BUG
+class Base {
+    Base() {
+        init();                  // calls an OVERRIDABLE method
     }
+    void init() { }
+}
+
+class Derived extends Base {
+    private final String value = "ready";    // field initialiser
+    private final List<String> items = new ArrayList<>();
+
+    @Override void init() {
+        System.out.println(value);           // prints NULL
+        items.add("x");                      // NullPointerException
+    }
+}
+
+new Derived();
+
+// WHY: Base's constructor runs BEFORE Derived's field initialisers.
+// Java dispatches VIRTUALLY FROM THE VERY START OF CONSTRUCTION, so
+// Derived.init() runs against an object whose fields are still at
+// their DEFAULTS.
+//
+// and note how bad the failure mode is:
+//   - it does not throw at the point of the mistake
+//   - the code looks obviously correct: value IS initialised, and
+//     the debugger shows it present afterwards
+//   - a FINAL field is observed holding null despite being assigned
+//     exactly once
+```
+
+```text
+Why this is a JAVA-SPECIFIC hazard:
+
+  C++     during base-class construction the object's DYNAMIC TYPE
+          is the base class, so a virtual call reaches the BASE
+          version. The language closes the window.
+
+  JAVA    dispatches to the OVERRIDE from the first instruction of
+          construction. The window is wide open.
+
+  and the same trap applies to clone() and readObject(), because
+  both also produce an object whose subclass state is not yet
+  established.
+```
+
+```java
+// The three fixes
+class Base1 {
+    Base1() { init(); }
+    private void init() { }         // 1. private: no override possible
+}                                   //    (final or static also work)
+
+class Base2 {
+    private final String value;
+    Base2(String value) {           // 2. pass the value UP, so the
+        this.value = value;         //    superclass never has to ask
+    }
+}
+
+// 3. a static factory: construct, THEN initialise once fully built
+class Widget {
+    private Widget() { }
+    static Widget create() {
+        Widget w = new Widget();    // fully constructed first
+        w.init();                   // only now, and it may be virtual
+        return w;
+    }
+    protected void init() { }
 }
 ```
 
-Walk through it: `new Child()` calls `super()` first, which runs `Parent()`. Inside that, `init()` is called — and because it's overridden, dynamic dispatch routes it to `Child.init()`. But `Child`'s own constructor hasn't run yet, so `resource` is still `null`. Boom — `NullPointerException`, triggered before the object even finished being built.
-
----
-
-### Why you'd ever want a private constructor
-
-Making a constructor `private` blocks `new` from outside the class. Four real reasons to do this:
-
-**1. Stop a static utility class from being instantiated at all** (think `Math`, `Collections`):
 ```java
+// Why a private constructor, with six reasons
+
+// 1. UTILITY CLASS: never instantiate
 public final class MathUtils {
     private MathUtils() {
-        throw new AssertionError("Utility class; cannot be instantiated.");
+        throw new AssertionError("no instances");   // defeats reflection
+    }                                               // from inside too
+    public static int clamp(int v, int lo, int hi) { /* ... */ return v; }
+}
+// without the private constructor the compiler generates a PUBLIC
+// no-arg one, and `new MathUtils()` compiles. java.lang.Math does
+// exactly this.
+
+// 2. SINGLETON: control how many exist
+// 3. STATIC FACTORY: named, may return a CACHED instance or a SUBTYPE
+public final class Money {
+    private final long cents;
+    private Money(long cents) { this.cents = cents; }
+
+    public static Money ofCents(long c) { return new Money(c); }
+    public static Money zero()          { return ZERO; }   // cached
+    private static final Money ZERO = new Money(0);
+}
+// Integer.valueOf and List.of both do this.
+
+// 4. BUILDER: constructible only through the builder, which can
+//    validate before any object exists
+
+// 5. PREVENTING SUBCLASSING: a class whose constructors are ALL
+//    private cannot be subclassed, because a subclass constructor
+//    must call super(...) and cannot reach a private one.
+//    An alternative to `final`, and how java.lang.Void works.
+
+// 6. CONSTRUCTOR CHAINING: the common logic in one private
+//    constructor that the public ones delegate to with this(...)
+class Range {
+    private final int lo, hi;
+    public Range(int hi)             { this(0, hi); }
+    public Range(int lo, int hi)     { this(lo, hi, true); }
+    private Range(int lo, int hi, boolean validate) {
+        if (validate && lo > hi) throw new IllegalArgumentException();
+        this.lo = lo; this.hi = hi;
     }
-    public static int add(int a, int b) { return a + b; }
 }
 ```
 
-**2. Singletons** — guarantee exactly one instance exists:
-```java
-public class CacheManager {
-    private static final CacheManager INSTANCE = new CacheManager();
-    private CacheManager() {} // closed door
-    public static CacheManager getInstance() { return INSTANCE; }
-}
+```text
+One caution: a private constructor does NOT stop reflection
+
+  Constructor<Singleton> c = Singleton.class.getDeclaredConstructor();
+  c.setAccessible(true);
+  Singleton rogue = c.newInstance();     // a SECOND instance
+
+  which is why a singleton that must be genuinely unbreakable is
+  written as an ENUM: the JVM guarantees enum instantiation cannot be
+  subverted by reflection OR deserialisation.
 ```
-
-**3. Static factory methods** — hide the constructor behind readable names like `User.createAdmin()` instead of a raw `new User(...)`.
-
-**4. Sealing a class off from subclassing** — if every constructor is private, no outside class can extend it at all (nested inner classes aside). This was the common trick before Java 17's `sealed` classes existed.
 
 ---
 
-### Private constructors can still be broken — via reflection
+### What they ask next
 
-```java
-Constructor<Singleton> c = Singleton.class.getDeclaredConstructor();
-c.setAccessible(true); // bypasses private!
-Singleton rogueInstance = c.newInstance();
-```
+**"If it cannot be instantiated, what is the constructor for?"**
+To initialise the abstract class's own fields and enforce its invariants, as part of constructing a concrete subclass through `super(...)`. "Cannot be ordered on its own" and "has work to do during construction" are entirely compatible.
 
-Two real defenses:
-1. Check `if (instance != null) throw new IllegalStateException(...)` inside the constructor itself.
-2. Use an `enum` instead — the JVM guarantees enum singletons and explicitly blocks reflection from creating extra instances.
+**"What runs first, a field initialiser or the constructor body?"**
+The field initialisers and instance initialiser blocks, in source order, **then** the constructor body, and both only **after** the `super(...)` call has returned. That ordering is the whole reason the overridable-method bug exists.
+
+**"Why does the field appear `null` in the override?"**
+Because the superclass constructor runs before the subclass's field initialisers, and Java dispatches virtually from the first instruction of construction. The override therefore sees the subclass's fields at their defaults.
+
+**"How does C++ avoid this?"**
+During base-class construction the object's dynamic type is the base class, so a virtual call reaches the base version rather than the derived override. Java deliberately dispatches to the override from the start, which is why the rule "never call an overridable method from a constructor" is Java-specific advice.
+
+**"What stops a class with only private constructors from being subclassed?"**
+A subclass constructor must invoke `super(...)`, and it cannot reach a private constructor, so the class cannot be extended. It is an alternative to `final`, used by classes like `java.lang.Void`.
+
+**"Why does a utility class need a private constructor at all?"**
+Because without any declared constructor the compiler generates a **public** no-arg one, so `new MathUtils()` would compile. Declaring it private removes that, and throwing an `AssertionError` inside also blocks reflective instantiation from within the class.
+
+**"Does a private constructor guarantee a singleton?"**
+No. Reflection with `setAccessible(true)` can invoke it, and deserialisation can create another instance. An enum singleton is the only form the JVM guarantees, which is exactly Bloch's argument for it.
+
+**The common wrong answer** is "an abstract class cannot have a constructor because you cannot instantiate it". It can, it usually should, and it always runs during subclass construction. The valuable parts are the **exact initialisation order**, which explains why a constructor calling an overridable method sees the subclass's fields at their defaults, and the fact that a **private constructor is a design tool** rather than merely a way to block `new`.
 
 ---
 
 ### Say this in the interview
 
-*"Yes, abstract classes can and do have constructors — you just can't call them directly with `new`. Subclasses call them through `super()` to initialize inherited state. Initialization always runs top-down: parent statics, child statics, then parent instance state and constructor, then child instance state and constructor. The classic trap is calling an overridable method from a constructor — dynamic dispatch routes it to the child's override before the child's fields are set, so you get a NullPointerException. Private constructors show up for utility classes, singletons, and static factories — and while reflection can bypass them with setAccessible, enum singletons are immune."*
+*"Yes, an abstract class can and usually should have a constructor. It is never invoked by new, which is forbidden, but it is invoked as part of constructing a concrete subclass through the subclass's implicit or explicit super call. Its purpose is to initialise the abstract class's own fields and enforce its invariants in one place, so every subclass inherits that rather than repeating it. If you write none, the compiler inserts a default no-arg constructor, and if the abstract class declares only a constructor taking arguments, every subclass must call it explicitly.*
 
----
+*The lifecycle matters because of the next part. Once per class, static fields get defaults and then static initialisers and static field initialisers run in source order at class initialisation. Then per instance: memory is allocated and every instance field is set to its default, zero, false or null, before any user code runs. The most-derived constructor is entered. It calls this or super, and if neither is written an implicit super is inserted, which recurses all the way up to java.lang.Object, so nothing below has executed yet. Object's constructor completes. Then on the way back down, for each class in turn, its instance initialiser blocks and field initialisers run in source order, and then the rest of its constructor body. That repeats down to the most-derived class. The consequence that matters is that a superclass is fully constructed, including its field initialisers and constructor body, before any subclass field initialiser runs.*
 
-### Code: proving the initialization order and the trap
+*So the catastrophic bug is calling an overridable method from a constructor. If a superclass constructor does that, the subclass's override runs, because Java dispatches virtually from the very start of construction, but at that moment the subclass's field initialisers have not run, so every field it relies on is still null, zero or false. The failure mode is the worst kind: it does not throw at the point of the mistake, the code looks obviously correct because the field clearly is initialised and the debugger shows it present afterwards, and it can leave a final field observed holding null despite being assigned exactly once. It is a Java-specific hazard, because C++ does the opposite: during base-class construction the dynamic type is the base class, so a virtual call reaches the base version. The same trap applies to clone and readObject. The fixes are to make the method private, static or final so no override exists; to pass the value up through the super arguments; or to use a static factory or builder that constructs the object and then initialises it once it is fully built.*
 
-```java
-public class ConstructorLifecycleDemo {
+*As for private constructors, there are six reasons. A utility class of only static members, like java.lang.Math, should never be instantiated, and without a declared constructor the compiler generates a public no-arg one, so declaring it private removes that, with an AssertionError inside to defeat reflection from within the class. A singleton, to control how many instances exist. Static factory methods, so construction goes through named methods like of or valueOf, which gives meaningful names and the freedom to return a cached instance or a subtype, as Integer.valueOf and List.of do. The builder pattern, so the object is constructible only through a builder that validates before any object exists. Preventing subclassing, since a class whose constructors are all private cannot be extended because a subclass constructor must call super and cannot reach a private one, which is how java.lang.Void works. And constructor chaining, with the common logic in one private constructor that the public ones delegate to.*
 
-    static abstract class BaseEntity {
-        private final long id;
-
-        public BaseEntity(long id) {
-            System.out.println("1. BaseEntity constructor called with ID: " + id);
-            this.id = id;
-            // Anti-pattern: calling an overridable method from a constructor!
-            validate();
-        }
-
-        public abstract void validate();
-
-        public long getId() { return id; }
-    }
-
-    static class UserAccount extends BaseEntity {
-        // not yet initialized when BaseEntity's constructor runs!
-        private String username = "default_user";
-
-        public UserAccount(long id, String username) {
-            super(id);
-            System.out.println("2. UserAccount constructor called.");
-            this.username = username;
-        }
-
-        @Override
-        public void validate() {
-            // when BaseEntity calls this, username is still null!
-            System.out.println("   [Validate Hook] Validating username: " + username);
-            if (username == null) {
-                System.out.println("   [WARNING] Detected UNINITIALIZED child state during parent constructor!");
-            }
-        }
-    }
-
-    // static utility class with a private constructor
-    public static final class SecurityUtils {
-        private SecurityUtils() {
-            throw new AssertionError("Non-instantiable utility class.");
-        }
-        public static String hash(String input) { return "hashed:" + input; }
-    }
-
-    public static void main(String[] args) {
-        System.out.println("--- Instantiating subclass ---");
-        UserAccount account = new UserAccount(101, "alice_admin");
-
-        System.out.println("\n--- Construction complete ---");
-        System.out.println("Final Username: " + account.username);
-        System.out.println("Security Hash: " + SecurityUtils.hash("secret"));
-    }
-}
-```
+*One caution I would add: a private constructor does not stop reflection, since setAccessible will invoke it, which is why a singleton that must be genuinely unbreakable is written as an enum, because the JVM guarantees enum instantiation cannot be subverted by reflection or deserialisation."*
