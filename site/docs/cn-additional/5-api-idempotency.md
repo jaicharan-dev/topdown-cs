@@ -1,271 +1,346 @@
 ---
 id: 5-api-idempotency
 title: "API Idempotency & Idempotency Keys"
-description: "Understand API idempotency, why it is critical for payment endpoints, and how idempotency keys prevent duplicate operations on network retries."
+description: "A timeout never tells you whether it worked, so the fix is making the second attempt harmless"
+
 sidebar_position: 5
 sidebar_class_name: sidebar-medium
 ---
-
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is API idempotency, and why is it critical for financial transactions? How do production idempotency keys handle concurrent in-flight retries, and what must the server do if a client reuses an idempotency key with a mutated payload?"
 
-Imagine calling a restaurant to order food, and the call drops right after you finish talking. Did they get your order or not? You call back and repeat it — if the kitchen already started cooking, you don't want a second plate showing up. An API needs the same guarantee: calling it once, or calling it five times because the network glitched, should leave things in exactly the same state.
+---
 
-That's **idempotency**: making the same request multiple times has the same effect as making it once.
+### Picture it
 
-$$f(f(x)) = f(x)$$
+You tap your card and the terminal freezes. No receipt, no beep, nothing.
 
-Reads are naturally idempotent — reading a value twice doesn't change it. Writes aren't, by default. Charging a card, booking a flight, transferring money — do each of those twice and you get two charges, two bookings, two transfers, unless the API is specifically built to prevent it.
+**You cannot tell what happened.** Either the payment never reached the bank, or it went through perfectly and the confirmation got lost on the way back. From where you are standing, those two situations look **absolutely identical**, and no amount of waiting will distinguish them.
 
-<Diagram>
-<Row>
-<Box title="PUT /account/balance" accent="#34d399">
-<Field icon="✅" code="idempotent" hint="retry-safe — sets an absolute value, same end state every time" variant="neutral" />
-</Box>
-<Box title="POST /charge" accent="#fb7185">
-<Field icon="⚠️" code="not idempotent" hint="retry without protection = double charge" variant="neutral" />
-</Box>
-</Row>
-</Diagram>
+So you have two options and both are bad. Tap again and you might pay twice. Walk away and you might not have paid at all.
+
+The way out is not to resolve the ambiguity, because you cannot. **It is to make the second tap harmless.**
+
+Imagine the card carried a slip of paper with a one-off reference number on it, and the bank wrote that number down alongside what it did. Now the second tap carries **the same number**. The bank looks it up, sees it has already acted, and simply **hands back the original receipt** without charging anything. Tap ten more times and nothing further happens.
+
+Three details turn that idea into something that actually works.
+
+**What if the second tap arrives while the first is still being processed?** The bank has the number written down but no outcome yet. It must not charge again, and it cannot hand over a receipt that does not exist. The only honest answer is "**that one is still in progress, ask me again shortly**".
+
+**What if someone reuses the same reference number for a different amount?** That is not a retry; a retry is by definition the same request. Something has gone wrong in their system, or someone is probing. Handing back the original receipt would tell them their new payment succeeded when it never happened. Processing it would charge twice. Both are harmful, so the bank must **refuse and say why**.
+
+**And the number must be written down in the same stroke as the charge.** If the bank charges the card and then crashes before recording the reference, the retry sees no record and charges again. The record and the act have to be inseparable.
 
 ---
 
-### Why this actually breaks things: the retry window
+### The proper terms
 
-A single API call isn't instant — it has three phases, and the dangerous part is what happens if something fails between the last two:
+#### What idempotency is
 
-<Diagram>
-<Row>
-<Box title="Request sent" accent="#60a5fa">
-<Field icon="📤" code="Client → Server" variant="neutral" />
-</Box>
-<Arrow label="reaches server" />
-<Box title="Server executes" accent="#f59e0b">
-<Field icon="💳" code="Charge $100 — succeeds" variant="neutral" />
-</Box>
-<Arrow label="response lost" />
-<Box title="Client times out" accent="#fb7185">
-<Field icon="❓" code="No idea if it worked" variant="neutral" />
-</Box>
-</Row>
-</Diagram>
+An operation is **idempotent** when performing it **many times has the same effect on server state as performing it once**.
 
-Walk through what happens:
+The precise part, which candidates often blur: it is a statement about **effect on state**, not about the response being byte-identical. A `DELETE` returning **204** then **404** is still idempotent, because the resource is equally absent either way.
 
-1. The server runs the charge. It succeeds — \$100 is deducted.
-2. On the way back, the connection drops, or the gateway times out.
-3. The client just sees a timeout (`ECONNRESET`). It genuinely doesn't know whether the charge went through.
-4. Most retry logic (in payment SDKs, in message queues) just tries again automatically.
-5. If the endpoint isn't idempotent, step 1 runs a second time — the customer gets charged twice.
+In HTTP, **GET**, **HEAD**, **PUT** and **DELETE** are idempotent by definition, and **POST** and **PATCH** are not. Creating a payment is a `POST`, which is exactly why payments need a mechanism bolted on.
 
-The server did its job correctly both times. The problem is entirely about what happens when the *response* gets lost, not the request.
+#### Why it is critical for financial transactions
+
+Because of a fact about networks that cannot be engineered away: **a timeout is ambiguous.**
+
+When a client's request times out, there are two possibilities that are **indistinguishable from the client**:
+
+The request never reached the server.
+
+The request **was processed** and the **response** was lost on the way back.
+
+There is no observation the client can make to tell them apart. So retry policy becomes a choice between two failures:
+
+**Retry blindly**, and risk charging the customer twice.
+
+**Do not retry**, and risk **silently dropping a legitimate payment**.
+
+Idempotency does not resolve the ambiguity. **It makes the retry safe**, which removes the need to resolve it. That reframing is the heart of a good answer.
+
+It also gives the correct framing for distributed systems generally: **exactly-once delivery is not achievable**, but **at-least-once delivery plus idempotent processing gives effectively-once semantics**, which is what people actually mean when they ask for exactly-once.
+
+#### Idempotency keys
+
+An **idempotency key** is a **client-generated unique identifier**, normally a **UUID**, sent in a request header. Stripe's **`Idempotency-Key`** is the de facto standard.
+
+The server **records the key together with the outcome**. A later request carrying the same key **returns the recorded outcome** instead of performing the work again.
+
+Two properties matter. The key must be generated by the client, because only the client knows that two requests are the same attempt. And it must be generated **once per logical operation**, not once per HTTP attempt, which is the most common implementation bug: regenerating the key on retry defeats the entire mechanism.
+
+#### The mechanism, done properly
+
+**1. Insert the key atomically, before doing any work.** Insert a row with the key and status **`in_progress`**, relying on a **UNIQUE constraint** on the key column.
+
+That constraint **is the concurrency control**, and this is the part worth emphasising. Checking "does this key exist?" and then inserting is a **read-modify-write race**: two concurrent requests both read nothing and both proceed. A unique index makes the check and the claim a single atomic operation, so exactly one of them wins and the other gets a constraint violation. No application-level locking is required.
+
+**2. If the insert succeeds**, this request owns the operation. Perform the work, then store the response body and status code and mark the row **`completed`**.
+
+**3. If the insert fails with a duplicate**, read the existing row and branch on its status.
+
+**4. Keys expire.** Stripe retains them for 24 hours, after which the same key is treated as new. Retention must outlive any plausible client retry window but cannot be unbounded.
+
+**5. Scope keys per account and per endpoint**, so one tenant cannot collide with another's keys or probe for their existence.
+
+#### Concurrent in-flight retries
+
+This is the case the question singles out, and it is where naive implementations are wrong.
+
+The state is: the key exists, status is **`in_progress`**, and **no result exists yet** because the original request is still running. This happens constantly in practice, since an aggressive client timeout fires while the server is still working.
+
+Three wrong answers:
+
+**Execute anyway.** Double charge. This is the failure the whole mechanism exists to prevent.
+
+**Return 200 with an empty or fabricated body.** The client believes it has a result it does not have.
+
+**Wait indefinitely for the original to finish.** The connection is held, resources accumulate, and a stuck original blocks every retry behind it.
+
+The correct behaviour is to **refuse, and say the operation is already underway**:
+
+**`409 Conflict`** is what Stripe returns for a key currently in use, with a message telling the client to retry later.
+
+**`425 Too Early`** is the semantically precise alternative.
+
+Either way the client retries with the same key after a short, jittered backoff, and eventually sees the `completed` row and gets the stored response.
+
+A reasonable variant is to **wait on a lock with a short bounded timeout**, returning the result if the original finishes within it and `409` otherwise. That improves the common case where the original completes in milliseconds, at the cost of holding a connection, which is why plain `409` plus client retry is the more common production choice.
+
+There is also a **crash case** to handle: if the original process dies, the row is stranded in `in_progress` forever and every retry gets `409` permanently. Production systems therefore give the row a **lease or timestamp** and allow a sufficiently stale `in_progress` record to be reclaimed.
+
+#### Reuse with a mutated payload
+
+The server must store a **fingerprint of the request**, a hash of the body and the relevant parameters, alongside the key.
+
+On a repeat, it compares the fingerprint. If it differs, this is **not a retry**, because a retry is by definition the same request. It is a client bug, a key-generation collision, or an attack.
+
+The two tempting responses are both harmful:
+
+**Returning the stored response** tells the client that its **new** request succeeded, when that request was never executed. Silent data loss, and the customer's second, different payment simply never happens.
+
+**Executing the new payload** performs a second operation under a key that was supposed to guarantee one, which is the double charge.
+
+So the server must **reject loudly**. **Stripe returns `422 Unprocessable Entity`** with an explicit message that the key was already used with different parameters; `400 Bad Request` is also defensible. The essential property is that it is an **error the client cannot mistake for success**.
+
+#### The transactional requirement
+
+One detail that is easy to miss and fatal in production: **the idempotency record and the side effect must be committed in the same transaction**.
+
+If you charge the card and **then** record the key, a crash in between leaves no record, and the retry charges again. If the side effect is in an external system that cannot share your transaction, you need a **transactional outbox** or a two-phase approach, recording intent durably **before** calling out and reconciling afterwards.
 
 ---
 
-### Which HTTP methods are safe by default
+### In code
 
-| HTTP Method | Idempotent? | Safe (read-only)? | Why |
-| :--- | :--- | :--- | :--- |
-| **`GET` / `HEAD`** | Yes | Yes | Reading doesn't change anything, no matter how many times you do it. |
-| **`PUT`** | Yes | No | It replaces the whole resource. `PUT /users/42` with `{"name": "Alice"}` ten times leaves the same end state as once. |
-| **`DELETE`** | Yes | No | Delete it once, it's gone. Delete it again, it's still gone (you'll get a `404` instead of `200`, but the data state didn't change further). |
-| **`POST`** | **No** | No | Usually creates a new record — call it twice, you typically get two records. |
-| **`PATCH`** | **No**, usually | No | Depends what it does. `PATCH /counter` with `{"$increment": 1}` changes the result every single time you call it. |
+```text
+Why a timeout forces this entire design:
 
----
+  client --- POST /payments ------------------> server
+                                                charges the card
+         X---------- response lost ------------ 
+       (timeout)
 
-### The fix: idempotency keys
+  from the client, these two are INDISTINGUISHABLE:
+      (a) the request never arrived
+      (b) it was processed and the reply was lost
 
-To make `POST` safe to retry, APIs like Stripe's and Adyen's let the client attach a unique token to the request — an **idempotency key**, usually a UUID:
+  so every retry policy is a choice between two failures:
+      retry blindly   -> maybe charge TWICE
+      do not retry    -> maybe SILENTLY DROP a legitimate payment
+
+  idempotency does not resolve the ambiguity. It makes the RETRY SAFE,
+  so the ambiguity stops mattering.
+
+  and the general framing: exactly-once DELIVERY is not achievable.
+  at-least-once delivery + idempotent processing = effectively-once.
+```
+
+```sql
+-- The unique constraint IS the concurrency control
+CREATE TABLE idempotency_keys (
+    key          TEXT        NOT NULL,
+    account_id   BIGINT      NOT NULL,
+    endpoint     TEXT        NOT NULL,
+    fingerprint  TEXT        NOT NULL,   -- hash of the request payload
+    status       TEXT        NOT NULL,   -- 'in_progress' | 'completed'
+    status_code  INT,
+    response     JSONB,
+    leased_until TIMESTAMPTZ,            -- so a crashed request can be reclaimed
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (account_id, endpoint, key)   -- scoped per tenant AND endpoint
+);
+```
+
+```text
+Why "check then insert" is wrong, and the unique index is right:
+
+  CHECK-THEN-INSERT (a read-modify-write race)
+    request A: SELECT ... WHERE key = 'k'  -> nothing
+    request B: SELECT ... WHERE key = 'k'  -> nothing
+    request A: INSERT, charge the card
+    request B: INSERT, charge the card        <- CHARGED TWICE
+
+  INSERT AND LET THE CONSTRAINT DECIDE
+    request A: INSERT (key='k', in_progress)  -> succeeds, owns it
+    request B: INSERT (key='k', in_progress)  -> UNIQUE VIOLATION
+    -> the check and the claim are ONE ATOMIC OPERATION
+    -> no application-level locking needed at all
+```
+
+```text
+The full decision tree the server walks:
+
+  INSERT key, status='in_progress'
+      |
+      +-- SUCCEEDED -> I own this operation
+      |       do the work
+      |       store response + status_code, mark 'completed'
+      |       -> IN THE SAME TRANSACTION as the side effect
+      |       return the response
+      |
+      +-- DUPLICATE KEY -> read the existing row
+              |
+              +-- fingerprint DIFFERS
+              |      -> NOT a retry. Reject loudly.
+              |      -> 422 Unprocessable Entity (Stripe)
+              |
+              +-- status = 'completed'
+              |      -> return the STORED response and status code
+              |      -> Stripe also sets Idempotent-Replay: true
+              |      -> no work is performed
+              |
+              +-- status = 'in_progress'
+                     -> the original is STILL RUNNING, no result exists
+                     -> 409 Conflict  (or 425 Too Early)
+                     -> client retries the SAME key after jittered backoff
+                     -> and if leased_until has passed, the original
+                        process died: reclaim the row
+```
+
+```text
+The in-flight case, and the three wrong answers:
+
+  state: key exists, status = in_progress, NO RESULT YET
+
+  WRONG  execute anyway            -> double charge; the exact failure
+                                      the mechanism exists to prevent
+  WRONG  return 200 with an empty  -> the client believes it has a
+         or fabricated body           result that does not exist
+  WRONG  block until the original  -> connection held, resources pile up,
+         finishes, indefinitely       a stuck original blocks every retry
+
+  RIGHT  409 Conflict, "a request with this key is in progress"
+         the client retries the SAME key with jittered backoff and
+         eventually reads the completed row
+
+  reasonable variant: wait on a lock with a SHORT BOUNDED timeout,
+  return the result if the original finishes inside it, 409 otherwise.
+  Better in the common case, at the cost of holding a connection.
+```
+
+```text
+Mutated payload: why both tempting answers are harmful
+
+  POST /payments   Idempotency-Key: k   { amount: 5000 }   -> charged
+  POST /payments   Idempotency-Key: k   { amount: 9000 }   -> ???
+
+  a retry is BY DEFINITION the same request, so this is a client bug,
+  a key collision, or an attack.
+
+  returning the stored response
+      tells the client its NEW request (9000) succeeded
+      -> but 9000 was never executed
+      -> silent loss: the second payment simply never happens
+
+  executing the new payload
+      performs a SECOND operation under a key that was meant to
+      guarantee one
+      -> the double charge
+
+  so: REJECT LOUDLY, with an error the client cannot mistake for success
+      422 Unprocessable Entity (Stripe), or 400
+      "this idempotency key was already used with different parameters"
+```
+
+```text
+The transactional requirement, which is easy to miss and fatal:
+
+  WRONG
+     charge the card                 <- side effect lands
+     ... crash ...
+     record the idempotency key      <- never happens
+     -> the retry finds NO RECORD and charges AGAIN
+
+  RIGHT
+     BEGIN
+       perform the side effect
+       record the key + response
+     COMMIT                          <- inseparable
+
+  and when the side effect is in an EXTERNAL system that cannot share
+  your transaction: use a transactional OUTBOX, recording the intent
+  durably BEFORE calling out, then reconciling afterwards.
+```
 
 ```http
-POST /v1/charges HTTP/1.1
-Host: api.stripe.com
-Idempotency-Key: 9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d
+# What the client does, and the bug to avoid
+POST /v1/payments HTTP/1.1
+Idempotency-Key: 7f3a9c21-4b6e-4f0a-9d2c-1e8b55ac0f31
 Content-Type: application/json
 
-{ "amount": 1000, "currency": "usd" }
-```
+{"amount": 5000, "currency": "inr", "source": "card_xyz"}
 
-The client generates this key once per *logical* operation. If the request has to be retried, it sends the exact same key — telling the server "this is the same attempt, not a new charge."
+# the key is generated ONCE PER LOGICAL OPERATION, not per attempt.
+# regenerating it on retry is the single most common implementation
+# bug, and it defeats the entire mechanism.
+```
 
 ---
 
-### What the server actually has to do with that key
+### What they ask next
 
-The naive assumption is "just check if the key exists in Redis and return whatever's cached." That breaks the moment a retry arrives *while the first attempt is still running* — before anything's been cached yet. A production idempotency engine needs three states for a key, not two:
+**"Is idempotent the same as safe?"**
+No. **Safe** means the method does not change state at all, which `GET` promises. **Idempotent** means repeating it has the same effect as doing it once, which `PUT` and `DELETE` satisfy while changing state. Every safe method is idempotent; the reverse is false.
 
-<Diagram>
-<Row>
-<Box title="1st request arrives" accent="#60a5fa">
-<Field icon="🔒" code="SET key IN_PROGRESS" hint="atomic lock in Redis" variant="neutral" />
-</Box>
-<Arrow label="retry arrives mid-flight" />
-<Box title="Still IN_PROGRESS" accent="#f59e0b">
-<Field icon="🚫" code="409 Conflict" hint="another attempt with this key is already running" variant="neutral" />
-</Box>
-</Row>
-</Diagram>
+**"Why can the server not generate the key?"**
+Because only the client knows that two requests are the same attempt. A server-generated key would be new on every request, which is precisely the problem. The key must be created once for the logical operation and reused across every retry of it.
 
-<Diagram>
-<Row>
-<Box title="Original request finishes" accent="#34d399">
-<Field icon="✅" code="status → COMPLETED" hint="cache the exact response" variant="public" />
-</Box>
-<Arrow label="later retry with same key" />
-<Box title="Cached response replayed" accent="#34d399">
-<Field icon="📋" code="200 OK (same charge_id)" hint="no business logic re-run" variant="public" />
-</Box>
-</Row>
-</Diagram>
+**"Why 409 rather than waiting?"**
+Because waiting holds a connection, and a stuck original blocks every retry behind it, turning one slow operation into a queue of them. `409` tells the client to come back, which is cheap for both sides. A short bounded wait is a reasonable hybrid.
 
-1. **`IN_PROGRESS` (a lease, not a cache hit):** the gateway does an atomic `SET key "IN_PROGRESS" NX EX 60` in Redis. If the key is already there and still `IN_PROGRESS`, something else with this exact key is mid-flight — the gateway returns `409 Conflict` rather than running the charge a second time in parallel.
-2. **`COMPLETED` (cached forever, or close to it):** once the real operation finishes, the gateway stores the full response — status code, headers, body — for 24-72 hours. Any later retry with the same key skips the business logic entirely and just replays that stored response.
-3. **`FAILED`:** if something breaks before the charge actually happens (a database timeout, say), the key gets deleted so the client is free to safely try again from scratch.
+**"What happens if the server crashes mid-operation?"**
+The row is stranded in `in_progress` and every retry gets `409` forever. That is why production implementations put a **lease or timestamp** on the row and allow a sufficiently stale record to be reclaimed, so the operation can be attempted again.
 
----
+**"Why not just return the original response when the payload differs?"**
+Because the client would believe its **new** request succeeded. It did not run, and nothing will ever run it. That is silent data loss, which is worse than an error, so it must be an explicit failure.
 
-### What if the retry doesn't match the original request?
+**"Is this the same as exactly-once delivery?"**
+No, and the distinction is the point. Exactly-once delivery is not achievable over an unreliable network. At-least-once delivery combined with idempotent processing gives **effectively-once** semantics, which is what is actually wanted.
 
-Here's the attack (or bug) this has to catch: someone reuses the same idempotency key but changes the amount —
+**"How long should keys be retained?"**
+Long enough to outlive any plausible client retry window, and bounded so the table does not grow without limit. Stripe's 24 hours is the usual reference point, with expired keys treated as new.
 
-```http
-// Request 1:
-Idempotency-Key: 9b1deb4d...
-{ "amount": 1000 }
-
-// Request 2 (tampered, or just a buggy retry):
-Idempotency-Key: 9b1deb4d...
-{ "amount": 500000 }
-```
-
-The fix is to hash the request alongside the key, not just trust the key alone:
-
-$$\text{Payload\_Hash} = \text{SHA-256}(\text{HTTP\_Method} + \text{Path} + \text{Request\_Body})$$
-
-Every time that key shows up again, the server recomputes the hash of the incoming request and compares it to the hash it stored the first time. If they don't match, it refuses outright — `422 Unprocessable Entity` or `400 Bad Request` — instead of either re-running the charge or silently replaying the wrong cached response:
-
-```json
-{
-  "error": "Idempotency-Key reused with modified parameters or different payload."
-}
-```
+**The common wrong answer** is "use a unique transaction ID and check whether it exists". The checking is the easy half. What the question is actually probing is the **three awkward cases**: a concurrent retry while the original is in flight, a reused key with a changed payload, and a crash between the side effect and the record. Those are where real implementations get it wrong and real money moves twice.
 
 ---
 
 ### Say this in the interview
 
-*"Idempotency means repeating a request has the same effect as making it once. GET, PUT, and DELETE are idempotent by nature; POST isn't, which matters because a client that times out waiting for a response has no way to know if the operation actually succeeded, and its retry logic will fire again. The fix is a client-generated idempotency key: the server tracks it through IN_PROGRESS, COMPLETED, and FAILED states in something like Redis, returning 409 for a concurrent retry and replaying the cached response for a later one. To stop the key from being reused with a different payload, the server also hashes the request body and rejects a mismatch."*
+*"An operation is idempotent when performing it many times has the same effect on server state as performing it once. It is a statement about effect on state, not about byte-identical responses, so a DELETE returning 204 then 404 is still idempotent because the resource is equally absent. In HTTP, GET, HEAD, PUT and DELETE are idempotent by definition and POST and PATCH are not, and creating a payment is a POST, which is why payments need a mechanism bolted on.*
 
----
+*It matters for financial transactions because a timeout is ambiguous. When a request times out, two possibilities are indistinguishable from the client: it never arrived, or it was processed and the response was lost. There is no observation that separates them, so retrying blindly risks charging twice and not retrying risks silently dropping a legitimate payment. Idempotency does not resolve the ambiguity, it makes the retry safe, which removes the need to. The same reframing applies generally: exactly-once delivery is not achievable, but at-least-once delivery plus idempotent processing gives effectively-once semantics.*
 
-### Python Verification: Production-Grade Idempotency Engine Simulation
+*An idempotency key is a client-generated unique identifier, usually a UUID, sent in a header, with Stripe's Idempotency-Key as the de facto standard. The server records the key with the outcome and returns the recorded outcome on a repeat. It must be client-generated, because only the client knows two requests are the same attempt, and it must be generated once per logical operation rather than per HTTP attempt, which is the most common implementation bug.*
 
-The following executable Python script implements an atomic Idempotency Gateway with in-progress concurrency locking, payload hash validation, and cached response replay:
+*The mechanism is: before doing any work, insert a row with the key and status in_progress, relying on a unique constraint. That constraint is the concurrency control, which is the part I would emphasise, because checking whether the key exists and then inserting is a read-modify-write race where two concurrent requests both see nothing and both proceed. A unique index makes the check and the claim one atomic operation, so exactly one wins and no application-level locking is needed. If the insert succeeds you own the operation: do the work, store the response and status code, and mark it completed, in the same transaction as the side effect. If it fails as a duplicate, read the row and branch.*
 
-```python
-"""
-API Idempotency Gateway Simulator
-Demonstrates:
-  1. Safe response caching and replay for identical retries
-  2. Prevention of concurrent execution on in-flight requests (409 Conflict)
-  3. Rejection of payload tampering / mismatch on reused keys (422 Unprocessable)
-"""
+*For a concurrent in-flight retry the key exists, the status is in_progress and no result exists yet, which happens constantly when a client timeout fires while the server is still working. Executing anyway double charges. Returning 200 with an empty body makes the client believe it has a result it does not have. Blocking indefinitely holds a connection and lets a stuck original block every retry behind it. The right answer is to refuse and say the operation is underway: Stripe returns 409 Conflict, and 425 Too Early is the semantically precise alternative, with the client retrying the same key after jittered backoff until it sees the completed row. A reasonable variant is a short bounded wait on a lock, returning the result if the original finishes in time. And there is a crash case: a row stranded in in_progress would make every retry fail forever, so production systems put a lease or timestamp on the row and reclaim sufficiently stale records.*
 
-import hashlib
-import json
-import time
-from typing import Dict, Any, Tuple
+*For a reused key with a mutated payload, the server stores a fingerprint of the request alongside the key and compares it. If it differs this is not a retry, because a retry is by definition the same request, so it is a client bug, a collision or an attack. Returning the stored response would tell the client its new request succeeded when it never ran, which is silent data loss, and executing the new payload would be the double charge. So the server must reject loudly with an error the client cannot mistake for success: Stripe returns 422 Unprocessable Entity saying the key was already used with different parameters, and 400 is also defensible.*
 
-class IdempotencyGateway:
-    def __init__(self):
-        # Simulated centralized Redis key store:
-        # key -> {"status": "IN_PROGRESS" | "COMPLETED", "payload_hash": str, "response": dict}
-        self.store: Dict[str, Dict[str, Any]] = {}
-
-    def _hash_request(self, endpoint: str, body: Dict[str, Any]) -> str:
-        serialized = f"{endpoint}:{json.dumps(body, sort_keys=True)}"
-        return hashlib.sha256(serialized.encode('utf-8')).hexdigest()
-
-    def process_charge(self, idempotency_key: str, endpoint: str, body: Dict[str, Any]) -> Tuple[int, Dict[str, Any]]:
-        current_hash = self._hash_request(endpoint, body)
-
-        # Step 1: Check existing idempotency record
-        if idempotency_key in self.store:
-            record = self.store[idempotency_key]
-
-            # Security Guard: Verify payload hasn't mutated!
-            if record["payload_hash"] != current_hash:
-                return 422, {"error": "Idempotency key reused with different request payload!"}
-
-            # Concurrency Guard: Is another thread currently processing this?
-            if record["status"] == "IN_PROGRESS":
-                return 409, {"error": "A concurrent request with this idempotency key is already in progress. Please retry later."}
-
-            # State COMPLETED: Replay cached HTTP response!
-            print(f"  [Idempotency Replay] Key '{idempotency_key}' found! Returning cached response.")
-            return record["response"]["status"], record["response"]["body"]
-
-        # Step 2: Atomic Lock acquisition (Simulating Redis SETNX key IN_PROGRESS)
-        self.store[idempotency_key] = {
-            "status": "IN_PROGRESS",
-            "payload_hash": current_hash,
-            "response": None,
-            "created_at": time.time()
-        }
-        print(f"  [Lock Acquired] Key '{idempotency_key}' set to IN_PROGRESS.")
-
-        # Step 3: Execute core banking business logic (Simulated mutation)
-        charge_id = f"ch_{int(time.time() * 1000)}"
-        response_body = {
-            "charge_id": charge_id,
-            "amount": body.get("amount"),
-            "currency": body.get("currency"),
-            "status": "succeeded"
-        }
-        status_code = 200
-
-        # Step 4: Transition to COMPLETED and persist response
-        self.store[idempotency_key]["status"] = "COMPLETED"
-        self.store[idempotency_key]["response"] = {
-            "status": status_code,
-            "body": response_body
-        }
-        print(f"  [Execution Complete] Charge {charge_id} processed; response cached.")
-
-        return status_code, response_body
-
-
-def main():
-    print("=== API Idempotency Key Gateway Simulation ===\n")
-    gateway = IdempotencyGateway()
-    KEY = "req_uuid_9921_alpha"
-    ENDPOINT = "/v1/charges"
-    PAYLOAD = {"amount": 2500, "currency": "USD", "customer": "cust_101"}
-
-    # 1. First Request: Successfully processed
-    print("--- 1. First Request (Fresh Idempotency Key) ---")
-    status, body = gateway.process_charge(KEY, ENDPOINT, PAYLOAD)
-    print(f"HTTP Status: {status} | Body: {body}\n")
-
-    # 2. Simulated Network Timeout & Client Retry (Identical Payload)
-    print("--- 2. Client Retry after Timeout (Identical Payload) ---")
-    status_retry, body_retry = gateway.process_charge(KEY, ENDPOINT, PAYLOAD)
-    print(f"HTTP Status: {status_retry} | Body: {body_retry}")
-    assert body["charge_id"] == body_retry["charge_id"], "Charge ID must match cached result!"
-    print("Verification: Zero duplicate charges created; identical response replayed.\n")
-
-    # 3. Malicious / Buggy Request: Reusing same key with altered amount ($99,000)
-    print("--- 3. Reusing Key with Modified Payload ($99,000) ---")
-    tampered_payload = {"amount": 99000, "currency": "USD", "customer": "cust_101"}
-    status_tamper, body_tamper = gateway.process_charge(KEY, ENDPOINT, tampered_payload)
-    print(f"HTTP Status: {status_tamper} | Body: {body_tamper}")
-    assert status_tamper == 422
-    print("Verification: Gateway correctly blocked payload mutation on reused idempotency key!")
-
-if __name__ == "__main__":
-    main()
-```
+*One last requirement that is easy to miss and fatal: the idempotency record and the side effect must commit in the same transaction. If you charge the card and then record the key, a crash in between leaves no record and the retry charges again. When the side effect is in an external system that cannot share your transaction, you use a transactional outbox, recording the intent durably before calling out and reconciling afterwards."*
