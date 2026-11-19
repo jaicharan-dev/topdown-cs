@@ -1,158 +1,362 @@
 ---
 id: 25-cte-vs-subquery
-title: "Common Table Expressions (CTEs) vs. Subqueries"
-description: "Compare CTEs (WITH clauses) and subqueries, whether CTEs get materialized or inlined, and what writable CTEs are."
-sidebar_position: 11
+title: "CTEs vs Subqueries"
+description: "A named step rather than a nested one, whether the engine computes it once or folds it away, and the snapshot every writable CTE shares"
+
+sidebar_position: 25
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is a Common Table Expression (CTE) in SQL, and how does it differ from a subquery? Are CTEs materialized in memory or evaluated inline, when should you deliberately force materialization, and what are writable CTEs?"
 
-Both a CTE and a subquery do the same basic job - give a name to a temporary result so a bigger query can use it. The difference is how you write them, and what the database does with them underneath.
+---
 
-<Diagram>
-<Row>
-<Box title="Subquery: nested inside-out" accent="#f59e0b">
-<Field icon="📥" code="SELECT ... FROM (SELECT ...)" hint="you read the inner query first, then the outer one wrapped around it" variant="neutral" />
-</Box>
-<Box title="CTE: top to bottom" accent="#34d399">
-<Field icon="📜" code="WITH step1 AS (...), step2 AS (...)" hint="reads like a sequence of steps, each can reuse the last" variant="neutral" />
-</Box>
-</Row>
-</Diagram>
+### Picture it
 
-- **Subquery:** written inline, inside parentheses (`FROM (...) AS t`). You end up nesting things "inside-out," which gets hard to read once you have more than one or two steps.
-- **CTE:** written upfront with `WITH`, and read top to bottom like a sequence of named steps - closer to how you'd write a small function in regular code. A CTE can also be referenced more than once, and it's the only one of the two that supports recursion.
+A long calculation written two ways.
+
+**Nested**, it reads inside out: `total = round(sum(filter(convert(raw))))`. Everything is there, and to understand any part of it you must find the innermost bracket and work outward. Need the converted figure twice and you write the whole conversion twice.
+
+**Named**, it reads top down: convert the raw figures and **call that `converted`**; filter `converted` and **call that `eligible`**; sum `eligible`. Each step has a name, each step can be read on its own, and `converted` can be used as many times as you like by name.
+
+The second is not a different calculation. **It is the same calculation with labels on the intermediate values.**
+
+**And now the question that actually matters.** When you write `converted` down and use it twice, does the clerk **work it out once and keep the paper**, or does he **re-derive it each time he sees the name**?
+
+Both are defensible. Working it out once saves effort when it is expensive and used repeatedly. Re-deriving it lets him **notice something you did not**: if the final step only wants figures over a thousand, he can apply that condition **while converting**, instead of converting everything and throwing most of it away.
+
+For years one particular clerk **always** kept the paper, which meant he could never apply the later condition early, and people discovered that giving a step a name made the whole calculation slower. He now re-derives by default, and keeps the paper only when the name is used more than once.
+
+**And there is one case where it is not a preference but a correctness matter.** If the step is "roll a die", then working it out once gives you **the same number everywhere the name appears**, and re-deriving gives you **a different number each time**. Those are different answers to different questions, and you must be able to say which you meant.
 
 ---
 
-### Comparison
+### The proper terms
 
-| Feature | CTE | Subquery |
-| :--- | :--- | :--- |
-| **Readability** | High — reads top to bottom | Lower — nested inside-out |
-| **Reuse** | Can reference the same CTE more than once | Have to copy-paste the same SQL again |
-| **Recursion** | Yes, with `WITH RECURSIVE` | No — can't reference itself |
-| **Can modify data** | Yes — writable CTEs with `INSERT`/`UPDATE`/`DELETE ... RETURNING` | No |
-| **Scope** | Visible to the whole statement | Only visible inside its own parentheses |
+#### What a CTE is
 
----
-
-### Does the database actually materialize a CTE, or just inline it?
-
-This is the thing senior interviewers probe for.
-
-**Modern databases (PostgreSQL 12+, MySQL 8.0+, SQL Server):** by default, the planner treats a non-recursive CTE exactly like a subquery - it inlines it into the surrounding query, letting `WHERE` filters and indexes reach inside it. Performance ends up basically identical to writing a subquery.
-
-**Old PostgreSQL (11 and earlier):** a CTE was always calculated fully and stored in a temporary buffer first, no matter what the outer query needed. A filter like `WHERE id = 5` outside the CTE couldn't reach in and limit what the CTE computed - it still processed all 5,000,000 rows up front. This is why people used to call CTEs "optimization fences."
-
----
-
-### When you'd want to force materialization on purpose
-
-PostgreSQL 12+ lets you opt back into that old "calculate once, cache it" behavior deliberately:
+A **common table expression** is a **named temporary result set**, defined in a `WITH` clause and referenced by name in the statement that follows.
 
 ```sql
-WITH CachedData AS MATERIALIZED (
-    -- calculated once, then reused from memory
-    SELECT department_id, AVG(salary) AS avg_sal
-    FROM Employees
-    GROUP BY department_id
+WITH converted AS (
+    SELECT id, amount * rate AS usd FROM payments
 )
+SELECT SUM(usd) FROM converted WHERE usd > 1000;
 ```
 
-Two good reasons to do this:
-1. **An expensive query used several times.** If a heavy aggregation is referenced in 3 different joins or union branches, inlining would recompute it 3 separate times. `MATERIALIZED` computes it once and reuses the result.
-2. **A query with "random" results.** If the CTE calls something like `RANDOM()` or `NOW()`, inlining could re-evaluate it more than once, giving inconsistent values. Materializing it guarantees it only runs once.
+It exists only for the duration of that **single statement**.
+
+#### How it differs from a subquery
+
+Four differences, and only two of them are about capability.
+
+**Readability.** A CTE names the intermediate result and reads **top down**, turning deep nesting into a **sequence of named steps**. This is the reason most CTEs exist, and it is not a small reason: a three-level nested subquery is genuinely hard to review.
+
+**Reuse.** A CTE may be **referenced several times** in the same statement. An inline subquery would have to be **written out again**, and the engine may then evaluate it twice.
+
+**Recursion.** Only a CTE can be **recursive**. A subquery cannot refer to itself, so hierarchy traversal and graph walking are possible only with `WITH RECURSIVE`.
+
+**Chaining.** Later CTEs in the same `WITH` clause may reference **earlier** ones, which is what makes the step-by-step style work.
+
+Everything else is equivalent: anywhere a derived table in `FROM` would work, a CTE works, and most engines produce the same plan for both.
+
+#### Materialised or inlined
+
+The honest answer is **"it depends on the engine and version, and in PostgreSQL it depends on how many times you reference it"**, which is a far better answer than yes or no.
+
+**PostgreSQL before 12** treated every CTE as an **optimisation fence**. It was **always materialised** into a temporary result, and the planner could not push predicates into it, reorder joins across it, or use an index inside it based on an outer condition.
+
+That produced a famous trap: **wrapping a working query in a CTE could make it dramatically slower**, because an outer `WHERE` that would have been pushed down into an index scan was now applied **after** the whole intermediate result had been built.
+
+**PostgreSQL 12 and later** inline a CTE by default when all three hold:
+
+**It is referenced exactly once.**
+
+**It is not recursive.**
+
+**It is free of side effects**, meaning no data-modifying statement and no volatile function.
+
+Otherwise it is materialised. And both behaviours can be forced explicitly with `AS MATERIALIZED` and `AS NOT MATERIALIZED`.
+
+**Other engines generally inline.** SQL Server, Oracle and MySQL 8 treat a CTE much like an inline view definition and fold it into the outer query, with Oracle offering `/*+ MATERIALIZE */` and `/*+ INLINE */` hints to override.
+
+#### When to force materialisation
+
+Four cases, and the second is a correctness matter rather than a performance one.
+
+**The CTE is expensive and referenced several times.** Compute it once rather than once per reference. This is the ordinary case, and in PostgreSQL 12+ multiple references already trigger materialisation automatically.
+
+**The CTE contains a volatile function and you need a stable result.** If a CTE calls `random()`, `now()` in some forms, or `nextval()`, then **inlining evaluates it separately per reference**, so two references see **different values**. Materialising computes it once and every reference sees the same rows. This is not an optimisation; it changes the answer.
+
+**You want to fence the optimiser deliberately.** When the planner's estimate is badly wrong and it is choosing a disastrous plan, materialising forces the intermediate result to be built first, which can be a pragmatic fix while the underlying estimate problem is investigated.
+
+**The CTE reduces a huge table to a few rows.** Aggregating ten million rows down to twenty, then joining, is sometimes much better than letting the planner inline the aggregation and reconsider the whole shape.
+
+And the reverse, **`NOT MATERIALIZED`**, is for when the fence is the problem: the CTE exists only for readability and the planner would do better pushing the outer predicates inside it.
+
+#### Writable CTEs
+
+PostgreSQL permits **data-modifying statements** inside a `WITH` clause: `INSERT`, `UPDATE` and `DELETE`, each with a `RETURNING` clause whose rows the rest of the statement can use.
+
+The canonical uses:
+
+**Moving rows between tables atomically**, deleting from one and inserting into another in a single statement, so there is no window in which the row exists in neither or both.
+
+**Writing an audit record from the same statement that performs the change**, using `RETURNING` to capture exactly what changed.
+
+**Multi-table updates driven by one computation.**
+
+And now the semantics that matter, which is what the question is really after:
+
+**Every sub-statement sees the same snapshot**, taken at the **start of the statement**. They do **not** see each other's changes. So a `DELETE` in a CTE and a `SELECT` from the same table in the main query will see the rows as they were before the delete, which is surprising the first time and is the thing to say out loud.
+
+**Execution order is not guaranteed.** The sub-statements run concurrently as far as the engine is concerned, and the only ordering you can rely on is a **data dependency** established by consuming another CTE's `RETURNING` output.
+
+**Each row is affected at most once.** Two sub-statements updating the same row produce an undefined result, and PostgreSQL does not attempt to serialise them.
+
+The practical rule: **use a writable CTE to make several changes atomic and to capture what changed, not to express a sequence of steps that depend on one another's effects.** For that, use separate statements in a transaction.
 
 ---
 
-### Writable CTEs: changing data inside a `WITH` clause
-
-In PostgreSQL, a CTE can hold `INSERT`, `UPDATE`, or `DELETE`, paired with `RETURNING`:
+### In code
 
 ```sql
--- Move old orders to an archive table, in one single statement
-WITH MovedOrders AS (
-    DELETE FROM ActiveOrders
-    WHERE order_date < NOW() - INTERVAL '1 year'
+-- NESTED: reads inside out, and the conversion is written twice
+SELECT SUM(usd)
+FROM (SELECT id, amount * rate AS usd FROM payments) t
+WHERE usd > 1000
+   OR id IN (SELECT id FROM (SELECT id, amount * rate AS usd
+                             FROM payments) t2 WHERE usd < 0);
+
+-- NAMED: reads top down, and `converted` is defined once
+WITH converted AS (
+    SELECT id, amount * rate AS usd FROM payments
+),
+eligible AS (
+    SELECT * FROM converted WHERE usd > 1000
+)
+SELECT SUM(usd) FROM eligible;
+
+-- same calculation, with LABELS ON THE INTERMEDIATE VALUES.
+-- and note that `eligible` references `converted`: later CTEs in the
+-- same WITH clause may reference earlier ones, which is what makes
+-- the step-by-step style work.
+```
+
+```text
+The four differences, and only two are about CAPABILITY:
+
+  READABILITY   a CTE names the intermediate result and reads TOP
+                DOWN, turning deep nesting into a SEQUENCE OF NAMED
+                STEPS. Most CTEs exist for this reason, and it is
+                not a small one.
+
+  REUSE         a CTE may be REFERENCED SEVERAL TIMES in one
+                statement. An inline subquery must be written out
+                again, and may then be evaluated twice.
+
+  RECURSION     only a CTE can be RECURSIVE. A subquery cannot refer
+                to itself, so hierarchy and graph traversal are
+                possible ONLY with WITH RECURSIVE.          <- real
+
+  CHAINING      later CTEs may reference earlier ones.
+
+  everything else is equivalent: anywhere a derived table in FROM
+  would work, a CTE works, and most engines produce the same plan.
+```
+
+```text
+MATERIALISED OR INLINED: "it depends, and in Postgres it depends on
+the reference count" is a far better answer than yes or no.
+
+  POSTGRESQL BEFORE 12
+     every CTE was an OPTIMISATION FENCE: ALWAYS MATERIALISED into a
+     temporary result, with no predicate pushdown, no join
+     reordering across it, and no index use inside it driven by an
+     outer condition.
+
+     the famous trap:
+        WRAPPING A WORKING QUERY IN A CTE COULD MAKE IT DRAMATICALLY
+        SLOWER, because an outer WHERE that would have become an
+        index scan was now applied AFTER the whole intermediate
+        result had been built.
+
+  POSTGRESQL 12 AND LATER
+     INLINED BY DEFAULT when ALL THREE hold:
+        1. referenced EXACTLY ONCE
+        2. NOT recursive
+        3. FREE OF SIDE EFFECTS (no data modification, no volatile
+           function)
+     otherwise MATERIALISED.
+     and both can be forced explicitly.
+
+  OTHER ENGINES generally INLINE: SQL Server, Oracle and MySQL 8
+  treat a CTE much like an inline view definition and fold it into
+  the outer query. Oracle offers /*+ MATERIALIZE */ and
+  /*+ INLINE */ hints.
+```
+
+```sql
+-- Forcing either behaviour, PostgreSQL 12+
+WITH expensive AS MATERIALIZED (
+    SELECT customer_id, SUM(amount) AS total
+    FROM   orders GROUP BY customer_id
+)
+SELECT * FROM expensive e1 JOIN expensive e2 ON ...;
+--   computed ONCE, used twice
+
+WITH readable AS NOT MATERIALIZED (
+    SELECT * FROM orders WHERE status = 'open'
+)
+SELECT * FROM readable WHERE customer_id = 42;
+--   INLINED, so customer_id = 42 can be PUSHED INTO the scan and
+--   use an index. Without NOT MATERIALIZED on an older Postgres,
+--   this would build every open order first.
+```
+
+```sql
+-- THE CASE THAT IS ABOUT CORRECTNESS, NOT PERFORMANCE
+WITH sample AS (
+    SELECT id FROM users ORDER BY random() LIMIT 10
+)
+SELECT (SELECT COUNT(*) FROM sample) AS a,
+       (SELECT COUNT(*) FROM sample) AS b,
+       (SELECT MIN(id)  FROM sample) AS c;
+
+-- INLINED: random() is VOLATILE, so each reference re-evaluates the
+--          CTE and gets A DIFFERENT SAMPLE. a, b and c describe
+--          three different sets of users.
+-- MATERIALIZED: computed once, so all three describe THE SAME ten
+--          users.
+--
+-- these are DIFFERENT ANSWERS TO DIFFERENT QUESTIONS, and you must
+-- be able to say which you meant. The same applies to nextval()
+-- and to now() in some forms.
+```
+
+```text
+When to force MATERIALIZED:
+
+  1. EXPENSIVE AND REFERENCED SEVERAL TIMES
+why:   compute once instead of once per reference
+       (in Postgres 12+ multiple references already trigger this)
+
+  2. A VOLATILE FUNCTION AND YOU NEED A STABLE RESULT
+why:   inlining evaluates it SEPARATELY PER REFERENCE, so two
+       references see DIFFERENT VALUES.
+       THIS IS NOT AN OPTIMISATION, IT CHANGES THE ANSWER.
+
+  3. YOU WANT TO FENCE THE OPTIMISER DELIBERATELY
+why:   when the planner's estimate is badly wrong and it is choosing
+       a disastrous plan, forcing the intermediate result to be
+       built first is a pragmatic fix while the estimate problem is
+       investigated
+
+  4. THE CTE REDUCES A HUGE TABLE TO A FEW ROWS
+why:   aggregating ten million rows to twenty and then joining is
+       sometimes far better than letting the planner inline the
+       aggregation and reconsider the whole shape
+
+And NOT MATERIALIZED is for the reverse: the CTE exists only for
+readability and the fence is preventing predicate pushdown.
+```
+
+```sql
+-- WRITABLE CTEs: data-modifying statements inside WITH
+
+-- move rows between tables ATOMICALLY, in ONE statement, with no
+-- window in which the row exists in neither or both
+WITH moved AS (
+    DELETE FROM active_orders
+    WHERE  completed_at IS NOT NULL
     RETURNING *
 )
-INSERT INTO ArchivedOrders
-SELECT * FROM MovedOrders;
+INSERT INTO archived_orders SELECT * FROM moved;
+
+-- capture exactly what changed, and audit it from the same statement
+WITH updated AS (
+    UPDATE accounts SET balance = balance - 100
+    WHERE  id = 42
+    RETURNING id, balance
+)
+INSERT INTO audit_log (account_id, new_balance, at)
+SELECT id, balance, now() FROM updated;
 ```
 
-Why this beats doing it as two separate statements:
-- It's one atomic operation - nothing can crash in between the delete and the insert, leaving data in a half-moved state.
-- It runs inside a single transaction snapshot, so there's no window for a race condition.
-- It's one round-trip to the database instead of two.
+```text
+THE SEMANTICS THAT MATTER, and the thing to say out loud:
+
+  EVERY SUB-STATEMENT SEES THE SAME SNAPSHOT, taken at the START of
+  the statement. THEY DO NOT SEE EACH OTHER'S CHANGES.
+
+     WITH deleted AS (DELETE FROM t WHERE x = 1 RETURNING *)
+     SELECT COUNT(*) FROM t;
+     -- the COUNT sees the rows AS THEY WERE BEFORE THE DELETE,
+     -- including the ones being deleted.
+     -- surprising the first time, and entirely consistent.
+
+  EXECUTION ORDER IS NOT GUARANTEED.
+     the sub-statements run concurrently as far as the engine is
+     concerned. The ONLY ordering you can rely on is a DATA
+     DEPENDENCY established by consuming another CTE's RETURNING
+     output.
+
+  EACH ROW IS AFFECTED AT MOST ONCE.
+     two sub-statements updating the same row give an undefined
+     result, and PostgreSQL does not attempt to serialise them.
+
+  THE PRACTICAL RULE:
+     use a writable CTE to make several changes ATOMIC and to
+     CAPTURE WHAT CHANGED.
+     do NOT use it to express a SEQUENCE OF STEPS that depend on one
+     another's effects. For that, use separate statements in a
+     transaction.
+```
+
+---
+
+### What they ask next
+
+**"Is a CTE faster than a subquery?"**
+Neither, inherently. Most engines inline both and produce the same plan. The differences that matter are readability, the ability to reference a result several times, and recursion, which only a CTE supports.
+
+**"Are CTEs materialised?"**
+It depends on the engine and version. PostgreSQL before 12 always materialised them, which made them an optimisation fence; from 12 it inlines a CTE referenced exactly once that is non-recursive and side-effect free, and materialises otherwise. SQL Server, Oracle and MySQL 8 generally inline.
+
+**"What was the old PostgreSQL CTE trap?"**
+That a CTE was always an optimisation fence, so an outer `WHERE` could not be pushed into it. Wrapping a working query in a CTE for readability could turn an index scan into a full build of the intermediate result, making it dramatically slower.
+
+**"When does materialisation change the answer rather than the speed?"**
+When the CTE contains a volatile function such as `random()` or `nextval()`. Inlined, each reference re-evaluates and sees different rows; materialised, every reference sees the same rows. Those are different results, so it is a correctness decision.
+
+**"What is a writable CTE for?"**
+Making several modifications atomic in one statement, and capturing what changed through `RETURNING`. Moving rows between tables, and auditing an update from the same statement that performs it, are the two canonical uses.
+
+**"What do writable CTEs not see?"**
+Each other's changes. All sub-statements share one snapshot taken at the start of the statement, so a `SELECT` in the main query sees rows a `DELETE` in a CTE is removing. Execution order between them is also unspecified except through `RETURNING` data dependencies.
+
+**"When should you not use a writable CTE?"**
+When the steps genuinely depend on each other's effects, because the shared snapshot means they cannot observe one another. Separate statements inside a transaction give you both the ordering and the atomicity.
+
+**"Does a CTE always need `RECURSIVE` for recursion?"**
+Yes, and in PostgreSQL the keyword goes on the `WITH` rather than on the individual CTE, so one `WITH RECURSIVE` covers all of them even if only one is actually recursive.
+
+**The common wrong answer** is "a CTE is a temporary table, so it is materialised, which makes it slower" or the opposite blanket claim. The real answer is that **behaviour is engine- and version-specific**, that PostgreSQL 12 changed it to depend on the **reference count**, and that materialisation is occasionally a correctness decision rather than a performance one when volatile functions are involved.
 
 ---
 
 ### Say this in the interview
 
-*"A CTE is a named temporary result defined with `WITH`. Compared to a subquery, it's more readable - it reads top to bottom instead of nested inside-out - and it can be referenced more than once, or recursively. In modern Postgres and MySQL, the optimizer inlines a non-recursive CTE just like a subquery, so there's no performance penalty by default. You'd force `MATERIALIZED` when an expensive CTE is used multiple times in the same query, so it only gets computed once. Postgres also supports writable CTEs - an `INSERT`/`UPDATE`/`DELETE` with `RETURNING` inside the `WITH` clause - which lets you do things like archive old rows atomically in one statement."*
+*"A common table expression is a named temporary result set defined in a WITH clause and referenced by name in the statement that follows, existing only for that single statement.*
 
----
+*It differs from a subquery in four ways, and only two are about capability. Readability: it names the intermediate result and reads top down, turning deep nesting into a sequence of named steps, which is why most CTEs exist. Reuse: it can be referenced several times in one statement, where an inline subquery would have to be written out again and might then be evaluated twice. Recursion: only a CTE can be recursive, because a subquery cannot refer to itself, so hierarchy traversal is possible only with WITH RECURSIVE. And chaining: later CTEs can reference earlier ones, which is what makes the step-by-step style work. Everything else is equivalent, and most engines produce the same plan for a CTE and a derived table.*
 
-### Checking this yourself: a CTE referenced twice
+*On materialisation, the honest answer is that it depends on the engine and version, and in PostgreSQL on how many times you reference it. Before version 12, PostgreSQL treated every CTE as an optimisation fence: always materialised, with no predicate pushdown, no join reordering across it and no index use inside it driven by an outer condition. That produced a famous trap, where wrapping a working query in a CTE for readability made it dramatically slower, because an outer WHERE that would have become an index scan was now applied after the whole intermediate result had been built. From version 12 it inlines by default when three things hold: the CTE is referenced exactly once, it is not recursive, and it is free of side effects, meaning no data modification and no volatile function. Otherwise it materialises, and both can be forced with AS MATERIALIZED or AS NOT MATERIALIZED. SQL Server, Oracle and MySQL 8 generally inline, with Oracle offering hints either way.*
 
-```python
-import sqlite3
+*I would force materialisation in four cases. When the CTE is expensive and referenced several times, to compute it once. When it contains a volatile function and I need a stable result, which is the important one, because inlining evaluates it separately per reference so two references see different values, meaning it changes the answer rather than the speed. When I want to fence the optimiser deliberately, because its estimate is badly wrong and it is choosing a disastrous plan. And when the CTE reduces a huge table to a few rows, where aggregating first and then joining can be much better than letting the planner inline and reconsider the whole shape. The reverse, NOT MATERIALIZED, is for when the fence is the problem and the CTE exists only for readability.*
 
-def run_cte_demo():
-    conn = sqlite3.connect(":memory:")
-    cursor = conn.cursor()
+*Writable CTEs are PostgreSQL's data-modifying statements inside WITH: INSERT, UPDATE and DELETE, each with a RETURNING clause whose rows the rest of the statement can use. The canonical uses are moving rows between tables atomically in one statement, with no window in which the row exists in neither or both, and writing an audit record from the same statement that makes the change.*
 
-    cursor.execute("""
-        CREATE TABLE Sales (
-            id INT PRIMARY KEY,
-            region TEXT,
-            amount REAL
-        );
-    """)
-
-    cursor.executemany("INSERT INTO Sales VALUES (?, ?, ?);", [
-        (1, 'North', 1500.0),
-        (2, 'North', 2500.0),
-        (3, 'South', 800.0),
-        (4, 'South', 1200.0),
-        (5, 'East',  4000.0),
-        (6, 'West',  3000.0)
-    ])
-    conn.commit()
-
-    print("--- 1. Reusable CTE: Finding Regions Exceeding Company Average ---")
-    # RegionalSales CTE is referenced TWICE: once for selection, once to compute overall average!
-    cursor.execute("""
-        WITH RegionalSales AS (
-            SELECT region, SUM(amount) AS total_regional_sales
-            FROM Sales
-            GROUP BY region
-        ),
-        AverageSales AS (
-            SELECT AVG(total_regional_sales) AS avg_sales
-            FROM RegionalSales
-        )
-        SELECT
-            r.region,
-            r.total_regional_sales,
-            ROUND(a.avg_sales, 2) AS benchmark_avg
-        FROM RegionalSales r
-        CROSS JOIN AverageSales a
-        WHERE r.total_regional_sales > a.avg_sales;
-    """)
-    for row in cursor.fetchall():
-        print(f"Region: {row[0]:<6} | Total: ${row[1]:<7} | Benchmark Avg: ${row[2]}")
-
-    conn.close()
-
-if __name__ == "__main__":
-    run_cte_demo()
-```
+*The semantics that matter are these. Every sub-statement sees the same snapshot, taken at the start of the statement, and they do not see each other's changes, so a SELECT in the main query sees rows that a DELETE in a CTE is removing. Execution order is not guaranteed, and the only ordering you can rely on is a data dependency established by consuming another CTE's RETURNING output. And each row is affected at most once, so two sub-statements updating the same row give an undefined result. The practical rule is to use a writable CTE to make several changes atomic and to capture what changed, and not to express a sequence of steps that depend on one another's effects, which needs separate statements in a transaction."*
