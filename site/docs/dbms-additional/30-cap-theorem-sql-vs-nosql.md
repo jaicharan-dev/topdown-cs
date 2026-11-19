@@ -1,150 +1,345 @@
 ---
 id: 30-cap-theorem-sql-vs-nosql
-title: "The CAP Theorem, Linearizability & Distributed Trade-Offs"
-description: "The CAP Theorem (Consistency, Availability, Partition Tolerance), Linearizability vs. ACID Consistency, split-brain, and PACELC."
-sidebar_position: 15
+title: "The CAP Theorem"
+description: "A proof about one moment of network failure, a third option that does not exist, and a letter that means something else in ACID"
+
+sidebar_position: 30
 sidebar_class_name: sidebar-medium
 ---
-
-import Tabs from '@theme/Tabs';
-import TabItem from '@theme/TabItem';
-import { Diagram, Row, Box, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is the CAP theorem? Why is 'CA' a myth in distributed systems, what is the crucial difference between Consistency in CAP and Consistency in ACID, and how does the PACELC theorem extend CAP?"
 
-Picture three machines in different data centers, and the network cable between two of them gets cut. Each side is still up and still has clients hitting it. Now you have to answer one question: do you keep answering requests, or do you stop and admit you might be wrong?
+---
 
-That's the whole CAP theorem. You can't have everything — pick two of three:
+### Picture it
 
-<Diagram>
-<Row>
-<Box title="Consistency" accent="#60a5fa"><Field icon="✅" code="every read gets the latest write" variant="neutral" /></Box>
-<Box title="Availability" accent="#34d399"><Field icon="✅" code="every request gets a response" variant="neutral" /></Box>
-<Box title="Partition tolerance" accent="#f59e0b"><Field icon="✅" code="keeps working despite network splits" variant="neutral" /></Box>
-</Row>
-</Diagram>
+Two offices keeping the same ledger, connected by a phone line.
 
-1. **Consistency** — every read gets the most recent write, or an error. No stale answers.
-2. **Availability** — every request gets some answer, even if it might not be the latest.
-3. **Partition tolerance** — the system keeps working even when nodes can't talk to each other.
+Normally it works. Someone records a payment in London, telephones Mumbai, and both books agree.
+
+**Then the line goes dead.**
+
+A customer walks into the Mumbai office and asks for their balance. The Mumbai clerk is now in a position with **exactly two options**, and no third:
+
+**Refuse.** "I cannot reach London, so I cannot be certain this figure is current. Come back later." The answer the clerk gives is never wrong, and the customer gets no answer at all.
+
+**Answer anyway.** "Your balance is forty thousand, as of whenever London last told me." The customer gets an answer immediately, and it may be out of date.
+
+That is the whole theorem. **There is no third option** where the clerk gives an immediate answer that is also guaranteed current, because the information needed to guarantee it **is on the other side of a dead line**.
+
+**And now the thing people get wrong.** They say "our offices are reliable, so we will simply choose not to have dead lines". That is not a choice. **Lines fail.** Cables are cut, routers restart, a data centre loses its uplink. You do not pick whether this happens; you only pick **what the clerk does when it does**. An office that has not decided in advance has decided by accident, badly.
+
+**One more thing, and it is where the theorem stops being useful.**
+
+The line goes dead perhaps twice a year. But **every single day**, a clerk who wants to be certain must **telephone London and wait**. That wait is not a failure. It is the ordinary, constant cost of being certain, paid thousands of times a day, and the famous theorem says nothing about it at all.
 
 ---
 
-### The classic interview trap: "C" in CAP vs. "C" in ACID
+### The proper terms
 
-Interviewers like to ask this because the two are easy to confuse — and they mean completely different things:
+#### The statement
 
-- **"C" in ACID** means the data obeys your schema's rules: foreign keys, `CHECK` constraints, unique indexes. A balance can't go negative.
-- **"C" in CAP** means *recency*: it feels like there's only one copy of the data in the world, no matter how many servers you've replicated it to. This is also called **linearizability**.
+The **CAP theorem** says a distributed data store cannot simultaneously guarantee all three of:
 
-A system can satisfy ACID's "C" perfectly on every single node while still violating CAP's "C," because one node might be looking at slightly old data.
+**Consistency.** Every read receives the **most recent completed write**, or an error. Formally this is **linearizability**: the system behaves as though there is a **single copy** of the data and operations occur **instantaneously at some point between their invocation and response**.
 
----
+**Availability.** Every request to a **non-failing** node receives a **non-error response**, without a guarantee that it is the most recent write.
 
-### Why "CA" doesn't really exist
+**Partition tolerance.** The system continues to operate despite **arbitrary loss or delay of messages** between nodes.
 
-Networks fail. Cables get cut, switches die, packets get dropped — this is a fact of physics, not a bug. So partition tolerance isn't really optional for anything running across a network; the only real choice is what you do *when* a partition happens:
+Its history is worth a sentence: it was **Brewer's conjecture** in 2000 and was formally **proved by Gilbert and Lynch in 2002**, which is why it is a theorem rather than a rule of thumb.
 
+The proof is short enough to describe: partition the network, write to one side, read from the other. The reading side cannot know about the write, so it must either return a **stale value**, losing consistency, or **refuse to answer**, losing availability.
+
+#### Why "CA" is a myth
+
+This is the most important clarification, and it has two parts.
+
+**Partition tolerance is not a property you choose.** Networks lose and delay messages. Cables are cut, switches reboot, a rack loses its uplink, a GC pause makes a node unreachable for ten seconds. Any system spanning more than one machine **will** experience partitions, so **P is a fact about the environment, not a design option**.
+
+**Therefore the real choice is CP or AP**, and it is a choice about **what to do during a partition**: give up availability by refusing to answer, or give up consistency by answering with possibly stale data.
+
+So "pick two of three" is **the wrong framing**. You get P whether you want it or not, and you choose between the other two **only while a partition is happening**.
+
+What people usually mean when they say CA is one of two things, and both are worth naming:
+
+**A single-node system.** A database on one machine has no partitions because it has no network between replicas, so it can be both consistent and available. It is also not a distributed system, which is what the theorem is about.
+
+**A system that stops when partitioned.** Many traditional clustered databases halt, or demote a side, when they lose quorum. That is **CP**: they chose consistency and sacrificed availability. Calling it CA is a relabelling.
+
+And the honest caveat that a strong answer includes: **CAP is a coarse model.** It treats availability as binary when real systems degrade gradually, says nothing about latency, and ignores partial partitions. It is a useful lens for one specific question, not a framework for system design.
+
+#### The two Cs
+
+They **share a letter and nothing else**, and conflating them is one of the most common errors in this area.
+
+**Consistency in ACID** means **integrity constraints hold**. A transaction takes the database from one valid state to another, where valid means every declared rule is satisfied: foreign keys, unique constraints, check constraints, triggers.
+
+It is a property of one database state. It asks "is this state legal?". It is **local**, it concerns the data's internal validity, and it says nothing about replicas, nodes or time. It is also, strictly, a property the **application** defines and the engine merely **enforces**, since the database has no idea what your business considers correct beyond the rules you declared.
+
+**Consistency in CAP** means **linearizability**. Every read sees the most recent completed write, so the system behaves as though there is a single copy.
+
+It is a property of a **distributed system's behaviour over time**. It asks **"is everyone looking at the same state?"**. It concerns **agreement between replicas** and **real-time ordering**, and says nothing about constraints.
+
+They are **independent**, which is best shown by the cases where you have one without the other:
+
+**ACID-consistent but not linearizable.** A read replica five seconds behind. Every constraint holds, so it is perfectly ACID-consistent, and a read can miss a completed write, so it is not linearizable.
+
+**Linearizable but not ACID-consistent.** A linearizable key-value store where every read sees the latest write, and which has no notion of foreign keys, so nothing prevents storing an order that references a customer who does not exist.
+
+The sharpest formulation: **ACID's C asks whether this state is legal; CAP's C asks whether everyone is looking at the same state.** Many people, including Brewer, regard CAP's choice of letter as a historical mistake.
+
+#### PACELC
+
+**PACELC**, from Daniel Abadi in 2012, exists because CAP describes an **exceptional** condition while ignoring the one that applies constantly.
+
+```text
+if (P)artition  then  choose (A)vailability or (C)onsistency
+else (E)              choose (L)atency      or (C)onsistency
 ```
-                     Network partition happens
-                     (nodes can't reach each other)
-                              |
-              ----------------------------------
-              |                                |
-      Choose Consistency (CP)          Choose Availability (AP)
-   Reject writes on the minority    Accept writes on every side
-   side to avoid split-brain        → data temporarily diverges
-   (etcd, ZooKeeper, MongoDB)       (Cassandra, DynamoDB, Couchbase)
+
+The **ELC** half is the contribution, and the reasoning is simple: **partitions are rare, and the consistency-latency trade is paid on every single request.**
+
+Even on a perfectly healthy network, a system that guarantees consistency must coordinate. It must contact a quorum, wait for a consensus round, possibly cross a continent. That coordination **is latency**, and it is paid constantly, not only during failures. A system willing to answer from one replica is faster and may be stale.
+
+So PACELC describes **both** regimes, and the everyday one is the latency question rather than the availability question.
+
+The classifications:
+
+**PC/EC**: consistent under partition **and** when healthy, paying latency always. **Spanner**, **etcd**, **Zookeeper**, **VoltDB**.
+
+**PA/EL**: available under partition and low-latency otherwise, eventually consistent. **Cassandra**, **DynamoDB**, **Riak**.
+
+**PC/EL**: consistent under partition, favouring latency when healthy. **MongoDB** is usually placed here.
+
+**PA/EC** is rare and somewhat incoherent, since a system willing to serve stale data under partition rarely insists on coordination when healthy.
+
+The reason PACELC is the more useful framework in practice: when somebody asks "why is this database slow?", the answer is very often that it **chose C in the E clause**, and CAP has no vocabulary for that at all.
+
+---
+
+### In code
+
+```text
+THE THEOREM, and the proof in three lines:
+
+  CONSISTENCY        every read receives the MOST RECENT COMPLETED
+                     WRITE, or an error.
+                     formally LINEARIZABILITY: the system behaves as
+                     though there is a SINGLE COPY, with operations
+                     occurring instantaneously at some point between
+                     invocation and response.
+
+  AVAILABILITY       every request to a NON-FAILING node receives a
+                     NON-ERROR response, with no guarantee it is the
+                     most recent write.
+
+  PARTITION          the system continues to operate despite
+  TOLERANCE          ARBITRARY LOSS OR DELAY of messages between
+                     nodes.
+
+  Brewer's CONJECTURE in 2000; PROVED by Gilbert and Lynch in 2002,
+  which is why it is a theorem rather than a rule of thumb.
+
+  THE PROOF:
+     partition the network
+     write to one side
+     read from the other
+     the reading side CANNOT KNOW about the write, so it must either
+     return a STALE value (losing C) or REFUSE TO ANSWER (losing A).
 ```
 
-A single-node Postgres or MySQL instance can honestly call itself "CA" — but only because it isn't distributed, so a network partition between nodes isn't even a scenario that applies to it.
+```text
+WHY "CA" IS A MYTH, in two parts:
+
+  1. PARTITION TOLERANCE IS NOT A PROPERTY YOU CHOOSE.
+     networks lose and delay messages. Cables are cut, switches
+     reboot, a rack loses its uplink, a GC pause makes a node
+     unreachable for ten seconds.
+     any system spanning more than one machine WILL experience
+     partitions.
+     -> P IS A FACT ABOUT THE ENVIRONMENT, NOT A DESIGN OPTION.
+
+  2. THEREFORE THE REAL CHOICE IS CP OR AP, and it is a choice
+     about WHAT TO DO DURING A PARTITION.
+
+  so "pick two of three" is THE WRONG FRAMING. You get P whether
+  you want it or not, and you choose between the other two ONLY
+  WHILE A PARTITION IS HAPPENING.
+
+  what people usually MEAN by CA:
+
+     A SINGLE-NODE SYSTEM
+        no network between replicas, so no partitions, so it can be
+        both consistent and available.
+        it is also NOT A DISTRIBUTED SYSTEM, which is what the
+        theorem is about.
+
+     A SYSTEM THAT STOPS WHEN PARTITIONED
+        many traditional clustered databases halt, or demote a side,
+        on losing quorum.
+        THAT IS CP: they chose consistency and sacrificed
+        availability. Calling it CA is a relabelling.
+
+  and the honest caveat: CAP IS A COARSE MODEL. It treats
+  availability as binary when real systems degrade gradually, says
+  nothing about latency, and ignores partial partitions. A useful
+  lens for one question, not a design framework.
+```
+
+```text
+What each choice looks like during a partition:
+
+  node B receives a read for a key just written on node A, and the
+  link between them is down:
+
+     CP: REFUSE                    (error, or block until resolved)
+         "I cannot be sure, so I will not guess"
+         -> HBase, Zookeeper, etcd, Spanner,
+            MongoDB with majority concerns
+         -> right for configuration, coordination, money
+
+     AP: ANSWER WITH WHAT IT HAS   (possibly stale)
+         "here is my copy; we will reconcile later"
+         -> Cassandra, DynamoDB (default), Riak
+         -> right for feeds, carts, counters, sessions
+
+  THERE IS NO THIRD OPTION that returns the correct value anyway,
+  because the information needed is on the other side of the
+  partition.
+```
+
+```text
+THE TWO Cs: they share a letter and nothing else
+
+  CONSISTENCY IN ACID                CONSISTENCY IN CAP
+  -------------------                ------------------
+  INTEGRITY CONSTRAINTS HOLD         LINEARIZABILITY
+  a property of ONE STATE            a property of BEHAVIOUR OVER TIME
+  "is this state LEGAL?"             "is everyone looking at the
+                                      SAME state?"
+  LOCAL to a database                about AGREEMENT BETWEEN REPLICAS
+  foreign keys, unique, check,       real-time ordering, a single
+  triggers                           logical copy
+  the APPLICATION defines it,        nothing to do with constraints
+  the engine ENFORCES it
+
+  THEY ARE INDEPENDENT, which the two cases show:
+
+  ACID-CONSISTENT BUT NOT LINEARIZABLE
+     a read replica five seconds behind.
+     every constraint holds -> perfectly ACID-consistent
+     a read can miss a completed write -> NOT linearizable
+
+  LINEARIZABLE BUT NOT ACID-CONSISTENT
+     a linearizable key-value store where every read sees the latest
+     write, with no notion of foreign keys, so nothing prevents
+     storing an order referencing a customer who does not exist
+
+  the sharpest formulation:
+     ACID's C asks  "IS THIS STATE LEGAL?"
+     CAP's  C asks  "IS EVERYONE LOOKING AT THE SAME STATE?"
+
+  many people, including Brewer, regard CAP's choice of letter as a
+  historical mistake.
+```
+
+```text
+PACELC (Abadi, 2012): CAP describes the EXCEPTION and ignores the RULE
+
+   if (P)artition  ->  choose (A)vailability or (C)onsistency
+   else (E)        ->  choose (L)atency      or (C)onsistency
+
+  the ELC half is the contribution, and the reasoning is simple:
+  PARTITIONS ARE RARE, AND THE CONSISTENCY-LATENCY TRADE IS PAID ON
+  EVERY SINGLE REQUEST.
+
+  even on a PERFECTLY HEALTHY network, guaranteeing consistency
+  means COORDINATING:
+     contact a quorum
+     wait for a consensus round
+     possibly cross a continent
+  that coordination IS LATENCY, paid constantly, not only during
+  failures. A system willing to answer from one replica is faster
+  and may be stale.
+
+  THE CLASSIFICATIONS:
+
+     PC/EC   consistent under partition AND when healthy,
+             paying latency always
+             Spanner, etcd, Zookeeper, VoltDB
+
+     PA/EL   available under partition, low-latency otherwise,
+             eventually consistent
+             Cassandra, DynamoDB, Riak
+
+     PC/EL   consistent under partition, favouring latency when
+             healthy
+             MongoDB is usually placed here
+
+     PA/EC   rare and somewhat incoherent: a system willing to serve
+             stale data under partition rarely insists on
+             coordination when healthy
+
+  WHY PACELC IS MORE USEFUL IN PRACTICE:
+     when somebody asks "why is this database slow?", the answer is
+     very often that IT CHOSE C IN THE E CLAUSE, and CAP has no
+     vocabulary for that at all.
+```
+
+```text
+Putting the two frameworks side by side:
+
+                    during a PARTITION      when HEALTHY
+  CAP says          A or C                  (silent)
+  PACELC says       A or C                  L or C
+
+                    happens TWICE A YEAR    happens ON EVERY REQUEST
+
+  which is why CAP is the famous one and PACELC is the one that
+  describes your actual system.
+```
 
 ---
 
-### How CP systems avoid split-brain: quorums
+### What they ask next
 
-Say a 3-node cluster splits into two groups: Node A + Node B on one side, Node C alone on the other. If both sides kept accepting writes, you'd end up with two different, unmergeable versions of the truth — that's **split-brain**.
+**"State CAP precisely."**
+A distributed data store cannot simultaneously guarantee linearizable consistency, availability of every non-failing node, and partition tolerance. Brewer conjectured it in 2000 and Gilbert and Lynch proved it in 2002.
 
-CP systems avoid this with a **majority quorum rule**: a group can only accept writes if it has more than half the nodes.
+**"Why is 'pick two of three' wrong?"**
+Because partition tolerance is not something you pick. Networks drop and delay messages, so any multi-machine system experiences partitions whether its designers planned for them or not. The genuine choice is what to do **during** one, which makes it CP or AP.
 
-$$Q = \left\lfloor \frac{N}{2} \right\rfloor + 1$$
+**"What do people mean when they say CA?"**
+Either a single-node system, which has no partitions because it has no network between replicas and is therefore not what the theorem is about, or a cluster that halts when it loses quorum, which is CP described with the wrong label.
 
-- The A+B side has 2 of 3 nodes, which meets the quorum of 2 — it keeps accepting writes.
-- The C side has only 1 node, below quorum — it refuses all writes and returns errors instead. It gives up availability to protect consistency.
+**"Does CP mean the whole database goes down in a partition?"**
+No. Only the nodes that cannot reach a quorum stop serving the affected data; a majority partition continues normally. This is why consensus systems are deployed in odd numbers across failure domains.
 
----
+**"How do the two Cs differ?"**
+ACID's C is about integrity constraints holding in a single database state and says nothing about replicas or time. CAP's C is linearizability, a property of a distributed system's behaviour over time, and says nothing about constraints. A lagging read replica is ACID-consistent and not linearizable; a constraint-free linearizable key-value store is the reverse.
 
-### Beyond CAP: what happens when nothing is broken?
+**"What does PACELC add?"**
+The everyday case. CAP only describes behaviour during a partition, which is rare, while PACELC also covers the healthy state, where the trade is latency against consistency, paid on every request because consistency requires coordination.
 
-CAP only describes the rare moment when a partition is actually happening. Daniel Abadi's **PACELC** extends the question to normal, healthy operation too:
+**"Classify a few systems under PACELC."**
+Spanner and etcd are PC/EC, consistent in both regimes and paying latency always. Cassandra and DynamoDB are PA/EL. MongoDB is usually classified PC/EL. PA/EC is rare and does not describe much.
 
-*"If there's a Partition, do you pick Availability or Consistency? Else (normal conditions), do you pick Latency or Consistency?"*
+**"What are CAP's limitations as a model?"**
+It treats availability as binary when real systems degrade in degrees, it ignores latency entirely, and it assumes clean total partitions rather than the partial and asymmetric failures that actually occur. It answers one specific question well and is not a design framework.
 
-| Database | PACELC | What it means |
-| :--- | :--- | :--- |
-| **MongoDB / etcd** | PC/EC | Picks Consistency during a partition, and also waits for replicas to sync during normal operation — trading latency for correctness either way. |
-| **Cassandra / DynamoDB** | PA/EL | Picks Availability during a partition, and returns instantly from the nearest node normally — trading correctness for speed either way. |
+**The common wrong answer** is "pick two of three, and we chose CA". Partition tolerance is **not selectable**, so the real decision is CP or AP **during a partition**; the two Cs are **unrelated properties** sharing a letter; and the trade that actually shapes a system day to day is **PACELC's latency-against-consistency**, not the availability question that only matters when the network breaks.
 
 ---
 
 ### Say this in the interview
 
-*"The CAP theorem says that during a network partition, a distributed system has to choose between consistency and availability — it can't have both. Partitions are inevitable in any networked system, so 'CA' isn't a real option for distributed databases; the real choice is CP or AP. CP systems like etcd use quorum majorities to reject writes on the minority side and avoid split-brain. AP systems like Cassandra accept writes everywhere and resolve conflicts later. The key trap is that 'consistency' means something different in each context: CAP's consistency is linearizability — the illusion of one single copy — while ACID's consistency is about schema and constraint correctness. PACELC extends the same trade-off to normal operation: pick latency or consistency even when nothing is broken."*
+*"The CAP theorem says a distributed data store cannot simultaneously guarantee all three of consistency, availability and partition tolerance. Consistency there means linearizability: every read receives the most recent completed write, so the system behaves as though there is a single copy with operations occurring instantaneously somewhere between invocation and response. Availability means every request to a non-failing node receives a non-error response, with no guarantee of recency. Partition tolerance means the system keeps operating despite arbitrary loss or delay of messages between nodes. It was Brewer's conjecture in 2000 and Gilbert and Lynch proved it in 2002. The proof is short: partition the network, write to one side, read from the other, and the reading side cannot know about the write, so it must either return a stale value or refuse to answer.*
 
----
+*CA is a myth for two reasons. First, partition tolerance is not a property you choose: networks lose and delay messages, cables are cut, switches reboot, a GC pause makes a node unreachable, so any system spanning more than one machine will experience partitions. P is a fact about the environment, not a design option. Second, it follows that the real choice is CP or AP, and it is a choice about what to do during a partition. So pick-two-of-three is the wrong framing: you get P regardless, and you choose between the other two only while a partition is happening. What people usually mean by CA is either a single-node system, which has no partitions because it has no network between replicas and is not what the theorem is about, or a cluster that halts when it loses quorum, which is CP with the wrong label. And I would add that CAP is a coarse model: it treats availability as binary where real systems degrade gradually, says nothing about latency, and ignores partial partitions.*
 
-### Code: simulating a partition and quorum rejection
+*The two Cs share a letter and nothing else. Consistency in ACID means integrity constraints hold, so a transaction moves the database from one valid state to another where valid means every declared rule is satisfied. It is a property of a single state, it asks whether this state is legal, it is local, and it says nothing about replicas or time; and strictly it is the application that defines it while the engine enforces what was declared. Consistency in CAP is linearizability: a property of a distributed system's behaviour over time, asking whether everyone is looking at the same state, concerning agreement between replicas and real-time ordering, and saying nothing about constraints. They are independent, which the two cases show: a read replica five seconds behind is perfectly ACID-consistent and not linearizable, while a linearizable key-value store with no foreign keys is linearizable and will happily store an order referencing a missing customer. The sharpest formulation is that ACID's C asks whether this state is legal and CAP's C asks whether everyone is looking at the same state, and many people including Brewer consider CAP's choice of letter a historical mistake.*
 
-This script models a 3-node cluster, splits it into two groups, and shows the majority side accepting a write while the minority side is rejected to prevent split-brain.
-
-```python
-class DistributedCluster:
-    def __init__(self, node_names):
-        self.nodes = node_names
-        self.data = {node: {} for node in node_names}
-        self.partition_groups = [set(node_names)] # Initially healthy: all connected
-
-    def create_partition(self, group1, group2):
-        print(f"\n[!] NETWORK PARTITION OCCURRED! Split into {group1} and {group2}")
-        self.partition_groups = [set(group1), set(group2)]
-
-    def write_cp(self, target_node, key, value):
-        # Find which partition group the target_node belongs to
-        active_group = None
-        for group in self.partition_groups:
-            if target_node in group:
-                active_group = group
-                break
-
-        quorum_needed = (len(self.nodes) // 2) + 1 # Majority = 2 out of 3
-        active_nodes_count = len(active_group)
-
-        print(f"[*] Attempting CP Write to '{target_node}': ({key}='{value}') | Group Size: {active_nodes_count}/{len(self.nodes)}")
-        if active_nodes_count >= quorum_needed:
-            # Majority partition: Write succeeds across connected nodes
-            for node in active_group:
-                self.data[node][key] = value
-            print(f"    [+] SUCCESS: Quorum achieved ({active_nodes_count} >= {quorum_needed}). Data replicated to {active_group}")
-            return True
-        else:
-            # Minority partition: REJECT write to prevent split-brain!
-            print(f"    [-] ERROR 503: Quorum FAILED ({active_nodes_count} < {quorum_needed}). Write REJECTED to maintain Consistency!")
-            return False
-
-if __name__ == "__main__":
-    cluster = DistributedCluster(["Node_A", "Node_B", "Node_C"])
-
-    # 1. Normal Healthy Operation
-    cluster.write_cp("Node_A", "user_101", "Alice")
-
-    # 2. Partition Occurs: Node_A and Node_B stay connected; Node_C is isolated across severed link
-    cluster.create_partition(["Node_A", "Node_B"], ["Node_C"])
-
-    # 3. Write to Majority Partition (Node_A) -> Succeeds!
-    cluster.write_cp("Node_A", "user_101", "Alice_Updated")
-
-    # 4. Write to Minority Partition (Node_C) -> Rejected!
-    cluster.write_cp("Node_C", "user_101", "Alice_Hacked")
-```
+*PACELC, from Abadi in 2012, extends it because CAP describes an exceptional condition and ignores the constant one. If there is a partition, choose availability or consistency; else, choose latency or consistency. The ELC half is the contribution, and the reasoning is that partitions are rare while the consistency-latency trade is paid on every single request. Even on a perfectly healthy network, guaranteeing consistency means coordinating: contacting a quorum, waiting for a consensus round, possibly crossing a continent, and that coordination is latency paid constantly rather than only during failures. The classifications are PC/EC for Spanner, etcd, Zookeeper and VoltDB, consistent in both regimes and paying latency always; PA/EL for Cassandra, DynamoDB and Riak; PC/EL for MongoDB; and PA/EC, which is rare and somewhat incoherent. PACELC is the more useful framework in practice, because when somebody asks why a database is slow, the answer is very often that it chose C in the E clause, and CAP has no vocabulary for that at all."*
