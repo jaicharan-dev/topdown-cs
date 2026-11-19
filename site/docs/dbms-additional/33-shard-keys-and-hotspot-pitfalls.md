@@ -1,203 +1,462 @@
 ---
 id: 33-shard-keys-and-hotspot-pitfalls
-title: "Shard Keys: Selection Strategy & Hotspot Pitfalls"
-description: "Shard key selection criteria, hot spotting pitfalls of monotonically increasing keys and low cardinality, and consistent hashing."
-sidebar_position: 18
+title: "Shard Keys & Hotspot Pitfalls"
+description: "The one field that decides whether ten machines share the work or nine of them watch, and why an ever-increasing key sends every write to the same place"
+
+sidebar_position: 33
 sidebar_class_name: sidebar-hard
 ---
-
-import { Diagram, Row, Box, Arrow, Field } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--danger margin-bottom--md">Hard</span>
 
 > **Interview Question:** "What is a shard key, what makes a disastrous shard key in a distributed database, and why are monotonically increasing keys lethal? How does consistent hashing with virtual nodes resolve re-sharding storms?"
 
-A **shard key** is the column the router looks at to decide which physical machine a row lives on. Pick a good one and writes spread evenly across every machine. Pick a bad one and one machine melts under 100% load while 99 others sit idle. This one decision is close to irreversible once you're running in production, which is exactly why it comes up in interviews.
+---
+
+### Picture it
+
+Ten counters, and a rule deciding which counter each customer goes to.
+
+**The rule is the entire design.** Everything else about the system is identical whatever you choose; the rule alone decides whether all ten counters are busy or whether nine stand idle.
+
+**Choose "by first letter of surname"** and it works reasonably, because surnames spread out.
+
+**Choose "by whether they are a member"** and you have **two** counters in use for ever, however many you build.
+
+**Choose "by country"** and one counter takes eighty percent of the queue, because that is where most of your customers are.
+
+**And now the one that looks sensible and is the worst of all.**
+
+**Choose "by ticket number, in order"**, with counter one taking tickets 1 to 1000, counter two taking 1001 to 2000, and so on. Perfectly even, in the sense that each counter owns the same **range**.
+
+Except that tickets are issued **in order**, and the only people arriving right now are the ones holding the **newest** tickets. So **every single arrival goes to the last counter**. The other nine hold historical customers who have already been served and will never come back. You have built ten counters and formed **one queue**, and the moment that counter fills up you add counter eleven, which immediately becomes the only busy one.
+
+The appalling part is that nothing looks wrong. The data is **evenly distributed**. The counters are **evenly loaded on paper**. And all the work is in one place.
+
+**Finally, the problem with changing the rule.**
+
+If the rule is "ticket number modulo ten", then adding an eleventh counter changes it to "modulo eleven", and **almost every customer's counter changes**. Every counter must simultaneously hand most of its files to a different one, the corridors jam, and for hours nobody can be served.
+
+The fix is a rule where adding a counter **only moves the customers it takes over**, and where a new counter takes **a small slice from every existing counter** rather than the whole load of its neighbour.
 
 ---
 
-### What makes a shard key good
+### The proper terms
 
-1. **High cardinality** — millions of distinct values (UUIDs, user IDs), not a handful (status, country).
-2. **Even write spread** — concurrent writes land on different shards, not the same one.
-3. **Matches your real queries** — your most frequent queries filter by this key, so they hit one shard instead of broadcasting to all of them.
+#### What a shard key is
+
+The **shard key**, also called the partition key, is the field or set of fields whose value determines **which shard a row lives on**.
+
+It is **the single most consequential decision** in a sharded design, for three reasons:
+
+**It decides data distribution**, and therefore whether storage is balanced.
+
+**It decides traffic distribution**, and therefore whether load is balanced. These are **not the same thing**, and conflating them is the root of most hotspot problems.
+
+**It decides which queries are single-shard** and which become scatter-gather, which shapes the entire query layer.
+
+It is also normally **immutable**, because changing a row's shard key means physically moving it between shards, which most systems either forbid outright or make expensive.
+
+#### What makes a good one
+
+**High cardinality.** Enough distinct values to spread across far more shards than you have, now and later.
+
+**Even distribution of data**, so no shard holds disproportionately more rows.
+
+**Even distribution of traffic**, which is separate: a key can distribute data perfectly and still send most requests to one shard.
+
+**Alignment with the query pattern**, so the majority of queries filter on it and stay on one shard.
+
+**Immutability**, since a changing key means moving data.
+
+#### What makes a disastrous one
+
+**Low cardinality.** A boolean, a status with three values, a plan tier. If the key has five distinct values, **at most five shards can ever hold data**, so the cluster cannot grow past five regardless of how many machines you add. This is a hard ceiling, not a performance issue.
+
+**Uneven distribution.** A country code where eighty percent of users are in one country, a `tenant_id` in a system with one enormous customer, a category where one value dominates. One shard holds most of the data and most of the load.
+
+**A hot key.** A celebrity user, a default tenant, a null placeholder that thousands of rows share. This one is worth distinguishing carefully: **hashing fixes the distribution of keys, not the traffic to a single key.** All requests for one key go to one shard no matter how good the hash is, so a single very popular key is a hotspot that sharding cannot solve. The answers are caching, read replicas for that shard, or splitting that entity's data deliberately.
+
+**A key absent from most queries.** If queries filter on `email` and you sharded on `user_id`, every lookup becomes a **scatter-gather** across all shards, so you have the operational cost of sharding with none of the benefit.
+
+**A mutable key**, which forces moves.
+
+#### Why monotonically increasing keys are lethal
+
+This is the one the question singles out, and it deserves the precision.
+
+A **monotonically increasing** key is one whose values only ever go up: a timestamp, an auto-increment id, a **UUIDv1** or UUIDv7, a Snowflake id.
+
+**Under range-based sharding** the consequences are severe:
+
+Ranges are assigned so that **one shard owns the highest range**.
+
+New rows always have the **highest key**, by definition.
+
+Therefore **every single insert goes to that one shard**.
+
+So:
+
+**Write throughput is that of one node**, regardless of cluster size. You bought ten machines and are writing to one. This is the canonical "we sharded and write throughput did not improve" story.
+
+**The other shards are idle for writes**, holding historical data nobody inserts into.
+
+**That shard splits constantly**, because it keeps exceeding the size threshold, which triggers **continuous rebalancing** and moves data while the system is already under load.
+
+**Adding a shard does not help**: the new shard takes the top range and immediately becomes the sole hotspot.
+
+Two qualifications that a complete answer includes:
+
+**Under hash sharding, monotonic keys are fine for distribution.** The hash scatters sequential values across the key space, so writes spread evenly. **But you lose range queries entirely**: "give me the last hour of events" no longer maps to one shard and becomes a scatter-gather across all of them. That is the real trade, and it is why the choice is not simply "always hash".
+
+**The same problem appears inside a single node**, as index page contention: every insert goes to the rightmost leaf of the B+ tree, so that page and its latch become the bottleneck. It is the same phenomenon at a smaller scale, which is why monotonic primary keys are a known contention point even without sharding.
+
+The mitigations, in order of preference:
+
+**Hash the key**, if range queries are not required.
+
+**Salt it with a bucket prefix.** Make the shard key `(hash(id) % 16, timestamp)`. Writes spread across sixteen buckets, and a range query becomes sixteen bounded range scans rather than a full scatter-gather. This is the standard compromise and it is worth being able to describe.
+
+**Use a compound key with a high-cardinality prefix**, such as `(tenant_id, timestamp)`, which keeps a tenant's data together while spreading writes across tenants.
+
+**Reverse the bits or digits** of the sequential part, which scatters it while preserving uniqueness. Cruder, but used in practice.
+
+#### Resharding storms
+
+The naive scheme is `shard = hash(key) % N`.
+
+When `N` changes, **almost every key maps to a different shard**. Going from ten shards to eleven moves roughly ninety percent of all data.
+
+The result is a **resharding storm**:
+
+**Every node must simultaneously send most of its data elsewhere**, saturating network and disk.
+
+**Latency spikes** across the whole cluster while it happens.
+
+**It can take days** on a large dataset, during which the system is degraded and the operation is difficult to abort safely.
+
+**And the same happens on every scaling event**, which effectively means you stop scaling.
+
+#### Consistent hashing with virtual nodes
+
+**Consistent hashing** hashes **both nodes and keys** into the same space, visualised as a **ring**. A key belongs to the **first node clockwise** from its position.
+
+The property that matters: adding or removing a node **only affects the keys between that node and its predecessor**. On average `K/N` keys move, and everything else stays where it is. Going from ten shards to eleven moves about nine percent of the data rather than ninety.
+
+**Virtual nodes** then fix the two remaining problems, and being able to name **both** is what distinguishes a thorough answer.
+
+**Problem one: uneven distribution.** With each node at a single ring position, the arcs between them are random and therefore uneven; one node can own three times its share by chance. Placing each physical node at many positions, typically a few hundred, makes the shares **even by averaging** rather than by luck.
+
+**Problem two: concentrated rebalancing.** With single positions, a new node takes its **entire** range from **one** neighbour, so that neighbour must ship a large block of data and is heavily loaded during the move, while a **failing** node dumps its whole range onto its single successor, potentially doubling that node's load and causing a cascade.
+
+With virtual nodes, a new node takes **a small slice from many existing nodes**, so the transfer is spread across the cluster and no single node is saturated. A failed node's ranges are distributed across all survivors, so nobody doubles.
+
+Two further benefits worth mentioning:
+
+**Heterogeneous hardware** is handled naturally: give a machine with twice the capacity twice the virtual nodes.
+
+**Rebuild parallelism**: a failed node's data is restored from many peers at once rather than from one.
+
+Used by **Cassandra**, through `num_tokens`, **DynamoDB**, **Riak**, memcached client libraries, and Envoy's ring-hash load balancer.
+
+#### The modern alternative
+
+Worth knowing, because many current systems do not use consistent hashing at all:
+
+**Range-based sharding with automatic splitting and rebalancing.** The key space is divided into **ranges**; a range **splits** when it exceeds a size or load threshold, and a **balancer** moves ranges between nodes to even things out.
+
+This keeps **range queries local**, which hashing destroys, and it avoids the storm because rebalancing is incremental and continuous rather than a single mass remapping. The cost is a metadata or placement layer that tracks which node owns which range, which is itself a distributed systems problem.
+
+**CockroachDB, TiDB, HBase and Spanner** all work this way, which is why they can offer ordered scans that a Dynamo-style store cannot.
 
 ---
 
-### What makes a shard key disastrous
+### In code
 
-**1. Anything monotonically increasing — `created_at`, auto-increment `id`.**
+```text
+THE SHARD KEY is the field whose value decides WHICH SHARD a row
+lives on, and it is the single most consequential decision in a
+sharded design, because it decides THREE separate things:
 
-If you range-partition by time, whichever shard holds "now" gets 100% of the writes, forever, while every other shard sits idle holding cold history:
+  DATA DISTRIBUTION     whether storage is balanced
+  TRAFFIC DISTRIBUTION  whether LOAD is balanced
+  QUERY LOCALITY        which queries are single-shard and which
+                        become scatter-gather
 
-<Diagram>
-<Row>
-<Box title="Shard 1: 2024 orders" accent="#a1a1aa"><Field icon="💤" code="0% writes" hint="idle cold storage" variant="neutral" /></Box>
-<Box title="Shard 2: 2025 orders" accent="#a1a1aa"><Field icon="💤" code="0% writes" hint="idle cold storage" variant="neutral" /></Box>
-<Box title="Shard 3: 2026 orders (now)" accent="#fb7185"><Field icon="🔥" code="100% of writes" hint="every new row lands here" variant="neutral" /></Box>
-</Row>
-</Diagram>
+  THE FIRST TWO ARE NOT THE SAME THING, and conflating them is the
+  root of most hotspot problems.
 
-Your 100-node cluster's write capacity just collapsed to the capacity of one node. The fix: never shard on a raw time or sequence value — hash it instead (`MurmurHash3(id)`), or salt it.
-
-**2. Low cardinality — `country_code`, `gender`, `is_active`.**
-
-Shard 50 million users by `country_code` and the US shard balloons to 40 million rows while the Iceland shard holds 20,000. Worse: you can never have more shards than there are distinct countries (~195), so this caps your scalability permanently, not just today.
-
-**3. Celebrity skew — `creator_id`, `tenant_id`.**
-
-On a multi-tenant platform sharded by `tenant_id`, 99.9% of tenants do 5 requests/second — fine. But one huge tenant (a viral creator, a big retail customer) does 150,000 requests/second, and that single tenant's shard melts from thread exhaustion while every other shard is bored.
-
----
-
-### The hidden cost of not matching your queries: scatter-gather
-
-If a query doesn't filter by the shard key, the router has no way to know which shard holds the answer — it has to ask *all* of them and wait for the slowest one:
-
-```sql
--- Table is sharded on user_id, but this query doesn't filter on it:
-SELECT * FROM orders WHERE tracking_code = 'FDX-9988112';
+  it is also normally IMMUTABLE, because changing it means
+  PHYSICALLY MOVING the row between shards.
 ```
 
-This matters more than it sounds like, because of how probability stacks up across many shards. If a single shard has a 1% chance of being slow (p99 latency), and you fan a query out across 100 shards, the chance that *at least one* of them is slow is:
+```text
+GOOD                          DISASTROUS
+  high cardinality              LOW CARDINALITY
+                                  a boolean, a 3-value status
+                                  -> if the key has 5 distinct
+                                     values, AT MOST 5 SHARDS CAN
+                                     EVER HOLD DATA.
+                                     A HARD CEILING, not a
+                                     performance issue.
 
-$$P(\text{delayed}) = 1 - (1 - 0.01)^{100} \approx 63.4\%$$
+  even DATA distribution        UNEVEN DISTRIBUTION
+                                  country code with 80% in one
+                                  country; tenant_id with one
+                                  enormous customer
 
-So nearly two-thirds of these broadcast queries get stuck waiting on a straggler. That's why scatter-gather queries get banned from hot paths in any serious sharded system.
+  even TRAFFIC distribution     A HOT KEY
+                                  a celebrity user, a default
+                                  tenant, a null placeholder
+                                  -> HASHING FIXES THE DISTRIBUTION
+                                     OF KEYS, NOT THE TRAFFIC TO A
+                                     SINGLE KEY.
+                                     all requests for one key go to
+                                     one shard however good the
+                                     hash. The answers are caching,
+                                     read replicas for that shard,
+                                     or splitting that entity's
+                                     data deliberately.
+
+  matches the query pattern     ABSENT FROM MOST QUERIES
+                                  shard on user_id, query by email
+                                  -> EVERY lookup is a
+                                     scatter-gather: the
+                                     operational cost of sharding
+                                     with NONE of the benefit
+
+  immutable                     MUTABLE: forces moves
+```
+
+```text
+WHY MONOTONICALLY INCREASING KEYS ARE LETHAL
+
+  monotonic = values only ever go UP:
+     a timestamp, an auto-increment id, UUIDv1, UUIDv7, a Snowflake id
+
+  UNDER RANGE-BASED SHARDING:
+
+     shard 1: ids 1 - 1,000,000          [ historical, idle ]
+     shard 2: ids 1,000,001 - 2,000,000  [ historical, idle ]
+     shard 3: ids 2,000,001 - 3,000,000  [ historical, idle ]
+     shard 4: ids 3,000,001 - MAX        [ ALL WRITES, ALL THE TIME ]
+                                              ^^^^^^^^^^^^^^^^^^^^
+     new rows ALWAYS have the HIGHEST key, BY DEFINITION, so EVERY
+     SINGLE INSERT GOES TO ONE SHARD.
+
+  the consequences:
+
+     WRITE THROUGHPUT IS THAT OF ONE NODE, regardless of cluster
+        size. You bought ten machines and are writing to one.
+        THE CANONICAL "we sharded and write throughput did not
+        improve" STORY.
+     THE OTHER SHARDS ARE IDLE FOR WRITES, holding historical data
+        nobody inserts into.
+     THAT SHARD SPLITS CONSTANTLY, exceeding its size threshold and
+        triggering CONTINUOUS REBALANCING while already overloaded.
+     ADDING A SHARD DOES NOT HELP: the new shard takes the top range
+        and IMMEDIATELY BECOMES THE SOLE HOTSPOT.
+
+  and the appalling part: NOTHING LOOKS WRONG. The data is evenly
+  distributed. The shards are evenly sized. All the work is in one
+  place.
+```
+
+```text
+TWO QUALIFICATIONS a complete answer includes:
+
+  UNDER HASH SHARDING, MONOTONIC KEYS ARE FINE FOR DISTRIBUTION.
+     the hash scatters sequential values across the key space, so
+     writes spread evenly.
+     BUT YOU LOSE RANGE QUERIES ENTIRELY: "the last hour of events"
+     no longer maps to one shard and becomes a scatter-gather
+     across all of them.
+     THAT is the real trade, and why the answer is not simply
+     "always hash".
+
+  THE SAME PROBLEM APPEARS INSIDE A SINGLE NODE, as INDEX PAGE
+  CONTENTION: every insert goes to the RIGHTMOST LEAF of the B+
+  tree, so that page and its latch become the bottleneck.
+     the same phenomenon at a smaller scale, which is why monotonic
+     primary keys are a known contention point even WITHOUT
+     sharding.
+```
+
+```sql
+-- MITIGATIONS, in order of preference
+
+-- 1. HASH THE KEY, if range queries are not required
+shard = hash(event_id) % N
+
+-- 2. SALT IT WITH A BUCKET PREFIX: the standard compromise
+shard_key = (hash(id) % 16, timestamp)
+--   writes spread across SIXTEEN buckets
+--   a range query becomes SIXTEEN BOUNDED RANGE SCANS rather than
+--   a full scatter-gather:
+SELECT * FROM events
+WHERE  bucket IN (0,1,2,...,15)          -- 16 bounded scans
+  AND  timestamp BETWEEN ? AND ?;
+
+-- 3. A COMPOUND KEY WITH A HIGH-CARDINALITY PREFIX
+shard_key = (tenant_id, timestamp)
+--   keeps a tenant's data together while spreading writes across
+--   tenants
+
+-- 4. REVERSE THE BITS OR DIGITS of the sequential part
+--   scatters it while preserving uniqueness. Cruder, and used in
+--   practice (HBase's "salted rowkey" advice).
+```
+
+```text
+RESHARDING STORMS: why naive hashing cannot be scaled
+
+  shard = hash(key) % N
+
+  N = 10 -> N = 11:
+
+     key 1007   1007 % 10 = 7   ->  1007 % 11 = 5    MOVED
+     key 1008   1008 % 10 = 8   ->  1008 % 11 = 6    MOVED
+     key 1009   1009 % 10 = 9   ->  1009 % 11 = 7    MOVED
+     key 1010   1010 % 10 = 0   ->  1010 % 11 = 8    MOVED
+     ...
+     ROUGHLY 90% OF ALL DATA MOVES.
+
+  the result is a RESHARDING STORM:
+     EVERY NODE simultaneously sends most of its data elsewhere,
+        saturating network and disk
+     LATENCY SPIKES across the whole cluster while it happens
+     IT CAN TAKE DAYS on a large dataset, during which the system
+        is degraded and the operation is hard to abort safely
+     AND THE SAME HAPPENS ON EVERY SCALING EVENT, which
+        effectively means YOU STOP SCALING
+```
+
+```text
+CONSISTENT HASHING: hash BOTH nodes and keys onto a RING
+
+            0 ------------- N1 --------- k1 --- N2 ------+
+            |                                            |
+            +--- N4 --- k3 ------- N3 ------ k2 ---------+
+
+  a key belongs to THE FIRST NODE CLOCKWISE.
+     k1 -> N2,  k2 -> N4,  k3 -> N3
+
+  THE PROPERTY THAT MATTERS: adding or removing a node affects ONLY
+  THE KEYS BETWEEN THAT NODE AND ITS PREDECESSOR.
+     on average K/N keys move, and EVERYTHING ELSE STAYS PUT.
+     ten shards to eleven moves about 9% of the data, not 90%.
+```
+
+```text
+VIRTUAL NODES fix the TWO REMAINING PROBLEMS, and naming BOTH is
+what distinguishes a thorough answer:
+
+  PROBLEM 1: UNEVEN DISTRIBUTION
+     with each node at a SINGLE ring position, the arcs between
+     them are random and therefore UNEVEN. One node can own three
+     times its share BY CHANCE.
+
+     FIX: place each physical node at MANY positions, typically a
+     few hundred, so the shares are EVEN BY AVERAGING rather than
+     by luck.
+
+         N1 N3 N2 N1 N4 N2 N3 N1 N4 N2 N3 N4 ...   (around the ring)
+
+  PROBLEM 2: CONCENTRATED REBALANCING
+     with single positions:
+        a NEW node takes its ENTIRE range from ONE NEIGHBOUR, so
+        that neighbour ships a large block and is heavily loaded
+        during the move
+        a FAILING node dumps its WHOLE range onto its single
+        successor, POTENTIALLY DOUBLING that node's load and
+        causing a CASCADE
+
+     FIX: with virtual nodes a new node takes A SMALL SLICE FROM
+     MANY EXISTING NODES, so the transfer is spread across the
+     cluster and nobody is saturated; and a failed node's ranges
+     are DISTRIBUTED ACROSS ALL SURVIVORS, so nobody doubles.
+
+  two further benefits:
+     HETEROGENEOUS HARDWARE: give a machine with twice the capacity
+        twice the virtual nodes
+     REBUILD PARALLELISM: a failed node's data is restored FROM
+        MANY PEERS AT ONCE rather than from one
+
+  used by: Cassandra (num_tokens), DynamoDB, Riak, memcached client
+  libraries, Envoy's ring-hash load balancer.
+```
+
+```text
+THE MODERN ALTERNATIVE, which many current systems use instead:
+
+  RANGE-BASED SHARDING WITH AUTOMATIC SPLITTING AND REBALANCING
+
+     the key space is divided into RANGES
+     a range SPLITS when it exceeds a size or load threshold
+     a BALANCER moves ranges between nodes to even things out
+
+        [a-f] [g-m] [n-s] [t-z]
+                ^ too big, SPLIT
+        [a-f] [g-i] [j-m] [n-s] [t-z]
+                           ^ balancer moves this to a quieter node
+
+  + RANGE QUERIES STAY LOCAL, which hashing destroys
+  + NO STORM: rebalancing is INCREMENTAL AND CONTINUOUS rather than
+    a single mass remapping
+  - needs a METADATA OR PLACEMENT LAYER tracking which node owns
+    which range, which is itself a distributed systems problem
+
+  CockroachDB, TiDB, HBase and Spanner all work this way, which is
+  why they can offer ORDERED SCANS that a Dynamo-style store cannot.
+```
 
 ---
 
-### Fixing celebrity hotspots
+### What they ask next
 
-**1. Salt the key.** For a viral tenant, append a random digit to spread its writes: `tenant_id + "_" + random(0,9)`. Now that one tenant's writes land across 10 shards instead of 1. The cost: reading that tenant's data back means querying all 10 salted buckets and merging the results.
+**"What makes a shard key bad?"**
+Low cardinality, which caps the number of usable shards permanently; uneven data distribution; uneven **traffic** distribution, which is a separate problem; absence from most queries, which makes everything a scatter-gather; and mutability, which forces data to move.
 
-**2. Add a secondary index on a different key.** Systems like DynamoDB let you maintain an async index sharded by a *different* attribute (say, `tracking_code` instead of `user_id`) — you trade some storage and a bit of staleness for a fast lookup path that doesn't need the primary shard key.
+**"Why are monotonic keys lethal under range sharding?"**
+Because new rows always carry the highest key, so every insert lands on the shard owning the top range. Write throughput becomes that of one node however many you have, the rest sit idle, and that shard splits continually. Adding a shard does not help, since the new one takes the top range and becomes the sole hotspot.
 
----
+**"Does hashing fix it?"**
+For distribution, yes: the hash scatters sequential values evenly. But it destroys range queries, so "the last hour of events" becomes a scatter-gather across every shard. That is the real trade, which is why salting with a bucket prefix is the usual compromise.
 
-### Why you can't just use `hash(key) % N`
+**"What is salting?"**
+Prefixing the key with a small hashed bucket, so the shard key becomes something like bucket and timestamp. Writes spread across the buckets while a range query becomes a bounded scan per bucket rather than a full fan-out, which keeps most of the benefit of both.
 
-Plain modular hashing works great — until you add a node. Change $N$ from 10 to 11 and the divisor changes for *every single key*, so roughly 91% of all your data has to move at once. That's a network and I/O storm nobody wants during a routine scale-up.
+**"Can hashing solve a hot key?"**
+No, and this is worth distinguishing. Hashing distributes **keys**, not the traffic to a single key, so every request for one celebrity user still lands on one shard. The answers are caching, extra read replicas for that shard, or deliberately splitting that entity's data.
 
-**Consistent hashing fixes this.** Picture a circular ring of numbers from 0 to $2^{32}-1$. Both nodes and keys get a position on that ring. A key belongs to whichever node's position is the next one clockwise from it.
+**"What is a resharding storm?"**
+The consequence of `hash(key) % N`: changing N remaps almost every key, so every node must simultaneously ship most of its data elsewhere, saturating the network, spiking latency and potentially taking days, which in practice means the cluster stops being scalable.
 
-Add a new node, and it only steals keys from its one clockwise neighbor — nothing else on the ring moves:
+**"How does consistent hashing help?"**
+By hashing nodes and keys onto a ring and assigning each key to the first node clockwise, so adding or removing a node affects only the keys between it and its predecessor. On average `K/N` keys move rather than nearly all of them.
 
-$$\text{Keys migrated} = \frac{1}{N+1} \text{ of the dataset}$$
+**"Why are virtual nodes needed on top of that?"**
+For two reasons. Single ring positions give uneven arcs, so a node can own several times its share by chance, and many positions average that out. And a new node would otherwise take its whole range from one neighbour while a failing node would dump its entire load on one successor; with virtual nodes both are spread across the cluster.
 
-That's a massive improvement over "almost everything moves."
+**"What do systems like CockroachDB do instead?"**
+Range-based sharding with automatic splitting and a rebalancer. Ranges split when too large and are moved incrementally, which preserves ordered scans and avoids the storm entirely, at the cost of a metadata layer tracking range ownership.
 
-**One catch: virtual nodes.** If each physical server gets exactly one point on the ring, random chance means some servers end up owning a much bigger arc than others — one might get 40% of all keys, another 5%. The fix is to give each physical server many points on the ring (e.g. 256 virtual nodes), which averages out the unevenness. The more virtual nodes per server, the more uniform the spread.
+**The common wrong answer** is "pick a high-cardinality key and hash it". That addresses data distribution and misses the three things the question is about: **traffic** distribution is separate from data distribution and hashing does nothing for a hot key; monotonic keys are lethal specifically under **range** sharding and hashing fixes them only by **destroying range queries**; and the resharding storm is a property of **modulo** hashing that consistent hashing plus **virtual nodes** exists to solve, with the virtual nodes fixing both uneven arcs and concentrated rebalancing.
 
 ---
 
 ### Say this in the interview
 
-*"A good shard key has high cardinality, spreads writes evenly, and matches your most frequent query filters. The classic mistakes are sharding on a monotonically increasing value like a timestamp — which funnels 100% of writes to one shard — low-cardinality columns that cap how far you can ever scale, and skewed keys where one tenant or creator dominates traffic. Queries that don't filter by the shard key have to broadcast to every shard, and with enough shards, tail-latency math guarantees most of those queries get stuck waiting on a slow node. For re-sharding without moving most of the dataset, consistent hashing restricts migration to about 1/(N+1) of the keys when a node is added, and virtual nodes smooth out the uneven distribution a single ring position per server would otherwise cause."*
+*"The shard key is the field whose value determines which shard a row lives on, and it is the single most consequential decision in a sharded design, because it decides three separate things: data distribution, so whether storage is balanced; traffic distribution, so whether load is balanced; and query locality, so which queries are single-shard and which become scatter-gather. The first two are not the same thing, and conflating them is the root of most hotspot problems. It is also normally immutable, because changing it means physically moving the row between shards.*
 
----
+*A good key has high cardinality, distributes both data and traffic evenly, matches the query pattern so most queries stay on one shard, and does not change. A disastrous one has low cardinality, like a boolean or a three-value status, which is a hard ceiling rather than a performance issue, because if the key has five distinct values then at most five shards can ever hold data. Or it distributes unevenly, like a country code where eighty percent of users are in one country. Or it has a hot key, like a celebrity user or a default tenant, and that one is worth distinguishing carefully, because hashing fixes the distribution of keys and not the traffic to a single key: all requests for one key go to one shard however good the hash, so the answers there are caching, extra read replicas for that shard, or deliberately splitting that entity's data. Or it is absent from most queries, so every lookup becomes a scatter-gather and you have the cost of sharding with none of the benefit.*
 
-### Code: consistent hashing with virtual nodes
+*Monotonically increasing keys are lethal under range-based sharding. A timestamp, an auto-increment id, UUIDv1 or v7, or a Snowflake id only ever goes up, and ranges are assigned so one shard owns the highest range, so new rows always have the highest key and every single insert goes to that one shard. The consequences are that write throughput is that of one node regardless of cluster size, which is the canonical we-sharded-and-write-throughput-did-not-improve story; the other shards are idle for writes, holding historical data; that shard splits constantly because it keeps exceeding its threshold, triggering continuous rebalancing while already overloaded; and adding a shard does not help, because the new one takes the top range and immediately becomes the sole hotspot. The appalling part is that nothing looks wrong: the data is evenly distributed and the shards are evenly sized, and all the work is in one place.*
 
-This script builds a hash ring, distributes 10,000 keys across 4 nodes, adds a 5th node, and measures how few keys actually need to move.
+*Two qualifications. Under hash sharding, monotonic keys are fine for distribution, because the hash scatters sequential values, but you lose range queries entirely, so the last hour of events becomes a scatter-gather across every shard, and that is the real trade. And the same problem appears inside a single node as index page contention, where every insert goes to the rightmost leaf of the B+ tree so that page and its latch become the bottleneck. The mitigations are to hash the key if range queries are not needed; to salt it with a bucket prefix so the shard key is something like hash modulo sixteen plus the timestamp, which spreads writes across sixteen buckets while a range query becomes sixteen bounded scans rather than a full fan-out, which is the standard compromise; to use a compound key with a high-cardinality prefix like tenant and timestamp; or to reverse the digits of the sequential part.*
 
-```python
-"""
-Consistent Hashing with Virtual Nodes (Vnodes) Simulator
-Demonstrates:
-  1. Clockwise token ring key assignment
-  2. Uniform distribution via virtual nodes (vnodes)
-  3. Minimal key reassignment when adding/removing physical nodes
-"""
+*A resharding storm is what naive modulo hashing produces. With shard equals hash modulo N, changing N remaps almost every key, so going from ten shards to eleven moves about ninety percent of the data. Every node must simultaneously ship most of its data elsewhere, saturating network and disk, latency spikes across the cluster, it can take days on a large dataset during which the operation is hard to abort, and the same thing happens on every scaling event, which effectively means you stop scaling.*
 
-import hashlib
-import bisect
-from typing import Dict, List, Set
+*Consistent hashing fixes that by hashing both nodes and keys onto a ring and assigning each key to the first node clockwise, so adding or removing a node affects only the keys between that node and its predecessor, moving K over N keys on average while everything else stays put: nine percent rather than ninety. Virtual nodes then fix the two remaining problems. First, uneven distribution: with each node at a single ring position the arcs are random and therefore uneven, so a node can own three times its share by chance, and placing each physical node at a few hundred positions makes the shares even by averaging rather than luck. Second, concentrated rebalancing: with single positions a new node takes its entire range from one neighbour, which is heavily loaded during the move, and a failing node dumps its whole range onto its single successor, potentially doubling that node's load and cascading. With virtual nodes a new node takes a small slice from many existing nodes and a failed node's ranges spread across all survivors. Two further benefits are heterogeneous hardware, since you give a bigger machine more virtual nodes, and rebuild parallelism, since a failed node's data is restored from many peers at once. Cassandra, DynamoDB, Riak and Envoy's ring-hash balancer all use it.*
 
-class ConsistentHashRing:
-    def __init__(self, vnodes_per_node: int = 100):
-        self.vnodes_per_node = vnodes_per_node
-        self.ring: List[int] = []                    # Sorted list of virtual token hashes
-        self.vnode_to_node: Dict[int, str] = {}     # token_hash -> physical_node_id
-        self.nodes: Set[str] = set()
-
-    def _hash(self, key: str) -> int:
-        # MD5 128-bit integer hash space [0, 2^128 - 1]
-        return int(hashlib.md5(key.encode('utf-8')).hexdigest(), 16)
-
-    def add_node(self, node_id: str) -> None:
-        self.nodes.add(node_id)
-        for i in range(self.vnodes_per_node):
-            vnode_key = f"{node_id}#vnode_{i}"
-            token = self._hash(vnode_key)
-            self.vnode_to_node[token] = node_id
-            bisect.insort(self.ring, token)
-
-    def remove_node(self, node_id: str) -> None:
-        if node_id not in self.nodes:
-            return
-        self.nodes.remove(node_id)
-        for i in range(self.vnodes_per_node):
-            vnode_key = f"{node_id}#vnode_{i}"
-            token = self._hash(vnode_key)
-            del self.vnode_to_node[token]
-            idx = bisect.bisect_left(self.ring, token)
-            if idx < len(self.ring) and self.ring[idx] == token:
-                del self.ring[idx]
-
-    def get_node(self, key: str) -> str:
-        """Finds the first node clockwise on the token ring."""
-        if not self.ring:
-            raise RuntimeError("Ring is empty")
-        key_hash = self._hash(key)
-        # Binary search for the first vnode token >= key_hash
-        idx = bisect.bisect_right(self.ring, key_hash)
-        # If past the end of the ring, wrap around clockwise to index 0
-        if idx == len(self.ring):
-            idx = 0
-        return self.vnode_to_node[self.ring[idx]]
-
-
-def main():
-    print("=== Consistent Hashing with Virtual Nodes Simulation ===\n")
-    ring = ConsistentHashRing(vnodes_per_node=200)
-
-    # Initial cluster of 4 physical database nodes
-    initial_nodes = ["db_server_0", "db_server_1", "db_server_2", "db_server_3"]
-    for n in initial_nodes:
-        ring.add_node(n)
-
-    # Generate 10,000 synthetic customer keys
-    num_keys = 10_000
-    keys = [f"customer_session_uuid_{i}" for i in range(num_keys)]
-
-    # Initial key mapping
-    initial_mapping = {k: ring.get_node(k) for k in keys}
-
-    # Evaluate initial distribution uniformity
-    distribution: Dict[str, int] = {}
-    for node in initial_mapping.values():
-        distribution[node] = distribution.get(node, 0) + 1
-
-    print(f"--- Initial Distribution Across 4 Nodes ({num_keys} keys) ---")
-    for node, count in sorted(distribution.items()):
-        percentage = (count / num_keys) * 100
-        print(f"  {node}: {count} keys ({percentage:.1f}%) [Ideal: 25.0%]")
-
-    # Scale cluster: Add a 5th node
-    print("\n--- Scaling Event: Adding 'db_server_4' to Cluster ---")
-    ring.add_node("db_server_4")
-
-    # Evaluate how many keys moved
-    new_mapping = {k: ring.get_node(k) for k in keys}
-    keys_moved = sum(1 for k in keys if initial_mapping[k] != new_mapping[k])
-    migration_pct = (keys_moved / num_keys) * 100
-    theoretical_pct = (1.0 / 5.0) * 100
-
-    print(f"Keys migrated to new node: {keys_moved} / {num_keys} ({migration_pct:.1f}%)")
-    print(f"Theoretical minimal migration (1/(N+1)): {theoretical_pct:.1f}%")
-    print("Notice: Under modular hashing (hash % N), ~80% of all keys would have moved!")
-
-if __name__ == "__main__":
-    main()
-```
+*And I would mention the modern alternative, since many current systems do not use consistent hashing at all: range-based sharding with automatic splitting and rebalancing, where ranges split on a size or load threshold and a balancer moves them incrementally. That keeps range queries local, which hashing destroys, and avoids the storm because rebalancing is continuous rather than a mass remapping, at the cost of a metadata layer tracking range ownership. CockroachDB, TiDB, HBase and Spanner all work this way, which is why they can offer ordered scans that a Dynamo-style store cannot."*
