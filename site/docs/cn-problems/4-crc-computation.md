@@ -218,7 +218,7 @@ That is why the detection guarantees are properties of `G`:
 | Error class | Count tested | Undetected | Reason |
 | :--- | :---: | :---: | :--- |
 | Single bit | 14 | **0** | `G` has a non-zero constant term, so `G` cannot divide `x^i` |
-| Two bits | 91 | **0** | needs `G | (1 + x^d)`, smallest `d` is 15, and `d <= 13` here |
+| Two bits | 91 | **0** | needs `G` to divide `1 + x^d`, smallest `d` is 15, and `d <= 13` here |
 | Burst, length 2 | 13 | **0** | length `<= r` |
 | Burst, length 3 | 24 | **0** | length `<= r` |
 | Burst, length 4 | 44 | **0** | length `<= r` |
