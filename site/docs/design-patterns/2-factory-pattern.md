@@ -1,371 +1,490 @@
 ---
 id: 2-factory-pattern
-title: "Factory Patterns: Simple Factory, Factory Method & Abstract Factory"
-description: "Understand the tripartite taxonomy of factory patterns: Simple Factory with dynamic registries, GoF Factory Method, and GoF Abstract Factory in Python."
+title: "Factories: Simple, Factory Method and Abstract Factory"
+description: "All three answer the same question at three granularities, and in Python a dict of classes is already a factory, so the registry replaces the conditional"
+
 sidebar_position: 2
 sidebar_class_name: sidebar-medium
 ---
-
-import { Diagram, Row, Box, Arrow, Field, Tree } from '@site/src/components/ConceptDiagram';
 
 <span className="badge badge--warning margin-bottom--md">Medium</span>
 
 > **Interview Question:** "What is the architectural difference between Simple Factory, Factory Method, and Abstract Factory? When would you use each, how do you eliminate hardcoded `if-elif` statements using a Dynamic Registry in Python, and what are the tradeoffs?"
 
-"Factory pattern" actually means three different things, and interviewers notice when you conflate them. All three solve the same basic problem — code that needs an object, without hardcoding exactly which class to build — but at increasing levels of structure:
+---
 
-<Diagram>
-<Row>
-<Box title="Simple Factory" accent="#60a5fa"><Field icon="🔀" code="one method, a lookup table" hint="not a GoF pattern — just a useful habit" variant="neutral" /></Box>
-<Box title="Factory Method" accent="#34d399"><Field icon="🧬" code="subclasses decide what to build" hint="GoF pattern — uses inheritance" variant="neutral" /></Box>
-<Box title="Abstract Factory" accent="#f59e0b"><Field icon="👪" code="builds a whole matching family" hint="GoF pattern — one factory per family" variant="neutral" /></Box>
-</Row>
-</Diagram>
+### Picture it
+
+A kitchen where the waiter is not allowed to know how anything is cooked.
+
+The waiter takes "one soup" and hands back soup. **What the waiter must not do is decide which pan to use.** The moment a waiter contains the sentence "if it is soup, get the stockpot; if it is steak, get the griddle", two things have gone wrong at once: the waiter now has to be retrained whenever a dish is added, and the waiter now knows things that have nothing to do with waiting.
+
+**Every factory pattern is one answer to that, and the question they all answer is the same:** how does code get an object without naming the object's class? Because naming the class is what welds the two together. Write `pan = Stockpot()` and the waiter now depends on `Stockpot` existing, being constructible, and being the right choice, forever.
+
+The three patterns differ only in **how much is being varied**, and that is the whole taxonomy.
+
+**Vary one dish.** You want soup or steak depending on a string that arrives at runtime. Something has to map the string to a class, and the only real question is whether that something is a chain of conditionals you edit by hand or a table that dishes add themselves to.
+
+**Vary who decides, per kitchen.** The recipe for serving a meal is identical everywhere: plate it, garnish it, carry it. But the Italian kitchen makes pasta and the Japanese kitchen makes ramen. So you write the serving procedure once and leave a hole where the dish gets made, and **each kitchen fills the hole**. The procedure never names a dish.
+
+**Vary a whole matched set.** Now the Italian kitchen must produce an Italian starter, an Italian main **and** an Italian dessert, and the one thing you must never do is serve an Italian starter with a Japanese dessert. The products are not independent; they have to match. So you hand out one object whose job is to produce the entire consistent family, and **the guarantee you are buying is compatibility between products**, not convenience in creating them.
+
+That third one is the distinction people blur, and it is worth holding on to: **Factory Method is about who decides, and Abstract Factory is about keeping a set consistent.** If your products do not need to match each other, you do not want an Abstract Factory, however many of them there are.
+
+And then the Python note, which changes what the answer should look like. **Classes in Python are ordinary objects.** You can put one in a dictionary, pass it to a function, return it. So a dictionary mapping a name to a class already does everything Simple Factory does, and the conditional chain the question asks about is not a pattern problem but a symptom of writing Java in Python.
 
 ---
 
-### Simple Factory & the Dynamic Registry
+### The proper terms
 
-The simplest version isn't even an official GoF pattern — it's just: one method, hand it a string, get back the right object.
+#### The common purpose
 
-```python
-class NaiveShapeFactory:
-    @staticmethod
-    def get_shape(shape_type: str):
-        if shape_type == "circle":
-            return Circle()
-        elif shape_type == "square":
-            return Square()
-        # Every new shape means editing this method — fragile, and it
-        # violates the Open/Closed Principle (open to extension, closed to modification).
-```
+All three patterns move the choice of concrete class out of the code that uses the object. The vocabulary is shared:
 
-The problem is obvious the moment someone adds a `Triangle`: now they have to go find and edit this exact function. The fix is a **registry** — a dictionary that maps names to classes, and lets new classes register *themselves*:
+A **product** is the thing being created; a **concrete product** is a particular class of it. A **creator** is whatever does the creating. The **client** is the code that wants a product and should not name its class.
 
-```python
-from typing import Dict, Type, Callable
-from abc import ABC, abstractmethod
+Two principles are being served, and naming them correctly matters because they are different.
 
-class Shape(ABC):
-    @abstractmethod
-    def draw(self) -> str:
-        pass
+The **Open/Closed Principle** says you should be able to add behaviour without editing existing code. A conditional chain violates it directly: adding a product means editing the chain.
 
-_SHAPE_REGISTRY: Dict[str, Type[Shape]] = {}
+**Dependency inversion** says high-level code should depend on abstractions rather than concretions. A client that names `Stockpot` depends on a concretion; a client that receives something satisfying an interface does not.
 
-def register_shape(name: str) -> Callable[[Type[Shape]], Type[Shape]]:
-    """Decorator to register new Shape subclasses without touching the factory."""
-    def decorator(cls: Type[Shape]) -> Type[Shape]:
-        _SHAPE_REGISTRY[name.lower()] = cls
-        return cls
-    return decorator
+#### Simple Factory
 
-@register_shape("circle")
-class Circle(Shape):
-    def draw(self) -> str:
-        return "Drawing a Circle"
+A single function or method that takes a parameter and returns a concrete product. **It is not a Gang of Four pattern**, which is worth saying because interviewers sometimes ask for "the three GoF factories" to see whether you know there are only two. It is an idiom, sometimes called a **parameterised factory**.
 
-@register_shape("square")
-class Square(Shape):
-    def draw(self) -> str:
-        return "Drawing a Square"
+Its weakness in the naive form is the **conditional chain**: a cascade of `if-elif` that must be edited for every new product.
 
-class ExtensibleShapeFactory:
-    @staticmethod
-    def create(shape_type: str) -> Shape:
-        cls = _SHAPE_REGISTRY.get(shape_type.lower())
-        if not cls:
-            raise ValueError(f"Unknown shape type: '{shape_type}'. Available: {list(_SHAPE_REGISTRY.keys())}")
-        return cls()
-```
+The fix is a **dynamic registry**: a mapping from key to class that products add themselves to, usually through a decorator evaluated at import time. The factory then performs a lookup and never changes.
 
-Now a teammate adding `Triangle` just tags it with `@register_shape("triangle")` in their own file. The factory supports it automatically — **zero changes to the factory itself.**
+#### Factory Method
 
----
+The GoF pattern where **a class defers instantiation to its subclasses**. A base class contains an algorithm with a hole in it, declares an abstract creation method, and calls that method where a product is needed. Each subclass overrides it.
 
-### Factory Method: Let Subclasses Decide
+The key property: **the base class never names a concrete product**, and the decision of which product to make is bound to **which subclass you instantiated**. It is a compile-time decision expressed through inheritance, and the client chooses a product by choosing a creator.
 
-Factory Method flips the responsibility: instead of one central function deciding what to build, you define an abstract "build me a thing" method on a base class, and let each **subclass** decide what that thing actually is.
+This is the pattern behind the template method relationship: the invariant algorithm lives in the base, the varying step is the factory method.
 
-<Diagram>
-<Tree root={
-<Box title="Logistics (abstract)" accent="#818cf8">
-<Field icon="📋" code="plan_delivery()" hint="calls self.create_transport() — doesn't know what that returns" variant="neutral" />
-</Box>
-}>
-<Box title="RoadLogistics" accent="#34d399"><Field icon="↳" code="create_transport() → Truck" variant="neutral" /></Box>
-<Box title="SeaLogistics" accent="#34d399"><Field icon="↳" code="create_transport() → Ship" variant="neutral" /></Box>
-</Tree>
-</Diagram>
+#### Abstract Factory
 
-```python
-from abc import ABC, abstractmethod
+The GoF pattern where **one object creates a family of related products**. The interface declares a creation method per product type, and each concrete factory implements all of them consistently.
 
-class Transport(ABC):
-    @abstractmethod
-    def deliver(self) -> str:
-        pass
+The guarantee is product compatibility: because one factory makes all of them, you cannot accidentally combine a widget from one family with a widget from another. That guarantee, not the creation convenience, is the reason to use it.
 
-class Truck(Transport):
-    def deliver(self) -> str:
-        return "Delivering cargo overland in a refrigerated container."
+Its documented cost is the rigidity of the product set: adding a new product type means adding a method to the abstract factory interface and therefore editing every concrete factory. Abstract Factory is open to new **families** and closed to new **product types**, which is exactly the opposite of what people usually assume.
 
-class Ship(Transport):
-    def deliver(self) -> str:
-        return "Delivering cargo overseas via container ship."
+#### The axis that separates them
 
-class Logistics(ABC):
-    @abstractmethod
-    def create_transport(self) -> Transport:
-        """The Factory Method — subclasses override this to pick the concrete transport."""
-        pass
-
-    def plan_delivery(self) -> str:
-        # The shared workflow only talks to the abstraction, never the concrete class
-        transport = self.create_transport()
-        return f"Logistics Plan: {transport.deliver()}"
-
-class RoadLogistics(Logistics):
-    def create_transport(self) -> Transport:
-        return Truck()
-
-class SeaLogistics(Logistics):
-    def create_transport(self) -> Transport:
-        return Ship()
-```
-
-**Use this when** a framework provides a fixed workflow (`plan_delivery()`) but needs to let each caller swap out *what* gets built inside that workflow, without touching the framework's own code.
-
----
-
-### Abstract Factory: Whole Matching Families
-
-Abstract Factory goes one level further: instead of building one product, it builds a **set** of products that all have to match each other. The classic example — a cross-platform UI toolkit, where a Mac button next to a Windows checkbox would look broken:
-
-<Diagram>
-<Row>
-<Box title="MacFactory" accent="#60a5fa">
-<Field icon="🔘" code="MacButton" variant="neutral" />
-<Field icon="☑️" code="MacCheckbox" variant="neutral" />
-</Box>
-<Box title="WindowsFactory" accent="#34d399">
-<Field icon="🔘" code="WindowsButton" variant="neutral" />
-<Field icon="☑️" code="WindowsCheckbox" variant="neutral" />
-</Box>
-</Row>
-</Diagram>
-
-```python
-class Button(ABC):
-    @abstractmethod
-    def render(self) -> str: pass
-
-class Checkbox(ABC):
-    @abstractmethod
-    def toggle(self) -> str: pass
-
-class MacButton(Button):
-    def render(self) -> str: return "[Mac Rounded Button]"
-
-class MacCheckbox(Checkbox):
-    def toggle(self) -> str: return "[Mac Checked Switch]"
-
-class WindowsButton(Button):
-    def render(self) -> str: return "[Windows Square Button]"
-
-class WindowsCheckbox(Checkbox):
-    def toggle(self) -> str: return "[Windows Checked Box]"
-
-class GUIFactory(ABC):
-    @abstractmethod
-    def create_button(self) -> Button: pass
-
-    @abstractmethod
-    def create_checkbox(self) -> Checkbox: pass
-
-class MacFactory(GUIFactory):
-    def create_button(self) -> Button: return MacButton()
-    def create_checkbox(self) -> Checkbox: return MacCheckbox()
-
-class WindowsFactory(GUIFactory):
-    def create_button(self) -> Button: return WindowsButton()
-    def create_checkbox(self) -> Checkbox: return WindowsCheckbox()
-
-class Application:
-    def __init__(self, factory: GUIFactory):
-        self.button = factory.create_button()
-        self.checkbox = factory.create_checkbox()
-
-    def render_ui(self) -> str:
-        return f"{self.button.render()} with {self.checkbox.toggle()}"
-```
-
-The guarantee: `Application(MacFactory())` can never end up holding a `WindowsCheckbox`. The factory interface only ever hands out matched sets — mixing families isn't just discouraged, it's not possible to write by accident.
-
----
-
-### Comparing the Three
-
-| Dimension | Simple Factory | Factory Method (GoF) | Abstract Factory (GoF) |
+| | Varies | Mechanism | Decided by |
 | :--- | :--- | :--- | :--- |
-| **How it builds** | One function/method with a lookup | A subclass overrides a method | A factory object implementing an interface |
-| **What it builds** | One product per call | One product per creator subclass | A whole family of related products |
-| **To extend it** | Add an entry to the registry | Add a new Creator subclass | Add a new Concrete Factory |
-| **Complexity** | Lowest | Moderate — parallel class hierarchies | Highest — interfaces for both factories and products |
-| **Mainly buys you** | Single Responsibility | Open/Closed + polymorphism | Dependency Inversion |
+| **Simple Factory** | which product | a lookup or conditional | a runtime argument |
+| **Factory Method** | which product | **inheritance** | which subclass exists |
+| **Abstract Factory** | a whole family | **composition** | which factory object you hold |
+
+**Factory Method uses inheritance and Abstract Factory uses composition.** That one line is the cleanest way to separate them, and it also explains the costs: inheritance binds the choice at class-definition time, composition lets you swap the factory at runtime.
 
 ---
 
-### The Trap: the Factory Itself Gets Coupled to Everything
+### In code
 
-Factories decouple the *client* from concrete products — but the factory itself ends up tightly coupled to every single product it knows how to build:
+#### The problem: a conditional chain
 
-<Diagram>
-<Row>
-<Box title="Client" accent="#60a5fa"><Field icon="📞" code="asks for a shape" variant="neutral" /></Box>
-<Arrow label="depends on" />
-<Box title="ShapeFactory" accent="#f59e0b"><Field icon="🏭" code="imports every shape class" hint="Circle, Square, Triangle, Hexagon, Octagon..." variant="neutral" /></Box>
-</Row>
-</Diagram>
+```python
+class ParserFactory:
+    def create(self, kind: str):
+        if kind == "json":
+            return JsonParser()
+        elif kind == "xml":
+            return XmlParser()
+        elif kind == "csv":
+            return CsvParser()
+        raise ValueError(f"unknown parser: {kind}")
+```
 
-In a large codebase, that one factory ends up importing dozens of modules just to exist — hurting startup time and memory footprint. This is exactly why modern frameworks (FastAPI, Spring, NestJS) often skip hand-written factories altogether and use a **Dependency Injection container** instead: it reads your type annotations and wires up the right object at runtime, without a central file that has to know about everything.
+This already does the main job: the client says `factory.create("json")` and never names `JsonParser`. The remaining fault is narrower than it is usually described. **It is not that conditionals are bad; it is that this one is in the wrong place.** Adding a parser requires editing a file that has nothing to do with the new parser, and that file is in a different package, probably owned by a different team, and every edit to it risks everything that already worked.
+
+#### The fix: a dynamic registry
+
+```python
+from typing import Callable, Dict, Type
+
+_REGISTRY: Dict[str, Type["Parser"]] = {}
+
+
+def register(name: str) -> Callable[[type], type]:
+    """Class decorator: records the class under a key at import time."""
+    def decorate(cls: type) -> type:
+        if name in _REGISTRY:
+            raise ValueError(f"parser {name!r} already registered")
+        _REGISTRY[name] = cls
+        return cls
+    return decorate
+
+
+def create_parser(kind: str) -> "Parser":
+    try:
+        return _REGISTRY[kind]()
+    except KeyError:
+        raise ValueError(
+            f"unknown parser {kind!r}; known: {sorted(_REGISTRY)}"
+        ) from None
+
+
+# --- in some other module, which the factory has never heard of ---
+
+@register("json")
+class JsonParser:
+    def parse(self, text: str) -> dict:
+        ...
+
+
+@register("xml")
+class XmlParser:
+    def parse(self, text: str) -> dict:
+        ...
+```
+
+**The factory function is now finished forever.** Adding a parser means writing a class in its own file with one decorator on it, and the registry fills in at import time. Nothing in the factory's file changes, which is the Open/Closed Principle satisfied rather than discussed.
+
+Three details that distinguish a real registry from a sketch.
+
+**Reject duplicate keys.** Without the check, two modules registering `"json"` silently produce whichever imported last, which is an order-dependent bug of the worst kind.
+
+**List the known keys in the error.** `unknown parser 'jsn'; known: ['csv', 'json', 'xml']` saves the next person a grep.
+
+**Be aware of the import-time dependency**, which is the registry's one genuine weakness. A class only registers itself if its module is imported, so a plug-in that nobody imports is invisible. Real systems solve this with explicit imports in a package `__init__`, or with **entry points** via `importlib.metadata` so that installed packages advertise themselves.
+
+#### Factory Method: the subclass decides
+
+```python
+from abc import ABC, abstractmethod
+
+
+class Report(ABC):
+    """The invariant algorithm, with a hole where the renderer goes."""
+
+    def publish(self, rows: list) -> bytes:
+        renderer = self.make_renderer()        # <- the factory method
+        body = renderer.render(rows)
+        return self.sign(body)
+
+    @abstractmethod
+    def make_renderer(self) -> "Renderer":
+        ...
+
+    def sign(self, body: bytes) -> bytes:
+        return body + b"\n-- generated by reporting service"
+
+
+class PdfReport(Report):
+    def make_renderer(self):
+        return PdfRenderer(dpi=300)
+
+
+class CsvReport(Report):
+    def make_renderer(self):
+        return CsvRenderer(delimiter=",")
+```
+
+**`Report.publish` names no renderer**, and it never will. The sequence of steps is written once; the one varying step is delegated upward to whoever subclassed. The client chooses a renderer by choosing `PdfReport` over `CsvReport`, which is the characteristic shape: **you select a product by selecting a creator.**
+
+Note what this buys over the registry. The registry varies *one* product by key. Factory Method varies the product **together with an algorithm that surrounds it**, so the subclass can also override `sign`, add validation, or change the order. That is the reason to prefer it over a lookup: there is more varying than just the class name.
+
+#### Abstract Factory: keeping a family consistent
+
+```python
+from abc import ABC, abstractmethod
+
+
+class WidgetFactory(ABC):
+    """One factory per look-and-feel, producing a matched set."""
+
+    @abstractmethod
+    def button(self) -> "Button": ...
+
+    @abstractmethod
+    def checkbox(self) -> "Checkbox": ...
+
+    @abstractmethod
+    def scrollbar(self) -> "Scrollbar": ...
+
+
+class MacFactory(WidgetFactory):
+    def button(self):    return MacButton()
+    def checkbox(self):  return MacCheckbox()
+    def scrollbar(self): return MacScrollbar()
+
+
+class WindowsFactory(WidgetFactory):
+    def button(self):    return WinButton()
+    def checkbox(self):  return WinCheckbox()
+    def scrollbar(self): return WinScrollbar()
+
+
+def build_dialog(factory: WidgetFactory) -> "Dialog":
+    """Cannot produce a mismatched dialog: one factory makes all three."""
+    return Dialog(factory.button(), factory.checkbox(), factory.scrollbar())
+```
+
+**The guarantee is that `build_dialog` cannot mix families.** It holds one factory, so all three widgets come from the same place, and a Mac button beside a Windows scrollbar is not merely discouraged, it is unexpressible. If the widgets did not need to match, this would be three unrelated registries and an Abstract Factory would be overhead.
+
+And the cost, which is the follow-up question. Adding a **new family**, say `GtkFactory`, is one new class and nothing else changes: open for extension. Adding a **new product type**, say `slider()`, means adding an abstract method and then implementing it in `MacFactory`, `WindowsFactory` and every other concrete factory: **closed for extension in that direction, and every existing factory breaks until updated.** Abstract Factory is open to families and closed to product types, which is the reverse of the usual assumption.
+
+#### The Python version of all three
+
+```python
+# Simple Factory: a dict IS a factory. Classes are first-class objects.
+PARSERS = {"json": JsonParser, "xml": XmlParser}
+parser = PARSERS[kind]()
+
+# Factory Method: pass the callable instead of subclassing for it.
+class Report:
+    def __init__(self, make_renderer):
+        self._make_renderer = make_renderer
+
+    def publish(self, rows):
+        return self.sign(self._make_renderer().render(rows))
+
+report = Report(make_renderer=lambda: PdfRenderer(dpi=300))
+
+# Abstract Factory: when the family is fixed, a namespace or module is enough.
+import mac_widgets, windows_widgets
+theme = mac_widgets if on_mac else windows_widgets
+dialog = Dialog(theme.Button(), theme.Checkbox(), theme.Scrollbar())
+```
+
+**A module is a perfectly good Abstract Factory**, since it is a namespace of related constructors and swapping the module swaps the whole family consistently. Whether that is better than a class depends on whether the family needs to be chosen per instance or once per process.
+
+The judgement to state out loud: **the class hierarchies exist because Java cannot put a class in a variable.** Python can, so reach for the lightweight form first, and escalate to a class when you need per-instance state, inheritance of surrounding behaviour, or a type the checker can verify.
+
+#### Verify it
+
+```python
+"""
+Factories: a registry that removes the conditional, Factory Method by
+inheritance, Abstract Factory enforcing a consistent family, and the
+asymmetry in what each one is open to.
+"""
+from abc import ABC, abstractmethod
+from typing import Dict, Type
+
+# ---------------------------------------------------------------- registry
+_REGISTRY: Dict[str, type] = {}
+
+
+def register(name: str):
+    def decorate(cls):
+        if name in _REGISTRY:
+            raise ValueError(f"{name!r} already registered")
+        _REGISTRY[name] = cls
+        return cls
+    return decorate
+
+
+def create_parser(kind: str):
+    try:
+        return _REGISTRY[kind]()
+    except KeyError:
+        raise ValueError(f"unknown parser {kind!r}; "
+                         f"known: {sorted(_REGISTRY)}") from None
+
+
+@register("json")
+class JsonParser:
+    def parse(self):
+        return "json"
+
+
+@register("xml")
+class XmlParser:
+    def parse(self):
+        return "xml"
+
+
+# ------------------------------------------------------------ factory method
+class Report(ABC):
+    def publish(self, rows):
+        return self.sign(self.make_renderer().render(rows))
+
+    @abstractmethod
+    def make_renderer(self):
+        ...
+
+    def sign(self, body):
+        return body + " [signed]"
+
+
+class PdfRenderer:
+    def render(self, rows):
+        return f"PDF({len(rows)} rows)"
+
+
+class CsvRenderer:
+    def render(self, rows):
+        return f"CSV({len(rows)} rows)"
+
+
+class PdfReport(Report):
+    def make_renderer(self):
+        return PdfRenderer()
+
+
+class CsvReport(Report):
+    def make_renderer(self):
+        return CsvRenderer()
+    def sign(self, body):                 # subclasses vary more than the product
+        return body                       # csv is unsigned
+
+
+# ---------------------------------------------------------- abstract factory
+class WidgetFactory(ABC):
+    @abstractmethod
+    def button(self): ...
+    @abstractmethod
+    def checkbox(self): ...
+
+
+def make(family, kind):
+    return type(f"{family}{kind}", (), {"family": family, "kind": kind,
+                                        "__repr__": lambda s:
+                                        f"{s.family}{s.kind}"})
+
+
+MacButton, MacCheckbox = make("Mac", "Button"), make("Mac", "Checkbox")
+WinButton, WinCheckbox = make("Win", "Button"), make("Win", "Checkbox")
+
+
+class MacFactory(WidgetFactory):
+    def button(self):   return MacButton()
+    def checkbox(self): return MacCheckbox()
+
+
+class WinFactory(WidgetFactory):
+    def button(self):   return WinButton()
+    def checkbox(self): return WinCheckbox()
+
+
+def build_dialog(factory: WidgetFactory):
+    return [factory.button(), factory.checkbox()]
+
+
+if __name__ == "__main__":
+    print("-- Simple Factory as a registry: no conditional, never edited")
+    print(f"   registry: { {k: v.__name__ for k, v in _REGISTRY.items()} }")
+    print(f"   create_parser('xml').parse() -> "
+          f"{create_parser('xml').parse()!r}")
+    try:
+        create_parser("jsn")
+    except ValueError as e:
+        print(f"   unknown key lists what IS known: {e}")
+    try:
+        @register("json")
+        class Dup:
+            pass
+    except ValueError as e:
+        print(f"   duplicate key rejected: {e}")
+    print("   adding a parser = one class + one decorator, in its own file;")
+    print("   the factory function never changes. That is OCP satisfied.")
+    print("   the one weakness: a class registers only if its module is")
+    print("   imported, so plug-ins need explicit imports or entry points")
+
+    print("\n-- Factory Method: the subclass decides, by inheritance")
+    rows = [1, 2, 3]
+    for cls in (PdfReport, CsvReport):
+        r = cls()
+        print(f"   {cls.__name__:<10} publish -> {r.publish(rows)!r}")
+    print("   Report.publish names no renderer and never will")
+    print("   note CsvReport also overrode sign(): the subclass varies the")
+    print("   product AND the algorithm around it, which is why you would")
+    print("   choose this over a plain lookup")
+
+    print("\n-- Abstract Factory: the guarantee is a consistent family")
+    for f in (MacFactory(), WinFactory()):
+        widgets = build_dialog(f)
+        fams = {w.family for w in widgets}
+        print(f"   {type(f).__name__:<12} -> {widgets}, "
+              f"families present: {fams}  "
+              f"{'consistent' if len(fams) == 1 else 'MIXED'}")
+        assert len(fams) == 1
+    print("   build_dialog holds ONE factory, so a mixed dialog is not")
+    print("   discouraged, it is unexpressible")
+
+    print("\n-- the asymmetry nobody expects")
+    print(f"   {'change':<26}{'Abstract Factory':>18}{'registry':>12}")
+    print(f"   {'add a new FAMILY':<26}{'1 new class':>18}"
+          f"{'n/a':>12}")
+    print(f"   {'add a new PRODUCT TYPE':<26}"
+          f"{'edit EVERY factory':>18}{'1 new key':>12}")
+    print("   Abstract Factory is open to families, closed to product types,")
+    print("   which is the reverse of what people assume")
+
+    print("\n-- and in Python a class is just an object")
+    print(f"   type(JsonParser)            = {type(JsonParser).__name__}")
+    PARSERS = {"json": JsonParser, "xml": XmlParser}
+    print(f"   PARSERS['json']().parse()   = "
+          f"{PARSERS['json']().parse()!r}")
+    print(f"   callable(JsonParser)        = {callable(JsonParser)}")
+    print("   so a dict of classes already is a Simple Factory, and the")
+    print("   class hierarchies exist because Java cannot put a class in a")
+    print("   variable")
+```
+
+---
+
+### What they ask next
+
+**"Are all three Gang of Four patterns?"**
+No. **Only Factory Method and Abstract Factory are GoF.** "Simple Factory" is a widely used idiom, sometimes called a parameterised factory, and it is not in the book. Interviewers occasionally ask for "the three GoF factories" precisely to see whether you notice.
+
+**"What is the cleanest way to separate Factory Method from Abstract Factory?"**
+**Factory Method uses inheritance; Abstract Factory uses composition.** With Factory Method, the product is decided by which subclass you instantiated, so the choice is bound at class-definition time. With Abstract Factory, the product family is decided by which factory **object** you are holding, so it can be swapped at runtime. The second distinction is what they vary: Factory Method varies **one** product, Abstract Factory varies a **matched set**.
+
+**"When is Abstract Factory actually the right choice?"**
+When the products must be **compatible with each other**, not merely when there are several of them. The guarantee you are buying is that a Mac button cannot appear beside a Windows scrollbar, because one factory produced both. If your products are independent, several registries are simpler and an Abstract Factory is pure overhead.
+
+**"What is Abstract Factory's weakness?"**
+It is **open to new families and closed to new product types**, which is the reverse of what people assume. A new family is one new class and nothing else changes. A new product type means adding a method to the abstract interface and implementing it in every existing concrete factory, all of which break until updated. So it suits a product set that is stable and a family set that grows.
+
+**"How does a dynamic registry remove the conditional?"**
+Products register themselves under a key, usually with a class decorator evaluated at import time, and the factory becomes a dictionary lookup. **Adding a product is a new file with one decorator; the factory's own code never changes again.** That is the Open/Closed Principle satisfied rather than merely cited, and it matters most because the conditional chain usually lives in a different package owned by a different team.
+
+**"What goes wrong with registries?"**
+The **import-time dependency**, which is their one real weakness: a class registers only if its module is actually imported, so a plug-in nobody imports is invisible and the failure is a confusing "unknown key" rather than an import error. Real systems fix it with explicit imports in a package `__init__` or with **entry points** via `importlib.metadata`, so installed packages advertise themselves. Two smaller ones: reject duplicate keys, or two modules registering the same name silently resolve by import order, and list the known keys in the error message.
+
+**"If a registry is better, why ever use Factory Method?"**
+Because a registry varies only the class, and Factory Method varies the product **together with the algorithm around it**. The base class owns a fixed sequence of steps with a hole in it, and the subclass can fill the hole and also override neighbouring steps. In the example `CsvReport` overrides both `make_renderer` and `sign`. **If the only thing varying is which class to instantiate, a lookup is better; if a surrounding algorithm varies too, inheritance is carrying its weight.**
+
+**"What does Python change about all this?"**
+**Classes are ordinary objects**, so a dictionary mapping names to classes already is a Simple Factory, a callable passed into a constructor already is a Factory Method, and a **module is a perfectly good Abstract Factory** since it is a namespace of related constructors. The class hierarchies in the GoF book exist because Java cannot put a class in a variable. Reach for the lightweight form first and escalate when you need per-instance state, inheritance of surrounding behaviour, or a type a checker can verify.
+
+**"Which principle is each one serving?"**
+**Open/Closed**, because you add products without editing existing code, and **dependency inversion**, because the client depends on an interface rather than on concrete classes. Worth distinguishing them: a conditional chain in a factory already satisfies dependency inversion for the client, since the client never names a concrete class, and still violates Open/Closed because the chain must be edited. The registry fixes the second without changing the first.
+
+**"Is it worth it for two products?"**
+Usually not. A factory is indirection, and indirection costs a reader one hop to find out what is actually constructed. With two products that never change, `JsonParser()` at the call site is clearer than any of this. The patterns earn their keep when the product set grows, when it is extended by code you do not own, or when the choice genuinely arrives at runtime as data.
+
+**The common wrong answer** is describing Abstract Factory as "a factory that makes factories", which is not what it is: it makes a family of related products. Next is claiming the whole point is avoiding `if-elif`, when the real point is that the client stops naming concrete classes, and the conditional is a secondary symptom that a registry removes. Third is presenting Abstract Factory as open to extension in all directions, when adding a product type breaks every concrete factory. And last, in a Python interview, reproducing the Java class hierarchies without mentioning that a dict of classes, a callable or a module already does the job.
 
 ---
 
 ### Say this in the interview
 
-*"Simple Factory is one method with a lookup — not a GoF pattern, just a habit, best done as a registry instead of an if-elif ladder. Factory Method uses inheritance: subclasses override one method to decide what gets built, while a shared base class workflow stays untouched. Abstract Factory builds whole families of matching objects — like Mac vs. Windows UI components — so you physically can't mix incompatible pieces."*
+*"All three answer the same question, which is how code gets an object without naming the object's class, because naming it is what welds the two together. They differ in how much is being varied, and that is the whole taxonomy.*
 
----
+*Simple Factory varies which product, chosen by a runtime argument. I would note that it is not actually a Gang of Four pattern, only Factory Method and Abstract Factory are; Simple Factory is an idiom, sometimes called a parameterised factory.*
 
-### Python: Verification Script
+*Factory Method varies which product too, but the decision is bound to which subclass you instantiated, so the mechanism is inheritance. A base class holds an invariant algorithm with a hole in it, declares an abstract creation method, and calls it where a product is needed. The base class never names a concrete product, and the client selects a product by selecting a creator.*
 
-This script exercises all three patterns end to end:
+*Abstract Factory varies a whole matched family, and the mechanism is composition: the decision is which factory object you are holding, so it can be swapped at runtime. The cleanest single line to separate the last two is that Factory Method uses inheritance and Abstract Factory uses composition, and the second difference is that one varies a single product where the other varies a consistent set.*
 
-```python
-"""
-Complete Verification Test Suite for Factory Patterns:
-1. Extensible Simple Factory with Dynamic Registry
-2. GoF Factory Method
-3. GoF Abstract Factory
-"""
-from abc import ABC, abstractmethod
-from typing import Dict, Type, Callable
+*That word consistent is the part people blur. The reason to use an Abstract Factory is not that there are several products, it is that the products must be compatible with each other. If build_dialog holds one factory, a Mac button beside a Windows scrollbar is not discouraged, it is unexpressible. If the products do not need to match, several registries are simpler and the Abstract Factory is pure overhead.*
 
+*On the conditional chain, I would first be precise about what is wrong with it. The client already stops naming concrete classes, so dependency inversion is satisfied. What is violated is the Open/Closed Principle: adding a parser means editing a file that has nothing to do with the new parser, and in practice that file is in another package owned by another team. The fix is a dynamic registry. Products register themselves under a key with a class decorator evaluated at import time, and the factory becomes a dictionary lookup that never changes again. Adding a parser is one new file with one decorator on it.*
 
-# ==========================================
-# 1. SIMPLE FACTORY WITH DYNAMIC REGISTRY
-# ==========================================
-class Notification(ABC):
-    @abstractmethod
-    def send(self, recipient: str, message: str) -> str: pass
+*Three details I would mention because they separate a real registry from a sketch. Reject duplicate keys, or two modules registering the same name silently resolve by import order, which is the worst sort of bug. Put the known keys in the error message, so an unknown key tells you what was available. And be aware of the import-time dependency, which is the registry's genuine weakness: a class only registers if its module is imported, so a plug-in nobody imports is invisible and you get a confusing unknown-key error rather than an import error. Real systems handle that with explicit imports in a package init, or with entry points through importlib.metadata so installed packages advertise themselves.*
 
-_NOTIF_REGISTRY: Dict[str, Type[Notification]] = {}
+*If a registry is that good, why ever use Factory Method? Because a registry varies only the class name. Factory Method varies the product together with the algorithm surrounding it, so the subclass can fill the hole and also override neighbouring steps, like a CSV report overriding both the renderer and whether the output gets signed. If the only thing varying is which class to construct, a lookup is better. If a surrounding algorithm varies too, the inheritance is earning its keep.*
 
-def register_notification(channel: str):
-    def decorator(cls: Type[Notification]):
-        _NOTIF_REGISTRY[channel.upper()] = cls
-        return cls
-    return decorator
+*And Abstract Factory's weakness, which is the follow-up: it is open to new families and closed to new product types, which is the reverse of what people assume. A new family is one new class and nothing else changes. A new product type means adding a method to the abstract interface and implementing it in every existing concrete factory, all of which break until updated. So it suits a stable product set and a growing family set.*
 
-@register_notification("EMAIL")
-class EmailNotification(Notification):
-    def send(self, recipient: str, message: str) -> str:
-        return f"Email sent to {recipient}: {message}"
-
-@register_notification("SMS")
-class SMSNotification(Notification):
-    def send(self, recipient: str, message: str) -> str:
-        return f"SMS sent to {recipient}: {message}"
-
-class NotificationFactory:
-    @staticmethod
-    def create(channel: str) -> Notification:
-        cls = _NOTIF_REGISTRY.get(channel.upper())
-        if not cls:
-            raise ValueError(f"Channel '{channel}' not supported.")
-        return cls()
-
-
-# ==========================================
-# 2. GOF FACTORY METHOD
-# ==========================================
-class Document(ABC):
-    @abstractmethod
-    def export(self) -> str: pass
-
-class PDFDocument(Document):
-    def export(self) -> str: return "PDF formatted byte stream"
-
-class MarkdownDocument(Document):
-    def export(self) -> str: return "# Markdown formatted text"
-
-class DocumentEditor(ABC):
-    @abstractmethod
-    def create_document(self) -> Document: pass
-
-    def save(self) -> str:
-        doc = self.create_document()
-        return f"Saving document: {doc.export()}"
-
-class PDFEditor(DocumentEditor):
-    def create_document(self) -> Document: return PDFDocument()
-
-class MarkdownEditor(DocumentEditor):
-    def create_document(self) -> Document: return MarkdownDocument()
-
-
-# ==========================================
-# 3. GOF ABSTRACT FACTORY
-# ==========================================
-class DarkThemeButton:
-    def render(self): return "Dark Button (#18181b)"
-
-class DarkThemeDialog:
-    def render(self): return "Dark Modal Dialog"
-
-class LightThemeButton:
-    def render(self): return "Light Button (#ffffff)"
-
-class LightThemeDialog:
-    def render(self): return "Light Modal Dialog"
-
-class UIThemeFactory(ABC):
-    @abstractmethod
-    def get_button(self): pass
-    @abstractmethod
-    def get_dialog(self): pass
-
-class DarkThemeFactory(UIThemeFactory):
-    def get_button(self): return DarkThemeButton()
-    def get_dialog(self): return DarkThemeDialog()
-
-class LightThemeFactory(UIThemeFactory):
-    def get_button(self): return LightThemeButton()
-    def get_dialog(self): return LightThemeDialog()
-
-
-# ==========================================
-# EXECUTION & VERIFICATION
-# ==========================================
-if __name__ == "__main__":
-    print("=" * 65)
-    print("FACTORY PATTERNS VERIFICATION TEST SUITE")
-    print("=" * 65)
-
-    # 1. Simple Factory Registry
-    notif = NotificationFactory.create("sms")
-    print(f"[Simple Factory]   {notif.send('+123456789', 'Your OTP is 4092')}")
-
-    # 2. Factory Method
-    editor: DocumentEditor = PDFEditor()
-    print(f"[Factory Method]   {editor.save()}")
-
-    # 3. Abstract Factory
-    theme_factory: UIThemeFactory = DarkThemeFactory()
-    btn = theme_factory.get_button()
-    dlg = theme_factory.get_dialog()
-    print(f"[Abstract Factory] {btn.render()} inside {dlg.render()}")
-
-    print("\nSUCCESS: All three factory architectural variations verified.")
-```
+*Finally, what Python changes, because I think this is the answer a Python interview is listening for. Classes are ordinary objects here. You can put a class in a dictionary, pass it to a function, return it. So a dict mapping names to classes already is a Simple Factory; a callable passed into a constructor already is a Factory Method; and a module is a perfectly good Abstract Factory, since it is a namespace of related constructors and swapping the module swaps the family consistently. The class hierarchies in the GoF book exist because Java cannot put a class in a variable. I would reach for the lightweight form first and escalate to classes when I need per-instance state, inheritance of surrounding behaviour, or a type a checker can verify. And with only two products that never change, I would not use any of this: a factory is indirection, and indirection costs the reader a hop to find out what is actually being constructed."*
