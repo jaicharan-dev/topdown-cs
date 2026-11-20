@@ -69,9 +69,7 @@ Distinguish it from two neighbours that get confused with it in interviews.
 
 **Aging** raises a waiting process's **effective priority** with elapsed waiting time, so that waiting itself becomes a claim. Where `k` is the milliseconds of waiting that buy one level:
 
-$$\text{Priority}_{\text{eff}}(t) = \max\Big(1,\; \text{Priority}_{\text{init}} - \Big\lfloor \frac{t - t_{\text{ready}}}{k} \Big\rfloor\Big)
-
-$$
+$$\text{Priority}_{\text{eff}}(t) = \max\left(1,\ \text{Priority}_{\text{init}} - \left\lfloor \frac{t - t_{\text{ready}}}{k} \right\rfloor \right)$$
 
 Two implementation details carry the idea.
 
