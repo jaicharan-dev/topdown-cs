@@ -20,8 +20,8 @@ decisions were made in, and what each one cost.
 > column cannot be audited, replace it with a journal, discover that one order is not one
 > trade, and discover that an average price cannot answer a tax question.
 >
-> **Say in the room** what Steps 1–8 cover — double-entry, blocked funds and lots is
-> already a stronger answer than most. Steps 9–16 are depth for when an interviewer pushes
+> **Say in the room** what Steps 1-8 cover: double-entry, blocked funds and lots is
+> already a stronger answer than most. Steps 9-16 are depth for when an interviewer pushes
 > on settlement, corporate actions or scale.
 
 The previous three questions all allowed one liberty: when a derived value was expensive,
@@ -30,7 +30,7 @@ balances, [Swiggy](./5-food-delivery-swiggy-zomato) cached order status and rati
 [Uber](./6-cab-booking-uber-ola) cached a rolling rating.
 
 This domain withdraws that liberty. A broker has to answer, for any rupee, *where it came
-from and where it went* — to the customer, to an auditor, and to a regulator, years later.
+from and where it went*: to the customer, to an auditor, and to a regulator, years later.
 That is not a reporting requirement bolted on at the end; it decides the shape of the
 schema on the first day. **You are not allowed to overwrite a number.**
 
@@ -44,7 +44,7 @@ Step 2, because this domain needs more than two decimal places.
 
 ---
 
-### Step 1 — Scope: the broker, not the exchange
+### Step 1, Scope: the broker, not the exchange
 
 **Interviewer:** Design the database for a stock trading platform like Zerodha or Groww.
 Users buy and sell stocks, prices move continuously, a wallet funds the trades, and the
@@ -58,13 +58,13 @@ or the **broker**?
 **Candidate:** Good, and it is worth saying what that removes, because the two systems have
 almost nothing in common.
 
-An exchange maintains an order book — resting buy and sell orders sorted by price-time
+An exchange maintains an order book: resting buy and sell orders sorted by price-time
 priority, matched in microseconds. That is an in-memory data structure, not a database
 table; no relational system can match at that latency, and the durable record is a sequenced
 log replayed into memory on restart.
 
 A broker does something entirely different. It takes customer intent, checks the customer
-can afford it, routes it to the exchange, and then **records what came back** — which is a
+can afford it, routes it to the exchange, and then **records what came back**, which is a
 bookkeeping problem, and bookkeeping is exactly what relational databases are for.
 
 That reframing matters for a second reason. A broker does not get to decide what happened.
@@ -73,7 +73,7 @@ is to represent an outcome we did not control and cannot change.
 
 Two more questions.
 
-Partial fills — a limit order for 100 shares that fills 40 now and 60 later, possibly at
+Partial fills: a limit order for 100 shares that fills 40 now and 60 later, possibly at
 different prices?
 
 **Interviewer:** Assume orders execute in full, to keep it focused.
@@ -83,7 +83,7 @@ because partial fills are the normal case rather than an edge case. I will come 
 in Step 7 rather than quietly designing around a simplification that does not survive
 contact with a real exchange.
 
-And settlement — do shares appear instantly, or on a settlement cycle?
+And settlement: do shares appear instantly, or on a settlement cycle?
 
 **Interviewer:** What does it change?
 
@@ -94,9 +94,9 @@ If the schema has a single `quantity` column, that distinction has nowhere to li
 
 ---
 
-### Step 2 — `instruments`, and why the symbol is not the key
+### Step 2: `instruments`, and why the symbol is not the key
 
-**Interviewer:** Start with the instrument table. I would key it on the trading symbol —
+**Interviewer:** Start with the instrument table. I would key it on the trading symbol:
 `RELIANCE`, `TCS`. It reads well, and every market API you integrate with speaks it.
 
 **Candidate:** It does read well, and I would argue against it for three separate reasons.
@@ -108,7 +108,7 @@ key that is reused silently re-points a decade of historical trades at the wrong
 
 **Symbols change.** Companies rename and rebrand, and the exchange reissues the ticker. A
 natural primary key that changes forces a cascading update across every table that
-references it — on tables with billions of rows.
+references it: on tables with billions of rows.
 
 **The same company has several symbols.** Reliance trades on both NSE and BSE, with
 different trading symbols and different prices at the same instant. "Which Reliance" is a
@@ -117,7 +117,7 @@ real question, and `stock_symbol` cannot express it.
 **Interviewer:** So what would you key it on?
 
 **Candidate:** A surrogate, with the real-world identity recorded as a constrained
-attribute. The identifier that actually identifies a security is the **ISIN** — twelve
+attribute. The identifier that actually identifies a security is the **ISIN**: twelve
 characters, globally unique, permanent for the life of the instrument.
 
 ```sql title="instruments and listings"
@@ -151,8 +151,8 @@ listings with the same ticker.
 **Candidate:** Because different things reference each of them, and the split is what lets
 the schema represent buying on one exchange and selling on another.
 
-Orders reference a `listing_id` — you place an order on a specific exchange. Holdings
-reference an `instrument_id` — shares are fungible once they reach your demat account,
+Orders reference a `listing_id`; you place an order on a specific exchange. Holdings
+reference an `instrument_id`: shares are fungible once they reach your demat account,
 regardless of where you bought them. Collapse the two and a position becomes
 exchange-bound, which is simply not how ownership works.
 
@@ -186,14 +186,14 @@ and rounding to paise is a **deliberate step** that happens once, where it can b
 rather than implicitly at each multiplication.
 
 *Still never `FLOAT`.* Binary floating point cannot represent a tenth. In a system whose
-entire output is a set of books that must balance, that is disqualifying — the full
+entire output is a set of books that must balance, that is disqualifying: the full
 argument is in Step 5 of the Splitwise question.
 
 :::
 
 ---
 
-### Step 3 — `orders`: intent, and the double-click
+### Step 3, `orders`: intent, and the double-click
 
 **Interviewer:** Next, orders. Do you need a table separate from trades at all?
 
@@ -201,7 +201,7 @@ argument is in Step 5 of the Splitwise question.
 on. An order is **intent**; a trade is **outcome**.
 
 Intent can sit unfilled for days, be cancelled, be rejected by a risk check, or expire at
-the close — and in every one of those cases there is an order and no trade whatsoever. A
+the close, and in every one of those cases there is an order and no trade whatsoever. A
 table that only exists once something executed cannot represent the resting limit order,
 which is the main reason a broker needs a database at all.
 
@@ -239,7 +239,7 @@ which is clearer than two implications.
 **Interviewer:** I would have handled the double-click by locking the wallet row.
 
 **Candidate:** That is the usual answer, and it solves a different problem from the one the
-user actually experiences. A lock on the wallet does prevent a negative balance — but look
+user actually experiences. A lock on the wallet does prevent a negative balance, but look
 at what it still permits: the user taps twice, two orders
 are created, the first passes the balance check, and the second is *correctly* rejected for
 insufficient funds. The user, who meant to buy once, sees a rejection they do not
@@ -263,11 +263,11 @@ other.
 
 ---
 
-### Step 4 — Break #1: a `balance` column is not a ledger
+### Step 4, Break #1: a `balance` column is not a ledger
 
 :::broke
 
-`wallets.balance` can tell a user what they have. It can never tell them why — and in this
+`wallets.balance` can tell a user what they have. It can never tell them why, and in this
 domain "why" is a legal requirement, not a feature.
 
 :::
@@ -281,7 +281,7 @@ has been overwritten several thousand times, and every previous value is gone.
 
 **Candidate:** Only if every rupee movement is a trade, and most are not. Deposits,
 withdrawals, brokerage, exchange transaction charges, STT, stamp duty, GST on brokerage,
-dividend credits, a goodwill reversal by support, the auto-sweep into a liquid fund — each
+dividend credits, a goodwill reversal by support, the auto-sweep into a liquid fund: each
 is money moving, and none is a trade. They would each need their own table and their own
 column on the wallet, and the sum of all of them would still have to equal the balance by
 coincidence rather than by construction.
@@ -347,14 +347,14 @@ CREATE CONSTRAINT TRIGGER journal_balances
 
 `DEFERRABLE INITIALLY DEFERRED` is load-bearing. The lines of an entry are inserted one at
 a time, and after the first one the entry does not balance. Checking immediately would
-reject every entry ever written; checking at commit asks the only question that matters —
+reject every entry ever written; checking at commit asks the only question that matters:
 *did this transaction leave the books balanced?*
 
 :::decision
 
 A double-entry journal as the source of truth for all value; no mutable balance column.
 
-A balance becomes `SUM(amount)` over an account's lines — derived, explainable line by
+A balance becomes `SUM(amount)` over an account's lines: derived, explainable line by
 line, and impossible to disagree with its own history.
 
 *Cost:* two or more rows per movement instead of one update, and a balance that is a
@@ -369,7 +369,7 @@ mutable balance columns can offer that at any price.
 
 ---
 
-### Step 5 — What double-entry actually buys you
+### Step 5: What double-entry actually buys you
 
 **Interviewer:** Make that concrete. A user buys 10 shares at ₹2,500 with ₹18 of charges.
 
@@ -388,11 +388,11 @@ because the trigger will not allow the transaction to commit.
 
 Now the questions that were impossible a page ago:
 
-- *Why is my balance what it is?* — select this user's lines, newest first. Every one has a
+- *Why is my balance what it is?*: select this user's lines, newest first. Every one has a
   reason and a narration.
-- *How much brokerage did we earn in March?* — sum the brokerage income account over a date
+- *How much brokerage did we earn in March?*: sum the brokerage income account over a date
   range. Not an estimate from trades; the actual recorded revenue.
-- *Did we lose a rupee anywhere last night?* — sum every line in the system. If it is not
+- *Did we lose a rupee anywhere last night?*: sum every line in the system. If it is not
   exactly zero, something is broken, and the entry that fails to balance names itself.
 
 That last one is the real prize. A reconciliation that is **structural** rather than
@@ -402,7 +402,7 @@ aggregate over one column, and it cannot be out of date.
 
 ---
 
-### Step 6 — Break #2: the money has to be blocked before the trade
+### Step 6, Break #2: the money has to be blocked before the trade
 
 :::broke
 
@@ -414,18 +414,18 @@ the same rupee be committed to several orders at once.
 **Interviewer:** A user with ₹50,000 places three limit orders, each for ₹40,000 of stock.
 All three rest below the market. What happens?
 
-**Candidate:** With a balance checked at execution, all three are accepted — none has spent
+**Candidate:** With a balance checked at execution, all three are accepted: none has spent
 anything yet. Then the market moves and two of them fill. The second fill has no money
 behind it, and the broker has just extended credit it never agreed to. In a margin product
 that is a regulatory problem, not a bug.
 
 Funds must be committed when the order is **placed**, not when it fills. The usual
-implementation is a `reserved_amount` column alongside the balance — and the ledger gives
+implementation is a `reserved_amount` column alongside the balance, and the ledger gives
 us something much better, with no new mechanism at all.
 
 A block is just a movement between two accounts the user already has:
 
-```sql title="Placing a buy limit order — an entry like any other"
+```sql title="Placing a buy limit order: an entry like any other"
 -- entry: reason = 'order_block', order_id = 1234
 --   user cash_available   −40,000.00
 --   user cash_blocked     +40,000.00
@@ -439,11 +439,11 @@ Cancelling the order is the same entry reversed; filling it moves the money out 
 **Interviewer:** Unused remainder?
 
 **Candidate:** A buy limit at ₹2,500 blocks ₹2,500 per share, but the exchange may fill at
-₹2,480 — price improvement is real and it is always in the customer's favour on a limit
+₹2,480: price improvement is real and it is always in the customer's favour on a limit
 order. The difference goes back. Without a blocked-funds account that money has nowhere to
 return *from*, and it quietly stays spent.
 
-So **available balance** — the number that decides whether an order may be placed — is the
+So **available balance**, the number that decides whether an order may be placed, is the
 `cash_available` account's balance, and `cash_blocked` is visible separately. Two numbers,
 both derived, both explainable, and the invariant that neither may go negative is a single
 rule applied to accounts rather than a special case for wallets.
@@ -456,14 +456,14 @@ No new table, no new column, no new concurrency story. A reservation is a moveme
 and this schema already knows how to record one of those correctly.
 
 *Cost:* two accounts per user instead of one, and every order placement writes an entry.
-Entries are cheap appends, and the alternative — a `reserved` column — reintroduces exactly
+Entries are cheap appends, and the alternative, a `reserved` column, reintroduces exactly
 the mutable, unexplainable number Step 4 removed.
 
 :::
 
 ---
 
-### Step 7 — Break #3: one order is not one trade
+### Step 7, Break #3: one order is not one trade
 
 :::broke
 
@@ -482,7 +482,7 @@ can correctly occupy.
 
 The relationship is one-to-many, and each fill is its own immutable fact:
 
-```sql title="trades — one row per fill" {4,9}
+```sql title="trades: one row per fill" {4,9}
 CREATE TABLE trades (
     trade_id        BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     order_id        BIGINT        NOT NULL REFERENCES orders(order_id),
@@ -513,7 +513,7 @@ ALTER TABLE orders
     ADD CHECK (filled_quantity <= quantity);
 ```
 
-`status` becomes `pending`, `partially_filled`, `filled`, `cancelled`, `rejected` — and
+`status` becomes `pending`, `partially_filled`, `filled`, `cancelled`, `rejected`, and
 `partially_filled` is a state a cancelled order can also have been in, which is why the
 filled quantity is a number rather than something inferred from the status.
 
@@ -532,11 +532,11 @@ consulting anything that is still being edited.**
 
 ---
 
-### Step 8 — Lots, because an average cannot answer a tax question
+### Step 8: Lots, because an average cannot answer a tax question
 
 **Interviewer:** The requirement says show the average buy price. You have what you need.
 
-**Candidate:** For *displaying* unrealised profit, yes — a weighted average is exactly
+**Candidate:** For *displaying* unrealised profit, yes: a weighted average is exactly
 right, and the earlier draft's arithmetic was correct: buy 10 at ₹100 and 5 at ₹130, and
 the running average is ₹110.
 
@@ -547,7 +547,7 @@ matters, and the question is a legal one.
 
 **Candidate:** *Which shares did they sell?*
 
-Capital gains on Indian equity delivery are computed **FIFO** — first in, first out — and
+Capital gains on Indian equity delivery are computed **FIFO**, first in, first out, and
 the holding period decides the tax rate. Shares held more than twelve months are taxed as
 long-term, below that as short-term, at a materially different rate.
 
@@ -562,7 +562,7 @@ because the moment the average was computed, the acquisition dates were thrown a
 A weighted average is a **derivation**, and Step 4's lesson applies again: we stored the
 derivation and lost the facts.
 
-```sql title="holding_lots — one row per acquisition"
+```sql title="holding_lots: one row per acquisition"
 CREATE TABLE holding_lots (
     lot_id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id        BIGINT        NOT NULL REFERENCES users(user_id),
@@ -588,7 +588,7 @@ CREATE TABLE lot_consumptions (
 
 A sale walks the open lots oldest-first, consuming them, and writes one `lot_consumptions`
 row per lot it touches. Realised gain is then a sum over those rows, each carrying its own
-acquisition date and therefore its own tax treatment — and it is *auditable*, because the
+acquisition date and therefore its own tax treatment, and it is *auditable*, because the
 rows say precisely which purchase funded which sale.
 
 :::decision
@@ -603,7 +603,7 @@ instead of with portfolio size. For a retail broker that is still small, and it 
 representation that can produce a defensible tax statement.
 
 *Would change if:* the jurisdiction mandated average-cost basis, as some do. Then the
-average is the legally correct answer — but lots still reconstruct it, while the reverse is
+average is the legally correct answer, but lots still reconstruct it, while the reverse is
 impossible. Keeping lots costs little and preserves the option.
 
 *Note:* `quantity_open` is a maintained counter rather than a derivation from
@@ -616,7 +616,7 @@ consumption rows.
 ---
 
 <details>
-<summary><b>Schema checkpoint — everything as it stands after Step 8</b></summary>
+<summary><b>Schema checkpoint: everything as it stands after Step 8</b></summary>
 
 ```sql
 instruments      (instrument_id PK, isin UNIQUE, name, kind, face_value)
@@ -655,12 +655,12 @@ them.
 
 ---
 
-### Step 9 — Settlement: what you own and what you can sell
+### Step 9, Settlement: what you own and what you can sell
 
 **Interviewer:** Back to T+1.
 
 **Candidate:** Buy today and the shares credit to the demat account tomorrow. Until then
-the customer has an entitlement, not the asset. The lot already has the column for it —
+the customer has an entitlement, not the asset. The lot already has the column for it:
 `settled_on`, null until the settlement file confirms it.
 
 That makes two different quantities, and conflating them is a real operational failure:
@@ -678,7 +678,7 @@ SELECT SUM(quantity_open) FROM holding_lots
 
 Selling unsettled stock is **buy-today-sell-tomorrow**, and whether it is permitted is a
 policy that varies by broker, segment and regulation. The schema's job is not to encode the
-policy — it is to make the distinction *representable*, so the risk layer has something to
+policy; it is to make the distinction *representable*, so the risk layer has something to
 check. A single `holdings.quantity` column cannot express it, and a broker that cannot
 express it eventually delivers shares it does not have, which is a settlement failure with
 a penalty attached.
@@ -688,7 +688,7 @@ application code; the facts the rule needs live in the database.**
 
 ---
 
-### Step 10 — Corporate actions, and why lots pay for themselves again
+### Step 10: Corporate actions, and why lots pay for themselves again
 
 **Interviewer:** A company declares a 1:5 stock split.
 
@@ -703,31 +703,31 @@ CREATE TABLE corporate_actions (
     instrument_id BIGINT       NOT NULL REFERENCES instruments(instrument_id),
     kind          action_kind  NOT NULL,   -- split, bonus, dividend, merger
     ex_date       DATE         NOT NULL,
-    ratio_from    INT,                     -- 1:5 split → from 1, to 5
+    ratio_from    INT,                     -- 1:5 split -> from 1, to 5
     ratio_to      INT,
     amount_per_share NUMERIC(18,4),        -- for dividends
     applied_at    TIMESTAMPTZ
 );
 ```
 
-Applying a split rewrites the open lots — and here is the point. **The acquisition dates
+Applying a split rewrites the open lots, and here is the point. **The acquisition dates
 survive.** A share acquired in 2019 and split in 2026 is still long-term; the holding period
 runs from the original purchase, not from the split. With lots, the adjustment is an update
 to `quantity_total`, `quantity_open` and `cost_per_share`, leaving `acquired_on` untouched,
 and FIFO continues to work.
 
 With a single `average_buy_price`, you can divide the number and get a plausible-looking
-result — and you have no way to compute the holding period for the shares you later sell,
+result, and you have no way to compute the holding period for the shares you later sell,
 because the schema never knew it.
 
 Dividends need no lot changes at all. They are a cash movement, which means they are a
-journal entry — user cash up, dividend income up, TDS to taxes payable — and the ledger
+journal entry, user cash up, dividend income up, TDS to taxes payable, and the ledger
 already handles them with no new mechanism. That is what a good core abstraction feels
 like: the fourth unanticipated requirement arrives and costs nothing.
 
 ---
 
-### Step 11 — The balance cache, made provable
+### Step 11: The balance cache, made provable
 
 **Interviewer:** You have made every balance a `SUM` over a billion-row table. The
 dashboard will be unusable.
@@ -746,7 +746,7 @@ CREATE TABLE account_balances (
 );
 ```
 
-Updated in the same transaction as the journal lines — never by a job, never
+Updated in the same transaction as the journal lines, never by a job, never
 asynchronously. If the transaction commits, both are true; if it aborts, neither is.
 
 Three things make this different from a plain cached number.
@@ -761,7 +761,7 @@ proof is cheap enough to run continuously rather than monthly.
 
 **The journal remains the truth.** If the cache and the sum ever disagree, the cache is
 wrong by definition and is rebuilt from the journal. There is never an argument about which
-one is right — a question that, in a system of mutable balances, has no answer at all.
+one is right: a question that, in a system of mutable balances, has no answer at all.
 
 :::decision
 
@@ -773,14 +773,14 @@ cached balances were reconciled by a job and a mismatch was a bug to investigate
 mismatch is **impossible to leave undetected**, because the authoritative value is still
 derivable at any moment and the comparison is cheap.
 
-*Cost:* the balance row is a contention point — every movement on an account updates it.
+*Cost:* the balance row is a contention point: every movement on an account updates it.
 Which is the next step, and it turns out to be exactly what we want.
 
 :::
 
 ---
 
-### Step 12 — The one place to take a lock, and a myth about `SERIALIZABLE`
+### Step 12: The one place to take a lock, and a myth about `SERIALIZABLE`
 
 **Interviewer:** Two trades settle against the same account at once. What stops a lost
 update?
@@ -805,7 +805,7 @@ value, and the `CHECK` constraint stands behind both.
 wrong?
 
 **Candidate:** Not wrong, and it is necessary when you must *read* a value, compute
-something non-trivial, and then write — explicit locking is the right tool for that. For a
+something non-trivial, and then write: explicit locking is the right tool for that. For a
 simple debit the guarded update is one statement instead of two and expresses the rule in
 the predicate.
 
@@ -813,13 +813,13 @@ What I would push back on is the *reason* that draft gave for rejecting `SERIALI
 said serialisable isolation forces transactions to run sequentially and would make the
 platform painfully slow. That is a widespread misconception and worth correcting.
 
-Postgres implements `SERIALIZABLE` as **Serialisable Snapshot Isolation** — an optimistic
+Postgres implements `SERIALIZABLE` as **Serialisable Snapshot Isolation**: an optimistic
 scheme. Transactions run concurrently, at full speed, with no extra blocking. The database
 tracks read/write dependencies between them and, when it detects a cycle that could produce
 a non-serialisable outcome, **aborts one of them** with a serialisation failure. Nothing
 queues; it is not two-phase locking and it is not single-threaded.
 
-So the real cost of `SERIALIZABLE` is not latency — it is that **every transaction needs a
+So the real cost of `SERIALIZABLE` is not latency; it is that **every transaction needs a
 retry loop**, because any of them can fail at commit through no fault of its own. That is an
 application-architecture cost, and a very reasonable thing to decline. But decline it for
 the right reason, because "serialisable means serial" leads people to reject it in systems
@@ -832,7 +832,7 @@ where it would have been both correct and cheap.
 The invariants here are single-row and expressible as predicates, which is exactly where
 guarded updates are strongest and where `SERIALIZABLE` buys nothing.
 
-*Would change if:* an invariant spanned rows in a way a predicate cannot express — a
+*Would change if:* an invariant spanned rows in a way a predicate cannot express: a
 portfolio-level margin rule reading many positions to decide one write. That is the shape
 `SERIALIZABLE` exists for, and the retry loop is what it costs.
 
@@ -840,7 +840,7 @@ portfolio-level margin rule reading many positions to decide one write. That is 
 
 ---
 
-### Step 13 — Live prices do not belong here
+### Step 13: Live prices do not belong here
 
 **Interviewer:** The portfolio shows current value. Where does the price come from?
 
@@ -866,11 +866,11 @@ tax reports, and must be reproducible years later. That is a database row. A tic
 
 *What this costs:* the portfolio screen is assembled by the application from a database
 read for positions and a cache read for prices, rather than by one join. That is the right
-boundary — one side is a system of record, the other is a system of now.
+boundary: one side is a system of record, the other is a system of now.
 
 :::
 
-```sql title="Closing prices — a fact worth storing"
+```sql title="Closing prices: a fact worth storing"
 CREATE TABLE daily_closes (
     instrument_id BIGINT        NOT NULL REFERENCES instruments(instrument_id),
     trade_date    DATE          NOT NULL,
@@ -881,16 +881,16 @@ CREATE TABLE daily_closes (
 
 ---
 
-### Step 14 — P&L: realised and unrealised are different questions
+### Step 14, P&L: realised and unrealised are different questions
 
-**Interviewer:** Last thing on the dashboard — total profit and loss.
+**Interviewer:** Last thing on the dashboard: total profit and loss.
 
 **Candidate:** There are two questions hiding in that phrase, with different sources,
 different audiences, and very different consequences for getting them wrong. Answering both
-with one query — which is what the first draft of this answer did — conflates a display
+with one query, which is what the first draft of this answer did: conflates a display
 number with a tax number.
 
-**Unrealised** — what the open position would make if sold now. Needs a live price, so it
+**Unrealised**: what the open position would make if sold now. Needs a live price, so it
 is assembled outside the database:
 
 ```sql title="Open positions and their cost basis"
@@ -905,7 +905,7 @@ SELECT instrument_id,
 The application multiplies by the live price. The database is not asked for a number it
 cannot know.
 
-**Realised** — what was actually made on sales, which is the number the tax authority wants.
+**Realised**: what was actually made on sales, which is the number the tax authority wants.
 It comes from the consumption rows, and it is fully derivable because each one records both
 sides:
 
@@ -926,14 +926,14 @@ SELECT CASE WHEN t.executed_at::date - l.acquired_on > 365
 **Candidate:** Then that query is not merely harder, it is *impossible*. The `CASE` on
 holding period needs an acquisition date per parcel of shares, and a weighted average
 destroyed that at write time. No index and no rewrite recovers it. The only repair is to
-replay every trade the customer has ever made and rebuild the lots retrospectively — a
+replay every trade the customer has ever made and rebuild the lots retrospectively: a
 project, not a query, and one that runs while the tax deadline approaches.
 
 ---
 
-### Step 15 — Indexing, derived from the queries
+### Step 15: Indexing, derived from the queries
 
-```sql title="Q1 — the portfolio screen"
+```sql title="Q1: the portfolio screen"
 CREATE INDEX lots_open_by_user
     ON holding_lots (user_id, instrument_id)
     WHERE quantity_open > 0;
@@ -943,7 +943,7 @@ Partial, and it matters more here than anywhere else on this page. A ten-year-ol
 has thousands of fully-consumed lots and perhaps forty open ones. The partial index holds
 only the forty, and a lot leaves the index the moment it is exhausted.
 
-```sql title="Q2 — FIFO lot selection, inside the trade transaction"
+```sql title="Q2: FIFO lot selection, inside the trade transaction"
 CREATE INDEX lots_fifo
     ON holding_lots (user_id, instrument_id, acquired_on)
     WHERE quantity_open > 0;
@@ -952,38 +952,38 @@ CREATE INDEX lots_fifo
 This runs while booking a trade, so it is on the latency-critical path. Equality columns
 first, the ordering column last, so the oldest open lot is the first row read.
 
-```sql title="Q3 — the account statement"
+```sql title="Q3: the account statement"
 CREATE INDEX journal_lines_by_account
     ON journal_lines (account_id, entry_id DESC);
 ```
 
-Statements are paginated by keyset on `entry_id`, not `OFFSET` — the same reasoning as the
+Statements are paginated by keyset on `entry_id`, not `OFFSET`: the same reasoning as the
 order history in the Swiggy question.
 
-```sql title="Q4 — the limit-order sweep"
+```sql title="Q4: the limit-order sweep"
 CREATE INDEX orders_restable
     ON orders (listing_id, side, limit_price)
     WHERE status IN ('pending', 'partially_filled');
 ```
 
-Equality columns before the range column — reverse them and the index cannot serve the
+Equality columns before the range column: reverse them and the index cannot serve the
 query. Partial, because filled and cancelled orders are the overwhelming majority of the
 table and no sweep ever wants them.
 
-```sql title="Q5 — the tax statement"
+```sql title="Q5: the tax statement"
 CREATE INDEX trades_by_user_time ON trades (user_id, executed_at DESC);
 ```
 
 One thing worth saying about what is **absent**: there is no index on
 `journal_lines (entry_id)`, because the primary key is `(entry_id, line_no)` and `entry_id`
 is already its leftmost column. Adding it would duplicate an existing structure. Reaching
-for an index on every foreign key is a habit worth examining — though the inverse mistake is
+for an index on every foreign key is a habit worth examining: though the inverse mistake is
 just as common, and Postgres genuinely does **not** index foreign keys for you, so
 `trades (order_id)` does need one.
 
 ---
 
-### Step 16 — Partitioning the journal
+### Step 16: Partitioning the journal
 
 `journal_lines` and `trades` grow forever and are never updated. Regulation requires them
 to remain queryable for years, so deletion is not available.
@@ -1003,7 +1003,7 @@ CREATE TABLE journal_lines (
 ```
 
 `booked_on` is denormalised onto the line from its entry specifically so it can be the
-partition key — the partition key must be in the primary key, and partitioning on a column
+partition key: the partition key must be in the primary key, and partitioning on a column
 reachable only by a join is not possible.
 
 Two consequences worth stating rather than discovering later, both the same ones the Uber
@@ -1013,7 +1013,7 @@ question ran into:
   must reference a complete unique constraint and the primary key now leads with the date.
   Referential integrity moves into the write path.
 - **The deferred balance trigger must stay correct across partitions.** It queries by
-  `entry_id`, which no longer leads the key, so it needs its own index — or, better, the
+  `entry_id`, which no longer leads the key, so it needs its own index, or, better, the
   entries of one transaction all carry the same `booked_on` and the trigger passes it,
   letting partition pruning do the work.
 
@@ -1031,7 +1031,7 @@ Both are the standard price of partitioning and both are worth naming before ado
 
 ---
 
-### Step 17 — The final schema
+### Step 17: The final schema
 
 ```sql title="The complete schema"
 CREATE TYPE instrument_kind AS ENUM ('equity','etf','bond','mutual_fund');
@@ -1193,17 +1193,17 @@ CREATE TABLE corporate_actions (
 );
 ```
 
-Fourteen tables, and the two that most versions of this answer do not have —
-`journal_lines` and `holding_lots` — are the two that make the platform auditable and its
+Fourteen tables, and the two that most versions of this answer do not have,
+`journal_lines` and `holding_lots`, are the two that make the platform auditable and its
 tax statements defensible.
 
 Note also what is gone from the first draft: `wallets.balance` and
 `holdings.average_buy_price`. Both were **derivations stored in place of the facts that
-produce them**, and both are now computed — one from the journal, one from the lots.
+produce them**, and both are now computed: one from the journal, one from the lots.
 
 ---
 
-### Step 18 — The mental model
+### Step 18: The mental model
 
 Strip away broking and what is left is a method that transfers:
 
@@ -1227,7 +1227,7 @@ Strip away broking and what is left is a method that transfers:
    encodes the business rule, and a watermark so verification is incremental rather than a
    monthly full scan.
 8. **Know what your isolation level actually does.** Postgres's `SERIALIZABLE` is
-   optimistic — it does not serialise execution, it aborts conflicts. Its cost is retry
+   optimistic; it does not serialise execution, it aborts conflicts. Its cost is retry
    logic, not latency. Rejecting it for the wrong reason means rejecting it in the cases
    where it would have been right.
 9. **Idempotency and concurrency control are different tools.** A unique key makes one

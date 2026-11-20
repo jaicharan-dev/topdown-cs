@@ -20,8 +20,8 @@ decisions were made in, and what each one cost.
 > that a stock column cannot survive the payment window, and replace it with reservations
 > plus a derived availability.
 >
-> **Say in the room** what Steps 1–8 cover. Steps 9–16 are depth for when an interviewer
-> pushes on flash sales, search or analytics — and Step 10 is the one that most often
+> **Say in the room** what Steps 1-8 cover. Steps 9-16 are depth for when an interviewer
+> pushes on flash sales, search or analytics, and Step 10 is the one that most often
 > separates candidates, because "use two-phase commit" is a trap and saying why is worth
 > more than naming the pattern.
 
@@ -35,7 +35,7 @@ number.
 A marketplace is about **a promise you make before you can keep it**. A customer clicks
 buy; the money has not arrived, the warehouse has not picked anything, and the seller may
 not even have the item. Everything hard here lives in the gap between saying "yours" and
-it being true. The single most expensive bug in e-commerce — overselling — lives entirely
+it being true. The single most expensive bug in e-commerce, overselling, lives entirely
 inside that gap, and it is invisible to any schema that stores availability as a number.
 
 Conventions carried over: `BIGINT GENERATED ALWAYS AS IDENTITY` keys, `NUMERIC(14,2)` for
@@ -43,13 +43,13 @@ money, `TIMESTAMPTZ` everywhere, soft deletes for anything financial history ref
 
 ---
 
-### Step 1 — Pin down what we are building
+### Step 1: Pin down what we are building
 
 **Interviewer:** Design the database for a marketplace like Amazon or Flipkart. Customers
 browse, add to a cart, and place orders containing products from several sellers. The same
 product can be listed by many sellers at different prices with their own stock. If two
 customers order the last unit, exactly one should succeed. There are coupons, order
-statuses, and reviews — and a reviewer must have actually received the item.
+statuses, and reviews, and a reviewer must have actually received the item.
 
 **Candidate:** Four questions, each of which removes work.
 
@@ -57,7 +57,7 @@ Does one checkout across three sellers create one order or three?
 
 **Interviewer:** One parent order containing many items.
 
-**Candidate:** Good — and I will argue in Step 7 that this is right for the *customer* and
+**Candidate:** Good, and I will argue in Step 7 that this is right for the *customer* and
 insufficient for the *system*, because three sellers means three independent outcomes.
 Accepting it now keeps the customer-facing object simple.
 
@@ -69,7 +69,7 @@ Does the live cart live in this database?
 Carts are edited constantly, abandoned about seventy percent of the time, and nothing
 downstream audits them.
 
-Coupons — flat or percentage, and what limits?
+Coupons: flat or percentage, and what limits?
 
 **Interviewer:** Percentage off the cart total, with an expiry and a maximum number of uses
 across all customers.
@@ -83,7 +83,7 @@ Last: is payment synchronous? Does `place order` return after the money has clea
 **Interviewer:** Why does that matter?
 
 **Candidate:** Because it decides whether there is a *window*. UPI, netbanking and 3-D
-Secure all redirect the customer away and call back seconds — sometimes minutes — later.
+Secure all redirect the customer away and call back seconds, sometimes minutes, later.
 If the order exists before the money arrives, then something must hold that stock in the
 meantime, and that something is the hardest object in this schema. If payment were
 synchronous and instant, half of this design would not be needed.
@@ -95,7 +95,7 @@ it, because it is where overselling happens.
 
 ---
 
-### Step 2 — Catalog: product, variant, listing
+### Step 2, Catalog: product, variant, listing
 
 **Interviewer:** Start with products.
 
@@ -150,8 +150,8 @@ CREATE TABLE listings (
 **Candidate:** It is the one place I would reach for it, and the reason is that the
 attribute *set* varies by category rather than by row. A phone has colour and storage; a
 shirt has size and fit; a book has none of those and has a page count. Modelling that
-relationally gives you either a table per category — unmanageable at tens of thousands of
-categories — or an entity-attribute-value table, which is a relational database pretending
+relationally gives you either a table per category, unmanageable at tens of thousands of
+categories, or an entity-attribute-value table, which is a relational database pretending
 to be a key-value store, and performs like one.
 
 What keeps it honest is that nothing *transactional* reads it. Price, stock, orders and
@@ -162,7 +162,7 @@ flexible.
 
 :::decision
 
-Three levels — product, variant, listing — with `JSONB` only for display attributes.
+Three levels, product, variant, listing, with `JSONB` only for display attributes.
 
 Separating the catalog from the offer is what makes a marketplace a marketplace. Fold
 price and stock into `products` and you have a shop, not a platform, and no migration later
@@ -175,7 +175,7 @@ the page is served from a read replica or a cache in any case.
 
 ---
 
-### Step 3 — Where stock actually lives
+### Step 3: Where stock actually lives
 
 **Interviewer:** Put a `stock_count` on the listing and move on.
 
@@ -185,7 +185,7 @@ wrong in two independent ways and only one of them is obvious.
 The non-obvious one: **stock has a location.** The same seller's units sit in Bangalore and
 in Delhi, and that decides whether the customer is promised delivery tomorrow or on
 Thursday. One integer on the listing cannot express it, and "available" is not even a
-single answer — it depends on who is asking and where they live.
+single answer; it depends on who is asking and where they live.
 
 ```sql title="stock, by listing and location"
 CREATE TABLE stock (
@@ -200,9 +200,9 @@ The obvious way it is wrong is the subject of Step 5.
 
 ---
 
-### Step 4 — `orders`, first cut
+### Step 4: `orders`, first cut
 
-```sql title="orders — first cut"
+```sql title="orders: first cut"
 CREATE TABLE orders (
     order_id     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id      BIGINT        NOT NULL REFERENCES users(user_id),
@@ -237,7 +237,7 @@ What is not settled is everything that happens next.
 
 ---
 
-### Step 5 — Break #1: the payment window
+### Step 5, Break #1: the payment window
 
 :::broke
 
@@ -250,7 +250,7 @@ third moment, and the schema has no way to represent "spoken for".
 **Interviewer:** Two customers order the last unit. How do you stop both succeeding?
 
 **Candidate:** The decrement itself is the easy half, and it is the same primitive as the
-previous three questions — check and write in one statement, so there is no window between
+previous three questions: check and write in one statement, so there is no window between
 reading and acting:
 
 ```sql title="The decrement is not the hard part" {4}
@@ -275,8 +275,8 @@ cheerfully take another nine orders for it. Nine customers get a confirmation em
 then an apology, which in most jurisdictions is a contract you have broken, and in all of
 them is a customer you have lost.
 
-Run it when the order is placed, and the opposite happens. Payment fails — and it fails
-often, perhaps a fifth of the time on netbanking — and that unit is now permanently
+Run it when the order is placed, and the opposite happens. Payment fails, and it fails
+often, perhaps a fifth of the time on netbanking, and that unit is now permanently
 decremented with nothing to show for it. Within a day the warehouse holds stock the site
 says it does not have.
 
@@ -284,7 +284,7 @@ says it does not have.
 
 **Candidate:** There is no third *moment*. There is a third **state**.
 
-The unit is not available and it is not sold. It is **held** — committed to an order that
+The unit is not available and it is not sold. It is **held**: committed to an order that
 has not completed, for a bounded period, after which the hold evaporates. That is a fact
 with a lifetime, and facts with lifetimes are rows, not integers.
 
@@ -294,7 +294,7 @@ recurring mistake is trying to encode it as an adjustment to a number.
 
 ---
 
-### Step 6 — Reservations, and availability as a derivation
+### Step 6: Reservations, and availability as a derivation
 
 ```sql title="stock_reservations"
 CREATE TABLE stock_reservations (
@@ -318,7 +318,7 @@ fails or expires. Availability is then not a column at all:
 **Interviewer:** You have just made the most frequently read number in the entire site into
 an aggregate.
 
-**Candidate:** I have, and that is not sustainable — the product page asks "is this in
+**Candidate:** I have, and that is not sustainable: the product page asks "is this in
 stock" millions of times an hour. So the sum gets materialised, in exactly the shape the
 trading question used for account balances:
 
@@ -339,8 +339,8 @@ Written in the same transaction as the reservation row, never by a job. The `CHE
 (reserved <= on_hand)` is the backstop: even a buggy future code path cannot drive the
 system into a state where more units are promised than exist.
 
-That shape — **facts in rows, a counter as a provable cache, a `CHECK` encoding the
-business rule, reconciliation against the rows** — is the fourth time it has appeared
+That shape: **facts in rows, a counter as a provable cache, a `CHECK` encoding the
+business rule, reconciliation against the rows**: is the fourth time it has appeared
 across these five questions. It is worth recognising as a pattern rather than rediscovering
 it each time.
 
@@ -361,14 +361,14 @@ the moment it is committed or released. The sweeper releases the hold and decrem
 **Interviewer:** And if the gateway's callback arrives after the hold expired?
 
 **Candidate:** That is the case worth designing for rather than hoping about, because it
-*will* happen — gateways retry, and networks stall.
+*will* happen: gateways retry, and networks stall.
 
 The payment succeeded, so the money is real. The hold is gone, and the stock may have been
 sold to somebody else. The order cannot be silently failed, because the customer has paid.
 
 So the commit step is itself a guarded update against live stock, and if it fails the order
 moves to a `payment_received_unfulfillable` state that triggers a refund. That is a real
-business outcome, not an error — and naming it in the schema is what stops it becoming a
+business outcome, not an error, and naming it in the schema is what stops it becoming a
 support ticket discovered three days later. The alternative, quietly committing a
 reservation that no longer exists, oversells and is invisible.
 
@@ -392,7 +392,7 @@ ceremony.
 
 ---
 
-### Step 7 — Break #2: one order, many sellers, many outcomes
+### Step 7, Break #2: one order, many sellers, many outcomes
 
 :::broke
 
@@ -418,8 +418,8 @@ ALTER TABLE order_items
     ADD COLUMN delivered_at TIMESTAMPTZ;
 ```
 
-The order keeps a status too, but it becomes a **summary** — derived from its items for
-display — rather than the authoritative state of anything. One line cancelled does not make
+The order keeps a status too, but it becomes a **summary**, derived from its items for
+display, rather than the authoritative state of anything. One line cancelled does not make
 the order cancelled; it makes the order "partially fulfilled", which is a rendering
 decision, not a fact.
 
@@ -430,7 +430,7 @@ confirmed, packed, shipped, delivered, or cancelled or returned. There is no com
 represent, because an item is one physical thing with one history.
 
 And as with the previous questions, those transitions get an event log rather than only a
-column — the `order_status_events` design from Step 7 of the Swiggy question, applied per
+column: the `order_status_events` design from Step 7 of the Swiggy question, applied per
 item. "How long did this seller take to ship" is the metric the entire seller-performance
 system is built on, and a mutable status column cannot answer it.
 
@@ -441,11 +441,11 @@ is the sum rather than the source.
 
 ---
 
-### Step 8 — Break #3: a coupon counter is not a coupon
+### Step 8, Break #3: a coupon counter is not a coupon
 
 :::broke
 
-`times_used < max_usage` on a counter answers the global cap and nothing else — not one per
+`times_used < max_usage` on a counter answers the global cap and nothing else, not one per
 customer, not what happens when the order is cancelled, and not the payment window all over
 again.
 
@@ -468,13 +468,13 @@ month.
 
 **"One per customer."** A counter has no idea who incremented it. Answering needs rows.
 
-**"The order was cancelled — does the coupon come back?"** With a counter you can decrement,
+**"The order was cancelled: does the coupon come back?"** With a counter you can decrement,
 but you cannot tell a legitimate release from a double-decrement caused by a retry, because
 there is nothing identifying *which* use you are reversing.
 
 **And the payment window, again.** A coupon consumed at order placement is lost when payment
 fails. One consumed at payment success lets the last coupon be handed to fifty people
-during the window — the identical failure as Step 5, on a different resource.
+during the window: the identical failure as Step 5, on a different resource.
 
 So a redemption is a row, with the same lifecycle the reservation has:
 
@@ -495,7 +495,7 @@ CREATE UNIQUE INDEX coupon_once_per_user
     WHERE state <> 'released';
 ```
 
-The counter stays — as a cache over the rows, guarded exactly as before, with the rows as
+The counter stays: as a cache over the rows, guarded exactly as before, with the rows as
 the truth. The partial unique index is doing the work that no counter can: a released
 redemption stops blocking, so a cancelled order genuinely gives the customer their coupon
 back, once, verifiably.
@@ -505,7 +505,7 @@ back, once, verifiably.
 Redemptions as rows with the same held/committed/released lifecycle as stock; the counter
 demoted to a cache.
 
-A coupon and a unit of stock are the same kind of object — a scarce resource, promised
+A coupon and a unit of stock are the same kind of object: a scarce resource, promised
 before it is consumed, sometimes released. They should not have two different mechanisms.
 
 *Cost:* a row per redemption and a second sweeper. The sweeper is the same code as the
@@ -516,7 +516,7 @@ stock one, over the same shape of partial index.
 ---
 
 <details>
-<summary><b>Schema checkpoint — everything as it stands after Step 8</b></summary>
+<summary><b>Schema checkpoint: everything as it stands after Step 8</b></summary>
 
 ```sql
 products            (product_id PK, title, description, brand_id, category_id, deleted_at)
@@ -545,7 +545,7 @@ coupon_redemptions  (coupon_id FK, order_id FK, user_id FK, state, expires_at,
                      PK (coupon_id, order_id))
 ```
 
-Two things to notice. `stock.on_hand` is never touched during checkout — only `reserved`
+Two things to notice. `stock.on_hand` is never touched during checkout: only `reserved`
 moves, and `on_hand` changes when the warehouse physically picks or receives. And the
 reservation and the redemption share a state machine, deliberately.
 
@@ -553,13 +553,13 @@ reservation and the redemption share a state machine, deliberately.
 
 ---
 
-### Step 9 — Flash sales: admission control, not a faster database
+### Step 9, Flash sales: admission control, not a faster database
 
 **Interviewer:** A phone launches at noon. A hundred thousand people check out in five
 seconds. Does this survive?
 
-**Candidate:** Not as written, and the usual answer — move the decrement into Redis with a
-Lua script — is right in outline and dangerous in the detail the first draft of this answer
+**Candidate:** Not as written, and the usual answer, move the decrement into Redis with a
+Lua script, is right in outline and dangerous in the detail the first draft of this answer
 glossed over.
 
 The failure mode is not throughput. It is that **every one of those hundred thousand
@@ -574,7 +574,7 @@ customers buying something else entirely.
 the casual version of this advice is how real money gets lost.
 
 The dangerous framing is "Redis is the inventory, SQL catches up later". If Redis loses its
-state — a failover, an eviction, a restart — the system has no idea how many units it has
+state, a failover, an eviction, a restart, the system has no idea how many units it has
 already sold, and the reconciliation finds it after the customers do.
 
 The safe framing is that Redis is **admission control**. It holds a counter of *tickets*
@@ -582,7 +582,7 @@ for the sale, pre-loaded from the database. A request that cannot take a ticket 
 immediately, at the edge, without touching Postgres at all. A request that takes one
 proceeds through the ordinary reservation path, which remains authoritative.
 
-- Tickets are **at most** the real stock, so losing Redis cannot oversell — it can only
+- Tickets are **at most** the real stock, so losing Redis cannot oversell; it can only
   under-admit, which costs a retry rather than an apology.
 - The database still arbitrates every actual reservation, so the `CHECK (reserved <=
   on_hand)` guarantee is untouched.
@@ -604,14 +604,14 @@ paid.
 
 ---
 
-### Step 10 — The outbox, because there is no two-phase commit here
+### Step 10: The outbox, because there is no two-phase commit here
 
 **Interviewer:** When an order is placed you need to charge a card, email the customer,
 notify the seller and update the search index. How do you make that atomic?
 
 **Candidate:** You cannot, and recognising that is the answer.
 
-The instinct is a distributed transaction — two-phase commit across the database and the
+The instinct is a distributed transaction: two-phase commit across the database and the
 other systems. It does not apply, for a blunt reason: **the payment gateway is not a
 participant.** XA requires every party to implement prepare-and-commit and to hold locks
 while a coordinator decides. A third-party HTTPS API does none of that, and no amount of
@@ -637,13 +637,13 @@ CREATE INDEX outbox_unpublished ON outbox (outbox_id)
 ```
 
 The order, its items, its reservations and the outbox row are written in **one local
-transaction**. Either all of it happened or none of it did — that is ordinary ACID, with no
+transaction**. Either all of it happened or none of it did: that is ordinary ACID, with no
 coordinator. A separate relay then reads unpublished rows and delivers them to the gateway,
 the mailer and the indexer, marking them published as it goes.
 
 What this buys is that **the database and the outside world can never disagree about
 whether the order exists.** The relay may deliver a message twice if it crashes between
-sending and marking, so every consumer must be idempotent — which is why the payment call
+sending and marking, so every consumer must be idempotent, which is why the payment call
 carries the idempotency key from
 [the crash-recovery question](../dbms-additional/35-crash-recovery-and-idempotency).
 
@@ -664,14 +664,14 @@ understood, and the duplicate-tolerance is needed regardless because networks re
 
 ---
 
-### Step 11 — Reviews, and who is allowed to write one
+### Step 11: Reviews, and who is allowed to write one
 
 **Interviewer:** Only customers who received the item may review it.
 
 **Candidate:** Two rules hide in that sentence, and the first draft of this answer got the
 second one wrong.
 
-The first is proof of delivery. The second is **one review per customer per product** — and
+The first is proof of delivery. The second is **one review per customer per product**, and
 tying the review to an order item, as that draft did, silently permits a customer who buys
 the same phone three times to post three reviews. For a marketplace with a ratings economy,
 that is a vector, not an edge case.
@@ -711,7 +711,7 @@ is unrepresentable.
 
 **Interviewer:** What about a return? The item was delivered and then sent back.
 
-**Candidate:** Deliberately, the review survives — which is both the product behaviour every
+**Candidate:** Deliberately, the review survives, which is both the product behaviour every
 marketplace has and the thing that makes the constraint sound. `is_delivered` is generated
 from `delivered_at`, a timestamp of something that physically happened, not from a mutable
 status. A return writes a different column. Had I keyed this on a `status` enum that moves
@@ -723,13 +723,13 @@ fact has to be one that cannot be taken back.**
 
 ---
 
-### Step 12 — Search does not belong here
+### Step 12: Search does not belong here
 
 **Interviewer:** Customers search "blue sony hedphones".
 
 **Candidate:** Which contains a typo, needs stemming, has to rank by relevance blended with
 popularity and availability, and must drive faceted filters. Postgres has full-text search
-and it is genuinely good — but not for this. `LIKE '%...%'` cannot use a B-tree at all, and
+and it is genuinely good, but not for this. `LIKE '%...%'` cannot use a B-tree at all, and
 even `tsvector` with a GIN index gives no fuzzy matching, no tunable relevance, no facet
 counts.
 
@@ -744,16 +744,16 @@ to, and they are seconds apart.
 
 ---
 
-### Step 13 — "Top 5 best sellers this week" is an OLAP question
+### Step 13: "Top 5 best sellers this week" is an OLAP question
 
 **Interviewer:** Top five products by units sold in the last seven days.
 
-**Candidate:** The first draft of this answer reached for indexes —
-`orders(placed_at, status)` plus foreign-key indexes on the item table — and that is the
+**Candidate:** The first draft of this answer reached for indexes,
+`orders(placed_at, status)` plus foreign-key indexes on the item table, and that is the
 right instinct applied to the wrong class of query.
 
 Indexes make a query fast by letting it **avoid reading rows**. This query has to read
-every order item in seven days — tens of millions — and aggregate them. There is no
+every order item in seven days, tens of millions, and aggregate them. There is no
 predicate to narrow it, because the answer depends on all of it. An index can at best let
 it scan a slightly narrower structure.
 
@@ -770,7 +770,7 @@ CREATE TABLE daily_product_sales (
 ```
 
 Seven days of top-five is then a scan of a few hundred thousand small rows with an index on
-`(sale_date)` — milliseconds, and it never touches the order tables, so the analytics load
+`(sale_date)`: milliseconds, and it never touches the order tables, so the analytics load
 cannot slow down checkout.
 
 :::decision
@@ -783,18 +783,18 @@ it. The only lever is to compute it before it is asked.
 *Cost:* one more write per sold item, and a rollup that can drift. It is rebuilt nightly
 from the orders, which is cheap because it is a single pass over one day.
 
-*Anything deeper* — cohorts, attribution, seller analytics — leaves for a warehouse fed by
+*Anything deeper*, cohorts, attribution, seller analytics, leaves for a warehouse fed by
 the same outbox. It does not belong on the instance taking orders.
 
 :::
 
 ---
 
-### Step 14 — The Buy Box
+### Step 14: The Buy Box
 
 **Interviewer:** Twelve sellers list the phone. Which one does the page show?
 
-**Candidate:** For our purposes, the cheapest seller who actually has stock — real Buy Box
+**Candidate:** For our purposes, the cheapest seller who actually has stock: real Buy Box
 logic also weighs delivery speed and seller rating, but the schema problem is identical.
 
 The first draft proposed `listings(product_id, stock_count, price ASC)`, and the column
@@ -803,7 +803,7 @@ come up in every one of these questions.
 
 The query is: equality on the variant, a *range* on availability, and an *ordering* by
 price. In a B-tree, once you use a column for a range scan, columns after it are no longer
-sorted within the result — so putting availability before price means the index cannot
+sorted within the result, so putting availability before price means the index cannot
 deliver rows in price order, and the planner sorts them anyway.
 
 The fix is to make availability an equality condition instead of a range, by moving it into
@@ -826,20 +826,20 @@ being range predicates at all, which is usually the cheapest fix available.
 
 ---
 
-### Step 15 — Indexing, derived from the queries
+### Step 15: Indexing, derived from the queries
 
-```sql title="Q1 — product page: the listings for a variant"
+```sql title="Q1, product page: the listings for a variant"
 CREATE INDEX listings_by_variant ON listings (variant_id, price)
     WHERE deleted_at IS NULL;
 ```
 
-```sql title="Q2 — my orders, newest first"
+```sql title="Q2: my orders, newest first"
 CREATE INDEX orders_by_user ON orders (user_id, placed_at DESC);
 ```
 
 Paginated by keyset on `(placed_at, order_id)`, not `OFFSET`.
 
-```sql title="Q3 — the seller's queue of things to pack"
+```sql title="Q3: the seller's queue of things to pack"
 CREATE INDEX order_items_seller_open
     ON order_items (seller_id, order_id)
     WHERE status IN ('confirmed', 'packed');
@@ -849,18 +849,18 @@ Partial, and it is the most valuable index on the page. A seller's open queue is
 rows; their history is millions. Rows leave the index when they ship, so it stays small
 permanently.
 
-```sql title="Q4 — reviews on a product page"
+```sql title="Q4: reviews on a product page"
 CREATE INDEX reviews_by_product ON reviews (product_id, created_at DESC);
 ```
 
-```sql title="Q5 — the two sweepers"
+```sql title="Q5: the two sweepers"
 CREATE INDEX reservations_expiring ON stock_reservations (expires_at)
     WHERE state = 'held';
 CREATE INDEX redemptions_expiring  ON coupon_redemptions (expires_at)
     WHERE state = 'held';
 ```
 
-And the foreign-key indexes Postgres does **not** create for you — without them, updating
+And the foreign-key indexes Postgres does **not** create for you, without them, updating
 or deleting a referenced row sequentially scans the referencing table to check the
 constraint:
 
@@ -875,7 +875,7 @@ would duplicate an existing structure.
 
 ---
 
-### Step 16 — Partitioning and sharding
+### Step 16: Partitioning and sharding
 
 `orders` and `order_items` only grow, and the reasoning from the previous two questions
 applies unchanged: partition by month, because the first problem with an enormous table is
@@ -910,7 +910,7 @@ The customer path is latency-critical and user-facing; the seller path is a tool
 far fewer people who tolerate a second of lag. The outbox already publishes every item
 transition, so the seller view is a consumer of a stream that exists.
 
-*The catalog — products, variants, listings, sellers — is global*, replicated to every
+*The catalog, products, variants, listings, sellers, is global*, replicated to every
 shard. It is small, slow-changing and read everywhere.
 
 *Cost:* seller-facing data is eventually consistent, and a seller may see an order a second
@@ -922,7 +922,7 @@ loser.
 
 ---
 
-### Step 17 — The final schema
+### Step 17: The final schema
 
 ```sql title="The complete schema"
 CREATE TYPE order_status       AS ENUM ('placed','payment_pending','confirmed',
@@ -1098,13 +1098,13 @@ CREATE TABLE daily_product_sales (
 );
 ```
 
-Sixteen tables. The three that most versions of this answer do not have —
-`stock_reservations`, `coupon_redemptions` and `outbox` — are the three that make the gap
+Sixteen tables. The three that most versions of this answer do not have,
+`stock_reservations`, `coupon_redemptions` and `outbox`, are the three that make the gap
 between clicking buy and the money arriving survivable.
 
 ---
 
-### Step 18 — The mental model
+### Step 18: The mental model
 
 Strip away the marketplace and what is left is the method, now visible across all five
 questions:
@@ -1114,7 +1114,7 @@ questions:
 2. **Separate the thing from the offer.** Catalog and listing are different objects. Fold
    price into the product and you have built a shop that can never become a platform.
 3. **A promise that may not be kept is an object, not an adjustment to a number.** Held
-   stock, a blocked trading balance, a quoted fare — the same realisation three times, and
+   stock, a blocked trading balance, a quoted fare: the same realisation three times, and
    the mistake is always trying to encode it as arithmetic on a counter.
 4. **Facts in rows; counters as provable caches.** The counter is written in the same
    transaction, guarded by a predicate, bounded by a `CHECK` that states the business rule,
@@ -1125,7 +1125,7 @@ questions:
 6. **Scarce resources deserve one mechanism.** Stock and coupons are the same kind of
    object. Two different mechanisms means two different sets of bugs.
 7. **Make the doomed request fail at the edge.** Flash-sale admission control works because
-   losing the cache under-sells while trusting it oversells — and only one of those is a
+   losing the cache under-sells while trusting it oversells, and only one of those is a
    retry.
 8. **Exactly-once does not exist across systems you do not control.** An outbox plus
    idempotent consumers is the construction that does, and recognising that two-phase

@@ -26,8 +26,8 @@ has to defend the cache; this one establishes *why* the underlying facts have th
 they do, on the smallest problem where it matters.
 
 The property that drives it is **conservation**. A wallet's job is to move money without
-creating or destroying any, and the interesting realisation is that a database transaction
-— the thing everyone reaches for first — does not give you that. It gives you something
+creating or destroying any, and the interesting realisation is that a database transaction,
+the thing everyone reaches for first, does not give you that. It gives you something
 weaker, and the gap is where the money goes.
 
 Two closely related topics live in the DBMS section rather than here, and this page links
@@ -37,7 +37,7 @@ and [isolation levels](../dbms-additional/34-isolation-levels-read-committed-vs-
 
 ---
 
-### Step 1 — Pin down what we are building
+### Step 1: Pin down what we are building
 
 **Interviewer:** Design a digital wallet. Users hold a balance, top it up from a bank, send
 money to each other, and withdraw back out.
@@ -49,18 +49,18 @@ Is this a closed loop, or does money enter and leave to real banks?
 **Interviewer:** Money enters and leaves.
 
 **Candidate:** That is the answer that makes this interesting, and I will show why in
-Step 6. A closed system where balances only move between users is a much smaller problem —
+Step 6. A closed system where balances only move between users is a much smaller problem,
 and a much less realistic one.
 
 One currency or several?
 
 **Interviewer:** One. Rupees.
 
-**Candidate:** Good. Multi-currency is not "add a currency column" — it changes what a
+**Candidate:** Good. Multi-currency is not "add a currency column"; it changes what a
 balance *is*, because you can no longer add two rows together without a conversion rate
 that has its own history.
 
-Can a balance go negative — overdraft, credit, promotional float?
+Can a balance go negative: overdraft, credit, promotional float?
 
 **Interviewer:** No. Never negative.
 
@@ -77,7 +77,7 @@ has not arrived anywhere. That needs a representation, which is Step 8.
 
 ---
 
-### Step 2 — `users`, briefly
+### Step 2: `users`, briefly
 
 Nothing surprising, and it is settled in one paragraph so the rest of the page can be about
 money.
@@ -104,12 +104,12 @@ remain readable.
 
 ---
 
-### Step 3 — The obvious schema, and the one guarantee it does not give you
+### Step 3: The obvious schema, and the one guarantee it does not give you
 
 Here is what almost everyone writes first, and it is worth writing out in full because the
 flaw is not where people expect.
 
-```sql title="wallets and transactions — first cut"
+```sql title="wallets and transactions: first cut"
 CREATE TABLE wallets (
     wallet_id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id   BIGINT        NOT NULL UNIQUE REFERENCES users(user_id),
@@ -125,7 +125,7 @@ CREATE TABLE transactions (
 );
 ```
 
-`NUMERIC`, never `FLOAT` — binary floating point cannot represent a tenth, `0.1 + 0.2`
+`NUMERIC`, never `FLOAT`: binary floating point cannot represent a tenth, `0.1 + 0.2`
 evaluates to `0.30000000000000004`, and those errors compound across millions of rows until
 the books stop adding up.
 
@@ -151,7 +151,7 @@ A transaction gives me **atomicity**: all of it or none of it. What it does not 
 
 ---
 
-### Step 4 — Break #1: atomicity is not correctness
+### Step 4, Break #1: atomicity is not correctness
 
 :::broke
 
@@ -163,7 +163,7 @@ rupees out of nothing.
 
 **Interviewer:** That would be a bug in the application.
 
-**Candidate:** Of course — and so is every other defect we design databases to prevent.
+**Candidate:** Of course, and so is every other defect we design databases to prevent.
 A `NOT NULL` constraint exists because the application might forget. A foreign key exists
 because the application might reference a row that is gone. We do not accept "the
 application will get it right" for those, and money is the last place to start.
@@ -181,12 +181,12 @@ than it did a moment ago, and **nothing in the schema notices**.
 
 The insight is to stop modelling a transfer as *two edits to two balances* and start
 modelling it as **one event with several sides that must sum to zero**. That is
-double-entry bookkeeping, and it is not an accounting formality — it is a conservation law
+double-entry bookkeeping, and it is not an accounting formality; it is a conservation law
 expressed as a constraint.
 
 ---
 
-### Step 5 — Entries and lines: money as a conserved quantity
+### Step 5, Entries and lines: money as a conserved quantity
 
 ```sql title="The ledger"
 CREATE TABLE ledger_entries (
@@ -236,7 +236,7 @@ CREATE CONSTRAINT TRIGGER ledger_balances
 **Interviewer:** Why deferred?
 
 **Candidate:** Because the lines are inserted one at a time, and after the first one the
-entry does not balance — it is −500 with nothing on the other side yet. An immediate check
+entry does not balance; it is −500 with nothing on the other side yet. An immediate check
 would reject every entry ever written. `DEFERRABLE INITIALLY DEFERRED` makes the trigger
 fire at `COMMIT` instead, which asks the only question that matters: *did this transaction
 leave the books balanced?*
@@ -262,11 +262,11 @@ rather than a column read. Step 9 deals with the second.
 
 ---
 
-### Step 6 — Break #2: where does the money come from?
+### Step 6, Break #2: where does the money come from?
 
 :::broke
 
-Alice tops up ₹1,000 from her bank. Credit Alice's account — and debit *what*? With only
+Alice tops up ₹1,000 from her bank. Credit Alice's account, and debit *what*? With only
 user accounts, the first top-up cannot be written down.
 
 :::
@@ -274,12 +274,12 @@ user accounts, the first top-up cannot be written down.
 **Interviewer:** Just credit her and move on.
 
 **Candidate:** The trigger will not let me. A single line of +1,000 does not sum to zero,
-and that is not the constraint being inconvenient — it is the constraint being *right*.
+and that is not the constraint being inconvenient; it is the constraint being *right*.
 Money genuinely did come from somewhere, and a schema that cannot name where is a schema
 that cannot be reconciled against the bank.
 
 This is the moment the design stops being about users. The counterparty is the platform's
-own pooled bank account — the float — where customer money physically sits.
+own pooled bank account, the float, where customer money physically sits.
 
 | account | amount |
 |---|---|
@@ -291,8 +291,8 @@ own pooled bank account — the float — where customer money physically sits.
 **Candidate:** Which is exactly the confusion worth having out loud, because it is the one
 thing about double-entry that trips people up.
 
-The platform's bank balance is an **asset** — money it holds. A customer's wallet balance
-is a **liability** — money it owes. When Alice tops up, both increase: the platform holds
+The platform's bank balance is an **asset**: money it holds. A customer's wallet balance
+is a **liability**, money it owes. When Alice tops up, both increase: the platform holds
 ₹1,000 more *and* owes ₹1,000 more. The two are opposite in *sign* only once you adopt the
 convention that liabilities are recorded negative:
 
@@ -312,7 +312,7 @@ promised money we do not hold, and both are things you want a single query to de
 Record liabilities negative and assets positive, so that conservation is literally
 `SUM(amount) = 0`.
 
-The alternative — a `direction` column with debit/credit as text, all amounts positive — is
+The alternative, a `direction` column with debit/credit as text, all amounts positive, is
 what a lot of textbooks show. It requires every query to branch on the direction, and a
 missed branch produces a wrong total silently. Signed amounts make the arithmetic the
 constraint.
@@ -323,13 +323,13 @@ constraint.
 
 ---
 
-### Step 7 — The chart of accounts
+### Step 7: The chart of accounts
 
 **Interviewer:** So how many accounts does this system have?
 
 **Candidate:** Once the float exists, the pattern generalises: an account is simply **a
 bucket money can sit in**, and only some of them belong to users. That reframing is worth
-more than the table it produces — it means a new kind of money movement usually needs a new
+more than the table it produces; it means a new kind of money movement usually needs a new
 *account*, not a new mechanism.
 
 ```sql title="accounts"
@@ -357,7 +357,7 @@ The useful ones for a wallet:
 **Candidate:** `suspense`, which is the one people leave out and then need at 3am.
 A bank credit arrives with a reference that matches no user. The money is real, it is in
 the float, and it belongs to nobody yet. Without a suspense account the only options are to
-refuse to record it — losing the fact that it arrived — or to guess. With one, it is
+refuse to record it, losing the fact that it arrived, or to guess. With one, it is
 recorded honestly and moved later when the reference is resolved, with both movements
 visible.
 
@@ -366,7 +366,7 @@ is what makes "Alice's cash account" a well-defined phrase.
 
 ---
 
-### Step 8 — Break #3: money in flight
+### Step 8, Break #3: money in flight
 
 :::broke
 
@@ -377,14 +377,14 @@ but it has not arrived anywhere, and the provider may still fail hours later.
 
 **Interviewer:** Debit Alice, credit the float, done.
 
-**Candidate:** That says the money has left the platform, and it has not — it is still in
+**Candidate:** That says the money has left the platform, and it has not; it is still in
 the bank account, in the provider's queue. If the withdrawal fails we would have to invent a
 correction for a movement that never happened, and in the meantime our float balance
 disagrees with the actual bank.
 
 This is the same shape as the earlier questions on this site: a state that is neither
 *spendable* nor *gone* needs a representation. And because accounts are cheap, it does not
-need a new mechanism — just a second account:
+need a new mechanism, just a second account:
 
 ```sql title="Initiating a withdrawal"
 -- entry: reason = 'withdrawal', narration = 'to HDFC ••4821'
@@ -402,7 +402,7 @@ When the provider confirms:
 --   bank_float              −1,000.00
 ```
 
-And if it fails, the first entry is reversed and she has her money back — with both the
+And if it fails, the first entry is reversed and she has her money back: with both the
 attempt and the reversal visible in her statement, which is what she will ask about.
 
 **Interviewer:** What if the provider never answers at all?
@@ -410,13 +410,13 @@ attempt and the reversal visible in her statement, which is what she will ask ab
 **Candidate:** Then the entry sits in `user_pending_out` and a reconciliation sweeper picks
 it up: anything pending beyond a threshold gets queried against the provider and resolved
 either way. That mechanism, along with the idempotency that makes the retry safe, is
-[the crash-recovery question](../dbms-additional/35-crash-recovery-and-idempotency) — it is
+[the crash-recovery question](../dbms-additional/35-crash-recovery-and-idempotency); it is
 the same problem in a different frame, and worth reading alongside this one.
 
 ---
 
 <details>
-<summary><b>Schema checkpoint — everything as it stands after Step 8</b></summary>
+<summary><b>Schema checkpoint: everything as it stands after Step 8</b></summary>
 
 ```sql
 users          (user_id PK, phone, full_name, created_at, deleted_at)
@@ -431,14 +431,14 @@ ledger_lines   (entry_id FK, line_no, account_id FK, amount signed,
                -- deferred constraint trigger: lines of an entry sum to zero
 ```
 
-Four tables, and `wallets.balance` is gone. There is no column anywhere holding a balance —
+Four tables, and `wallets.balance` is gone. There is no column anywhere holding a balance,
 which is correct, and is about to become a performance problem.
 
 </details>
 
 ---
 
-### Step 9 — Balances: derived, then cached provably
+### Step 9, Balances: derived, then cached provably
 
 **Interviewer:** Alice's balance is now an aggregate over every line she has ever had. Her
 home screen is going to be slow.
@@ -453,7 +453,7 @@ SELECT -COALESCE(SUM(amount), 0) AS balance      -- negated: liabilities are sto
 ```
 
 Correct, explainable line by line, and unusable on a screen opened millions of times a day.
-So it gets materialised — but in a specific way that distinguishes it from an ordinary cache:
+So it gets materialised, but in a specific way that distinguishes it from an ordinary cache:
 
 ```sql title="account_balances"
 CREATE TABLE account_balances (
@@ -470,13 +470,13 @@ transaction commits, both are true; if it aborts, neither is.
 Three things make this stronger than a normal cached value:
 
 - **The ledger is still the truth.** If the cache and the `SUM` ever disagree, the cache is
-  wrong *by definition* and is rebuilt. There is never an argument about which is right —
+  wrong *by definition* and is rebuilt. There is never an argument about which is right:
   a question that, in the original schema, had no answer at all.
 - **`last_entry_id` makes verification incremental.** Reconciliation does not re-sum
   everything; it sums the lines added since each account's watermark. Cheap enough to run
   continuously rather than monthly.
 - **A `CHECK` carries the business rule.** For a user cash account the rule "never negative"
-  becomes a database constraint — the backstop behind every application check, and one that
+  becomes a database constraint: the backstop behind every application check, and one that
   a new code path cannot bypass.
 
 :::decision
@@ -491,7 +491,7 @@ it. Which turns out to be exactly where the concurrency control belongs.
 
 ---
 
-### Step 10 — Concurrency: one statement, one guard
+### Step 10, Concurrency: one statement, one guard
 
 **Interviewer:** Alice taps send twice at once, and she has only enough for one transfer.
 
@@ -519,8 +519,8 @@ instead of two, and it states the business rule in the predicate where a reader 
 it.
 
 What I would avoid is reaching for `SERIALIZABLE` here, and also avoid the usual *reason*
-for avoiding it. PostgreSQL's serialisable is optimistic — it does not run transactions
-sequentially, it aborts conflicting ones — so the cost is a retry loop rather than latency.
+for avoiding it. PostgreSQL's serialisable is optimistic; it does not run transactions
+sequentially, it aborts conflicting ones, so the cost is a retry loop rather than latency.
 The reason it is unnecessary here is simply that "balance must not go negative" is a
 **single-row invariant**, and single-row invariants are exactly what a guarded update
 expresses. The full argument, including the cross-row invariants that genuinely do need
@@ -529,7 +529,7 @@ serialisable, is in
 
 ---
 
-### Step 11 — Retries: the same transfer twice
+### Step 11, Retries: the same transfer twice
 
 **Interviewer:** You solved the double-tap with a guard in the last step. Is that the whole
 story?
@@ -538,7 +538,7 @@ story?
 
 If the first request committed and only the *response* was lost, the second tap is a
 **duplicate intent**, not a concurrent one. Alice has enough money for both, so the guard
-passes, and she has now sent ₹500 twice. A lock does not help here — it just makes the
+passes, and she has now sent ₹500 twice. A lock does not help here; it just makes the
 duplicate wait its turn and then succeed.
 
 The fix is an idempotency key supplied by the client, recorded in the same transaction as
@@ -553,29 +553,29 @@ CREATE UNIQUE INDEX ledger_entries_idempotency
 ```
 
 The retry collides with the unique index, and the server returns the original result
-without moving money again. The mechanics — storing the response, hashing the request to
+without moving money again. The mechanics: storing the response, hashing the request to
 catch a key reused with different content, and handling the retry that arrives while the
-first attempt is still running — are covered in
+first attempt is still running: are covered in
 [Crash Recovery & Idempotency](../dbms-additional/35-crash-recovery-and-idempotency).
 
 **Interviewer:** So when do you need both?
 
 **Candidate:** Always, on any endpoint that moves money, and the distinction is worth
 keeping straight: **the guard stops one rupee being spent twice; the key stops one intent
-becoming two transfers.** Different problems, and neither substitutes for the other — a
+becoming two transfers.** Different problems, and neither substitutes for the other: a
 system with only the guard double-sends on a flaky network, and a system with only the key
 goes overdrawn under concurrency.
 
 ---
 
-### Step 12 — Indexing, derived from the queries
+### Step 12: Indexing, derived from the queries
 
-```sql title="Q1 — the statement screen"
+```sql title="Q1: the statement screen"
 CREATE INDEX ledger_lines_by_account
     ON ledger_lines (account_id, entry_id DESC);
 ```
 
-Paginated by keyset on `entry_id`, never `OFFSET` — page 200 of a statement should read the
+Paginated by keyset on `entry_id`, never `OFFSET`: page 200 of a statement should read the
 same twenty rows as page 1, not walk and discard four thousand:
 
 ```sql title="Keyset pagination"
@@ -587,13 +587,13 @@ SELECT entry_id, amount
  LIMIT 20;
 ```
 
-```sql title="Q2 — resolving a pending withdrawal"
+```sql title="Q2: resolving a pending withdrawal"
 CREATE INDEX entries_pending
     ON ledger_entries (occurred_at)
     WHERE reason = 'withdrawal';
 ```
 
-```sql title="Q3 — the foreign key Postgres does not index for you"
+```sql title="Q3: the foreign key Postgres does not index for you"
 CREATE INDEX ledger_lines_by_entry_account ON ledger_lines (account_id);
 ```
 
@@ -603,7 +603,7 @@ separately would duplicate an existing structure.
 
 ---
 
-### Step 13 — The final schema
+### Step 13: The final schema
 
 ```sql title="The complete schema"
 CREATE TYPE account_kind AS ENUM ('user_cash','user_pending_out','bank_float',
@@ -665,11 +665,11 @@ and that is the whole design.
 
 ---
 
-### Step 14 — What this does not cover
+### Step 14: What this does not cover
 
 **Interviewer:** Anything you have deliberately left out?
 
-**Candidate:** Three things, and saying so is part of the answer — knowing where your own
+**Candidate:** Three things, and saying so is part of the answer: knowing where your own
 design stops is more convincing than implying it covers everything.
 
 - **Multiple currencies.** Adding a `currency` column is not enough; `SUM(amount) = 0` stops
@@ -680,7 +680,7 @@ design stops is more convincing than implying it covers everything.
   question.
 - **Tax, regulatory reporting, lot tracking.** A wallet moves one fungible thing. The
   moment you hold *assets* that were acquired at different times and prices, you need
-  acquisition lots — which is where
+  acquisition lots, which is where
   [the Zerodha question](./7-stock-trading-zerodha-groww) picks up, extending this same
   ledger under regulatory pressure.
 
@@ -688,7 +688,7 @@ This page is the smallest honest version. The later questions assume it.
 
 ---
 
-### Step 15 — The mental model
+### Step 15: The mental model
 
 1. **A transaction gives atomicity, not correctness.** All-or-nothing says nothing about
    whether the parts were equal and opposite. That gap is where money disappears.
@@ -700,7 +700,7 @@ This page is the smallest honest version. The later questions assume it.
    top-up could not be written down, and that single failure produced the float, the
    asset/liability distinction, and eventually the suspense account.
 5. **A state that is neither one thing nor the other is an account, not an adjustment.**
-   Money in flight, funds blocked for an order, stock held for a checkout — the same
+   Money in flight, funds blocked for an order, stock held for a checkout: the same
    realisation recurs in every question on this site.
 6. **Cache derived values, but make the cache provable.** Same transaction, a `CHECK` that
    states the rule, and a watermark so verification is incremental.

@@ -19,17 +19,17 @@ decisions were made in, and what each one cost.
 > schema in Step 18. That is the spine: clarify, draft something wrong, discover that one
 > fare column cannot explain a charge, and understand what a quote actually is.
 >
-> **Say in the room** what Steps 1–10 cover. Steps 11–17 are depth for when an interviewer
+> **Say in the room** what Steps 1-10 cover. Steps 11-17 are depth for when an interviewer
 > pushes on ratings, matching or scale. Nobody is expected to volunteer H3 cell indexing
-> unprompted — but being able to say *why* the matching index cannot live in Postgres is
+> unprompted, but being able to say *why* the matching index cannot live in Postgres is
 > worth more than naming the library that does it.
 
 This is the third schema question on the site, and the method is now familiar: clarify
 until options disappear, draft a deliberately wrong V1, break it in public, fix it. What
 changes is the thing the domain is fundamentally *about*.
 
-[Splitwise](./4-expense-splitting-splitwise) is about arithmetic — a column of numbers that
-has to sum to zero. [Swiggy](./5-food-delivery-swiggy-zomato) is about time — an order
+[Splitwise](./4-expense-splitting-splitwise) is about arithmetic: a column of numbers that
+has to sum to zero. [Swiggy](./5-food-delivery-swiggy-zomato) is about time: an order
 moving through states while several parties push on it. Ride-hailing is about **committing
 to a price before you know what you are selling**. You quote a fare for a trip that has not
 happened, over a route nobody has driven yet, at a surge multiplier that expires in two
@@ -42,7 +42,7 @@ financial history references. The arguments are in Step 2 of the Splitwise quest
 
 ---
 
-### Step 1 — Pin down what we are building
+### Step 1: Pin down what we are building
 
 **Interviewer:** Design the database for a ride-hailing app like Uber or Ola. Riders
 request a ride between two points, the system matches a nearby driver, the ride moves
@@ -52,14 +52,14 @@ relationships, and resolving fare disputes.
 
 **Candidate:** Five questions first, each of which deletes work if the answer goes one way.
 
-Vehicle tiers — one fleet, or Go/XL/Premier?
+Vehicle tiers: one fleet, or Go/XL/Premier?
 
 **Interviewer:** Tiers, yes.
 
 **Candidate:** Then pricing is per-tier and the tier has to be frozen onto the ride, because
 rate cards change. One column, but it has to be the right column.
 
-Shared rides — pooling?
+Shared rides: pooling?
 
 **Interviewer:** Point-to-point only.
 
@@ -68,7 +68,7 @@ concurrent trips with interleaved pickups, a fare split across riders who joined
 different times, and a route that is recomputed every time someone new is matched. Ruling
 it out keeps one driver on one ride and keeps the fare attributable to one rider.
 
-Payment details — raw cards, or gateway tokens?
+Payment details: raw cards, or gateway tokens?
 
 **Interviewer:** Tokens. There is a payment gateway.
 
@@ -82,25 +82,25 @@ Does the rider get a guaranteed upfront price, or an estimate that is trued up a
 
 **Candidate:** That is the most consequential answer so far, and I want to flag why now
 rather than later. An *estimate* and a *guaranteed price* are completely different
-objects. A guarantee is a liability — a promise the company must honour even if the trip
+objects. A guarantee is a liability: a promise the company must honour even if the trip
 takes twice as long, which means storing it, expiring it, and reconciling it against the
 actual. An estimate is a display value. I will design for the estimate, and in Step 8 I
 will show the one extra table that upgrades it to a guarantee, because products move in
 that direction and it is a question worth having an answer to.
 
-Last one: is the matching engine — finding nearby drivers in real time — inside this
+Last one: is the matching engine, finding nearby drivers in real time, inside this
 database?
 
 **Interviewer:** No. A separate service handles matching. You store the result.
 
 **Candidate:** Then the most important thing I can do is be precise about the boundary. I
 will design the contract between the two in Step 14, because "a separate service handles
-it" is where a lot of these designs quietly lose the double-booking guarantee — the service
+it" is where a lot of these designs quietly lose the double-booking guarantee: the service
 decides, but only the database can *enforce* that one driver is not promised to two riders.
 
 ---
 
-### Step 2 — One person, two roles
+### Step 2: One person, two roles
 
 **Interviewer:** Start with the tables.
 
@@ -157,7 +157,7 @@ these questions: `rides` reference drivers, and those rows are financial history
 
 ---
 
-### Step 3 — `vehicles`, and what the ride has to remember
+### Step 3: `vehicles`, and what the ride has to remember
 
 A driver may register several vehicles over the years. The ride has to record **which car
 actually turned up**, not which car the driver drives today.
@@ -175,7 +175,7 @@ CREATE TABLE vehicles (
 ```
 
 **Interviewer:** You are going to put `vehicle_id` on the ride. Is that not a transitive
-dependency — ride to driver to vehicle?
+dependency: ride to driver to vehicle?
 
 **Candidate:** It would be, if the driver-to-vehicle link were a fact about the ride. It is
 not; it is a fact about *now*. Joining through the driver to find the vehicle for a trip in
@@ -193,9 +193,9 @@ being edited.**
 
 ---
 
-### Step 4 — `rides`, first cut
+### Step 4: `rides`, first cut
 
-```sql title="rides — first cut"
+```sql title="rides: first cut"
 CREATE TABLE rides (
     ride_id      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     rider_id     BIGINT       NOT NULL REFERENCES users(user_id),
@@ -217,13 +217,13 @@ cannot be indexed for proximity, and distance between them is a trigonometric ca
 the database cannot help with. This is the same argument as Step 14 of the Swiggy question.
 
 **Status transitions get an event log.** `rides.status` is a cursor; the questions the
-business asks — time to pickup, time from accept to start, how long riders wait in the rain
-— are all about *when*, and a single mutable cell throws that away. The design is exactly
+business asks, time to pickup, time from accept to start, how long riders wait in the rain,
+are all about *when*, and a single mutable cell throws that away. The design is exactly
 the `order_status_events` pattern from Step 7 of the Swiggy question: an append-only
 `ride_events` table as the source of truth, with `rides.status` as a projection written in
 the same transaction.
 
-```sql title="ride_events — carried over, not re-derived"
+```sql title="ride_events: carried over, not re-derived"
 CREATE TABLE ride_events (
     event_id    BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     ride_id     BIGINT      NOT NULL REFERENCES rides(ride_id),
@@ -241,7 +241,7 @@ wrong. Three times.
 
 ---
 
-### Step 5 — Break #1: a trip is a path, not two points
+### Step 5, Break #1: a trip is a path, not two points
 
 :::broke
 
@@ -260,7 +260,7 @@ database holds no evidence for either.
 
 **Interviewer:** So store the distance.
 
-**Candidate:** Yes — and the crucial word is *store*, not *derive*. The distance travelled
+**Candidate:** Yes, and the crucial word is *store*, not *derive*. The distance travelled
 is a **measured fact**, produced by the driver's device and the routing service during the
 trip. It is not recomputable afterwards: by the time support opens the ticket, traffic has
 cleared, the flyover has reopened, and the routing engine that would "recheck" it returns a
@@ -283,7 +283,7 @@ somewhere a rounding error can hide in a number that ends up on an invoice.
 
 **Interviewer:** Do you really need the whole route geometry?
 
-**Candidate:** It is the single most effective dispute-resolution artefact there is — you
+**Candidate:** It is the single most effective dispute-resolution artefact there is; you
 can show the rider the line their trip actually traced. But it is heavy: a polyline for a
 long trip is kilobytes, on the busiest table in the system, and almost no query reads it.
 
@@ -306,7 +306,7 @@ not by millions of riders.
 
 ---
 
-### Step 6 — Break #2: one ride, many drivers, one winner
+### Step 6, Break #2: one ride, many drivers, one winner
 
 :::broke
 
@@ -319,7 +319,7 @@ an auction, and the schema has nowhere to record that it took place.
 ride?
 
 **Candidate:** The V1 implies the system picks a driver and writes the id. In reality the
-driver has to *accept*, and they very often do not — they are about to go off shift, they
+driver has to *accept*, and they very often do not; they are about to go off shift, they
 do not like the destination, their phone is in their pocket. So the system offers the ride
 and waits.
 
@@ -327,7 +327,7 @@ Offering to one driver at a time is the obvious approach and it is unusable. Eac
 needs ten to fifteen seconds to time out. Five declines in a row is over a minute of a
 rider watching a spinner, which is where they close the app.
 
-So offers go out to several drivers at once — and that creates the problem the single
+So offers go out to several drivers at once, and that creates the problem the single
 `driver_id` column cannot express: **two drivers accept the same ride.**
 
 **Interviewer:** Is this not the same race you solved for me in the last question?
@@ -335,7 +335,7 @@ So offers go out to several drivers at once — and that creates the problem the
 **Candidate:** It is the same *primitive* with the shape inverted, and the difference is
 worth naming.
 
-In food delivery, many dispatchers each claimed a *different* idle partner — N workers
+In food delivery, many dispatchers each claimed a *different* idle partner: N workers
 competing over N resources, where the goal is for everyone to succeed on something
 different. That is what `FOR UPDATE SKIP LOCKED` is for: step over what is taken and grab
 the next one.
@@ -356,7 +356,7 @@ RETURNING ride_id;
 ```
 
 Zero rows means another driver got there first, and that driver's app says "this ride has
-been taken" — which is true, and is a much better experience than a double assignment
+been taken", which is true, and is a much better experience than a double assignment
 discovered when two cars arrive.
 
 The offers themselves need to be rows, because an offer is a fact with a lifetime:
@@ -378,7 +378,7 @@ CREATE UNIQUE INDEX one_pending_offer_per_driver
 ```
 
 That partial unique index is doing real work. Without it a driver sitting at an airport
-receives three simultaneous offers, accepts two, and wins one — a terrible experience, and
+receives three simultaneous offers, accepts two, and wins one: a terrible experience, and
 a wasted matching cycle for the rider who lost.
 
 And the guarantee that matters most is structural rather than procedural:
@@ -406,7 +406,7 @@ and it stays small because completed rides leave it.
 
 ---
 
-### Step 7 — Break #3: one `final_amount` cannot survive a dispute
+### Step 7, Break #3: one `final_amount` cannot survive a dispute
 
 :::broke
 
@@ -417,8 +417,8 @@ artefact that makes them impossible.
 
 **Interviewer:** The rider is charged ₹480 and wants it itemised.
 
-**Candidate:** `final_amount = 480.00` can say nothing. And the usual patch — a fixed set
-of columns, `base_fare`, `distance_fare`, `time_fare`, `surge_multiplier` — survives
+**Candidate:** `final_amount = 480.00` can say nothing. And the usual patch, a fixed set
+of columns, `base_fare`, `distance_fare`, `time_fare`, `surge_multiplier`, survives
 exactly until the first thing that does not fit, which arrives almost immediately:
 
 - an airport pickup levy that exists in two cities,
@@ -432,7 +432,7 @@ Each one adds a nullable column to the busiest table in the system, and six mont
 nobody can tell which combinations are legal. Worse, the earlier draft of this answer did
 something I want to call out specifically: it handled a cancellation fee by putting ₹5 in
 `base_fare` with `distance = 0`. That makes the number come out right and corrupts the
-meaning of the column — every analytics query over `base_fare` is now silently wrong,
+meaning of the column: every analytics query over `base_fare` is now silently wrong,
 because some of those rows are not base fares at all.
 
 A fare is not a number. It is a **list of lines that sum to a number.**
@@ -453,14 +453,14 @@ CREATE TABLE fare_components (
 
 Now the itemisation is a `SELECT`, a new charge type is a new enum value rather than a
 migration on the hot table, and a cancellation fee is a line that says
-`cancellation_fee` — which is what it is.
+`cancellation_fee`, which is what it is.
 
 **Interviewer:** You still have `final_amount` on the ride.
 
 **Candidate:** Yes, and deliberately, for the same reason `total_amount` stayed on an order
 in the previous question: it is what the rider was actually charged, frozen. Recomputing it
-from the components is almost always identical and occasionally is not — a gateway rounds,
-a partial refund lands, a currency conversion applies — and at that point the stored value
+from the components is almost always identical and occasionally is not, a gateway rounds,
+a partial refund lands, a currency conversion applies, and at that point the stored value
 is the truth about what left the rider's account.
 
 The two must not silently diverge, so the relationship between them is asserted:
@@ -479,7 +479,7 @@ $fn$ LANGUAGE plpgsql;
 ```
 
 Attached as a `CONSTRAINT TRIGGER ... DEFERRABLE INITIALLY DEFERRED`, so it fires at commit
-rather than after each statement — otherwise inserting the components one at a time fails
+rather than after each statement: otherwise inserting the components one at a time fails
 on the first one, before the rest exist.
 
 :::decision
@@ -491,7 +491,7 @@ Every charge type is data rather than schema, disputes are answerable by selecti
 and the redundancy between the lines and the total is checked by the database at commit
 rather than hoped for.
 
-*Cost:* a trigger on the financial write path, and components are immutable — a correction
+*Cost:* a trigger on the financial write path, and components are immutable: a correction
 is a new `adjustment` line, never an edit. That is standard ledger discipline and it is
 what makes the history defensible.
 
@@ -500,7 +500,7 @@ what makes the history defensible.
 ---
 
 <details>
-<summary><b>Schema checkpoint — everything as it stands after Step 7</b></summary>
+<summary><b>Schema checkpoint: everything as it stands after Step 7</b></summary>
 
 ```sql
 CREATE TABLE users (
@@ -559,7 +559,7 @@ CREATE TABLE fare_components ( ... );    -- as Step 7
 
 ---
 
-### Step 8 — The quote, and the price you promise before you know it
+### Step 8: The quote, and the price you promise before you know it
 
 **Interviewer:** You said earlier you would come back to upfront pricing.
 
@@ -596,8 +596,8 @@ ALTER TABLE rides
 Three things fall out of that table that a `surge_multiplier` column on the ride would not
 give you.
 
-**The rate card is referenced, not copied.** Rates change — a city regulator caps the
-per-kilometre charge, a tier is repriced — and a ride must be reconstructible against the
+**The rate card is referenced, not copied.** Rates change, a city regulator caps the
+per-kilometre charge, a tier is repriced, and a ride must be reconstructible against the
 card that was in force when it was quoted. `rate_card_id` makes that a foreign key to an
 immutable, versioned row rather than a set of numbers duplicated onto every trip. This is
 the same reasoning as the menu-price snapshot in the last question, arriving at the
@@ -620,7 +620,7 @@ Quotes are their own table with an expiry, referenced by the ride.
 A promise has a lifetime and must be storable without a trip attached. A column on `rides`
 can represent neither.
 
-*Cost:* a table with far more rows than `rides` — most quotes are abandoned — and its own
+*Cost:* a table with far more rows than `rides`, most quotes are abandoned, and its own
 retention policy. Ninety days is plenty; nothing downstream needs a two-year-old estimate.
 
 *This is also the upgrade path to guaranteed pricing:* with the promise already stored, the
@@ -631,13 +631,13 @@ wins, not a schema change.
 
 ---
 
-### Step 9 — Two sides of one trip: charged is not paid
+### Step 9, Two sides of one trip: charged is not paid
 
 **Interviewer:** The fare is ₹480. What does the driver earn?
 
 **Candidate:** Not ₹480, and this is the modelling point most versions of this answer miss
 entirely. There is a commission, perhaps 20%. There may be a driver incentive that the
-rider never sees and does not fund — "complete 12 trips today, earn ₹500" — paid by the
+rider never sees and does not fund, "complete 12 trips today, earn ₹500", paid by the
 platform. There is a toll the rider was charged and the driver is reimbursed for, which
 passes straight through at 100%.
 
@@ -659,7 +659,7 @@ CREATE TABLE driver_earnings (
 
 Deliberately the same shape as `fare_components`. Two ledgers hanging off one ride, summing
 to two different totals, each itemisable on demand. The platform's margin on a trip is the
-difference between them — which is now a query rather than a number nobody can derive.
+difference between them, which is now a query rather than a number nobody can derive.
 
 **Interviewer:** Why not one table with a `party` column?
 
@@ -672,7 +672,7 @@ unrelated ledgers.
 
 ---
 
-### Step 10 — Cancellation, where money meets the state machine
+### Step 10: Cancellation, where money meets the state machine
 
 **Interviewer:** The driver arrives, waits ten minutes, the rider never appears. The driver
 cancels. We still owe them a fee, and the trip covered zero kilometres.
@@ -703,7 +703,7 @@ elapsed time is a subtraction between two rows in the event log.
 This is the payoff from Step 4 arriving two steps later than the decision. Had status been a
 single mutable column, "how long after the driver arrived did the rider cancel" would be
 unanswerable, and the fee policy would have to be evaluated live at cancellation time and
-its inputs thrown away — leaving nothing to show a rider who disputes the charge.
+its inputs thrown away: leaving nothing to show a rider who disputes the charge.
 
 :::decision
 
@@ -718,7 +718,7 @@ so the charge is reproducible after the fact even when the policy has since chan
 
 ---
 
-### Step 11 — Blind two-sided ratings
+### Step 11: Blind two-sided ratings
 
 **Interviewer:** Riders and drivers rate each other.
 
@@ -728,7 +728,7 @@ not state: **ratings must be blind.**
 
 If a driver can see a rider's one-star rating before submitting their own, the second
 rating is retaliation rather than an assessment. So neither party sees the other's until
-both have submitted, or a window — typically a few days — expires.
+both have submitted, or a window, typically a few days, expires.
 
 That is a visibility rule, and the mistake is to implement it in the application's `SELECT`
 statements. There are several readers: the rider app, the driver app, a support console,
@@ -767,7 +767,7 @@ application role makes it unbypassable.
 
 Ratings stored immediately, visibility enforced by a view with restricted grants.
 
-Storing late — holding a rating in a queue until the other arrives — loses data if the
+Storing late, holding a rating in a queue until the other arrives, loses data if the
 queue does, and makes "has this user rated yet" a question about a message broker.
 
 *Cost:* the view's correlated count is work on every read. In practice it is two index
@@ -778,7 +778,7 @@ few reads go through it.
 
 ---
 
-### Step 12 — The rolling rating, and a `LIMIT` that does nothing
+### Step 12: The rolling rating, and a `LIMIT` that does nothing
 
 **Interviewer:** Show a driver's average rating over their last 100 trips.
 
@@ -796,7 +796,7 @@ SELECT AVG(rating)
 
 `AVG` collapses the whole matching set to a single row *before* `LIMIT` is applied. The
 `LIMIT 100` then truncates a one-row result to one row, which does nothing at all. The
-answer returned is the driver's lifetime average — over four years of trips, not a hundred.
+answer returned is the driver's lifetime average: over four years of trips, not a hundred.
 
 The fix is to make the limiting happen first, in a subquery, so the aggregate sees only the
 rows you meant:
@@ -820,7 +820,7 @@ This is a general trap, not a ride-hailing one. **Any aggregate in the same `SEL
 
 **Interviewer:** And running that during matching?
 
-**Candidate:** Not during matching — the rating is read in the two seconds where a rider is
+**Candidate:** Not during matching: the rating is read in the two seconds where a rider is
 waiting, and it must be a column read.
 
 The usual answer is a cached column refreshed by a background job. There is a better one
@@ -838,13 +838,13 @@ backfilled.
 Recompute the rolling rating from the last 100 rows, on trip completion, into a column on
 `driver_profiles`.
 
-The recompute is bounded — exactly 100 rows, served by the `(driver_id, ended_at DESC)`
-index — so it is a few hundred microseconds on an event that happens once per trip. That is
+The recompute is bounded, exactly 100 rows, served by the `(driver_id, ended_at DESC)`
+index, so it is a few hundred microseconds on an event that happens once per trip. That is
 genuinely cheaper than maintaining a sliding sum, and it cannot drift, because it is derived
 fresh from the source rows every time.
 
 *Why not a job:* a job introduces a staleness window for no benefit, since the natural
-trigger — a trip ending — is exactly when the value changes.
+trigger, a trip ending, is exactly when the value changes.
 
 *Cost:* one extra small query per completed trip, on a path that is already writing several
 rows in a transaction.
@@ -853,14 +853,14 @@ rows in a transaction.
 
 ---
 
-### Step 13 — Why matching cannot be a database query
+### Step 13: Why matching cannot be a database query
 
 **Interviewer:** I said matching is someone else's problem, but tell me why.
 
 **Candidate:** Because the index you would need is the one thing you cannot maintain in a
 transactional database.
 
-The query itself looks harmless — the nearest idle drivers to a point:
+The query itself looks harmless, the nearest idle drivers to a point:
 
 ```sql title="The query you cannot afford to serve"
 SELECT user_id
@@ -875,14 +875,14 @@ With a GiST index that is a perfectly good query, and in the previous question I
 exactly this shape for restaurants. The difference is that **restaurants do not move.**
 
 Take 500,000 active drivers pinging every 4 seconds: 125,000 location updates per second.
-In Postgres an `UPDATE` writes a new row version and marks the old one dead — that is how
+In Postgres an `UPDATE` writes a new row version and marks the old one dead: that is how
 MVCC serves consistent snapshots without blocking readers. So those updates produce 125,000
 dead tuples per second, each one also churning the GiST index, which is more expensive to
 maintain than a B-tree. Autovacuum cannot keep pace; the table and its index bloat, every
 query against them slows down, and the degradation spreads to everything else on the
 instance.
 
-The data is not large — it is a few hundred megabytes of current positions. It is the
+The data is not large; it is a few hundred megabytes of current positions. It is the
 **churn** that is impossible, and the churn is intrinsic: the whole point of the dataset is
 that it is replaced continuously.
 
@@ -891,7 +891,7 @@ that it is replaced continuously.
 **Candidate:** The supply index lives in memory, and the usual trick is to stop treating
 position as a continuous coordinate and start treating it as a **cell**.
 
-A hierarchical grid — Uber's H3, or Google's S2 — tiles the earth with cells, each
+A hierarchical grid, Uber's H3, or Google's S2, tiles the earth with cells, each
 identified by a single integer. A driver's position becomes the cell they are in. Finding
 nearby drivers becomes: compute the rider's cell, take its neighbouring cells, and look up
 the drivers in each. That is a hash lookup on an integer key, not a geometric search.
@@ -900,7 +900,7 @@ What this buys, and why it is worth the loss of precision:
 
 - **Lookups become O(1) hash operations** on a handful of integer keys.
 - **A moving driver is usually a no-op.** Most pings land in the cell the driver was already
-  in, so there is nothing to update — at a 400-metre cell edge and city traffic, the vast
+  in, so there is nothing to update: at a 400-metre cell edge and city traffic, the vast
   majority of 4-second pings do not cross a boundary. The write volume collapses.
 - **It shards naturally.** Cell IDs partition cleanly across machines, with geographic
   locality, because neighbouring cells have related IDs.
@@ -915,7 +915,7 @@ Postgres.
 *Contrast with the previous question, deliberately:* there, PostGIS with a GiST index was
 the right answer for finding restaurants, because restaurants are static and the index is
 written rarely and read constantly. Here the same structure is wrong for the same reason
-reversed. **The question is never "is PostGIS good" — it is "what is the read-to-write
+reversed. **The question is never "is PostGIS good"; it is "what is the read-to-write
 ratio of this index".**
 
 *What stays relational:* the driver's identity, their onboarding and account state, the
@@ -925,7 +925,7 @@ vehicle they are driving, and every committed ride. Facts, not positions.
 
 ---
 
-### Step 14 — The contract with the matching service
+### Step 14: The contract with the matching service
 
 **Interviewer:** Good. So what does the database owe that service?
 
@@ -938,7 +938,7 @@ north, who is about to finish a trip two streets away. It is an optimisation pro
 volatile data, and it belongs in memory.
 
 The database **adjudicates**. Whatever the service decided, the ride is only real when a row
-says so, and that row is subject to constraints the service cannot enforce — because the
+says so, and that row is subject to constraints the service cannot enforce: because the
 service is multiple processes, and a few of them are always running stale state.
 
 So the contract is narrow:
@@ -956,9 +956,9 @@ holds. Designs that rely only on the service being careful have no second line.
 
 ---
 
-### Step 15 — Indexing, derived from the queries
+### Step 15: Indexing, derived from the queries
 
-```sql title="Q1 — app reopens: am I on a ride right now?"
+```sql title="Q1, app reopens: am I on a ride right now?"
 CREATE INDEX rides_live_by_rider
     ON rides (rider_id)
     WHERE status IN ('requested', 'accepted', 'arriving', 'in_progress');
@@ -973,31 +973,31 @@ should contain only that. A completed ride leaves the index entirely, so these s
 forever regardless of how large `rides` grows.
 
 A note on something the earlier draft of this answer claimed: these lookups are not
-`O(1)`. A B-tree lookup is `O(log n)` — a descent of a few levels. The distinction matters
+`O(1)`. A B-tree lookup is `O(log n)`: a descent of a few levels. The distinction matters
 here because the whole argument for a *partial* index is that it keeps `n` small, and that
 argument only makes sense if the cost depends on `n` in the first place.
 
-```sql title="Q2 — my trip history, newest first"
+```sql title="Q2: my trip history, newest first"
 CREATE INDEX rides_history_by_rider ON rides (rider_id, requested_at DESC);
 ```
 
-Paginated by keyset, not `OFFSET`, on `(requested_at, ride_id)` — the same reasoning as the
+Paginated by keyset, not `OFFSET`, on `(requested_at, ride_id)`: the same reasoning as the
 order history in the previous question.
 
-```sql title="Q3 — the rolling-100 rating"
+```sql title="Q3: the rolling-100 rating"
 CREATE INDEX rides_by_driver_ended ON rides (driver_id, ended_at DESC)
     WHERE ended_at IS NOT NULL;
 ```
 
 Equality column first, range or sort column second. Reverse them and the index cannot serve
-the query — the leftmost-prefix rule.
+the query: the leftmost-prefix rule.
 
-```sql title="Q4 — a support agent opening a dispute"
+```sql title="Q4: a support agent opening a dispute"
 CREATE INDEX fare_components_by_ride ON fare_components (ride_id);
 ```
 
 The primary key is `(ride_id, line_no)`, so `ride_id` is already the leftmost column and
-this index is redundant — worth saying rather than adding it reflexively. What *is* worth
+this index is redundant: worth saying rather than adding it reflexively. What *is* worth
 adding is the foreign-key index Postgres does not create for you:
 
 ```sql title="Postgres does not index foreign keys automatically"
@@ -1008,7 +1008,7 @@ Without it, deleting or updating a referenced row forces a sequential scan of th
 referencing table to check the constraint. This is one of the most common sources of
 mysterious slow deletes in Postgres.
 
-```sql title="Q5 — expiring stale offers"
+```sql title="Q5: expiring stale offers"
 CREATE INDEX ride_offers_pending ON ride_offers (expires_at)
     WHERE outcome = 'pending';
 ```
@@ -1018,12 +1018,12 @@ few thousand rows at any moment, out of billions.
 
 ---
 
-### Step 16 — Partitioning before sharding
+### Step 16: Partitioning before sharding
 
 **Interviewer:** `rides` grows forever. What do you do?
 
 **Candidate:** The reflex answer is to shard, and it is usually premature. The first problem
-with an ever-growing table is not that it exceeds one machine — it is that its **indexes
+with an ever-growing table is not that it exceeds one machine; it is that its **indexes
 stop fitting in memory**, and a B-tree that no longer fits turns every lookup into disk
 I/O.
 
@@ -1046,14 +1046,14 @@ they stay resident in memory permanently. Old partitions exist, are queryable, a
 touched.
 
 It also makes retention a metadata operation. Moving a year-old month to cold storage is
-`DETACH PARTITION` — instant — instead of a `DELETE` of fifty million rows that generates
+`DETACH PARTITION`, instant, instead of a `DELETE` of fifty million rows that generates
 fifty million dead tuples and gives autovacuum a very bad night.
 
 :::decision
 
 Partition `rides` and `fare_components` by month before considering sharding.
 
-It solves the actual first problem — index locality — with no application changes, no
+It solves the actual first problem, index locality, with no application changes, no
 cross-node queries and no distributed transactions.
 
 *Cost:* the partition key has to be in the primary key, so it becomes
@@ -1066,7 +1066,7 @@ worth stating before adopting it.
 #### 16a. Partitioning costs you a constraint, and it is the one from Step 6
 
 This is the part worth catching before it bites in production. A unique index on a
-partitioned table **must contain every partition key column** — Postgres can only enforce
+partitioned table **must contain every partition key column**: Postgres can only enforce
 uniqueness within a partition, because that is the only place the index exists.
 
 So this, from Step 6, stops being legal the moment `rides` is partitioned by
@@ -1098,13 +1098,13 @@ ride ends. `driver_profiles` has one row per driver and is never partitioned, so
 is small and the constraint holds globally.
 
 It is worth noticing that this is the same structure as the `delivery_partners` table in
-the previous question, arrived at from the opposite direction — there because a partner is
+the previous question, arrived at from the opposite direction; there because a partner is
 a resource to be claimed, here because partitioning took the constraint away from the table
 it naturally belonged on.
 
 ---
 
-### Step 17 — Sharding, and the airport run
+### Step 17: Sharding, and the airport run
 
 **Interviewer:** And when one machine genuinely is not enough?
 
@@ -1117,7 +1117,7 @@ Except when it does not, and the exception here is sharper than in food delivery
 **Interviewer:** The airport run.
 
 **Candidate:** A driver picks up in Bangalore and drops at a city two hundred kilometres
-away. In food delivery that essentially never happens — nobody delivers a biryani across a
+away. In food delivery that essentially never happens: nobody delivers a biryani across a
 state line. Here it is a daily, high-value trip.
 
 The ride itself is fine: it is created in the requesting region and stays there, because a
@@ -1125,14 +1125,14 @@ ride belongs to the shard that created it and nothing about finishing elsewhere 
 that. The problem is the **driver**, who is now physically in a region whose supply index
 does not contain them, and who wants a return fare rather than an empty two-hour drive.
 
-That is primarily a matching-service concern — the supply index is cell-based and global,
+That is primarily a matching-service concern: the supply index is cell-based and global,
 so the driver simply appears in cells belonging to another region. But it leaves one
 relational question: `driver_profiles.home_region_id` says where a driver belongs, and
 rides in another region reference a driver record on a different shard.
 
 :::decision
 
-`users` and `driver_profiles` are global — replicated to every shard, not partitioned.
+`users` and `driver_profiles` are global: replicated to every shard, not partitioned.
 `rides` and everything hanging off them are sharded by region.
 
 People are small, slow-changing and referenced everywhere; trips are enormous, immutable
@@ -1152,7 +1152,7 @@ rather than global.
 
 ---
 
-### Step 18 — The final schema
+### Step 18: The final schema
 
 ```sql title="The complete schema"
 CREATE TYPE ride_status   AS ENUM ('requested','accepted','arriving','in_progress',
@@ -1320,14 +1320,14 @@ CREATE TABLE ride_ratings (
 );
 ```
 
-Thirteen tables. The three that most versions of this answer do not have —
-`fare_quotes`, `fare_components` and `driver_earnings` — are the three that make a fare
+Thirteen tables. The three that most versions of this answer do not have,
+`fare_quotes`, `fare_components` and `driver_earnings`, are the three that make a fare
 dispute answerable, which is what the question actually asked for.
 
 One thing in that listing is deliberate and easy to misread as an omission: the tables
 hanging off `rides` no longer declare `REFERENCES rides(ride_id)`. They cannot. Once
 `rides` is partitioned its primary key is `(requested_at, ride_id)`, and a foreign key must
-reference a complete unique constraint — so pointing at `ride_id` alone is no longer
+reference a complete unique constraint, so pointing at `ride_id` alone is no longer
 possible. The options are to carry `requested_at` into every child table and reference the
 pair, which doubles the key width everywhere for a column nobody queries, or to drop the
 declared constraint and enforce it in the write path.
@@ -1340,19 +1340,19 @@ is not told why will reasonably assume you forgot.
 
 ---
 
-### Step 19 — The mental model
+### Step 19: The mental model
 
 Strip away ride-hailing and what is left is a method that transfers:
 
 1. **Ask the questions whose answers delete work.** Ruling out pooling removed an entire
    dimension from the ride, the fare and the route before anything was drawn.
 2. **One identity, many roles.** When two entities share a login, a name and a rating, they
-   are one table with an extension — not two tables that will drift.
+   are one table with an extension, not two tables that will drift.
 3. **Store what was measured, not what can be recomputed.** Distance travelled is evidence.
    Recomputing it next week against a different traffic model produces a different number
    and destroys the only defence you had in a dispute.
 4. **A promise is a row.** A quoted price has a value, a moment and an expiry, and most of
-   them never become trips — which is itself the data the pricing team most wants.
+   them never become trips, which is itself the data the pricing team most wants.
 5. **A total is a conclusion; the lines are the facts.** One `final_amount` column cannot be
    itemised, so a cancellation fee gets crammed into `base_fare` and every analytics query
    over that column silently breaks.

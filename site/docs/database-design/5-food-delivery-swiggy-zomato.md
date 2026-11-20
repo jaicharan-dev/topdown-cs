@@ -20,11 +20,11 @@ decisions were made in, and what each one cost.
 > status column throws away history, discover that the `WHERE` clause is your lock.
 > Everything else is depth you can add once the spine is solid.
 >
-> **Say in the room** what Steps 1–11 cover — it is already a strong answer. Steps 12–18
+> **Say in the room** what Steps 1-11 cover; it is already a strong answer. Steps 12-18
 > are mostly *know it exists*: material for when an interviewer pushes on dispatch,
 > geospatial search or scale. Nobody is expected to volunteer `SKIP LOCKED` unprompted.
 
-Splitwise is a question about arithmetic — a column of numbers that has to sum to zero.
+Splitwise is a question about arithmetic: a column of numbers that has to sum to zero.
 This one is not. Food delivery is a question about **time**: an order is a thing that moves
 through states, several parties try to move it at once, and almost every interesting query
 is "how long did that take" or "what is happening right now". Schemas that model the order
@@ -42,7 +42,7 @@ re-derived.
 
 ---
 
-### Step 1 — Pin down what we are building
+### Step 1: Pin down what we are building
 
 **Interviewer:** Design the database for a food delivery app like Swiggy or Zomato. Users
 browse restaurants and place orders containing several items from one restaurant. Menu
@@ -58,12 +58,12 @@ First: can one order contain items from more than one restaurant?
 **Interviewer:** No. One order, one restaurant.
 
 **Candidate:** That is worth a great deal. A multi-restaurant order forces a sub-order
-layer — each restaurant preparing independently, each with its own state, the parent order
-"delivered" only when all children are — and it changes the dispatch problem from one
+layer: each restaurant preparing independently, each with its own state, the parent order
+"delivered" only when all children are, and it changes the dispatch problem from one
 pickup to several. Ruling it out keeps `restaurant_id` on the order itself and keeps the
 state machine flat.
 
-Second: do items have customisations — "extra cheese, no onion, half portion"?
+Second: do items have customisations, "extra cheese, no onion, half portion"?
 
 **Interviewer:** Base items only.
 
@@ -80,7 +80,7 @@ position to draw a dot on a map?
 entirely. I will come back to why in Step 13, because it is the single biggest thing that
 kills these designs.
 
-Fourth: is payment in scope — cards, wallets, refunds?
+Fourth: is payment in scope, cards, wallets, refunds?
 
 **Interviewer:** Out of scope. Assume a payments service exists.
 
@@ -104,7 +104,7 @@ accurate forever, and let several parties act on it concurrently without corrupt
 
 ---
 
-### Step 2 — `users`, and why the phone number is the hard part
+### Step 2: `users`, and why the phone number is the hard part
 
 The obvious table, with one column that is less obvious than it looks.
 
@@ -119,7 +119,7 @@ hot. The full argument is in Step 2 of the Splitwise question.
 In India this app is phone-first: you log in with an OTP, and the phone number *is* the
 account. That makes it the natural unique key, and it brings a problem that email does not.
 
-Email uniqueness needs case folding — `Alice@x.com` and `alice@x.com` are one mailbox.
+Email uniqueness needs case folding: `Alice@x.com` and `alice@x.com` are one mailbox.
 Phone uniqueness needs **normalisation**, which is a harder problem, because all of these
 are the same number:
 
@@ -132,7 +132,7 @@ are the same number:
 
 If you store what the user typed, the unique index is decoration: the same person signs up
 four times and the database is satisfied every time. The number has to be normalised to a
-single canonical form — E.164, `+919876543210` — *before* it reaches the column, and the
+single canonical form, E.164, `+919876543210`, *before* it reaches the column, and the
 unique index has to be on that canonical form.
 
 `VARCHAR(16)` is the right width: E.164 caps at 15 digits plus the leading `+`.
@@ -142,7 +142,7 @@ unique index has to be on that canonical form.
 Store E.164 only, normalised in the application, with a `CHECK` that rejects anything else.
 
 `CHECK (phone ~ '^\+[1-9][0-9]{7,14}$')` will not catch a wrongly-normalised number, but it
-catches every *un*-normalised one — the spaces, the leading zero, the missing country code.
+catches every *un*-normalised one: the spaces, the leading zero, the missing country code.
 That is the class of bug that actually happens.
 
 *Why not normalise in the database:* parsing a national number into E.164 needs a country
@@ -155,7 +155,7 @@ India and something else entirely if they are not.
 
 Nullable here, unlike Splitwise. A phone-first signup may never collect one, and a `NOT
 NULL` column that the application fills with `''` to satisfy it is worse than a nullable
-one — it breaks uniqueness and it lies.
+one; it breaks uniqueness and it lies.
 
 #### 2d. `deleted_at`
 
@@ -179,12 +179,12 @@ CREATE UNIQUE INDEX users_phone_uniq ON users (phone) WHERE deleted_at IS NULL;
 
 ---
 
-### Step 3 — `restaurants`: three different kinds of "closed"
+### Step 3, `restaurants`: three different kinds of "closed"
 
 **Interviewer:** A restaurant goes out of business. We still need its past orders. How do
 you handle deletion?
 
-**Candidate:** Soft delete — but the more useful observation is that "closed" is three
+**Candidate:** Soft delete, but the more useful observation is that "closed" is three
 different things that people routinely cram into one column, and conflating them produces
 bugs that are very hard to see.
 
@@ -196,7 +196,7 @@ bugs that are very hard to see.
   and must never reappear in search.
 
 If all three collapse into one `status` column, then a kitchen pausing during a dinner rush
-is indistinguishable in the data from a restaurant going bankrupt — and "how many of our
+is indistinguishable in the data from a restaurant going bankrupt, and "how many of our
 restaurants churned last month" becomes unanswerable.
 
 :::decision
@@ -205,7 +205,7 @@ Three separate mechanisms: `deleted_at` for gone, `accepting_orders_until` for p
 and an `opening_hours` relation for the clock.
 
 Each has a different owner, a different lifetime and a different query. A timestamp for
-the pause rather than a boolean means the pause expires on its own — nobody has to
+the pause rather than a boolean means the pause expires on its own: nobody has to
 remember to flip it back, and a restaurant that forgets does not silently disappear for a
 week.
 
@@ -214,8 +214,8 @@ whose values quietly acquire time semantics nobody wrote down.
 
 :::
 
-Opening hours themselves are a small relation, not a text field — `(restaurant_id,
-day_of_week, opens_at, closes_at)` — because "is this restaurant open now" has to be a
+Opening hours themselves are a small relation, not a text field, `(restaurant_id,
+day_of_week, opens_at, closes_at)`, because "is this restaurant open now" has to be a
 query, and because kitchens close after midnight, which a single `opens_at < now <
 closes_at` comparison gets wrong.
 
@@ -238,7 +238,7 @@ costs four bytes now.
 
 ---
 
-### Step 4 — `menu_items`
+### Step 4: `menu_items`
 
 The same distinction, one level down. An item can be **unavailable** (sold out today) or
 **removed** (no longer on the menu). Those are not the same, and only one of them is
@@ -256,8 +256,8 @@ CREATE TABLE menu_items (
 );
 ```
 
-`NUMERIC(14,2)`, never `FLOAT`. Binary floating point cannot represent a tenth —
-`0.1 + 0.2` evaluates to `0.30000000000000004` — and a receipt that does not add up is a
+`NUMERIC(14,2)`, never `FLOAT`. Binary floating point cannot represent a tenth,
+`0.1 + 0.2` evaluates to `0.30000000000000004`, and a receipt that does not add up is a
 support ticket. The full comparison against integer minor units is in Step 5 of Splitwise;
 the conclusion carries over.
 
@@ -266,11 +266,11 @@ turns out to matter a lot, which is the next step.
 
 ---
 
-### Step 5 — `orders`, first cut
+### Step 5: `orders`, first cut
 
 Here is the obvious table. It is wrong in three ways, and we are going to find all three.
 
-```sql title="orders — first cut"
+```sql title="orders: first cut"
 CREATE TABLE orders (
     order_id      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id       BIGINT       NOT NULL REFERENCES users(user_id),
@@ -291,9 +291,9 @@ CREATE TABLE order_items (
 ```
 
 `partner_id` is nullable because an order exists before a driver is assigned. `total_amount`
-is stored rather than derived — a deliberate denormalisation, justified below.
+is stored rather than derived: a deliberate denormalisation, justified below.
 
-**Interviewer:** Before I push on this — why store `total_amount` at all? You can sum the
+**Interviewer:** Before I push on this: why store `total_amount` at all? You can sum the
 line items.
 
 **Candidate:** Because the total is not only a sum, it is a **statement**. By the time the
@@ -307,7 +307,7 @@ A total that the user saw and accepted is a fact.
 
 ---
 
-### Step 6 — Break #1: the receipt outlives the menu
+### Step 6, Break #1: the receipt outlives the menu
 
 :::broke
 
@@ -320,21 +320,21 @@ records a pointer to something the restaurant is free to change tomorrow.
 does last week's receipt now say?
 
 **Candidate:** ₹280, which is a fabrication. The fix people reach for first is to copy the
-price into the order line — a `locked_price` or `unit_price` column — and that is correct
+price into the order line, a `locked_price` or `unit_price` column, and that is correct
 as far as it goes. But it does not go far enough, and the gap is the interesting part.
 
 **Interviewer:** Go on.
 
 **Candidate:** Price is not the only thing the restaurant can change. Suppose they rename
 "Paneer Tikka" to "Paneer Tikka Masala", or soft-delete the item entirely when it leaves
-the menu. Now the receipt either shows a dish the user never ordered, or — if we join to
-`menu_items` and filter out deleted rows, as every listing query does — shows nothing at
+the menu. Now the receipt either shows a dish the user never ordered, or, if we join to
+`menu_items` and filter out deleted rows, as every listing query does, shows nothing at
 all. A receipt is a historical document. It has to be readable without consulting any
 table that is still being edited.
 
 So the snapshot is of the whole line, not just the number:
 
-```sql title="order_items — Break #1" {5,6}
+```sql title="order_items: Break #1" {5,6}
 CREATE TABLE order_items (
     order_id   BIGINT NOT NULL REFERENCES orders(order_id) ON DELETE CASCADE,
     line_no    SMALLINT NOT NULL,
@@ -350,8 +350,8 @@ CREATE TABLE order_items (
 
 **Candidate:** Deliberately. `(order_id, item_id)` says an item can appear on an order at
 most once, which sounds reasonable and is not. The moment anything distinguishes two lines
-of the same dish — a note on one of them, a promotion applied to one of them, or simply
-the way the client assembled the cart — that key forbids a legitimate order. `line_no`
+of the same dish, a note on one of them, a promotion applied to one of them, or simply
+the way the client assembled the cart, that key forbids a legitimate order. `line_no`
 makes the line itself the thing with identity, which is what a receipt line actually is.
 
 `item_id` stays as a foreign key, because "how many times was this dish ordered" is a real
@@ -366,8 +366,8 @@ A receipt must be reconstructible from the order's own rows, with no join to any
 that is still being edited.
 
 *Cost:* the item name is duplicated across millions of rows. Compression handles most of
-it, and the alternative — a fully versioned `menu_item_versions` table with validity ranges
-— adds a join to the hottest read path in the app for a fidelity nobody asked for.
+it, and the alternative, a fully versioned `menu_item_versions` table with validity ranges,
+adds a join to the hottest read path in the app for a fidelity nobody asked for.
 
 *Would change if:* customisations come into scope. Then lines acquire child rows, and a
 versioned menu starts paying for itself.
@@ -376,7 +376,7 @@ versioned menu starts paying for itself.
 
 ---
 
-### Step 7 — Break #2: a status column cannot answer "when"
+### Step 7, Break #2: a status column cannot answer "when"
 
 :::broke
 
@@ -397,7 +397,7 @@ overwritten on every transition; by the time an order is delivered, the fact tha
 
 **Candidate:** That is the instinct, and it is where the design quietly goes wrong. It
 starts as `accepted_at`, then `prepared_at`, `picked_up_at`, `cancelled_at`,
-`refunded_at` — and each new state in the business adds a column to the hottest table in
+`refunded_at`, and each new state in the business adds a column to the hottest table in
 the system. Worse, the columns cannot express things the event actually had: *who* cancelled
 (user, restaurant, or an automatic timeout), and *why*.
 
@@ -439,7 +439,7 @@ oversight.
 Deriving the current status means, for each order, finding the event with the latest
 `occurred_at`. For one order that is trivial. For the "my orders" screen, or the
 restaurant's live queue, it is a lateral join or a window function over the event table on
-every page load — on the most frequently hit query in the product.
+every page load: on the most frequently hit query in the product.
 
 :::decision
 
@@ -454,13 +454,13 @@ simple `CHECK`. It is enforced by funnelling every transition through one code p
 verified by a reconciliation job that recomputes the projection and alerts on mismatches.
 
 *Would change if:* the read volume on the list screens were low enough that the window
-function were free. It is not — it is the single hottest query in the app.
+function were free. It is not; it is the single hottest query in the app.
 
 :::
 
 ---
 
-### Step 8 — Break #3: cancel and accept, at the same millisecond
+### Step 8, Break #3: cancel and accept, at the same millisecond
 
 :::broke
 
@@ -477,7 +477,7 @@ survives is decided by whichever transaction commits last. The outcomes are a ca
 order whose food is being cooked, or an accepted order the user believes is cancelled.
 Both end in a refund argument.
 
-The usual answer is optimistic locking — add a `version` column, read it, and update only
+The usual answer is optimistic locking: add a `version` column, read it, and update only
 if it has not moved. That works. But it is heavier than this problem needs, and it says the
 wrong thing.
 
@@ -496,7 +496,7 @@ RETURNING order_id;
 ```
 
 If this returns a row, the cancel won and the caller may write the matching event. If it
-returns zero rows, the restaurant got there first — and the user sees "this order has
+returns zero rows, the restaurant got there first, and the user sees "this order has
 already been accepted", which is the truthful message. The check and the write are a single
 atomic statement; there is no window between them for anyone to slip through.
 
@@ -520,8 +520,8 @@ A guarded conditional `UPDATE`, over a `version` column.
 The status column already *is* the version for this purpose, and the guard states the
 business rule where a reader will find it, rather than encoding it as "nothing changed".
 
-*Would change if:* an order could be mutated along several independent axes at once — say
-the address and the status edited by different parties — where "did anything change"
+*Would change if:* an order could be mutated along several independent axes at once, say
+the address and the status edited by different parties, where "did anything change"
 becomes the right question and a single status guard stops being sufficient.
 
 *Note on isolation:* this is safe under `READ COMMITTED`. An `UPDATE` re-evaluates its
@@ -533,14 +533,14 @@ default isolation level does exactly what you want without a `SERIALIZABLE` pena
 
 **Interviewer:** And if the rule is more complicated than one previous state?
 
-**Candidate:** Then the guard becomes a set — `AND status IN ('placed', 'accepted')` — and
+**Candidate:** Then the guard becomes a set, `AND status IN ('placed', 'accepted')`, and
 once the sets get interesting, the transitions themselves should become data. Which is the
 next step.
 
 ---
 
 <details>
-<summary><b>Schema checkpoint — everything as it stands after Step 8</b></summary>
+<summary><b>Schema checkpoint: everything as it stands after Step 8</b></summary>
 
 ```sql
 CREATE TABLE users (
@@ -604,14 +604,14 @@ CREATE TABLE order_status_events (
 );
 ```
 
-`delivered_at` has gone from `orders` — it lives in the event log now, and Step 16 shows
+`delivered_at` has gone from `orders`; it lives in the event log now, and Step 16 shows
 how to get it back cheaply for the one query that needs it in bulk.
 
 </details>
 
 ---
 
-### Step 9 — The state machine, as data
+### Step 9: The state machine, as data
 
 **Interviewer:** You hinted that transitions should be a table. Why not just write the
 rules in the application?
@@ -647,8 +647,8 @@ Read that insert from top to bottom and you have the product's rules in nine lin
 what it encodes that prose would not: a user can cancel from `placed` but not from
 `accepted`, and once a partner has picked the food up, nobody can cancel at all.
 
-The transition table is then enforced by a trigger on `order_status_events`, and — more
-usefully day to day — it is *queryable*. "What can happen to this order next, given who I
+The transition table is then enforced by a trigger on `order_status_events`, and, more
+usefully day to day, it is *queryable*. "What can happen to this order next, given who I
 am" becomes a `SELECT` the UI can run to decide which buttons to show, instead of a
 condition duplicated in five clients.
 
@@ -669,7 +669,7 @@ ceremony, and a `CHECK` plus good tests is enough.
 
 ---
 
-### Step 10 — Reviews, and a foreign key that enforces a business rule
+### Step 10: Reviews, and a foreign key that enforces a business rule
 
 **Interviewer:** Users can review only after a delivered order. One review per order. How
 do you enforce it?
@@ -678,11 +678,11 @@ do you enforce it?
 interesting half is "only after delivered", because the obvious answer is a trigger and
 there is something better available.
 
-A foreign key normally references a primary key. It can reference any unique constraint —
+A foreign key normally references a primary key. It can reference any unique constraint,
 and that gives us a way to make the database check a *condition* on the parent row, not
 just its existence.
 
-```sql title="reviews — the delivered-only rule, as a foreign key" {11,12,13,14}
+```sql title="reviews: the delivered-only rule, as a foreign key" {11,12,13,14}
 -- A unique constraint on the pair makes it a legal FK target.
 ALTER TABLE orders
     ADD CONSTRAINT orders_id_status_uniq UNIQUE (order_id, status);
@@ -709,7 +709,7 @@ order is now *unrepresentable*, with no trigger and no application check.
 
 **Candidate:** One thing, and it is worth saying out loud because it is the limit of the
 technique: it only works when the target status is **terminal**. If an order could move on
-from `delivered` — to `refunded`, say — the parent row would change and the foreign key
+from `delivered`, to `refunded`, say, the parent row would change and the foreign key
 would block the transition or cascade strangely. In this state machine `delivered` is an
 end state, so the trick is sound. The day someone adds `refunded` after it, this constraint
 is the thing that will tell them, loudly, at 3am.
@@ -731,7 +731,7 @@ migration, because it is a landmine for whoever adds a post-delivery state.
 
 Computing a restaurant's average rating by joining `reviews` to `orders` means touching the
 largest table in the system for a number shown on every listing card. The usual fix is to
-copy `restaurant_id` onto `reviews` — and the usual cost is that the copy can drift.
+copy `restaurant_id` onto `reviews`, and the usual cost is that the copy can drift.
 
 Here it does not have to. The same technique extends:
 
@@ -746,19 +746,19 @@ ALTER TABLE reviews
 ```
 
 A review whose `restaurant_id` does not match its order's is now rejected. This is a
-redundant column that **cannot** go stale — which is the thing that makes most
+redundant column that **cannot** go stale, which is the thing that makes most
 denormalisation frightening.
 
 ---
 
-### Step 11 — Limited stock, and the `WHERE` clause as a lock
+### Step 11: Limited stock, and the `WHERE` clause as a lock
 
 **Interviewer:** The kitchen has twenty portions of biryani for the evening. Fifty people
 order at once. What happens?
 
 **Candidate:** First, a modelling point: most menu items are made to order and have no
 limit at all. Only some have a daily cap. So the column is nullable, and `NULL` means
-unlimited — not `-1`, and not a separate `is_limited` boolean that can contradict it.
+unlimited, not `-1`, and not a separate `is_limited` boolean that can contradict it.
 
 ```sql title="Daily caps on menu_items"
 ALTER TABLE menu_items
@@ -774,7 +774,7 @@ UPDATE menu_items SET stock_remaining = stock_remaining - $2 WHERE item_id = $1;
 ```
 
 Fifty requests read `20` in the same millisecond, all fifty pass the check, and the kitchen
-is now committed to fifty biryanis. The `CHECK` constraint will catch it eventually — by
+is now committed to fifty biryanis. The `CHECK` constraint will catch it eventually: by
 raising errors on whichever transactions happen to commit after the count goes negative,
 which is a lottery, not a policy.
 
@@ -802,7 +802,7 @@ gap.
 
 ---
 
-### Step 12 — Claiming a delivery partner
+### Step 12: Claiming a delivery partner
 
 **Interviewer:** Assign a partner to a ready order. A thousand orders become ready at 8pm
 and several dispatchers are running. Two orders must not get the same partner.
@@ -820,7 +820,7 @@ SELECT partner_id FROM delivery_partners
 ```
 
 Every concurrent dispatcher reads the same top row and fights over it. All but one fail and
-retry, read the same new top row, and fight again — a thundering herd that gets worse as
+retry, read the same new top row, and fight again: a thundering herd that gets worse as
 load increases.
 
 Postgres has a purpose-built answer:
@@ -853,7 +853,7 @@ retries and no contention.
 `SELECT … FOR UPDATE SKIP LOCKED` for partner assignment.
 
 It is the standard Postgres work-claiming pattern and it turns a contended queue into a
-parallel one. The alternative — an external distributed lock — adds a dependency that can
+parallel one. The alternative, an external distributed lock, adds a dependency that can
 fail independently of the database that holds the truth.
 
 *Cost:* `SKIP LOCKED` sacrifices strict ordering. Under heavy contention a partner slightly
@@ -866,7 +866,7 @@ approximation; for a strict FIFO it would not be.
 considers distance, traffic, the partner's direction of travel, batching.
 
 **Candidate:** No, and that is the right boundary to draw. The dispatch *decision* belongs
-to a service with live locations and a routing model in memory — it is an optimisation
+to a service with live locations and a routing model in memory; it is an optimisation
 problem, not a query. What belongs in Postgres is the **record** of the assignment and its
 exclusivity: whatever clever thing the dispatcher decided, the database is what guarantees
 one partner is not promised to two orders. The query above is the commit of a decision made
@@ -874,7 +874,7 @@ elsewhere.
 
 ---
 
-### Step 13 — Live location does not belong in Postgres
+### Step 13: Live location does not belong in Postgres
 
 **Interviewer:** Partners ping their GPS every few seconds. Where does that go?
 
@@ -883,7 +883,7 @@ writes" is the hand-wave answer and the real reason is more specific.
 
 Take 100,000 active partners pinging every 4 seconds: **25,000 writes per second**, all of
 them updates to the same small table. In Postgres an `UPDATE` does not overwrite a row. It
-writes a new version of it and marks the old one dead — that is how MVCC gives readers a
+writes a new version of it and marks the old one dead: that is how MVCC gives readers a
 consistent snapshot without blocking. So those 25,000 updates per second produce:
 
 - 25,000 new row versions per second, plus WAL records for every one;
@@ -892,7 +892,7 @@ consistent snapshot without blocking. So those 25,000 updates per second produce
 - a table that bloats continuously, kept in check only by autovacuum, which now has to
   reclaim 25,000 dead tuples a second on top of its normal work.
 
-The database does not fall over because the data is large — it is a few megabytes of actual
+The database does not fall over because the data is large; it is a few megabytes of actual
 state. It falls over because the *churn* overwhelms vacuum, the table and its indexes bloat
 faster than they can be cleaned, and the degradation lands on every other query sharing the
 instance. Your orders get slow because of a column nobody ordering food is reading.
@@ -909,15 +909,15 @@ TTL means a partner who goes offline disappears on their own rather than needing
 job.
 
 *What stays relational:* the partner's identity, their shift state, and which order they
-are currently carrying — low-write facts that other tables reference.
+are currently carrying: low-write facts that other tables reference.
 
-*If route history is needed later* — for disputes or for ETA models — pings are batched and
+*If route history is needed later*, for disputes or for ETA models, pings are batched and
 appended to a store built for it: a time-series or wide-column database, written in bulk,
 read rarely. Never the OLTP instance.
 
 :::
 
-```sql title="delivery_partners — what the relational side keeps"
+```sql title="delivery_partners: what the relational side keeps"
 CREATE TABLE delivery_partners (
     partner_id       BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     city_id          INT         NOT NULL REFERENCES cities(city_id),
@@ -941,7 +941,7 @@ query were written wrongly, the database still refuses to put one partner on two
 
 ---
 
-### Step 14 — Finding restaurants near me
+### Step 14: Finding restaurants near me
 
 **Interviewer:** The home screen shows restaurants within five kilometres. How?
 
@@ -983,8 +983,8 @@ twenty" does not sort the whole candidate set.
 PostGIS `geography(Point, 4326)` with a GiST index, while the data is in one database.
 
 *Would change if:* the restaurant table is sharded across regions, where a spatial index
-per shard cannot answer a query spanning two. Then geohash or S2 cell IDs — a plain
-indexable string or integer that a sharded key-value store can route on — and proximity
+per shard cannot answer a query spanning two. Then geohash or S2 cell IDs, a plain
+indexable string or integer that a sharded key-value store can route on, and proximity
 becomes a prefix scan. Less precise at cell boundaries, but it survives partitioning, which
 PostGIS does not.
 
@@ -992,7 +992,7 @@ PostGIS does not.
 
 ---
 
-### Step 15 — Ratings without a cron job
+### Step 15: Ratings without a cron job
 
 **Interviewer:** Every listing card shows an average rating. Computing `AVG(rating)` across
 millions of reviews on every page load will not work.
@@ -1001,7 +1001,7 @@ millions of reviews on every page load will not work.
 every fifteen minutes, and I want to argue against it, because there is a version with no
 job at all.
 
-An average is not an incrementally maintainable quantity — given the old average and one
+An average is not an incrementally maintainable quantity: given the old average and one
 new rating you cannot produce the new average without also knowing the count. But its two
 components are. So store those instead:
 
@@ -1028,7 +1028,7 @@ UPDATE restaurants
 
 :::decision
 
-`rating_sum` and `rating_count`, with the average as a generated column — over a cached
+`rating_sum` and `rating_count`, with the average as a generated column: over a cached
 average refreshed on a schedule.
 
 The value is **exact and immediate**, not eventually consistent within fifteen minutes, and
@@ -1037,8 +1037,8 @@ restaurant at the top of the hour. Edits and deletions are handled by the same s
 with the delta reversed.
 
 *Cost:* every review write touches the restaurant row, which makes it a contention point for
-a restaurant receiving reviews rapidly. At food-delivery review volumes — a handful per
-restaurant per hour — that is far from a problem. For something like a viral product page
+a restaurant receiving reviews rapidly. At food-delivery review volumes, a handful per
+restaurant per hour, that is far from a problem. For something like a viral product page
 it would be, and the answer there is a sharded counter.
 
 *The honest caveat:* this is still a denormalisation and it can drift if anything writes
@@ -1049,7 +1049,7 @@ reviews outside the sanctioned path. The same nightly reconciliation that checks
 
 ---
 
-### Step 16 — Average delivery time, and a myth about `NULL`
+### Step 16: Average delivery time, and a myth about `NULL`
 
 **Interviewer:** Average delivery time per restaurant over the last thirty days.
 
@@ -1068,7 +1068,7 @@ careful.
 **Interviewer:** Go on.
 
 **Candidate:** The common claim is that cancelled orders have a `NULL` `delivered_at`, and
-that this "breaks" the aggregate. It does not. SQL aggregates **ignore** `NULL` inputs —
+that this "breaks" the aggregate. It does not. SQL aggregates **ignore** `NULL` inputs:
 `delivered_at - placed_at` is `NULL` for a cancelled order, `AVG` skips it, and the
 arithmetic you get back is in fact the average over delivered orders only. The number is
 correct.
@@ -1076,12 +1076,12 @@ correct.
 There are three real problems, and none of them is arithmetic:
 
 1. **The planner reads rows it will throw away.** Without a predicate on status, the index
-   on `placed_at` hands back every order in thirty days — cancelled, in-flight, delivered —
+   on `placed_at` hands back every order in thirty days, cancelled, in-flight, delivered,
    and the `NULL`s are discarded after the fact. On a busy restaurant that is several times
    the I/O the query needs.
 2. **The denominator is a trap waiting for the next person.** The moment someone adds
    `COUNT(*)` beside the average to show "orders in the last month", the two numbers are
-   over different populations — one counts everything, the other averages only delivered —
+   over different populations, one counts everything, the other averages only delivered,
    and the dashboard quietly lies. `COUNT(delivered_at)` and `COUNT(*)` differing is the
    bug, and it is invisible.
 3. **It is a biased statistic.** Averaging only completed deliveries hides exactly the
@@ -1089,7 +1089,7 @@ There are three real problems, and none of them is arithmetic:
    accepted it was a catastrophe for that customer and contributes nothing to the number
    that is supposed to measure customer experience.
 
-So the filter goes in — for the index and for the next reader, not to protect `AVG`:
+So the filter goes in, for the index and for the next reader, not to protect `AVG`:
 
 ```sql title="Explicit about its population" {5}
 SELECT AVG(e.occurred_at - o.placed_at) AS avg_delivery_time,
@@ -1121,12 +1121,12 @@ the event log is for.
 
 ---
 
-### Step 17 — Indexing, derived from the queries
+### Step 17: Indexing, derived from the queries
 
 Indexes are not chosen from the schema. They are chosen from the queries the product
 actually runs, so here are the six that matter.
 
-```sql title="Q1 — the restaurant's menu, the most-run query in the app"
+```sql title="Q1: the restaurant's menu, the most-run query in the app"
 CREATE INDEX menu_items_by_restaurant
     ON menu_items (restaurant_id)
     INCLUDE (name, price, is_available)
@@ -1137,7 +1137,7 @@ Partial, because deleted items are never listed and do not belong in the index a
 `INCLUDE` carries the display columns in the leaf pages, so rendering a menu is an
 index-only scan that never touches the heap.
 
-```sql title="Q2 — my orders, newest first"
+```sql title="Q2: my orders, newest first"
 CREATE INDEX orders_by_user
     ON orders (user_id, placed_at DESC);
 ```
@@ -1145,7 +1145,7 @@ CREATE INDEX orders_by_user
 The `DESC` matters: it stores the rows in the order the screen wants them, so "most recent
 twenty" is a bounded walk from one end instead of a sort.
 
-```sql title="Q3 — the restaurant's live queue"
+```sql title="Q3: the restaurant's live queue"
 CREATE INDEX orders_live_queue
     ON orders (restaurant_id, placed_at)
     WHERE status IN ('placed', 'accepted', 'preparing', 'ready');
@@ -1153,11 +1153,11 @@ CREATE INDEX orders_live_queue
 
 The best index on this page. A restaurant's live queue is perhaps twenty rows; its order
 history is millions. A partial index on the live states is tiny, permanently in cache, and
-stops costing anything the moment an order is delivered — the row leaves the index entirely.
+stops costing anything the moment an order is delivered: the row leaves the index entirely.
 A full index on `(restaurant_id, status)` would be hundreds of times larger and mostly
 composed of rows no live query ever wants.
 
-```sql title="Q4 — average delivery time"
+```sql title="Q4: average delivery time"
 CREATE INDEX orders_delivered_by_restaurant
     ON orders (restaurant_id, placed_at)
     INCLUDE (delivered_at)
@@ -1166,21 +1166,21 @@ CREATE INDEX orders_delivered_by_restaurant
 
 Column order is the point. `restaurant_id` is an equality test and goes first; `placed_at`
 is a range test and goes last. A B-tree can only range-scan after it has pinned the
-equality columns — reverse them and the index stops being useful for this query. This is
+equality columns: reverse them and the index stops being useful for this query. This is
 the leftmost-prefix rule, and it is the single most common composite-index mistake.
 
-```sql title="Q5 — restaurants near me"
+```sql title="Q5: restaurants near me"
 CREATE INDEX restaurants_location_gix
     ON restaurants USING GIST (location)
     WHERE deleted_at IS NULL;
 ```
 
-```sql title="Q6 — an order's history"
+```sql title="Q6: an order's history"
 CREATE INDEX order_events_by_order
     ON order_status_events (order_id, occurred_at);
 ```
 
-One more thing about Q2. Order history is paginated, and `OFFSET` degrades linearly —
+One more thing about Q2. Order history is paginated, and `OFFSET` degrades linearly:
 page 500 makes the database walk and discard 10,000 rows before returning anything. Keyset
 pagination reads the same twenty rows regardless of depth:
 
@@ -1198,7 +1198,7 @@ timestamp and a naive `placed_at <` either skips rows or repeats them.
 
 ---
 
-### Step 18 — Sharding by city
+### Step 18: Sharding by city
 
 **Interviewer:** One database will not hold a national launch. How do you split it?
 
@@ -1208,7 +1208,7 @@ local**, and food delivery has an unusually clean answer.
 Follow a single order: a user in Bangalore opens the app, sees restaurants in Bangalore,
 orders from one of them, and a partner in Bangalore picks it up. Every row that
 transaction touches shares a `city_id`. Nothing in the hot path crosses a city boundary.
-That is a rare luxury — most systems have to choose which query to make expensive, and
+That is a rare luxury: most systems have to choose which query to make expensive, and
 here the natural boundary of the business is also the natural boundary of the data.
 
 :::decision
@@ -1218,7 +1218,7 @@ Shard on `city_id`.
 Every write path and every latency-sensitive read stays inside one shard. Cross-shard work
 is pushed onto analytics, which is asynchronous and tolerant of it.
 
-*Cost:* national aggregates become scatter-gather — "today's revenue" asks every shard and
+*Cost:* national aggregates become scatter-gather: "today's revenue" asks every shard and
 sums in the application. The honest answer is that those queries should not run against the
 operational database at all; they belong in a warehouse fed by change capture, where the
 question is cheap and nobody's dinner order is waiting behind it.
@@ -1235,7 +1235,7 @@ not in a modulo, so a city can be moved without rewriting the hashing scheme.
 **Candidate:** They order in Mumbai on Monday and Delhi on Friday, so their orders are on
 two shards and "my order history" is the one user-facing query that goes cross-shard.
 
-Two things make it survivable. `users` is small, slow-changing and global — replicated to
+Two things make it survivable. `users` is small, slow-changing and global: replicated to
 every shard rather than partitioned, so no lookup ever has to be routed. And order history
 is read far less often than the live-order screen, is naturally paginated, and tolerates a
 scatter-gather across the two or three cities a user has actually ordered in. A small
@@ -1244,7 +1244,7 @@ is two shards rather than all of them.
 
 ---
 
-### Step 19 — The final schema
+### Step 19: The final schema
 
 ```sql title="The complete schema"
 CREATE TYPE order_status  AS ENUM ('placed','accepted','preparing','ready',
@@ -1373,13 +1373,13 @@ CREATE TABLE reviews (
 );
 ```
 
-Nine tables. Three of them — `order_status_events`, `order_status_transitions` and the two
-composite foreign keys on `reviews` — are doing work that most versions of this answer
+Nine tables. Three of them, `order_status_events`, `order_status_transitions` and the two
+composite foreign keys on `reviews`, are doing work that most versions of this answer
 leave to application code.
 
 ---
 
-### Step 20 — The mental model
+### Step 20: The mental model
 
 Strip away food delivery and what is left is a method that transfers:
 
@@ -1388,11 +1388,11 @@ Strip away food delivery and what is left is a method that transfers:
 2. **A status column is a cursor, not a history.** The moment anyone asks "how long did
    that take", a single mutable cell has already thrown the answer away. Events are the
    facts; the current state is a projection of them.
-3. **Store facts, derive meanings.** The receipt, the total, the snapshotted item name —
-   all facts, frozen. The average rating, the current status, the delivery time — all
+3. **Store facts, derive meanings.** The receipt, the total, the snapshotted item name:
+   all facts, frozen. The average rating, the current status, the delivery time: all
    derived, and cached only with a stated cost and a reconciliation job.
 4. **The `WHERE` clause is a lock you already have.** Cancel-versus-accept, stock
-   decrement, partner claiming — three different problems, one primitive: check and write
+   decrement, partner claiming, three different problems, one primitive: check and write
    in a single statement and let the database arbitrate.
 5. **Constraints beat triggers, and triggers beat application checks.** A composite foreign
    key made "reviews only after delivery" structurally impossible to violate, and made a
@@ -1404,5 +1404,5 @@ Strip away food delivery and what is left is a method that transfers:
    forever because rows leave it when they stop being live. That is a property of the
    predicate, not of the table.
 8. **Let the access pattern pick the shard key.** City works here because the entire
-   transactional path is local to one. Say what it costs — national aggregates — and where
+   transactional path is local to one. Say what it costs, national aggregates, and where
    that cost should actually be paid.
