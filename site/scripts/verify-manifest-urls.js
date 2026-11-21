@@ -85,6 +85,33 @@ for (const [id, built] of real) {
   problems.push(`id "${id}" (${built.path}) was built but is not in the manifest`);
 }
 
+// The rank ladder uses absolute point thresholds so that publishing new pages
+// never demotes anybody (see src/lib/ranks.js). The price is that the top rank
+// becomes unreachable if the content ever shrinks below it, which would be
+// invisible until a user asked why they were stuck one rank short.
+//
+// ranks.js is an ES module and this script is CommonJS, so read the thresholds
+// out of the source rather than importing it and dragging in a build step.
+const ranksSource = fs.readFileSync(
+  path.resolve(__dirname, '../src/lib/ranks.js'),
+  'utf8'
+);
+const thresholds = [...ranksSource.matchAll(/\bat:\s*(\d+)/g)].map((m) =>
+  Number(m[1])
+);
+if (!thresholds.length) {
+  problems.push('could not find any rank thresholds in src/lib/ranks.js');
+} else {
+  const top = Math.max(...thresholds);
+  if (top > manifest.totalPoints) {
+    problems.push(
+      `the top rank needs ${top} points but the site only offers ` +
+        `${manifest.totalPoints}, so nobody can reach it: lower the top ` +
+        `threshold in src/lib/ranks.js or add content`
+    );
+  }
+}
+
 if (problems.length) {
   console.error(`[verify-manifest] ${problems.length} problem(s):`);
   for (const p of problems) console.error(`  ${p}`);

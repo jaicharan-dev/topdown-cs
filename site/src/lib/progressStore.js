@@ -176,4 +176,69 @@ export function summarise(store, manifest) {
   };
 }
 
+/** 'YYYY-MM-DD' -> a Date in LOCAL time. Parsing it as ISO would shift the
+ * day backwards for anybody west of UTC, which is exactly the sort of bug that
+ * silently breaks a streak overnight. */
+export function fromDay(day) {
+  const [y, m, d] = day.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+function shiftDay(day, delta) {
+  const date = fromDay(day);
+  date.setDate(date.getDate() + delta);
+  return today(date);
+}
+
+/** Days that saw at least one page completed, most recent first. */
+function activeDayKeys(store) {
+  return Object.entries(store?.activity || {})
+    .filter(([, entry]) => (entry?.completed || 0) > 0 || (entry?.seconds || 0) > 0)
+    .map(([day]) => day)
+    .sort()
+    .reverse();
+}
+
+/**
+ * Active days, streaks and recorded time.
+ *
+ * A streak does not break until a day has fully passed: if there is activity
+ * yesterday but none yet today, the streak is still running. Counting from
+ * today alone would show every returning user a broken streak every morning.
+ */
+export function activityStats(store, now = new Date()) {
+  const days = activeDayKeys(store);
+  const active = new Set(days);
+  const totalSeconds = Object.values(store?.activity || {}).reduce(
+    (sum, entry) => sum + (Number(entry?.seconds) || 0),
+    0
+  );
+
+  let currentStreak = 0;
+  let cursor = today(now);
+  if (!active.has(cursor)) cursor = shiftDay(cursor, -1);
+  while (active.has(cursor)) {
+    currentStreak += 1;
+    cursor = shiftDay(cursor, -1);
+  }
+
+  let longestStreak = 0;
+  let run = 0;
+  let previous = null;
+  for (const day of [...days].reverse()) {
+    run = previous && shiftDay(previous, 1) === day ? run + 1 : 1;
+    if (run > longestStreak) longestStreak = run;
+    previous = day;
+  }
+
+  return {
+    activeDays: days.length,
+    currentStreak,
+    longestStreak,
+    totalSeconds,
+    firstDay: days.length ? days[days.length - 1] : null,
+    lastDay: days.length ? days[0] : null,
+  };
+}
+
 export const __internal = { STORAGE_KEY, CURRENT_VERSION };
