@@ -139,7 +139,7 @@ function blockLabel(block) {
   const categoryFile = path.join(docsDir, block, '_category_.json');
   if (fs.existsSync(categoryFile)) {
     try {
-      const raw = fs.readFileSync(categoryFile, 'utf8').replace(/^﻿/, '');
+      const raw = fs.readFileSync(categoryFile, 'utf8').replace(/^\uFEFF/, '');
       const parsed = JSON.parse(raw.trim());
       if (parsed.label) return parsed.label;
     } catch (err) {
