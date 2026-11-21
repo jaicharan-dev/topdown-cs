@@ -1,0 +1,118 @@
+/* Completion control at the foot of every doc page. */
+
+.wrapper {
+  margin: 2.5rem 0 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--csf-border-subtle, #e3dcce);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 1rem 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--csf-border, #d5cdbc);
+  background: var(--csf-surface-raised, #eae4d6);
+  color: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease,
+    transform 0.08s ease;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--csf-complete-accent, #16a34a);
+}
+
+.button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--csf-complete-accent, #16a34a);
+  outline-offset: 2px;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* the tick box */
+.box {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 6px;
+  border: 1.5px solid var(--csf-border, #d5cdbc);
+  background: var(--ifm-background-color, #fff);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.icon {
+  width: 14px;
+  height: 14px;
+  color: #fff;
+}
+
+/* completed state */
+.button[data-complete='true'] {
+  border-color: var(--csf-complete-accent, #16a34a);
+  background: color-mix(
+    in srgb,
+    var(--csf-complete-accent, #16a34a) 10%,
+    transparent
+  );
+}
+
+.button[data-complete='true'] .box {
+  background: var(--csf-complete-accent, #16a34a);
+  border-color: var(--csf-complete-accent, #16a34a);
+}
+
+.note {
+  margin: 0;
+  font-size: 0.78rem;
+  opacity: 0.6;
+}
+
+[data-theme='dark'] .wrapper {
+  border-top-color: var(--csf-border-subtle, #27272a);
+}
+
+[data-theme='dark'] .button {
+  --csf-complete-accent: #4ade80;
+  border-color: var(--csf-border, #3f3f46);
+  background: var(--csf-surface-raised, #27272a);
+}
+
+[data-theme='dark'] .box {
+  background: var(--csf-surface, #1e1e22);
+  border-color: var(--csf-border, #3f3f46);
+}
+
+[data-theme='dark'] .button[data-complete='true'] .box {
+  background: #4ade80;
+  border-color: #4ade80;
+}
+
+[data-theme='dark'] .icon {
+  color: #10281a;
+}
+
+@media (max-width: 600px) {
+  .button {
+    width: 100%;
+    justify-content: center;
+  }
+}
