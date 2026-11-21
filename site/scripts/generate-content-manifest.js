@@ -90,6 +90,39 @@ function difficultyOf(sidebarClassName) {
   return m ? m[1] : null;
 }
 
+/**
+ * Docusaurus strips a leading number prefix from DIRECTORY names when it
+ * builds a route, so `docs/dsa/9-trees/...` is served at `/docs/dsa/trees/...`.
+ * The file name is a different matter: an explicit frontmatter `id` overrides
+ * the last path segment, and ours keep their prefixes, so `4-crc-computation`
+ * stays as written.
+ *
+ * The two patterns below are copied verbatim from Docusaurus so the rule does
+ * not drift: plugin-content-docs/src/numberPrefix.ts. The first is a date and
+ * version guard that skips stripping altogether, which is why `16-1d-dp` keeps
+ * its prefix (`16-1` looks like a version) while `9-trees` loses its own.
+ * Approximating this was wrong twice; do not hand-simplify it.
+ *
+ * Deriving the route rather than reading Docusaurus's own route table is
+ * deliberate: the manifest is generated BEFORE the build, so that table does
+ * not exist yet. scripts/verify-manifest-urls.js closes the loop by comparing
+ * every url against the real routes once a build has run.
+ */
+const IGNORED_PREFIX_PATTERN = /^\d+[-_.]\d+/;
+const NUMBER_PREFIX_PATTERN = /^(\d+)\s*[-_.]+\s*([^-_.\s].*)$/;
+
+function stripNumberPrefix(segment) {
+  if (IGNORED_PREFIX_PATTERN.test(segment)) return segment;
+  const match = NUMBER_PREFIX_PATTERN.exec(segment);
+  return match ? match[2] : segment;
+}
+
+function routeFor(relPath, id) {
+  const segments = relPath.replace(/\.mdx?$/, '').split('/');
+  segments.pop(); // the file name is replaced by the frontmatter id
+  return [ROUTE_BASE, ...segments.map(stripNumberPrefix), id].join('/');
+}
+
 /** DSA pages live one level deeper, so they get a group of their own. */
 function locate(relPath) {
   const parts = relPath.split('/');
@@ -158,7 +191,7 @@ function generate() {
       difficulty,
       points: POINTS[difficulty],
       position: Number(fm.sidebar_position) || 0,
-      url: `${ROUTE_BASE}/${relPath.replace(/\.mdx?$/, '')}`,
+      url: routeFor(relPath, id),
     });
   }
 

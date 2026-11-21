@@ -1225,7 +1225,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 1,
-      "url": "/docs/dsa/1-arrays-hashing/1-two-sum"
+      "url": "/docs/dsa/arrays-hashing/1-two-sum"
     },
     {
       "id": "2-contains-duplicate",
@@ -1235,7 +1235,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 2,
-      "url": "/docs/dsa/1-arrays-hashing/2-contains-duplicate"
+      "url": "/docs/dsa/arrays-hashing/2-contains-duplicate"
     },
     {
       "id": "3-majority-element",
@@ -1245,7 +1245,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 3,
-      "url": "/docs/dsa/1-arrays-hashing/3-majority-element"
+      "url": "/docs/dsa/arrays-hashing/3-majority-element"
     },
     {
       "id": "4-group-anagrams",
@@ -1255,7 +1255,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 4,
-      "url": "/docs/dsa/1-arrays-hashing/4-group-anagrams"
+      "url": "/docs/dsa/arrays-hashing/4-group-anagrams"
     },
     {
       "id": "5-product-of-array-except-self",
@@ -1265,7 +1265,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 5,
-      "url": "/docs/dsa/1-arrays-hashing/5-product-of-array-except-self"
+      "url": "/docs/dsa/arrays-hashing/5-product-of-array-except-self"
     },
     {
       "id": "6-subarray-sum-equals-k",
@@ -1275,7 +1275,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 6,
-      "url": "/docs/dsa/1-arrays-hashing/6-subarray-sum-equals-k"
+      "url": "/docs/dsa/arrays-hashing/6-subarray-sum-equals-k"
     },
     {
       "id": "7-next-permutation",
@@ -1285,7 +1285,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 7,
-      "url": "/docs/dsa/1-arrays-hashing/7-next-permutation"
+      "url": "/docs/dsa/arrays-hashing/7-next-permutation"
     },
     {
       "id": "8-longest-consecutive-sequence",
@@ -1295,7 +1295,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 8,
-      "url": "/docs/dsa/1-arrays-hashing/8-longest-consecutive-sequence"
+      "url": "/docs/dsa/arrays-hashing/8-longest-consecutive-sequence"
     },
     {
       "id": "9-rotate-image",
@@ -1305,7 +1305,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 9,
-      "url": "/docs/dsa/1-arrays-hashing/9-rotate-image"
+      "url": "/docs/dsa/arrays-hashing/9-rotate-image"
     },
     {
       "id": "10-spiral-matrix",
@@ -1315,7 +1315,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 10,
-      "url": "/docs/dsa/1-arrays-hashing/10-spiral-matrix"
+      "url": "/docs/dsa/arrays-hashing/10-spiral-matrix"
     },
     {
       "id": "11-set-matrix-zeroes",
@@ -1325,7 +1325,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 11,
-      "url": "/docs/dsa/1-arrays-hashing/11-set-matrix-zeroes"
+      "url": "/docs/dsa/arrays-hashing/11-set-matrix-zeroes"
     },
     {
       "id": "12-first-missing-positive",
@@ -1335,7 +1335,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 12,
-      "url": "/docs/dsa/1-arrays-hashing/12-first-missing-positive"
+      "url": "/docs/dsa/arrays-hashing/12-first-missing-positive"
     },
     {
       "id": "1-implement-trie-prefix-tree",
@@ -1345,7 +1345,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 1,
-      "url": "/docs/dsa/10-tries/1-implement-trie-prefix-tree"
+      "url": "/docs/dsa/tries/1-implement-trie-prefix-tree"
     },
     {
       "id": "2-design-add-and-search-words-data-structure",
@@ -1355,7 +1355,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 2,
-      "url": "/docs/dsa/10-tries/2-design-add-and-search-words-data-structure"
+      "url": "/docs/dsa/tries/2-design-add-and-search-words-data-structure"
     },
     {
       "id": "3-word-search-ii",
@@ -1365,7 +1365,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 3,
-      "url": "/docs/dsa/10-tries/3-word-search-ii"
+      "url": "/docs/dsa/tries/3-word-search-ii"
     },
     {
       "id": "1-top-k-frequent-elements",
@@ -1375,7 +1375,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 1,
-      "url": "/docs/dsa/11-heaps-priority-queues/1-top-k-frequent-elements"
+      "url": "/docs/dsa/heaps-priority-queues/1-top-k-frequent-elements"
     },
     {
       "id": "2-k-closest-points-to-origin",
@@ -1385,7 +1385,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 2,
-      "url": "/docs/dsa/11-heaps-priority-queues/2-k-closest-points-to-origin"
+      "url": "/docs/dsa/heaps-priority-queues/2-k-closest-points-to-origin"
     },
     {
       "id": "3-kth-largest-element-in-an-array",
@@ -1395,7 +1395,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 3,
-      "url": "/docs/dsa/11-heaps-priority-queues/3-kth-largest-element-in-an-array"
+      "url": "/docs/dsa/heaps-priority-queues/3-kth-largest-element-in-an-array"
     },
     {
       "id": "4-kth-smallest-element-in-a-sorted-matrix",
@@ -1405,7 +1405,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 4,
-      "url": "/docs/dsa/11-heaps-priority-queues/4-kth-smallest-element-in-a-sorted-matrix"
+      "url": "/docs/dsa/heaps-priority-queues/4-kth-smallest-element-in-a-sorted-matrix"
     },
     {
       "id": "5-task-scheduler",
@@ -1415,7 +1415,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 5,
-      "url": "/docs/dsa/11-heaps-priority-queues/5-task-scheduler"
+      "url": "/docs/dsa/heaps-priority-queues/5-task-scheduler"
     },
     {
       "id": "6-reorganize-string",
@@ -1425,7 +1425,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 6,
-      "url": "/docs/dsa/11-heaps-priority-queues/6-reorganize-string"
+      "url": "/docs/dsa/heaps-priority-queues/6-reorganize-string"
     },
     {
       "id": "7-find-median-from-data-stream",
@@ -1435,7 +1435,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 7,
-      "url": "/docs/dsa/11-heaps-priority-queues/7-find-median-from-data-stream"
+      "url": "/docs/dsa/heaps-priority-queues/7-find-median-from-data-stream"
     },
     {
       "id": "1-subsets",
@@ -1445,7 +1445,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 1,
-      "url": "/docs/dsa/12-recursion-backtracking/1-subsets"
+      "url": "/docs/dsa/recursion-backtracking/1-subsets"
     },
     {
       "id": "2-subsets-ii",
@@ -1455,7 +1455,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 2,
-      "url": "/docs/dsa/12-recursion-backtracking/2-subsets-ii"
+      "url": "/docs/dsa/recursion-backtracking/2-subsets-ii"
     },
     {
       "id": "3-combination-sum",
@@ -1465,7 +1465,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 3,
-      "url": "/docs/dsa/12-recursion-backtracking/3-combination-sum"
+      "url": "/docs/dsa/recursion-backtracking/3-combination-sum"
     },
     {
       "id": "4-combination-sum-ii",
@@ -1475,7 +1475,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 4,
-      "url": "/docs/dsa/12-recursion-backtracking/4-combination-sum-ii"
+      "url": "/docs/dsa/recursion-backtracking/4-combination-sum-ii"
     },
     {
       "id": "5-permutations",
@@ -1485,7 +1485,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 5,
-      "url": "/docs/dsa/12-recursion-backtracking/5-permutations"
+      "url": "/docs/dsa/recursion-backtracking/5-permutations"
     },
     {
       "id": "6-word-search",
@@ -1495,7 +1495,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 6,
-      "url": "/docs/dsa/12-recursion-backtracking/6-word-search"
+      "url": "/docs/dsa/recursion-backtracking/6-word-search"
     },
     {
       "id": "7-palindrome-partitioning",
@@ -1505,7 +1505,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 7,
-      "url": "/docs/dsa/12-recursion-backtracking/7-palindrome-partitioning"
+      "url": "/docs/dsa/recursion-backtracking/7-palindrome-partitioning"
     },
     {
       "id": "8-letter-combinations-of-a-phone-number",
@@ -1515,7 +1515,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 8,
-      "url": "/docs/dsa/12-recursion-backtracking/8-letter-combinations-of-a-phone-number"
+      "url": "/docs/dsa/recursion-backtracking/8-letter-combinations-of-a-phone-number"
     },
     {
       "id": "9-generate-parentheses",
@@ -1525,7 +1525,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 9,
-      "url": "/docs/dsa/12-recursion-backtracking/9-generate-parentheses"
+      "url": "/docs/dsa/recursion-backtracking/9-generate-parentheses"
     },
     {
       "id": "10-n-queens",
@@ -1535,7 +1535,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 10,
-      "url": "/docs/dsa/12-recursion-backtracking/10-n-queens"
+      "url": "/docs/dsa/recursion-backtracking/10-n-queens"
     },
     {
       "id": "1-meeting-rooms",
@@ -1545,7 +1545,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 1,
-      "url": "/docs/dsa/13-intervals/1-meeting-rooms"
+      "url": "/docs/dsa/intervals/1-meeting-rooms"
     },
     {
       "id": "2-merge-intervals",
@@ -1555,7 +1555,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 2,
-      "url": "/docs/dsa/13-intervals/2-merge-intervals"
+      "url": "/docs/dsa/intervals/2-merge-intervals"
     },
     {
       "id": "3-insert-interval",
@@ -1565,7 +1565,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 3,
-      "url": "/docs/dsa/13-intervals/3-insert-interval"
+      "url": "/docs/dsa/intervals/3-insert-interval"
     },
     {
       "id": "4-non-overlapping-intervals",
@@ -1575,7 +1575,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 4,
-      "url": "/docs/dsa/13-intervals/4-non-overlapping-intervals"
+      "url": "/docs/dsa/intervals/4-non-overlapping-intervals"
     },
     {
       "id": "5-meeting-rooms-ii",
@@ -1585,7 +1585,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 5,
-      "url": "/docs/dsa/13-intervals/5-meeting-rooms-ii"
+      "url": "/docs/dsa/intervals/5-meeting-rooms-ii"
     },
     {
       "id": "6-interval-list-intersections",
@@ -1595,7 +1595,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 6,
-      "url": "/docs/dsa/13-intervals/6-interval-list-intersections"
+      "url": "/docs/dsa/intervals/6-interval-list-intersections"
     },
     {
       "id": "1-best-time-to-buy-and-sell-stock",
@@ -1605,7 +1605,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 1,
-      "url": "/docs/dsa/14-greedy/1-best-time-to-buy-and-sell-stock"
+      "url": "/docs/dsa/greedy/1-best-time-to-buy-and-sell-stock"
     },
     {
       "id": "2-best-time-to-buy-and-sell-stock-ii",
@@ -1615,7 +1615,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 2,
-      "url": "/docs/dsa/14-greedy/2-best-time-to-buy-and-sell-stock-ii"
+      "url": "/docs/dsa/greedy/2-best-time-to-buy-and-sell-stock-ii"
     },
     {
       "id": "3-maximum-subarray",
@@ -1625,7 +1625,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 3,
-      "url": "/docs/dsa/14-greedy/3-maximum-subarray"
+      "url": "/docs/dsa/greedy/3-maximum-subarray"
     },
     {
       "id": "4-jump-game",
@@ -1635,7 +1635,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 4,
-      "url": "/docs/dsa/14-greedy/4-jump-game"
+      "url": "/docs/dsa/greedy/4-jump-game"
     },
     {
       "id": "5-jump-game-ii",
@@ -1645,7 +1645,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 5,
-      "url": "/docs/dsa/14-greedy/5-jump-game-ii"
+      "url": "/docs/dsa/greedy/5-jump-game-ii"
     },
     {
       "id": "6-gas-station",
@@ -1655,7 +1655,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 6,
-      "url": "/docs/dsa/14-greedy/6-gas-station"
+      "url": "/docs/dsa/greedy/6-gas-station"
     },
     {
       "id": "7-partition-labels",
@@ -1665,7 +1665,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 7,
-      "url": "/docs/dsa/14-greedy/7-partition-labels"
+      "url": "/docs/dsa/greedy/7-partition-labels"
     },
     {
       "id": "8-candy",
@@ -1675,7 +1675,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 8,
-      "url": "/docs/dsa/14-greedy/8-candy"
+      "url": "/docs/dsa/greedy/8-candy"
     },
     {
       "id": "1-number-of-islands",
@@ -1685,7 +1685,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 1,
-      "url": "/docs/dsa/15-graphs/1-number-of-islands"
+      "url": "/docs/dsa/graphs/1-number-of-islands"
     },
     {
       "id": "2-max-area-of-island",
@@ -1695,7 +1695,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 2,
-      "url": "/docs/dsa/15-graphs/2-max-area-of-island"
+      "url": "/docs/dsa/graphs/2-max-area-of-island"
     },
     {
       "id": "3-clone-graph",
@@ -1705,7 +1705,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 3,
-      "url": "/docs/dsa/15-graphs/3-clone-graph"
+      "url": "/docs/dsa/graphs/3-clone-graph"
     },
     {
       "id": "4-rotting-oranges",
@@ -1715,7 +1715,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 4,
-      "url": "/docs/dsa/15-graphs/4-rotting-oranges"
+      "url": "/docs/dsa/graphs/4-rotting-oranges"
     },
     {
       "id": "5-number-of-provinces",
@@ -1725,7 +1725,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 5,
-      "url": "/docs/dsa/15-graphs/5-number-of-provinces"
+      "url": "/docs/dsa/graphs/5-number-of-provinces"
     },
     {
       "id": "6-is-graph-bipartite",
@@ -1735,7 +1735,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 6,
-      "url": "/docs/dsa/15-graphs/6-is-graph-bipartite"
+      "url": "/docs/dsa/graphs/6-is-graph-bipartite"
     },
     {
       "id": "7-course-schedule",
@@ -1745,7 +1745,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 7,
-      "url": "/docs/dsa/15-graphs/7-course-schedule"
+      "url": "/docs/dsa/graphs/7-course-schedule"
     },
     {
       "id": "8-course-schedule-ii",
@@ -1755,7 +1755,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 8,
-      "url": "/docs/dsa/15-graphs/8-course-schedule-ii"
+      "url": "/docs/dsa/graphs/8-course-schedule-ii"
     },
     {
       "id": "9-number-of-connected-components-in-an-undirected-graph",
@@ -1765,7 +1765,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 9,
-      "url": "/docs/dsa/15-graphs/9-number-of-connected-components-in-an-undirected-graph"
+      "url": "/docs/dsa/graphs/9-number-of-connected-components-in-an-undirected-graph"
     },
     {
       "id": "10-redundant-connection",
@@ -1775,7 +1775,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 10,
-      "url": "/docs/dsa/15-graphs/10-redundant-connection"
+      "url": "/docs/dsa/graphs/10-redundant-connection"
     },
     {
       "id": "11-accounts-merge",
@@ -1785,7 +1785,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 11,
-      "url": "/docs/dsa/15-graphs/11-accounts-merge"
+      "url": "/docs/dsa/graphs/11-accounts-merge"
     },
     {
       "id": "12-network-delay-time",
@@ -1795,7 +1795,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 12,
-      "url": "/docs/dsa/15-graphs/12-network-delay-time"
+      "url": "/docs/dsa/graphs/12-network-delay-time"
     },
     {
       "id": "13-cheapest-flights-within-k-stops",
@@ -1805,7 +1805,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 13,
-      "url": "/docs/dsa/15-graphs/13-cheapest-flights-within-k-stops"
+      "url": "/docs/dsa/graphs/13-cheapest-flights-within-k-stops"
     },
     {
       "id": "14-min-cost-to-connect-all-points",
@@ -1815,7 +1815,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 14,
-      "url": "/docs/dsa/15-graphs/14-min-cost-to-connect-all-points"
+      "url": "/docs/dsa/graphs/14-min-cost-to-connect-all-points"
     },
     {
       "id": "15-word-ladder",
@@ -1825,7 +1825,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 15,
-      "url": "/docs/dsa/15-graphs/15-word-ladder"
+      "url": "/docs/dsa/graphs/15-word-ladder"
     },
     {
       "id": "16-alien-dictionary",
@@ -1835,7 +1835,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 16,
-      "url": "/docs/dsa/15-graphs/16-alien-dictionary"
+      "url": "/docs/dsa/graphs/16-alien-dictionary"
     },
     {
       "id": "1-climbing-stairs",
@@ -2045,7 +2045,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 1,
-      "url": "/docs/dsa/18-bit-manipulation/1-single-number"
+      "url": "/docs/dsa/bit-manipulation/1-single-number"
     },
     {
       "id": "2-missing-number",
@@ -2055,7 +2055,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 2,
-      "url": "/docs/dsa/18-bit-manipulation/2-missing-number"
+      "url": "/docs/dsa/bit-manipulation/2-missing-number"
     },
     {
       "id": "3-number-of-1-bits",
@@ -2065,7 +2065,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 3,
-      "url": "/docs/dsa/18-bit-manipulation/3-number-of-1-bits"
+      "url": "/docs/dsa/bit-manipulation/3-number-of-1-bits"
     },
     {
       "id": "4-counting-bits",
@@ -2075,7 +2075,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 4,
-      "url": "/docs/dsa/18-bit-manipulation/4-counting-bits"
+      "url": "/docs/dsa/bit-manipulation/4-counting-bits"
     },
     {
       "id": "5-power-of-two",
@@ -2085,7 +2085,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 5,
-      "url": "/docs/dsa/18-bit-manipulation/5-power-of-two"
+      "url": "/docs/dsa/bit-manipulation/5-power-of-two"
     },
     {
       "id": "6-sum-of-two-integers",
@@ -2095,7 +2095,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 6,
-      "url": "/docs/dsa/18-bit-manipulation/6-sum-of-two-integers"
+      "url": "/docs/dsa/bit-manipulation/6-sum-of-two-integers"
     },
     {
       "id": "1-valid-anagram",
@@ -2105,7 +2105,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 1,
-      "url": "/docs/dsa/2-strings/1-valid-anagram"
+      "url": "/docs/dsa/strings/1-valid-anagram"
     },
     {
       "id": "2-longest-common-prefix",
@@ -2115,7 +2115,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 2,
-      "url": "/docs/dsa/2-strings/2-longest-common-prefix"
+      "url": "/docs/dsa/strings/2-longest-common-prefix"
     },
     {
       "id": "3-first-unique-character-in-a-string",
@@ -2125,7 +2125,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 3,
-      "url": "/docs/dsa/2-strings/3-first-unique-character-in-a-string"
+      "url": "/docs/dsa/strings/3-first-unique-character-in-a-string"
     },
     {
       "id": "4-reverse-words-in-a-string",
@@ -2135,7 +2135,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 4,
-      "url": "/docs/dsa/2-strings/4-reverse-words-in-a-string"
+      "url": "/docs/dsa/strings/4-reverse-words-in-a-string"
     },
     {
       "id": "5-string-to-integer-atoi",
@@ -2145,7 +2145,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 5,
-      "url": "/docs/dsa/2-strings/5-string-to-integer-atoi"
+      "url": "/docs/dsa/strings/5-string-to-integer-atoi"
     },
     {
       "id": "1-palindrome-number",
@@ -2155,7 +2155,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 1,
-      "url": "/docs/dsa/3-math-number-theory/1-palindrome-number"
+      "url": "/docs/dsa/math-number-theory/1-palindrome-number"
     },
     {
       "id": "2-plus-one",
@@ -2165,7 +2165,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 2,
-      "url": "/docs/dsa/3-math-number-theory/2-plus-one"
+      "url": "/docs/dsa/math-number-theory/2-plus-one"
     },
     {
       "id": "3-reverse-integer",
@@ -2175,7 +2175,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 3,
-      "url": "/docs/dsa/3-math-number-theory/3-reverse-integer"
+      "url": "/docs/dsa/math-number-theory/3-reverse-integer"
     },
     {
       "id": "4-count-primes",
@@ -2185,7 +2185,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 4,
-      "url": "/docs/dsa/3-math-number-theory/4-count-primes"
+      "url": "/docs/dsa/math-number-theory/4-count-primes"
     },
     {
       "id": "5-pow-x-n",
@@ -2195,7 +2195,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 5,
-      "url": "/docs/dsa/3-math-number-theory/5-pow-x-n"
+      "url": "/docs/dsa/math-number-theory/5-pow-x-n"
     },
     {
       "id": "1-valid-palindrome",
@@ -2205,7 +2205,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 1,
-      "url": "/docs/dsa/4-two-pointers/1-valid-palindrome"
+      "url": "/docs/dsa/two-pointers/1-valid-palindrome"
     },
     {
       "id": "2-merge-sorted-array",
@@ -2215,7 +2215,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 2,
-      "url": "/docs/dsa/4-two-pointers/2-merge-sorted-array"
+      "url": "/docs/dsa/two-pointers/2-merge-sorted-array"
     },
     {
       "id": "3-remove-duplicates-from-sorted-array",
@@ -2225,7 +2225,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 3,
-      "url": "/docs/dsa/4-two-pointers/3-remove-duplicates-from-sorted-array"
+      "url": "/docs/dsa/two-pointers/3-remove-duplicates-from-sorted-array"
     },
     {
       "id": "4-move-zeroes",
@@ -2235,7 +2235,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 4,
-      "url": "/docs/dsa/4-two-pointers/4-move-zeroes"
+      "url": "/docs/dsa/two-pointers/4-move-zeroes"
     },
     {
       "id": "5-sort-colors",
@@ -2245,7 +2245,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 5,
-      "url": "/docs/dsa/4-two-pointers/5-sort-colors"
+      "url": "/docs/dsa/two-pointers/5-sort-colors"
     },
     {
       "id": "6-two-sum-ii",
@@ -2255,7 +2255,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 6,
-      "url": "/docs/dsa/4-two-pointers/6-two-sum-ii"
+      "url": "/docs/dsa/two-pointers/6-two-sum-ii"
     },
     {
       "id": "7-3sum",
@@ -2265,7 +2265,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 7,
-      "url": "/docs/dsa/4-two-pointers/7-3sum"
+      "url": "/docs/dsa/two-pointers/7-3sum"
     },
     {
       "id": "8-container-with-most-water",
@@ -2275,7 +2275,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 8,
-      "url": "/docs/dsa/4-two-pointers/8-container-with-most-water"
+      "url": "/docs/dsa/two-pointers/8-container-with-most-water"
     },
     {
       "id": "9-trapping-rain-water",
@@ -2285,7 +2285,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 9,
-      "url": "/docs/dsa/4-two-pointers/9-trapping-rain-water"
+      "url": "/docs/dsa/two-pointers/9-trapping-rain-water"
     },
     {
       "id": "1-longest-substring-without-repeating-characters",
@@ -2295,7 +2295,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 1,
-      "url": "/docs/dsa/5-sliding-window/1-longest-substring-without-repeating-characters"
+      "url": "/docs/dsa/sliding-window/1-longest-substring-without-repeating-characters"
     },
     {
       "id": "2-longest-repeating-character-replacement",
@@ -2305,7 +2305,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 2,
-      "url": "/docs/dsa/5-sliding-window/2-longest-repeating-character-replacement"
+      "url": "/docs/dsa/sliding-window/2-longest-repeating-character-replacement"
     },
     {
       "id": "3-max-consecutive-ones-iii",
@@ -2315,7 +2315,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 3,
-      "url": "/docs/dsa/5-sliding-window/3-max-consecutive-ones-iii"
+      "url": "/docs/dsa/sliding-window/3-max-consecutive-ones-iii"
     },
     {
       "id": "4-find-all-anagrams-in-a-string",
@@ -2325,7 +2325,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 4,
-      "url": "/docs/dsa/5-sliding-window/4-find-all-anagrams-in-a-string"
+      "url": "/docs/dsa/sliding-window/4-find-all-anagrams-in-a-string"
     },
     {
       "id": "5-permutation-in-string",
@@ -2335,7 +2335,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 5,
-      "url": "/docs/dsa/5-sliding-window/5-permutation-in-string"
+      "url": "/docs/dsa/sliding-window/5-permutation-in-string"
     },
     {
       "id": "6-minimum-size-subarray-sum",
@@ -2345,7 +2345,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 6,
-      "url": "/docs/dsa/5-sliding-window/6-minimum-size-subarray-sum"
+      "url": "/docs/dsa/sliding-window/6-minimum-size-subarray-sum"
     },
     {
       "id": "7-minimum-window-substring",
@@ -2355,7 +2355,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 7,
-      "url": "/docs/dsa/5-sliding-window/7-minimum-window-substring"
+      "url": "/docs/dsa/sliding-window/7-minimum-window-substring"
     },
     {
       "id": "8-sliding-window-maximum",
@@ -2365,7 +2365,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 8,
-      "url": "/docs/dsa/5-sliding-window/8-sliding-window-maximum"
+      "url": "/docs/dsa/sliding-window/8-sliding-window-maximum"
     },
     {
       "id": "1-valid-parentheses",
@@ -2375,7 +2375,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 1,
-      "url": "/docs/dsa/6-stacks/1-valid-parentheses"
+      "url": "/docs/dsa/stacks/1-valid-parentheses"
     },
     {
       "id": "2-min-stack",
@@ -2385,7 +2385,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 2,
-      "url": "/docs/dsa/6-stacks/2-min-stack"
+      "url": "/docs/dsa/stacks/2-min-stack"
     },
     {
       "id": "3-evaluate-reverse-polish-notation",
@@ -2395,7 +2395,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 3,
-      "url": "/docs/dsa/6-stacks/3-evaluate-reverse-polish-notation"
+      "url": "/docs/dsa/stacks/3-evaluate-reverse-polish-notation"
     },
     {
       "id": "4-daily-temperatures",
@@ -2405,7 +2405,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 4,
-      "url": "/docs/dsa/6-stacks/4-daily-temperatures"
+      "url": "/docs/dsa/stacks/4-daily-temperatures"
     },
     {
       "id": "5-next-greater-element-ii",
@@ -2415,7 +2415,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 5,
-      "url": "/docs/dsa/6-stacks/5-next-greater-element-ii"
+      "url": "/docs/dsa/stacks/5-next-greater-element-ii"
     },
     {
       "id": "6-decode-string",
@@ -2425,7 +2425,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 6,
-      "url": "/docs/dsa/6-stacks/6-decode-string"
+      "url": "/docs/dsa/stacks/6-decode-string"
     },
     {
       "id": "7-asteroid-collision",
@@ -2435,7 +2435,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 7,
-      "url": "/docs/dsa/6-stacks/7-asteroid-collision"
+      "url": "/docs/dsa/stacks/7-asteroid-collision"
     },
     {
       "id": "8-basic-calculator-ii",
@@ -2445,7 +2445,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 8,
-      "url": "/docs/dsa/6-stacks/8-basic-calculator-ii"
+      "url": "/docs/dsa/stacks/8-basic-calculator-ii"
     },
     {
       "id": "9-longest-valid-parentheses",
@@ -2455,7 +2455,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 9,
-      "url": "/docs/dsa/6-stacks/9-longest-valid-parentheses"
+      "url": "/docs/dsa/stacks/9-longest-valid-parentheses"
     },
     {
       "id": "10-largest-rectangle-in-histogram",
@@ -2465,7 +2465,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 10,
-      "url": "/docs/dsa/6-stacks/10-largest-rectangle-in-histogram"
+      "url": "/docs/dsa/stacks/10-largest-rectangle-in-histogram"
     },
     {
       "id": "1-binary-search",
@@ -2475,7 +2475,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 1,
-      "url": "/docs/dsa/7-binary-search/1-binary-search"
+      "url": "/docs/dsa/binary-search/1-binary-search"
     },
     {
       "id": "2-search-insert-position",
@@ -2485,7 +2485,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 2,
-      "url": "/docs/dsa/7-binary-search/2-search-insert-position"
+      "url": "/docs/dsa/binary-search/2-search-insert-position"
     },
     {
       "id": "3-find-first-and-last-position-of-element-in-sorted-array",
@@ -2495,7 +2495,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 3,
-      "url": "/docs/dsa/7-binary-search/3-find-first-and-last-position-of-element-in-sorted-array"
+      "url": "/docs/dsa/binary-search/3-find-first-and-last-position-of-element-in-sorted-array"
     },
     {
       "id": "4-find-peak-element",
@@ -2505,7 +2505,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 4,
-      "url": "/docs/dsa/7-binary-search/4-find-peak-element"
+      "url": "/docs/dsa/binary-search/4-find-peak-element"
     },
     {
       "id": "5-search-a-2d-matrix",
@@ -2515,7 +2515,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 5,
-      "url": "/docs/dsa/7-binary-search/5-search-a-2d-matrix"
+      "url": "/docs/dsa/binary-search/5-search-a-2d-matrix"
     },
     {
       "id": "6-find-minimum-in-rotated-sorted-array",
@@ -2525,7 +2525,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 6,
-      "url": "/docs/dsa/7-binary-search/6-find-minimum-in-rotated-sorted-array"
+      "url": "/docs/dsa/binary-search/6-find-minimum-in-rotated-sorted-array"
     },
     {
       "id": "7-search-in-rotated-sorted-array",
@@ -2535,7 +2535,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 7,
-      "url": "/docs/dsa/7-binary-search/7-search-in-rotated-sorted-array"
+      "url": "/docs/dsa/binary-search/7-search-in-rotated-sorted-array"
     },
     {
       "id": "8-koko-eating-bananas",
@@ -2545,7 +2545,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 8,
-      "url": "/docs/dsa/7-binary-search/8-koko-eating-bananas"
+      "url": "/docs/dsa/binary-search/8-koko-eating-bananas"
     },
     {
       "id": "9-capacity-to-ship-packages-within-d-days",
@@ -2555,7 +2555,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 9,
-      "url": "/docs/dsa/7-binary-search/9-capacity-to-ship-packages-within-d-days"
+      "url": "/docs/dsa/binary-search/9-capacity-to-ship-packages-within-d-days"
     },
     {
       "id": "10-split-array-largest-sum",
@@ -2565,7 +2565,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 10,
-      "url": "/docs/dsa/7-binary-search/10-split-array-largest-sum"
+      "url": "/docs/dsa/binary-search/10-split-array-largest-sum"
     },
     {
       "id": "11-median-of-two-sorted-arrays",
@@ -2575,7 +2575,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 11,
-      "url": "/docs/dsa/7-binary-search/11-median-of-two-sorted-arrays"
+      "url": "/docs/dsa/binary-search/11-median-of-two-sorted-arrays"
     },
     {
       "id": "1-reverse-linked-list",
@@ -2585,7 +2585,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 1,
-      "url": "/docs/dsa/8-linked-lists/1-reverse-linked-list"
+      "url": "/docs/dsa/linked-lists/1-reverse-linked-list"
     },
     {
       "id": "2-merge-two-sorted-lists",
@@ -2595,7 +2595,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 2,
-      "url": "/docs/dsa/8-linked-lists/2-merge-two-sorted-lists"
+      "url": "/docs/dsa/linked-lists/2-merge-two-sorted-lists"
     },
     {
       "id": "3-linked-list-cycle",
@@ -2605,7 +2605,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 3,
-      "url": "/docs/dsa/8-linked-lists/3-linked-list-cycle"
+      "url": "/docs/dsa/linked-lists/3-linked-list-cycle"
     },
     {
       "id": "4-middle-of-the-linked-list",
@@ -2615,7 +2615,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 4,
-      "url": "/docs/dsa/8-linked-lists/4-middle-of-the-linked-list"
+      "url": "/docs/dsa/linked-lists/4-middle-of-the-linked-list"
     },
     {
       "id": "5-intersection-of-two-linked-lists",
@@ -2625,7 +2625,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 5,
-      "url": "/docs/dsa/8-linked-lists/5-intersection-of-two-linked-lists"
+      "url": "/docs/dsa/linked-lists/5-intersection-of-two-linked-lists"
     },
     {
       "id": "6-palindrome-linked-list",
@@ -2635,7 +2635,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 6,
-      "url": "/docs/dsa/8-linked-lists/6-palindrome-linked-list"
+      "url": "/docs/dsa/linked-lists/6-palindrome-linked-list"
     },
     {
       "id": "7-linked-list-cycle-ii",
@@ -2645,7 +2645,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 7,
-      "url": "/docs/dsa/8-linked-lists/7-linked-list-cycle-ii"
+      "url": "/docs/dsa/linked-lists/7-linked-list-cycle-ii"
     },
     {
       "id": "8-remove-nth-node-from-end-of-list",
@@ -2655,7 +2655,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 8,
-      "url": "/docs/dsa/8-linked-lists/8-remove-nth-node-from-end-of-list"
+      "url": "/docs/dsa/linked-lists/8-remove-nth-node-from-end-of-list"
     },
     {
       "id": "9-add-two-numbers",
@@ -2665,7 +2665,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 9,
-      "url": "/docs/dsa/8-linked-lists/9-add-two-numbers"
+      "url": "/docs/dsa/linked-lists/9-add-two-numbers"
     },
     {
       "id": "10-sort-list",
@@ -2675,7 +2675,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 10,
-      "url": "/docs/dsa/8-linked-lists/10-sort-list"
+      "url": "/docs/dsa/linked-lists/10-sort-list"
     },
     {
       "id": "11-lru-cache",
@@ -2685,7 +2685,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 11,
-      "url": "/docs/dsa/8-linked-lists/11-lru-cache"
+      "url": "/docs/dsa/linked-lists/11-lru-cache"
     },
     {
       "id": "12-merge-k-sorted-lists",
@@ -2695,7 +2695,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 12,
-      "url": "/docs/dsa/8-linked-lists/12-merge-k-sorted-lists"
+      "url": "/docs/dsa/linked-lists/12-merge-k-sorted-lists"
     },
     {
       "id": "13-reverse-nodes-in-k-group",
@@ -2705,7 +2705,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 13,
-      "url": "/docs/dsa/8-linked-lists/13-reverse-nodes-in-k-group"
+      "url": "/docs/dsa/linked-lists/13-reverse-nodes-in-k-group"
     },
     {
       "id": "1-tree-traversals-inorder-preorder-postorder",
@@ -2715,7 +2715,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 1,
-      "url": "/docs/dsa/9-trees/1-tree-traversals-inorder-preorder-postorder"
+      "url": "/docs/dsa/trees/1-tree-traversals-inorder-preorder-postorder"
     },
     {
       "id": "2-invert-binary-tree",
@@ -2725,7 +2725,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 2,
-      "url": "/docs/dsa/9-trees/2-invert-binary-tree"
+      "url": "/docs/dsa/trees/2-invert-binary-tree"
     },
     {
       "id": "3-maximum-depth-of-binary-tree",
@@ -2735,7 +2735,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 3,
-      "url": "/docs/dsa/9-trees/3-maximum-depth-of-binary-tree"
+      "url": "/docs/dsa/trees/3-maximum-depth-of-binary-tree"
     },
     {
       "id": "4-diameter-of-binary-tree",
@@ -2745,7 +2745,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 4,
-      "url": "/docs/dsa/9-trees/4-diameter-of-binary-tree"
+      "url": "/docs/dsa/trees/4-diameter-of-binary-tree"
     },
     {
       "id": "5-balanced-binary-tree",
@@ -2755,7 +2755,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 5,
-      "url": "/docs/dsa/9-trees/5-balanced-binary-tree"
+      "url": "/docs/dsa/trees/5-balanced-binary-tree"
     },
     {
       "id": "6-same-tree",
@@ -2765,7 +2765,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 6,
-      "url": "/docs/dsa/9-trees/6-same-tree"
+      "url": "/docs/dsa/trees/6-same-tree"
     },
     {
       "id": "7-symmetric-tree",
@@ -2775,7 +2775,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 7,
-      "url": "/docs/dsa/9-trees/7-symmetric-tree"
+      "url": "/docs/dsa/trees/7-symmetric-tree"
     },
     {
       "id": "8-path-sum",
@@ -2785,7 +2785,7 @@
       "difficulty": "easy",
       "points": 1,
       "position": 8,
-      "url": "/docs/dsa/9-trees/8-path-sum"
+      "url": "/docs/dsa/trees/8-path-sum"
     },
     {
       "id": "9-binary-tree-level-order-traversal",
@@ -2795,7 +2795,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 9,
-      "url": "/docs/dsa/9-trees/9-binary-tree-level-order-traversal"
+      "url": "/docs/dsa/trees/9-binary-tree-level-order-traversal"
     },
     {
       "id": "10-binary-tree-zigzag-level-order-traversal",
@@ -2805,7 +2805,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 10,
-      "url": "/docs/dsa/9-trees/10-binary-tree-zigzag-level-order-traversal"
+      "url": "/docs/dsa/trees/10-binary-tree-zigzag-level-order-traversal"
     },
     {
       "id": "11-binary-tree-right-side-view",
@@ -2815,7 +2815,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 11,
-      "url": "/docs/dsa/9-trees/11-binary-tree-right-side-view"
+      "url": "/docs/dsa/trees/11-binary-tree-right-side-view"
     },
     {
       "id": "12-validate-binary-search-tree",
@@ -2825,7 +2825,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 12,
-      "url": "/docs/dsa/9-trees/12-validate-binary-search-tree"
+      "url": "/docs/dsa/trees/12-validate-binary-search-tree"
     },
     {
       "id": "13-kth-smallest-element-in-a-bst",
@@ -2835,7 +2835,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 13,
-      "url": "/docs/dsa/9-trees/13-kth-smallest-element-in-a-bst"
+      "url": "/docs/dsa/trees/13-kth-smallest-element-in-a-bst"
     },
     {
       "id": "14-construct-binary-tree-from-preorder-and-inorder",
@@ -2845,7 +2845,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 14,
-      "url": "/docs/dsa/9-trees/14-construct-binary-tree-from-preorder-and-inorder"
+      "url": "/docs/dsa/trees/14-construct-binary-tree-from-preorder-and-inorder"
     },
     {
       "id": "15-lowest-common-ancestor-of-a-bst",
@@ -2855,7 +2855,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 15,
-      "url": "/docs/dsa/9-trees/15-lowest-common-ancestor-of-a-bst"
+      "url": "/docs/dsa/trees/15-lowest-common-ancestor-of-a-bst"
     },
     {
       "id": "16-lowest-common-ancestor-of-a-binary-tree",
@@ -2865,7 +2865,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 16,
-      "url": "/docs/dsa/9-trees/16-lowest-common-ancestor-of-a-binary-tree"
+      "url": "/docs/dsa/trees/16-lowest-common-ancestor-of-a-binary-tree"
     },
     {
       "id": "17-flatten-binary-tree-to-linked-list",
@@ -2875,7 +2875,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 17,
-      "url": "/docs/dsa/9-trees/17-flatten-binary-tree-to-linked-list"
+      "url": "/docs/dsa/trees/17-flatten-binary-tree-to-linked-list"
     },
     {
       "id": "18-bst-iterator",
@@ -2885,7 +2885,7 @@
       "difficulty": "medium",
       "points": 2,
       "position": 18,
-      "url": "/docs/dsa/9-trees/18-bst-iterator"
+      "url": "/docs/dsa/trees/18-bst-iterator"
     },
     {
       "id": "19-binary-tree-maximum-path-sum",
@@ -2895,7 +2895,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 19,
-      "url": "/docs/dsa/9-trees/19-binary-tree-maximum-path-sum"
+      "url": "/docs/dsa/trees/19-binary-tree-maximum-path-sum"
     },
     {
       "id": "20-serialize-and-deserialize-binary-tree",
@@ -2905,7 +2905,7 @@
       "difficulty": "hard",
       "points": 3,
       "position": 20,
-      "url": "/docs/dsa/9-trees/20-serialize-and-deserialize-binary-tree"
+      "url": "/docs/dsa/trees/20-serialize-and-deserialize-binary-tree"
     },
     {
       "id": "19-static-binding-vs-dynamic-binding",
