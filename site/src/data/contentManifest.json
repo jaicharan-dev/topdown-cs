@@ -1,0 +1,3731 @@
+{
+  "totalPages": 332,
+  "totalPoints": 642,
+  "difficulties": {
+    "easy": 71,
+    "medium": 212,
+    "hard": 49
+  },
+  "weights": {
+    "easy": 1,
+    "medium": 2,
+    "hard": 3
+  },
+  "groups": {
+    "cn-additional": {
+      "pages": 6,
+      "points": 12,
+      "easy": 1,
+      "medium": 4,
+      "hard": 1,
+      "label": "CN Additional"
+    },
+    "cn-essential": {
+      "pages": 10,
+      "points": 16,
+      "easy": 5,
+      "medium": 4,
+      "hard": 1,
+      "label": "CN Essential"
+    },
+    "cn-problems": {
+      "pages": 10,
+      "points": 22,
+      "easy": 1,
+      "medium": 6,
+      "hard": 3,
+      "label": "CN Problems"
+    },
+    "code-tracing": {
+      "pages": 8,
+      "points": 20,
+      "easy": 0,
+      "medium": 4,
+      "hard": 4,
+      "label": "Code Tracing"
+    },
+    "database-design": {
+      "pages": 6,
+      "points": 13,
+      "easy": 0,
+      "medium": 5,
+      "hard": 1,
+      "label": "DB Design"
+    },
+    "dbms-additional": {
+      "pages": 20,
+      "points": 42,
+      "easy": 1,
+      "medium": 16,
+      "hard": 3,
+      "label": "DBMS Additional"
+    },
+    "dbms-essential": {
+      "pages": 15,
+      "points": 23,
+      "easy": 7,
+      "medium": 8,
+      "hard": 0,
+      "label": "DBMS Essential"
+    },
+    "design-patterns": {
+      "pages": 6,
+      "points": 13,
+      "easy": 0,
+      "medium": 5,
+      "hard": 1,
+      "label": "Design Patterns"
+    },
+    "dsa": {
+      "pages": 169,
+      "points": 321,
+      "easy": 37,
+      "medium": 112,
+      "hard": 20,
+      "label": "DSA"
+    },
+    "oop-additional": {
+      "pages": 17,
+      "points": 34,
+      "easy": 3,
+      "medium": 11,
+      "hard": 3,
+      "label": "OOP Additional"
+    },
+    "oop-essential": {
+      "pages": 22,
+      "points": 41,
+      "easy": 7,
+      "medium": 11,
+      "hard": 4,
+      "label": "OOP Essential"
+    },
+    "os-additional": {
+      "pages": 15,
+      "points": 37,
+      "easy": 0,
+      "medium": 8,
+      "hard": 7,
+      "label": "OS Additional"
+    },
+    "os-essential": {
+      "pages": 20,
+      "points": 31,
+      "easy": 9,
+      "medium": 11,
+      "hard": 0,
+      "label": "OS Essentials"
+    },
+    "os-problems": {
+      "pages": 8,
+      "points": 17,
+      "easy": 0,
+      "medium": 7,
+      "hard": 1,
+      "label": "OS Problems"
+    }
+  },
+  "blocks": {
+    "cn-additional": {
+      "pages": 6,
+      "points": 12,
+      "easy": 1,
+      "medium": 4,
+      "hard": 1,
+      "group": "cn-additional",
+      "label": "CN Additional"
+    },
+    "cn-essential": {
+      "pages": 10,
+      "points": 16,
+      "easy": 5,
+      "medium": 4,
+      "hard": 1,
+      "group": "cn-essential",
+      "label": "CN Essential"
+    },
+    "cn-problems": {
+      "pages": 10,
+      "points": 22,
+      "easy": 1,
+      "medium": 6,
+      "hard": 3,
+      "group": "cn-problems",
+      "label": "CN Problems"
+    },
+    "code-tracing": {
+      "pages": 8,
+      "points": 20,
+      "easy": 0,
+      "medium": 4,
+      "hard": 4,
+      "group": "code-tracing",
+      "label": "Code Tracing"
+    },
+    "database-design": {
+      "pages": 6,
+      "points": 13,
+      "easy": 0,
+      "medium": 5,
+      "hard": 1,
+      "group": "database-design",
+      "label": "DB Design"
+    },
+    "dbms-additional": {
+      "pages": 20,
+      "points": 42,
+      "easy": 1,
+      "medium": 16,
+      "hard": 3,
+      "group": "dbms-additional",
+      "label": "DBMS Additional"
+    },
+    "dbms-essential": {
+      "pages": 15,
+      "points": 23,
+      "easy": 7,
+      "medium": 8,
+      "hard": 0,
+      "group": "dbms-essential",
+      "label": "DBMS Essential"
+    },
+    "design-patterns": {
+      "pages": 6,
+      "points": 13,
+      "easy": 0,
+      "medium": 5,
+      "hard": 1,
+      "group": "design-patterns",
+      "label": "Design Patterns"
+    },
+    "dsa/1-arrays-hashing": {
+      "pages": 12,
+      "points": 22,
+      "easy": 3,
+      "medium": 8,
+      "hard": 1,
+      "group": "dsa",
+      "label": "Arrays & Hashing"
+    },
+    "dsa/10-tries": {
+      "pages": 3,
+      "points": 7,
+      "easy": 0,
+      "medium": 2,
+      "hard": 1,
+      "group": "dsa",
+      "label": "Tries"
+    },
+    "dsa/11-heaps-priority-queues": {
+      "pages": 7,
+      "points": 15,
+      "easy": 0,
+      "medium": 6,
+      "hard": 1,
+      "group": "dsa",
+      "label": "Heaps & Priority Queues"
+    },
+    "dsa/12-recursion-backtracking": {
+      "pages": 10,
+      "points": 21,
+      "easy": 0,
+      "medium": 9,
+      "hard": 1,
+      "group": "dsa",
+      "label": "Backtracking"
+    },
+    "dsa/13-intervals": {
+      "pages": 6,
+      "points": 11,
+      "easy": 1,
+      "medium": 5,
+      "hard": 0,
+      "group": "dsa",
+      "label": "Intervals"
+    },
+    "dsa/14-greedy": {
+      "pages": 8,
+      "points": 16,
+      "easy": 1,
+      "medium": 6,
+      "hard": 1,
+      "group": "dsa",
+      "label": "Greedy"
+    },
+    "dsa/15-graphs": {
+      "pages": 16,
+      "points": 34,
+      "easy": 0,
+      "medium": 14,
+      "hard": 2,
+      "group": "dsa",
+      "label": "Graphs"
+    },
+    "dsa/16-1d-dp": {
+      "pages": 12,
+      "points": 23,
+      "easy": 1,
+      "medium": 11,
+      "hard": 0,
+      "group": "dsa",
+      "label": "1D Dynamic Programming"
+    },
+    "dsa/17-2d-dp": {
+      "pages": 8,
+      "points": 18,
+      "easy": 0,
+      "medium": 6,
+      "hard": 2,
+      "group": "dsa",
+      "label": "2D Dynamic Programming"
+    },
+    "dsa/18-bit-manipulation": {
+      "pages": 6,
+      "points": 7,
+      "easy": 5,
+      "medium": 1,
+      "hard": 0,
+      "group": "dsa",
+      "label": "Bit Manipulation"
+    },
+    "dsa/2-strings": {
+      "pages": 5,
+      "points": 7,
+      "easy": 3,
+      "medium": 2,
+      "hard": 0,
+      "group": "dsa",
+      "label": "Strings"
+    },
+    "dsa/3-math-number-theory": {
+      "pages": 5,
+      "points": 8,
+      "easy": 2,
+      "medium": 3,
+      "hard": 0,
+      "group": "dsa",
+      "label": "Math Basics"
+    },
+    "dsa/4-two-pointers": {
+      "pages": 9,
+      "points": 15,
+      "easy": 4,
+      "medium": 4,
+      "hard": 1,
+      "group": "dsa",
+      "label": "Two Pointers"
+    },
+    "dsa/5-sliding-window": {
+      "pages": 8,
+      "points": 18,
+      "easy": 0,
+      "medium": 6,
+      "hard": 2,
+      "group": "dsa",
+      "label": "Sliding Window"
+    },
+    "dsa/6-stacks": {
+      "pages": 10,
+      "points": 21,
+      "easy": 1,
+      "medium": 7,
+      "hard": 2,
+      "group": "dsa",
+      "label": "Stacks & Queues"
+    },
+    "dsa/7-binary-search": {
+      "pages": 11,
+      "points": 22,
+      "easy": 2,
+      "medium": 7,
+      "hard": 2,
+      "group": "dsa",
+      "label": "Binary Search"
+    },
+    "dsa/8-linked-lists": {
+      "pages": 13,
+      "points": 22,
+      "easy": 6,
+      "medium": 5,
+      "hard": 2,
+      "group": "dsa",
+      "label": "Linked Lists"
+    },
+    "dsa/9-trees": {
+      "pages": 20,
+      "points": 34,
+      "easy": 8,
+      "medium": 10,
+      "hard": 2,
+      "group": "dsa",
+      "label": "Trees & BST"
+    },
+    "oop-additional": {
+      "pages": 17,
+      "points": 34,
+      "easy": 3,
+      "medium": 11,
+      "hard": 3,
+      "group": "oop-additional",
+      "label": "OOP Additional"
+    },
+    "oop-essential": {
+      "pages": 22,
+      "points": 41,
+      "easy": 7,
+      "medium": 11,
+      "hard": 4,
+      "group": "oop-essential",
+      "label": "OOP Essential"
+    },
+    "os-additional": {
+      "pages": 15,
+      "points": 37,
+      "easy": 0,
+      "medium": 8,
+      "hard": 7,
+      "group": "os-additional",
+      "label": "OS Additional"
+    },
+    "os-essential": {
+      "pages": 20,
+      "points": 31,
+      "easy": 9,
+      "medium": 11,
+      "hard": 0,
+      "group": "os-essential",
+      "label": "OS Essentials"
+    },
+    "os-problems": {
+      "pages": 8,
+      "points": 17,
+      "easy": 0,
+      "medium": 7,
+      "hard": 1,
+      "group": "os-problems",
+      "label": "OS Problems"
+    }
+  },
+  "pages": [
+    {
+      "id": "1-sessions-vs-jwt",
+      "group": "cn-additional",
+      "block": "cn-additional",
+      "title": "Cookie Sessions vs JWT Authentication",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 1,
+      "url": "/docs/cn-additional/1-sessions-vs-jwt"
+    },
+    {
+      "id": "2-polling-websockets",
+      "group": "cn-additional",
+      "block": "cn-additional",
+      "title": "HTTP Polling, Long Polling & WebSockets",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/cn-additional/2-polling-websockets"
+    },
+    {
+      "id": "3-cors-preflight",
+      "group": "cn-additional",
+      "block": "cn-additional",
+      "title": "CORS & Preflight Requests",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/cn-additional/3-cors-preflight"
+    },
+    {
+      "id": "4-tls-handshake",
+      "group": "cn-additional",
+      "block": "cn-additional",
+      "title": "TLS Handshake: Encryption, Certificates & MITM Prevention",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 4,
+      "url": "/docs/cn-additional/4-tls-handshake"
+    },
+    {
+      "id": "5-api-idempotency",
+      "group": "cn-additional",
+      "block": "cn-additional",
+      "title": "API Idempotency & Idempotency Keys",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/cn-additional/5-api-idempotency"
+    },
+    {
+      "id": "6-http-caching-etag",
+      "group": "cn-additional",
+      "block": "cn-additional",
+      "title": "HTTP Caching, ETags & 304 Not Modified",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 6,
+      "url": "/docs/cn-additional/6-http-caching-etag"
+    },
+    {
+      "id": "1-osi-model-tcp-ip",
+      "group": "cn-essential",
+      "block": "cn-essential",
+      "title": "OSI Model & TCP/IP: Layered Architecture",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/cn-essential/1-osi-model-tcp-ip"
+    },
+    {
+      "id": "2-tcp-vs-udp",
+      "group": "cn-essential",
+      "block": "cn-essential",
+      "title": "TCP vs UDP: Reliability vs Speed",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 2,
+      "url": "/docs/cn-essential/2-tcp-vs-udp"
+    },
+    {
+      "id": "3-tcp-handshake-termination",
+      "group": "cn-essential",
+      "block": "cn-essential",
+      "title": "TCP 3-Way Handshake & 4-Way Termination",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/cn-essential/3-tcp-handshake-termination"
+    },
+    {
+      "id": "4-flow-control-congestion-control",
+      "group": "cn-essential",
+      "block": "cn-essential",
+      "title": "Flow Control vs Congestion Control",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/cn-essential/4-flow-control-congestion-control"
+    },
+    {
+      "id": "5-public-private-ip-nat",
+      "group": "cn-essential",
+      "block": "cn-essential",
+      "title": "Public vs Private IP & NAT",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 5,
+      "url": "/docs/cn-essential/5-public-private-ip-nat"
+    },
+    {
+      "id": "6-dns-resolution",
+      "group": "cn-essential",
+      "block": "cn-essential",
+      "title": "DNS Resolution: Caches, Root, TLD & Authoritative",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/cn-essential/6-dns-resolution"
+    },
+    {
+      "id": "7-http-request-https",
+      "group": "cn-essential",
+      "block": "cn-essential",
+      "title": "HTTP Request Components, HTTPS & TLS",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 7,
+      "url": "/docs/cn-essential/7-http-request-https"
+    },
+    {
+      "id": "8-http-versions",
+      "group": "cn-essential",
+      "block": "cn-essential",
+      "title": "HTTP/1.1 vs HTTP/2 vs HTTP/3: Evolution of the Web",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 8,
+      "url": "/docs/cn-essential/8-http-versions"
+    },
+    {
+      "id": "9-proxy-load-balancer-cdn",
+      "group": "cn-essential",
+      "block": "cn-essential",
+      "title": "Forward Proxy, Reverse Proxy, Load Balancer & CDN",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 9,
+      "url": "/docs/cn-essential/9-proxy-load-balancer-cdn"
+    },
+    {
+      "id": "10-url-to-page-render",
+      "group": "cn-essential",
+      "block": "cn-essential",
+      "title": "URL to Page Render: The Complete Walkthrough",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 10,
+      "url": "/docs/cn-essential/10-url-to-page-render"
+    },
+    {
+      "id": "1-subnetting",
+      "group": "cn-problems",
+      "block": "cn-problems",
+      "title": "Subnetting: Network, Broadcast and Host Range",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 1,
+      "url": "/docs/cn-problems/1-subnetting"
+    },
+    {
+      "id": "2-reverse-subnetting",
+      "group": "cn-problems",
+      "block": "cn-problems",
+      "title": "Reverse Subnetting: Designing the Mask, FLSM and VLSM",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/cn-problems/2-reverse-subnetting"
+    },
+    {
+      "id": "3-internet-checksum",
+      "group": "cn-problems",
+      "block": "cn-problems",
+      "title": "The Internet Checksum: One's Complement and End-Around Carry",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/cn-problems/3-internet-checksum"
+    },
+    {
+      "id": "4-crc-computation",
+      "group": "cn-problems",
+      "block": "cn-problems",
+      "title": "CRC: Cyclic Redundancy Check Computation",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 4,
+      "url": "/docs/cn-problems/4-crc-computation"
+    },
+    {
+      "id": "5-hamming-code",
+      "group": "cn-problems",
+      "block": "cn-problems",
+      "title": "Hamming Code: Locating a Single-Bit Error",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 5,
+      "url": "/docs/cn-problems/5-hamming-code"
+    },
+    {
+      "id": "6-parity-check",
+      "group": "cn-problems",
+      "block": "cn-problems",
+      "title": "Even Parity and the Two-Bit Blind Spot",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 6,
+      "url": "/docs/cn-problems/6-parity-check"
+    },
+    {
+      "id": "7-delay-calculations",
+      "group": "cn-problems",
+      "block": "cn-problems",
+      "title": "Transmission Delay against Propagation Delay",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 7,
+      "url": "/docs/cn-problems/7-delay-calculations"
+    },
+    {
+      "id": "8-bandwidth-delay-product",
+      "group": "cn-problems",
+      "block": "cn-problems",
+      "title": "Bandwidth-Delay Product and Stop-and-Wait",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 8,
+      "url": "/docs/cn-problems/8-bandwidth-delay-product"
+    },
+    {
+      "id": "9-sliding-window",
+      "group": "cn-problems",
+      "block": "cn-problems",
+      "title": "Sliding Window: Window Size and Sequence Numbering",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 9,
+      "url": "/docs/cn-problems/9-sliding-window"
+    },
+    {
+      "id": "10-framing-efficiency",
+      "group": "cn-problems",
+      "block": "cn-problems",
+      "title": "Framing Efficiency, MTU Trade-offs and Stuffing",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 10,
+      "url": "/docs/cn-problems/10-framing-efficiency"
+    },
+    {
+      "id": "1-code-trace-static-instance-constructor",
+      "group": "code-tracing",
+      "block": "code-tracing",
+      "title": "Code Trace: Static Block, Instance Block and Constructor Order",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 1,
+      "url": "/docs/code-tracing/1-code-trace-static-instance-constructor"
+    },
+    {
+      "id": "2-code-trace-this-super-chaining",
+      "group": "code-tracing",
+      "block": "code-tracing",
+      "title": "Code Trace: this() and super() Constructor Chaining",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/code-tracing/2-code-trace-this-super-chaining"
+    },
+    {
+      "id": "3-code-trace-overridden-method-parent-constructor",
+      "group": "code-tracing",
+      "block": "code-tracing",
+      "title": "Code Trace: Overridden Method Called from a Parent Constructor",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 3,
+      "url": "/docs/code-tracing/3-code-trace-overridden-method-parent-constructor"
+    },
+    {
+      "id": "4-code-trace-diamond-shaped-multiple-inheritance",
+      "group": "code-tracing",
+      "block": "code-tracing",
+      "title": "Code Trace: Diamond Inheritance and the MRO",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 4,
+      "url": "/docs/code-tracing/4-code-trace-diamond-shaped-multiple-inheritance"
+    },
+    {
+      "id": "5-code-trace-class-vs-instance-attribute-shadowing",
+      "group": "code-tracing",
+      "block": "code-tracing",
+      "title": "Code Trace: Class Attribute against Instance Attribute",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/code-tracing/5-code-trace-class-vs-instance-attribute-shadowing"
+    },
+    {
+      "id": "6-code-trace-unimplemented-abstract-method",
+      "group": "code-tracing",
+      "block": "code-tracing",
+      "title": "Code Trace: Unimplemented Abstract Method and Contracts",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/code-tracing/6-code-trace-unimplemented-abstract-method"
+    },
+    {
+      "id": "7-code-trace-autoboxing-overload-resolution",
+      "group": "code-tracing",
+      "block": "code-tracing",
+      "title": "Code Trace: Autoboxing and Overload Resolution Priority",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 7,
+      "url": "/docs/code-tracing/7-code-trace-autoboxing-overload-resolution"
+    },
+    {
+      "id": "8-code-trace-rectangle-square-lsp",
+      "group": "code-tracing",
+      "block": "code-tracing",
+      "title": "Code Trace: Rectangle, Square and the Liskov Substitution Principle",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 8,
+      "url": "/docs/code-tracing/8-code-trace-rectangle-square-lsp"
+    },
+    {
+      "id": "1-wallet-payment-system",
+      "group": "database-design",
+      "block": "database-design",
+      "title": "Design a Digital Wallet System",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 1,
+      "url": "/docs/database-design/1-wallet-payment-system"
+    },
+    {
+      "id": "4-expense-splitting-splitwise",
+      "group": "database-design",
+      "block": "database-design",
+      "title": "Design Splitwise: Expense Splitting & Debt Simplification",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/database-design/4-expense-splitting-splitwise"
+    },
+    {
+      "id": "5-food-delivery-swiggy-zomato",
+      "group": "database-design",
+      "block": "database-design",
+      "title": "Design Swiggy / Zomato: Food Delivery & Order State Machine",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/database-design/5-food-delivery-swiggy-zomato"
+    },
+    {
+      "id": "6-cab-booking-uber-ola",
+      "group": "database-design",
+      "block": "database-design",
+      "title": "Design Uber / Ola: Ride-Hailing & Geospatial Matching",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/database-design/6-cab-booking-uber-ola"
+    },
+    {
+      "id": "7-stock-trading-zerodha-groww",
+      "group": "database-design",
+      "block": "database-design",
+      "title": "Design Zerodha / Groww: Stock Trading & Ledger Accounting",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 7,
+      "url": "/docs/database-design/7-stock-trading-zerodha-groww"
+    },
+    {
+      "id": "8-ecommerce-amazon-flipkart",
+      "group": "database-design",
+      "block": "database-design",
+      "title": "Design Amazon / Flipkart: E-Commerce Inventory & Checkout",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 8,
+      "url": "/docs/database-design/8-ecommerce-amazon-flipkart"
+    },
+    {
+      "id": "9-bcnf-vs-3nf",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "BCNF vs 3NF",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 9,
+      "url": "/docs/dbms-additional/9-bcnf-vs-3nf"
+    },
+    {
+      "id": "11-olap-vs-oltp",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "OLTP vs OLAP",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 11,
+      "url": "/docs/dbms-additional/11-olap-vs-oltp"
+    },
+    {
+      "id": "12-er-diagrams-entities-attributes-relationships",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "ER Diagrams: Entities, Attributes & Relationships",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 12,
+      "url": "/docs/dbms-additional/12-er-diagrams-entities-attributes-relationships"
+    },
+    {
+      "id": "16-optimistic-vs-pessimistic-locking",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "Optimistic vs Pessimistic Locking",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 16,
+      "url": "/docs/dbms-additional/16-optimistic-vs-pessimistic-locking"
+    },
+    {
+      "id": "18-b-plus-trees-vs-b-trees",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "B+ Trees vs B-Trees",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 18,
+      "url": "/docs/dbms-additional/18-b-plus-trees-vs-b-trees"
+    },
+    {
+      "id": "20-when-not-to-index",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "When NOT to Index",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 20,
+      "url": "/docs/dbms-additional/20-when-not-to-index"
+    },
+    {
+      "id": "21-composite-index-column-order",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "Composite Index Column Order",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 21,
+      "url": "/docs/dbms-additional/21-composite-index-column-order"
+    },
+    {
+      "id": "22-second-highest-salary-without-limit",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "Second Highest Salary Without LIMIT",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 22,
+      "url": "/docs/dbms-additional/22-second-highest-salary-without-limit"
+    },
+    {
+      "id": "23-rank-vs-dense-rank-vs-row-number",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "ROW_NUMBER vs RANK vs DENSE_RANK",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 23,
+      "url": "/docs/dbms-additional/23-rank-vs-dense-rank-vs-row-number"
+    },
+    {
+      "id": "24-employees-earning-more-than-manager",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "Employees Earning More Than Their Manager",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 24,
+      "url": "/docs/dbms-additional/24-employees-earning-more-than-manager"
+    },
+    {
+      "id": "25-cte-vs-subquery",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "CTEs vs Subqueries",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 25,
+      "url": "/docs/dbms-additional/25-cte-vs-subquery"
+    },
+    {
+      "id": "26-recursive-cte-use-cases",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "Recursive CTEs",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 26,
+      "url": "/docs/dbms-additional/26-recursive-cte-use-cases"
+    },
+    {
+      "id": "27-views-vs-materialized-views",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "Views vs Materialized Views",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 27,
+      "url": "/docs/dbms-additional/27-views-vs-materialized-views"
+    },
+    {
+      "id": "28-debugging-and-optimizing-slow-queries",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "Debugging a Suddenly Slow Query",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 28,
+      "url": "/docs/dbms-additional/28-debugging-and-optimizing-slow-queries"
+    },
+    {
+      "id": "30-cap-theorem-sql-vs-nosql",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "The CAP Theorem",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 30,
+      "url": "/docs/dbms-additional/30-cap-theorem-sql-vs-nosql"
+    },
+    {
+      "id": "31-eventual-consistency",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "Eventual Consistency",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 31,
+      "url": "/docs/dbms-additional/31-eventual-consistency"
+    },
+    {
+      "id": "32-database-replication-vs-sharding",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "Replication vs Sharding",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 32,
+      "url": "/docs/dbms-additional/32-database-replication-vs-sharding"
+    },
+    {
+      "id": "33-shard-keys-and-hotspot-pitfalls",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "Shard Keys & Hotspot Pitfalls",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 33,
+      "url": "/docs/dbms-additional/33-shard-keys-and-hotspot-pitfalls"
+    },
+    {
+      "id": "34-isolation-levels-read-committed-vs-serializable",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "Choosing an Isolation Level for Payments",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 34,
+      "url": "/docs/dbms-additional/34-isolation-levels-read-committed-vs-serializable"
+    },
+    {
+      "id": "35-crash-recovery-and-idempotency",
+      "group": "dbms-additional",
+      "block": "dbms-additional",
+      "title": "Crash Recovery & Idempotency",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 35,
+      "url": "/docs/dbms-additional/35-crash-recovery-and-idempotency"
+    },
+    {
+      "id": "1-what-is-a-transaction",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "What is a Database Transaction?",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/dbms-essential/1-what-is-a-transaction"
+    },
+    {
+      "id": "2-primary-unique-foreign-key",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "Primary Key vs. Unique Key vs. Foreign Key",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 2,
+      "url": "/docs/dbms-essential/2-primary-unique-foreign-key"
+    },
+    {
+      "id": "3-acid-properties",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "ACID Properties in Databases",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 3,
+      "url": "/docs/dbms-essential/3-acid-properties"
+    },
+    {
+      "id": "4-where-vs-having",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "WHERE vs. HAVING: Row Filtering vs. Group Filtering",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 4,
+      "url": "/docs/dbms-essential/4-where-vs-having"
+    },
+    {
+      "id": "5-sql-join-types",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "SQL Join Types: INNER, LEFT, RIGHT, FULL, CROSS",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 5,
+      "url": "/docs/dbms-essential/5-sql-join-types"
+    },
+    {
+      "id": "6-sql-query-execution-order",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "SQL Query Execution Order",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/dbms-essential/6-sql-query-execution-order"
+    },
+    {
+      "id": "7-normalization-concept-and-purpose",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "Normalization: Concept, Purpose & Anomalies",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 7,
+      "url": "/docs/dbms-essential/7-normalization-concept-and-purpose"
+    },
+    {
+      "id": "8-normalization-3nf-example",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "Normalizing to 3NF: Step-by-Step Walkthrough",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 8,
+      "url": "/docs/dbms-essential/8-normalization-3nf-example"
+    },
+    {
+      "id": "10-denormalization-use-cases-risks",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "Denormalization: When, Why & Architectural Risks",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 10,
+      "url": "/docs/dbms-essential/10-denormalization-use-cases-risks"
+    },
+    {
+      "id": "13-isolation-levels-and-anomalies",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "Transaction Isolation Levels and Anomalies",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 13,
+      "url": "/docs/dbms-essential/13-isolation-levels-and-anomalies"
+    },
+    {
+      "id": "14-dirty-read-nonrepeatable-read-phantom-read",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "Dirty Read vs. Non-Repeatable Read vs. Phantom Read",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 14,
+      "url": "/docs/dbms-essential/14-dirty-read-nonrepeatable-read-phantom-read"
+    },
+    {
+      "id": "15-deadlocks-detection-handling-prevention",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "Database Deadlocks: Detection, Prevention & Handling",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 15,
+      "url": "/docs/dbms-essential/15-deadlocks-detection-handling-prevention"
+    },
+    {
+      "id": "17-database-indexes-internal-data-structures",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "Database Indexes: Concept and Internal Data Structures",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 17,
+      "url": "/docs/dbms-essential/17-database-indexes-internal-data-structures"
+    },
+    {
+      "id": "19-clustered-vs-nonclustered-indexes",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "Clustered vs. Non-Clustered (Secondary) Indexes",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 19,
+      "url": "/docs/dbms-essential/19-clustered-vs-nonclustered-indexes"
+    },
+    {
+      "id": "29-sql-vs-nosql-decision-criteria",
+      "group": "dbms-essential",
+      "block": "dbms-essential",
+      "title": "SQL vs. NoSQL: Architectural Decision Criteria",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 29,
+      "url": "/docs/dbms-essential/29-sql-vs-nosql-decision-criteria"
+    },
+    {
+      "id": "1-singleton-pattern",
+      "group": "design-patterns",
+      "block": "design-patterns",
+      "title": "Singleton: Thread Safety and the __init__ Trap",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 1,
+      "url": "/docs/design-patterns/1-singleton-pattern"
+    },
+    {
+      "id": "2-factory-pattern",
+      "group": "design-patterns",
+      "block": "design-patterns",
+      "title": "Factories: Simple, Factory Method and Abstract Factory",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/design-patterns/2-factory-pattern"
+    },
+    {
+      "id": "3-strategy-pattern",
+      "group": "design-patterns",
+      "block": "design-patterns",
+      "title": "Strategy: Swapping Algorithms, and When a Function Will Do",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/design-patterns/3-strategy-pattern"
+    },
+    {
+      "id": "4-builder-pattern-implementation",
+      "group": "design-patterns",
+      "block": "design-patterns",
+      "title": "Builder: Staged Construction and Atomic Validation",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/design-patterns/4-builder-pattern-implementation"
+    },
+    {
+      "id": "5-decorator-pattern-ocp",
+      "group": "design-patterns",
+      "block": "design-patterns",
+      "title": "Decorator: Wrapping Instead of Subclassing",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/design-patterns/5-decorator-pattern-ocp"
+    },
+    {
+      "id": "6-observer-pattern",
+      "group": "design-patterns",
+      "block": "design-patterns",
+      "title": "Observer: Event Notification and the Lapsed Listener Leak",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 6,
+      "url": "/docs/design-patterns/6-observer-pattern"
+    },
+    {
+      "id": "1-two-sum",
+      "group": "dsa",
+      "block": "dsa/1-arrays-hashing",
+      "title": "1. Two Sum",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/dsa/1-arrays-hashing/1-two-sum"
+    },
+    {
+      "id": "2-contains-duplicate",
+      "group": "dsa",
+      "block": "dsa/1-arrays-hashing",
+      "title": "217. Contains Duplicate",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 2,
+      "url": "/docs/dsa/1-arrays-hashing/2-contains-duplicate"
+    },
+    {
+      "id": "3-majority-element",
+      "group": "dsa",
+      "block": "dsa/1-arrays-hashing",
+      "title": "169. Majority Element",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 3,
+      "url": "/docs/dsa/1-arrays-hashing/3-majority-element"
+    },
+    {
+      "id": "4-group-anagrams",
+      "group": "dsa",
+      "block": "dsa/1-arrays-hashing",
+      "title": "49. Group Anagrams",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/dsa/1-arrays-hashing/4-group-anagrams"
+    },
+    {
+      "id": "5-product-of-array-except-self",
+      "group": "dsa",
+      "block": "dsa/1-arrays-hashing",
+      "title": "238. Product of Array Except Self",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/dsa/1-arrays-hashing/5-product-of-array-except-self"
+    },
+    {
+      "id": "6-subarray-sum-equals-k",
+      "group": "dsa",
+      "block": "dsa/1-arrays-hashing",
+      "title": "560. Subarray Sum Equals K",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/dsa/1-arrays-hashing/6-subarray-sum-equals-k"
+    },
+    {
+      "id": "7-next-permutation",
+      "group": "dsa",
+      "block": "dsa/1-arrays-hashing",
+      "title": "31. Next Permutation",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 7,
+      "url": "/docs/dsa/1-arrays-hashing/7-next-permutation"
+    },
+    {
+      "id": "8-longest-consecutive-sequence",
+      "group": "dsa",
+      "block": "dsa/1-arrays-hashing",
+      "title": "128. Longest Consecutive Sequence",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 8,
+      "url": "/docs/dsa/1-arrays-hashing/8-longest-consecutive-sequence"
+    },
+    {
+      "id": "9-rotate-image",
+      "group": "dsa",
+      "block": "dsa/1-arrays-hashing",
+      "title": "48. Rotate Image",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 9,
+      "url": "/docs/dsa/1-arrays-hashing/9-rotate-image"
+    },
+    {
+      "id": "10-spiral-matrix",
+      "group": "dsa",
+      "block": "dsa/1-arrays-hashing",
+      "title": "54. Spiral Matrix",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 10,
+      "url": "/docs/dsa/1-arrays-hashing/10-spiral-matrix"
+    },
+    {
+      "id": "11-set-matrix-zeroes",
+      "group": "dsa",
+      "block": "dsa/1-arrays-hashing",
+      "title": "73. Set Matrix Zeroes",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 11,
+      "url": "/docs/dsa/1-arrays-hashing/11-set-matrix-zeroes"
+    },
+    {
+      "id": "12-first-missing-positive",
+      "group": "dsa",
+      "block": "dsa/1-arrays-hashing",
+      "title": "41. First Missing Positive",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 12,
+      "url": "/docs/dsa/1-arrays-hashing/12-first-missing-positive"
+    },
+    {
+      "id": "1-implement-trie-prefix-tree",
+      "group": "dsa",
+      "block": "dsa/10-tries",
+      "title": "208. Implement Trie (Prefix Tree)",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 1,
+      "url": "/docs/dsa/10-tries/1-implement-trie-prefix-tree"
+    },
+    {
+      "id": "2-design-add-and-search-words-data-structure",
+      "group": "dsa",
+      "block": "dsa/10-tries",
+      "title": "211. Design Add and Search Words Data Structure",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/dsa/10-tries/2-design-add-and-search-words-data-structure"
+    },
+    {
+      "id": "3-word-search-ii",
+      "group": "dsa",
+      "block": "dsa/10-tries",
+      "title": "212. Word Search II",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 3,
+      "url": "/docs/dsa/10-tries/3-word-search-ii"
+    },
+    {
+      "id": "1-top-k-frequent-elements",
+      "group": "dsa",
+      "block": "dsa/11-heaps-priority-queues",
+      "title": "347. Top K Frequent Elements",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 1,
+      "url": "/docs/dsa/11-heaps-priority-queues/1-top-k-frequent-elements"
+    },
+    {
+      "id": "2-k-closest-points-to-origin",
+      "group": "dsa",
+      "block": "dsa/11-heaps-priority-queues",
+      "title": "973. K Closest Points to Origin",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/dsa/11-heaps-priority-queues/2-k-closest-points-to-origin"
+    },
+    {
+      "id": "3-kth-largest-element-in-an-array",
+      "group": "dsa",
+      "block": "dsa/11-heaps-priority-queues",
+      "title": "215. Kth Largest Element in an Array",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/dsa/11-heaps-priority-queues/3-kth-largest-element-in-an-array"
+    },
+    {
+      "id": "4-kth-smallest-element-in-a-sorted-matrix",
+      "group": "dsa",
+      "block": "dsa/11-heaps-priority-queues",
+      "title": "378. Kth Smallest Element in a Sorted Matrix",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/dsa/11-heaps-priority-queues/4-kth-smallest-element-in-a-sorted-matrix"
+    },
+    {
+      "id": "5-task-scheduler",
+      "group": "dsa",
+      "block": "dsa/11-heaps-priority-queues",
+      "title": "621. Task Scheduler",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/dsa/11-heaps-priority-queues/5-task-scheduler"
+    },
+    {
+      "id": "6-reorganize-string",
+      "group": "dsa",
+      "block": "dsa/11-heaps-priority-queues",
+      "title": "767. Reorganize String",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/dsa/11-heaps-priority-queues/6-reorganize-string"
+    },
+    {
+      "id": "7-find-median-from-data-stream",
+      "group": "dsa",
+      "block": "dsa/11-heaps-priority-queues",
+      "title": "295. Find Median from Data Stream",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 7,
+      "url": "/docs/dsa/11-heaps-priority-queues/7-find-median-from-data-stream"
+    },
+    {
+      "id": "1-subsets",
+      "group": "dsa",
+      "block": "dsa/12-recursion-backtracking",
+      "title": "78. Subsets",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 1,
+      "url": "/docs/dsa/12-recursion-backtracking/1-subsets"
+    },
+    {
+      "id": "2-subsets-ii",
+      "group": "dsa",
+      "block": "dsa/12-recursion-backtracking",
+      "title": "90. Subsets II",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/dsa/12-recursion-backtracking/2-subsets-ii"
+    },
+    {
+      "id": "3-combination-sum",
+      "group": "dsa",
+      "block": "dsa/12-recursion-backtracking",
+      "title": "39. Combination Sum",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/dsa/12-recursion-backtracking/3-combination-sum"
+    },
+    {
+      "id": "4-combination-sum-ii",
+      "group": "dsa",
+      "block": "dsa/12-recursion-backtracking",
+      "title": "40. Combination Sum II",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/dsa/12-recursion-backtracking/4-combination-sum-ii"
+    },
+    {
+      "id": "5-permutations",
+      "group": "dsa",
+      "block": "dsa/12-recursion-backtracking",
+      "title": "46. Permutations",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/dsa/12-recursion-backtracking/5-permutations"
+    },
+    {
+      "id": "6-word-search",
+      "group": "dsa",
+      "block": "dsa/12-recursion-backtracking",
+      "title": "79. Word Search",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/dsa/12-recursion-backtracking/6-word-search"
+    },
+    {
+      "id": "7-palindrome-partitioning",
+      "group": "dsa",
+      "block": "dsa/12-recursion-backtracking",
+      "title": "131. Palindrome Partitioning",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 7,
+      "url": "/docs/dsa/12-recursion-backtracking/7-palindrome-partitioning"
+    },
+    {
+      "id": "8-letter-combinations-of-a-phone-number",
+      "group": "dsa",
+      "block": "dsa/12-recursion-backtracking",
+      "title": "17. Letter Combinations of a Phone Number",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 8,
+      "url": "/docs/dsa/12-recursion-backtracking/8-letter-combinations-of-a-phone-number"
+    },
+    {
+      "id": "9-generate-parentheses",
+      "group": "dsa",
+      "block": "dsa/12-recursion-backtracking",
+      "title": "22. Generate Parentheses",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 9,
+      "url": "/docs/dsa/12-recursion-backtracking/9-generate-parentheses"
+    },
+    {
+      "id": "10-n-queens",
+      "group": "dsa",
+      "block": "dsa/12-recursion-backtracking",
+      "title": "51. N-Queens",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 10,
+      "url": "/docs/dsa/12-recursion-backtracking/10-n-queens"
+    },
+    {
+      "id": "1-meeting-rooms",
+      "group": "dsa",
+      "block": "dsa/13-intervals",
+      "title": "252. Meeting Rooms",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/dsa/13-intervals/1-meeting-rooms"
+    },
+    {
+      "id": "2-merge-intervals",
+      "group": "dsa",
+      "block": "dsa/13-intervals",
+      "title": "56. Merge Intervals",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/dsa/13-intervals/2-merge-intervals"
+    },
+    {
+      "id": "3-insert-interval",
+      "group": "dsa",
+      "block": "dsa/13-intervals",
+      "title": "57. Insert Interval",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/dsa/13-intervals/3-insert-interval"
+    },
+    {
+      "id": "4-non-overlapping-intervals",
+      "group": "dsa",
+      "block": "dsa/13-intervals",
+      "title": "435. Non-overlapping Intervals",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/dsa/13-intervals/4-non-overlapping-intervals"
+    },
+    {
+      "id": "5-meeting-rooms-ii",
+      "group": "dsa",
+      "block": "dsa/13-intervals",
+      "title": "253. Meeting Rooms II",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/dsa/13-intervals/5-meeting-rooms-ii"
+    },
+    {
+      "id": "6-interval-list-intersections",
+      "group": "dsa",
+      "block": "dsa/13-intervals",
+      "title": "986. Interval List Intersections",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/dsa/13-intervals/6-interval-list-intersections"
+    },
+    {
+      "id": "1-best-time-to-buy-and-sell-stock",
+      "group": "dsa",
+      "block": "dsa/14-greedy",
+      "title": "121. Best Time to Buy and Sell Stock",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/dsa/14-greedy/1-best-time-to-buy-and-sell-stock"
+    },
+    {
+      "id": "2-best-time-to-buy-and-sell-stock-ii",
+      "group": "dsa",
+      "block": "dsa/14-greedy",
+      "title": "122. Best Time to Buy and Sell Stock II",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/dsa/14-greedy/2-best-time-to-buy-and-sell-stock-ii"
+    },
+    {
+      "id": "3-maximum-subarray",
+      "group": "dsa",
+      "block": "dsa/14-greedy",
+      "title": "53. Maximum Subarray",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/dsa/14-greedy/3-maximum-subarray"
+    },
+    {
+      "id": "4-jump-game",
+      "group": "dsa",
+      "block": "dsa/14-greedy",
+      "title": "55. Jump Game",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/dsa/14-greedy/4-jump-game"
+    },
+    {
+      "id": "5-jump-game-ii",
+      "group": "dsa",
+      "block": "dsa/14-greedy",
+      "title": "45. Jump Game II",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/dsa/14-greedy/5-jump-game-ii"
+    },
+    {
+      "id": "6-gas-station",
+      "group": "dsa",
+      "block": "dsa/14-greedy",
+      "title": "134. Gas Station",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/dsa/14-greedy/6-gas-station"
+    },
+    {
+      "id": "7-partition-labels",
+      "group": "dsa",
+      "block": "dsa/14-greedy",
+      "title": "763. Partition Labels",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 7,
+      "url": "/docs/dsa/14-greedy/7-partition-labels"
+    },
+    {
+      "id": "8-candy",
+      "group": "dsa",
+      "block": "dsa/14-greedy",
+      "title": "135. Candy",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 8,
+      "url": "/docs/dsa/14-greedy/8-candy"
+    },
+    {
+      "id": "1-number-of-islands",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "200. Number of Islands",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 1,
+      "url": "/docs/dsa/15-graphs/1-number-of-islands"
+    },
+    {
+      "id": "2-max-area-of-island",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "695. Max Area of Island",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/dsa/15-graphs/2-max-area-of-island"
+    },
+    {
+      "id": "3-clone-graph",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "133. Clone Graph",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/dsa/15-graphs/3-clone-graph"
+    },
+    {
+      "id": "4-rotting-oranges",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "994. Rotting Oranges",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/dsa/15-graphs/4-rotting-oranges"
+    },
+    {
+      "id": "5-number-of-provinces",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "547. Number of Provinces",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/dsa/15-graphs/5-number-of-provinces"
+    },
+    {
+      "id": "6-is-graph-bipartite",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "785. Is Graph Bipartite?",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/dsa/15-graphs/6-is-graph-bipartite"
+    },
+    {
+      "id": "7-course-schedule",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "207. Course Schedule",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 7,
+      "url": "/docs/dsa/15-graphs/7-course-schedule"
+    },
+    {
+      "id": "8-course-schedule-ii",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "210. Course Schedule II",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 8,
+      "url": "/docs/dsa/15-graphs/8-course-schedule-ii"
+    },
+    {
+      "id": "9-number-of-connected-components-in-an-undirected-graph",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "323. Number of Connected Components in an Undirected Graph",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 9,
+      "url": "/docs/dsa/15-graphs/9-number-of-connected-components-in-an-undirected-graph"
+    },
+    {
+      "id": "10-redundant-connection",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "684. Redundant Connection",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 10,
+      "url": "/docs/dsa/15-graphs/10-redundant-connection"
+    },
+    {
+      "id": "11-accounts-merge",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "721. Accounts Merge",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 11,
+      "url": "/docs/dsa/15-graphs/11-accounts-merge"
+    },
+    {
+      "id": "12-network-delay-time",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "743. Network Delay Time",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 12,
+      "url": "/docs/dsa/15-graphs/12-network-delay-time"
+    },
+    {
+      "id": "13-cheapest-flights-within-k-stops",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "787. Cheapest Flights Within K Stops",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 13,
+      "url": "/docs/dsa/15-graphs/13-cheapest-flights-within-k-stops"
+    },
+    {
+      "id": "14-min-cost-to-connect-all-points",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "1584. Min Cost to Connect All Points",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 14,
+      "url": "/docs/dsa/15-graphs/14-min-cost-to-connect-all-points"
+    },
+    {
+      "id": "15-word-ladder",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "127. Word Ladder",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 15,
+      "url": "/docs/dsa/15-graphs/15-word-ladder"
+    },
+    {
+      "id": "16-alien-dictionary",
+      "group": "dsa",
+      "block": "dsa/15-graphs",
+      "title": "269. Alien Dictionary",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 16,
+      "url": "/docs/dsa/15-graphs/16-alien-dictionary"
+    },
+    {
+      "id": "1-climbing-stairs",
+      "group": "dsa",
+      "block": "dsa/16-1d-dp",
+      "title": "70. Climbing Stairs",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/dsa/16-1d-dp/1-climbing-stairs"
+    },
+    {
+      "id": "2-house-robber",
+      "group": "dsa",
+      "block": "dsa/16-1d-dp",
+      "title": "198. House Robber",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/dsa/16-1d-dp/2-house-robber"
+    },
+    {
+      "id": "3-house-robber-ii",
+      "group": "dsa",
+      "block": "dsa/16-1d-dp",
+      "title": "213. House Robber II",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/dsa/16-1d-dp/3-house-robber-ii"
+    },
+    {
+      "id": "4-longest-palindromic-substring",
+      "group": "dsa",
+      "block": "dsa/16-1d-dp",
+      "title": "5. Longest Palindromic Substring",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/dsa/16-1d-dp/4-longest-palindromic-substring"
+    },
+    {
+      "id": "5-decode-ways",
+      "group": "dsa",
+      "block": "dsa/16-1d-dp",
+      "title": "91. Decode Ways",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/dsa/16-1d-dp/5-decode-ways"
+    },
+    {
+      "id": "6-coin-change",
+      "group": "dsa",
+      "block": "dsa/16-1d-dp",
+      "title": "322. Coin Change",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/dsa/16-1d-dp/6-coin-change"
+    },
+    {
+      "id": "7-maximum-product-subarray",
+      "group": "dsa",
+      "block": "dsa/16-1d-dp",
+      "title": "152. Maximum Product Subarray",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 7,
+      "url": "/docs/dsa/16-1d-dp/7-maximum-product-subarray"
+    },
+    {
+      "id": "8-word-break",
+      "group": "dsa",
+      "block": "dsa/16-1d-dp",
+      "title": "139. Word Break",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 8,
+      "url": "/docs/dsa/16-1d-dp/8-word-break"
+    },
+    {
+      "id": "9-longest-increasing-subsequence",
+      "group": "dsa",
+      "block": "dsa/16-1d-dp",
+      "title": "300. Longest Increasing Subsequence",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 9,
+      "url": "/docs/dsa/16-1d-dp/9-longest-increasing-subsequence"
+    },
+    {
+      "id": "10-partition-equal-subset-sum",
+      "group": "dsa",
+      "block": "dsa/16-1d-dp",
+      "title": "416. Partition Equal Subset Sum",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 10,
+      "url": "/docs/dsa/16-1d-dp/10-partition-equal-subset-sum"
+    },
+    {
+      "id": "11-perfect-squares",
+      "group": "dsa",
+      "block": "dsa/16-1d-dp",
+      "title": "279. Perfect Squares",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 11,
+      "url": "/docs/dsa/16-1d-dp/11-perfect-squares"
+    },
+    {
+      "id": "12-best-time-to-buy-and-sell-stock-with-cooldown",
+      "group": "dsa",
+      "block": "dsa/16-1d-dp",
+      "title": "309. Best Time to Buy and Sell Stock with Cooldown",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 12,
+      "url": "/docs/dsa/16-1d-dp/12-best-time-to-buy-and-sell-stock-with-cooldown"
+    },
+    {
+      "id": "1-unique-paths",
+      "group": "dsa",
+      "block": "dsa/17-2d-dp",
+      "title": "62. Unique Paths",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 1,
+      "url": "/docs/dsa/17-2d-dp/1-unique-paths"
+    },
+    {
+      "id": "2-minimum-path-sum",
+      "group": "dsa",
+      "block": "dsa/17-2d-dp",
+      "title": "64. Minimum Path Sum",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/dsa/17-2d-dp/2-minimum-path-sum"
+    },
+    {
+      "id": "3-maximal-square",
+      "group": "dsa",
+      "block": "dsa/17-2d-dp",
+      "title": "221. Maximal Square",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/dsa/17-2d-dp/3-maximal-square"
+    },
+    {
+      "id": "4-coin-change-ii",
+      "group": "dsa",
+      "block": "dsa/17-2d-dp",
+      "title": "518. Coin Change II",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/dsa/17-2d-dp/4-coin-change-ii"
+    },
+    {
+      "id": "5-longest-common-subsequence",
+      "group": "dsa",
+      "block": "dsa/17-2d-dp",
+      "title": "1143. Longest Common Subsequence",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/dsa/17-2d-dp/5-longest-common-subsequence"
+    },
+    {
+      "id": "6-edit-distance",
+      "group": "dsa",
+      "block": "dsa/17-2d-dp",
+      "title": "72. Edit Distance",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 6,
+      "url": "/docs/dsa/17-2d-dp/6-edit-distance"
+    },
+    {
+      "id": "7-longest-palindromic-subsequence",
+      "group": "dsa",
+      "block": "dsa/17-2d-dp",
+      "title": "516. Longest Palindromic Subsequence",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 7,
+      "url": "/docs/dsa/17-2d-dp/7-longest-palindromic-subsequence"
+    },
+    {
+      "id": "8-longest-increasing-path-in-a-matrix",
+      "group": "dsa",
+      "block": "dsa/17-2d-dp",
+      "title": "329. Longest Increasing Path in a Matrix",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 8,
+      "url": "/docs/dsa/17-2d-dp/8-longest-increasing-path-in-a-matrix"
+    },
+    {
+      "id": "1-single-number",
+      "group": "dsa",
+      "block": "dsa/18-bit-manipulation",
+      "title": "136. Single Number",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/dsa/18-bit-manipulation/1-single-number"
+    },
+    {
+      "id": "2-missing-number",
+      "group": "dsa",
+      "block": "dsa/18-bit-manipulation",
+      "title": "268. Missing Number",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 2,
+      "url": "/docs/dsa/18-bit-manipulation/2-missing-number"
+    },
+    {
+      "id": "3-number-of-1-bits",
+      "group": "dsa",
+      "block": "dsa/18-bit-manipulation",
+      "title": "191. Number of 1 Bits",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 3,
+      "url": "/docs/dsa/18-bit-manipulation/3-number-of-1-bits"
+    },
+    {
+      "id": "4-counting-bits",
+      "group": "dsa",
+      "block": "dsa/18-bit-manipulation",
+      "title": "338. Counting Bits",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 4,
+      "url": "/docs/dsa/18-bit-manipulation/4-counting-bits"
+    },
+    {
+      "id": "5-power-of-two",
+      "group": "dsa",
+      "block": "dsa/18-bit-manipulation",
+      "title": "231. Power of Two",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 5,
+      "url": "/docs/dsa/18-bit-manipulation/5-power-of-two"
+    },
+    {
+      "id": "6-sum-of-two-integers",
+      "group": "dsa",
+      "block": "dsa/18-bit-manipulation",
+      "title": "371. Sum of Two Integers",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/dsa/18-bit-manipulation/6-sum-of-two-integers"
+    },
+    {
+      "id": "1-valid-anagram",
+      "group": "dsa",
+      "block": "dsa/2-strings",
+      "title": "242. Valid Anagram",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/dsa/2-strings/1-valid-anagram"
+    },
+    {
+      "id": "2-longest-common-prefix",
+      "group": "dsa",
+      "block": "dsa/2-strings",
+      "title": "14. Longest Common Prefix",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 2,
+      "url": "/docs/dsa/2-strings/2-longest-common-prefix"
+    },
+    {
+      "id": "3-first-unique-character-in-a-string",
+      "group": "dsa",
+      "block": "dsa/2-strings",
+      "title": "387. First Unique Character in a String",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 3,
+      "url": "/docs/dsa/2-strings/3-first-unique-character-in-a-string"
+    },
+    {
+      "id": "4-reverse-words-in-a-string",
+      "group": "dsa",
+      "block": "dsa/2-strings",
+      "title": "151. Reverse Words in a String",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/dsa/2-strings/4-reverse-words-in-a-string"
+    },
+    {
+      "id": "5-string-to-integer-atoi",
+      "group": "dsa",
+      "block": "dsa/2-strings",
+      "title": "8. String to Integer (atoi)",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/dsa/2-strings/5-string-to-integer-atoi"
+    },
+    {
+      "id": "1-palindrome-number",
+      "group": "dsa",
+      "block": "dsa/3-math-number-theory",
+      "title": "9. Palindrome Number",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/dsa/3-math-number-theory/1-palindrome-number"
+    },
+    {
+      "id": "2-plus-one",
+      "group": "dsa",
+      "block": "dsa/3-math-number-theory",
+      "title": "66. Plus One",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 2,
+      "url": "/docs/dsa/3-math-number-theory/2-plus-one"
+    },
+    {
+      "id": "3-reverse-integer",
+      "group": "dsa",
+      "block": "dsa/3-math-number-theory",
+      "title": "7. Reverse Integer",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/dsa/3-math-number-theory/3-reverse-integer"
+    },
+    {
+      "id": "4-count-primes",
+      "group": "dsa",
+      "block": "dsa/3-math-number-theory",
+      "title": "204. Count Primes",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/dsa/3-math-number-theory/4-count-primes"
+    },
+    {
+      "id": "5-pow-x-n",
+      "group": "dsa",
+      "block": "dsa/3-math-number-theory",
+      "title": "50. Pow(x, n)",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/dsa/3-math-number-theory/5-pow-x-n"
+    },
+    {
+      "id": "1-valid-palindrome",
+      "group": "dsa",
+      "block": "dsa/4-two-pointers",
+      "title": "125. Valid Palindrome",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/dsa/4-two-pointers/1-valid-palindrome"
+    },
+    {
+      "id": "2-merge-sorted-array",
+      "group": "dsa",
+      "block": "dsa/4-two-pointers",
+      "title": "88. Merge Sorted Array",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 2,
+      "url": "/docs/dsa/4-two-pointers/2-merge-sorted-array"
+    },
+    {
+      "id": "3-remove-duplicates-from-sorted-array",
+      "group": "dsa",
+      "block": "dsa/4-two-pointers",
+      "title": "26. Remove Duplicates from Sorted Array",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 3,
+      "url": "/docs/dsa/4-two-pointers/3-remove-duplicates-from-sorted-array"
+    },
+    {
+      "id": "4-move-zeroes",
+      "group": "dsa",
+      "block": "dsa/4-two-pointers",
+      "title": "283. Move Zeroes",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 4,
+      "url": "/docs/dsa/4-two-pointers/4-move-zeroes"
+    },
+    {
+      "id": "5-sort-colors",
+      "group": "dsa",
+      "block": "dsa/4-two-pointers",
+      "title": "75. Sort Colors",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/dsa/4-two-pointers/5-sort-colors"
+    },
+    {
+      "id": "6-two-sum-ii",
+      "group": "dsa",
+      "block": "dsa/4-two-pointers",
+      "title": "167. Two Sum II - Input Array Is Sorted",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/dsa/4-two-pointers/6-two-sum-ii"
+    },
+    {
+      "id": "7-3sum",
+      "group": "dsa",
+      "block": "dsa/4-two-pointers",
+      "title": "15. 3Sum",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 7,
+      "url": "/docs/dsa/4-two-pointers/7-3sum"
+    },
+    {
+      "id": "8-container-with-most-water",
+      "group": "dsa",
+      "block": "dsa/4-two-pointers",
+      "title": "11. Container With Most Water",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 8,
+      "url": "/docs/dsa/4-two-pointers/8-container-with-most-water"
+    },
+    {
+      "id": "9-trapping-rain-water",
+      "group": "dsa",
+      "block": "dsa/4-two-pointers",
+      "title": "42. Trapping Rain Water",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 9,
+      "url": "/docs/dsa/4-two-pointers/9-trapping-rain-water"
+    },
+    {
+      "id": "1-longest-substring-without-repeating-characters",
+      "group": "dsa",
+      "block": "dsa/5-sliding-window",
+      "title": "3. Longest Substring Without Repeating Characters",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 1,
+      "url": "/docs/dsa/5-sliding-window/1-longest-substring-without-repeating-characters"
+    },
+    {
+      "id": "2-longest-repeating-character-replacement",
+      "group": "dsa",
+      "block": "dsa/5-sliding-window",
+      "title": "424. Longest Repeating Character Replacement",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/dsa/5-sliding-window/2-longest-repeating-character-replacement"
+    },
+    {
+      "id": "3-max-consecutive-ones-iii",
+      "group": "dsa",
+      "block": "dsa/5-sliding-window",
+      "title": "1004. Max Consecutive Ones III",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/dsa/5-sliding-window/3-max-consecutive-ones-iii"
+    },
+    {
+      "id": "4-find-all-anagrams-in-a-string",
+      "group": "dsa",
+      "block": "dsa/5-sliding-window",
+      "title": "438. Find All Anagrams in a String",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/dsa/5-sliding-window/4-find-all-anagrams-in-a-string"
+    },
+    {
+      "id": "5-permutation-in-string",
+      "group": "dsa",
+      "block": "dsa/5-sliding-window",
+      "title": "567. Permutation in String",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/dsa/5-sliding-window/5-permutation-in-string"
+    },
+    {
+      "id": "6-minimum-size-subarray-sum",
+      "group": "dsa",
+      "block": "dsa/5-sliding-window",
+      "title": "209. Minimum Size Subarray Sum",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/dsa/5-sliding-window/6-minimum-size-subarray-sum"
+    },
+    {
+      "id": "7-minimum-window-substring",
+      "group": "dsa",
+      "block": "dsa/5-sliding-window",
+      "title": "76. Minimum Window Substring",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 7,
+      "url": "/docs/dsa/5-sliding-window/7-minimum-window-substring"
+    },
+    {
+      "id": "8-sliding-window-maximum",
+      "group": "dsa",
+      "block": "dsa/5-sliding-window",
+      "title": "239. Sliding Window Maximum",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 8,
+      "url": "/docs/dsa/5-sliding-window/8-sliding-window-maximum"
+    },
+    {
+      "id": "1-valid-parentheses",
+      "group": "dsa",
+      "block": "dsa/6-stacks",
+      "title": "20. Valid Parentheses",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/dsa/6-stacks/1-valid-parentheses"
+    },
+    {
+      "id": "2-min-stack",
+      "group": "dsa",
+      "block": "dsa/6-stacks",
+      "title": "155. Min Stack",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/dsa/6-stacks/2-min-stack"
+    },
+    {
+      "id": "3-evaluate-reverse-polish-notation",
+      "group": "dsa",
+      "block": "dsa/6-stacks",
+      "title": "150. Evaluate Reverse Polish Notation",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/dsa/6-stacks/3-evaluate-reverse-polish-notation"
+    },
+    {
+      "id": "4-daily-temperatures",
+      "group": "dsa",
+      "block": "dsa/6-stacks",
+      "title": "739. Daily Temperatures",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/dsa/6-stacks/4-daily-temperatures"
+    },
+    {
+      "id": "5-next-greater-element-ii",
+      "group": "dsa",
+      "block": "dsa/6-stacks",
+      "title": "503. Next Greater Element II",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/dsa/6-stacks/5-next-greater-element-ii"
+    },
+    {
+      "id": "6-decode-string",
+      "group": "dsa",
+      "block": "dsa/6-stacks",
+      "title": "394. Decode String",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/dsa/6-stacks/6-decode-string"
+    },
+    {
+      "id": "7-asteroid-collision",
+      "group": "dsa",
+      "block": "dsa/6-stacks",
+      "title": "735. Asteroid Collision",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 7,
+      "url": "/docs/dsa/6-stacks/7-asteroid-collision"
+    },
+    {
+      "id": "8-basic-calculator-ii",
+      "group": "dsa",
+      "block": "dsa/6-stacks",
+      "title": "227. Basic Calculator II",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 8,
+      "url": "/docs/dsa/6-stacks/8-basic-calculator-ii"
+    },
+    {
+      "id": "9-longest-valid-parentheses",
+      "group": "dsa",
+      "block": "dsa/6-stacks",
+      "title": "32. Longest Valid Parentheses",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 9,
+      "url": "/docs/dsa/6-stacks/9-longest-valid-parentheses"
+    },
+    {
+      "id": "10-largest-rectangle-in-histogram",
+      "group": "dsa",
+      "block": "dsa/6-stacks",
+      "title": "84. Largest Rectangle in Histogram",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 10,
+      "url": "/docs/dsa/6-stacks/10-largest-rectangle-in-histogram"
+    },
+    {
+      "id": "1-binary-search",
+      "group": "dsa",
+      "block": "dsa/7-binary-search",
+      "title": "704. Binary Search",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/dsa/7-binary-search/1-binary-search"
+    },
+    {
+      "id": "2-search-insert-position",
+      "group": "dsa",
+      "block": "dsa/7-binary-search",
+      "title": "35. Search Insert Position",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 2,
+      "url": "/docs/dsa/7-binary-search/2-search-insert-position"
+    },
+    {
+      "id": "3-find-first-and-last-position-of-element-in-sorted-array",
+      "group": "dsa",
+      "block": "dsa/7-binary-search",
+      "title": "34. Find First and Last Position of Element in Sorted Array",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/dsa/7-binary-search/3-find-first-and-last-position-of-element-in-sorted-array"
+    },
+    {
+      "id": "4-find-peak-element",
+      "group": "dsa",
+      "block": "dsa/7-binary-search",
+      "title": "162. Find Peak Element",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/dsa/7-binary-search/4-find-peak-element"
+    },
+    {
+      "id": "5-search-a-2d-matrix",
+      "group": "dsa",
+      "block": "dsa/7-binary-search",
+      "title": "74. Search a 2D Matrix",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/dsa/7-binary-search/5-search-a-2d-matrix"
+    },
+    {
+      "id": "6-find-minimum-in-rotated-sorted-array",
+      "group": "dsa",
+      "block": "dsa/7-binary-search",
+      "title": "153. Find Minimum in Rotated Sorted Array",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/dsa/7-binary-search/6-find-minimum-in-rotated-sorted-array"
+    },
+    {
+      "id": "7-search-in-rotated-sorted-array",
+      "group": "dsa",
+      "block": "dsa/7-binary-search",
+      "title": "33. Search in Rotated Sorted Array",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 7,
+      "url": "/docs/dsa/7-binary-search/7-search-in-rotated-sorted-array"
+    },
+    {
+      "id": "8-koko-eating-bananas",
+      "group": "dsa",
+      "block": "dsa/7-binary-search",
+      "title": "875. Koko Eating Bananas",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 8,
+      "url": "/docs/dsa/7-binary-search/8-koko-eating-bananas"
+    },
+    {
+      "id": "9-capacity-to-ship-packages-within-d-days",
+      "group": "dsa",
+      "block": "dsa/7-binary-search",
+      "title": "1011. Capacity To Ship Packages Within D Days",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 9,
+      "url": "/docs/dsa/7-binary-search/9-capacity-to-ship-packages-within-d-days"
+    },
+    {
+      "id": "10-split-array-largest-sum",
+      "group": "dsa",
+      "block": "dsa/7-binary-search",
+      "title": "410. Split Array Largest Sum",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 10,
+      "url": "/docs/dsa/7-binary-search/10-split-array-largest-sum"
+    },
+    {
+      "id": "11-median-of-two-sorted-arrays",
+      "group": "dsa",
+      "block": "dsa/7-binary-search",
+      "title": "4. Median of Two Sorted Arrays",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 11,
+      "url": "/docs/dsa/7-binary-search/11-median-of-two-sorted-arrays"
+    },
+    {
+      "id": "1-reverse-linked-list",
+      "group": "dsa",
+      "block": "dsa/8-linked-lists",
+      "title": "206. Reverse Linked List",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/dsa/8-linked-lists/1-reverse-linked-list"
+    },
+    {
+      "id": "2-merge-two-sorted-lists",
+      "group": "dsa",
+      "block": "dsa/8-linked-lists",
+      "title": "21. Merge Two Sorted Lists",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 2,
+      "url": "/docs/dsa/8-linked-lists/2-merge-two-sorted-lists"
+    },
+    {
+      "id": "3-linked-list-cycle",
+      "group": "dsa",
+      "block": "dsa/8-linked-lists",
+      "title": "141. Linked List Cycle",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 3,
+      "url": "/docs/dsa/8-linked-lists/3-linked-list-cycle"
+    },
+    {
+      "id": "4-middle-of-the-linked-list",
+      "group": "dsa",
+      "block": "dsa/8-linked-lists",
+      "title": "876. Middle of the Linked List",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 4,
+      "url": "/docs/dsa/8-linked-lists/4-middle-of-the-linked-list"
+    },
+    {
+      "id": "5-intersection-of-two-linked-lists",
+      "group": "dsa",
+      "block": "dsa/8-linked-lists",
+      "title": "160. Intersection of Two Linked Lists",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 5,
+      "url": "/docs/dsa/8-linked-lists/5-intersection-of-two-linked-lists"
+    },
+    {
+      "id": "6-palindrome-linked-list",
+      "group": "dsa",
+      "block": "dsa/8-linked-lists",
+      "title": "234. Palindrome Linked List",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 6,
+      "url": "/docs/dsa/8-linked-lists/6-palindrome-linked-list"
+    },
+    {
+      "id": "7-linked-list-cycle-ii",
+      "group": "dsa",
+      "block": "dsa/8-linked-lists",
+      "title": "142. Linked List Cycle II",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 7,
+      "url": "/docs/dsa/8-linked-lists/7-linked-list-cycle-ii"
+    },
+    {
+      "id": "8-remove-nth-node-from-end-of-list",
+      "group": "dsa",
+      "block": "dsa/8-linked-lists",
+      "title": "19. Remove Nth Node From End of List",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 8,
+      "url": "/docs/dsa/8-linked-lists/8-remove-nth-node-from-end-of-list"
+    },
+    {
+      "id": "9-add-two-numbers",
+      "group": "dsa",
+      "block": "dsa/8-linked-lists",
+      "title": "2. Add Two Numbers",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 9,
+      "url": "/docs/dsa/8-linked-lists/9-add-two-numbers"
+    },
+    {
+      "id": "10-sort-list",
+      "group": "dsa",
+      "block": "dsa/8-linked-lists",
+      "title": "148. Sort List",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 10,
+      "url": "/docs/dsa/8-linked-lists/10-sort-list"
+    },
+    {
+      "id": "11-lru-cache",
+      "group": "dsa",
+      "block": "dsa/8-linked-lists",
+      "title": "146. LRU Cache",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 11,
+      "url": "/docs/dsa/8-linked-lists/11-lru-cache"
+    },
+    {
+      "id": "12-merge-k-sorted-lists",
+      "group": "dsa",
+      "block": "dsa/8-linked-lists",
+      "title": "23. Merge k Sorted Lists",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 12,
+      "url": "/docs/dsa/8-linked-lists/12-merge-k-sorted-lists"
+    },
+    {
+      "id": "13-reverse-nodes-in-k-group",
+      "group": "dsa",
+      "block": "dsa/8-linked-lists",
+      "title": "25. Reverse Nodes in k-Group",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 13,
+      "url": "/docs/dsa/8-linked-lists/13-reverse-nodes-in-k-group"
+    },
+    {
+      "id": "1-tree-traversals-inorder-preorder-postorder",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "Tree Traversals: Inorder, Preorder, Postorder",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/dsa/9-trees/1-tree-traversals-inorder-preorder-postorder"
+    },
+    {
+      "id": "2-invert-binary-tree",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "226. Invert Binary Tree",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 2,
+      "url": "/docs/dsa/9-trees/2-invert-binary-tree"
+    },
+    {
+      "id": "3-maximum-depth-of-binary-tree",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "104. Maximum Depth of Binary Tree",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 3,
+      "url": "/docs/dsa/9-trees/3-maximum-depth-of-binary-tree"
+    },
+    {
+      "id": "4-diameter-of-binary-tree",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "543. Diameter of Binary Tree",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 4,
+      "url": "/docs/dsa/9-trees/4-diameter-of-binary-tree"
+    },
+    {
+      "id": "5-balanced-binary-tree",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "110. Balanced Binary Tree",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 5,
+      "url": "/docs/dsa/9-trees/5-balanced-binary-tree"
+    },
+    {
+      "id": "6-same-tree",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "100. Same Tree",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 6,
+      "url": "/docs/dsa/9-trees/6-same-tree"
+    },
+    {
+      "id": "7-symmetric-tree",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "101. Symmetric Tree",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 7,
+      "url": "/docs/dsa/9-trees/7-symmetric-tree"
+    },
+    {
+      "id": "8-path-sum",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "112. Path Sum",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 8,
+      "url": "/docs/dsa/9-trees/8-path-sum"
+    },
+    {
+      "id": "9-binary-tree-level-order-traversal",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "102. Binary Tree Level Order Traversal",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 9,
+      "url": "/docs/dsa/9-trees/9-binary-tree-level-order-traversal"
+    },
+    {
+      "id": "10-binary-tree-zigzag-level-order-traversal",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "103. Binary Tree Zigzag Level Order Traversal",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 10,
+      "url": "/docs/dsa/9-trees/10-binary-tree-zigzag-level-order-traversal"
+    },
+    {
+      "id": "11-binary-tree-right-side-view",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "199. Binary Tree Right Side View",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 11,
+      "url": "/docs/dsa/9-trees/11-binary-tree-right-side-view"
+    },
+    {
+      "id": "12-validate-binary-search-tree",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "98. Validate Binary Search Tree",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 12,
+      "url": "/docs/dsa/9-trees/12-validate-binary-search-tree"
+    },
+    {
+      "id": "13-kth-smallest-element-in-a-bst",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "230. Kth Smallest Element in a BST",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 13,
+      "url": "/docs/dsa/9-trees/13-kth-smallest-element-in-a-bst"
+    },
+    {
+      "id": "14-construct-binary-tree-from-preorder-and-inorder",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "105. Construct Binary Tree from Preorder and Inorder Traversal",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 14,
+      "url": "/docs/dsa/9-trees/14-construct-binary-tree-from-preorder-and-inorder"
+    },
+    {
+      "id": "15-lowest-common-ancestor-of-a-bst",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "235. Lowest Common Ancestor of a BST",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 15,
+      "url": "/docs/dsa/9-trees/15-lowest-common-ancestor-of-a-bst"
+    },
+    {
+      "id": "16-lowest-common-ancestor-of-a-binary-tree",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "236. Lowest Common Ancestor of a Binary Tree",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 16,
+      "url": "/docs/dsa/9-trees/16-lowest-common-ancestor-of-a-binary-tree"
+    },
+    {
+      "id": "17-flatten-binary-tree-to-linked-list",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "114. Flatten Binary Tree to Linked List",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 17,
+      "url": "/docs/dsa/9-trees/17-flatten-binary-tree-to-linked-list"
+    },
+    {
+      "id": "18-bst-iterator",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "173. Binary Search Tree Iterator",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 18,
+      "url": "/docs/dsa/9-trees/18-bst-iterator"
+    },
+    {
+      "id": "19-binary-tree-maximum-path-sum",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "124. Binary Tree Maximum Path Sum",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 19,
+      "url": "/docs/dsa/9-trees/19-binary-tree-maximum-path-sum"
+    },
+    {
+      "id": "20-serialize-and-deserialize-binary-tree",
+      "group": "dsa",
+      "block": "dsa/9-trees",
+      "title": "297. Serialize and Deserialize Binary Tree",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 20,
+      "url": "/docs/dsa/9-trees/20-serialize-and-deserialize-binary-tree"
+    },
+    {
+      "id": "19-static-binding-vs-dynamic-binding",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "Static Binding vs Dynamic Binding",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 19,
+      "url": "/docs/oop-additional/19-static-binding-vs-dynamic-binding"
+    },
+    {
+      "id": "20-method-hiding-vs-overriding",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "Method Hiding vs Method Overriding",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 20,
+      "url": "/docs/oop-additional/20-method-hiding-vs-overriding"
+    },
+    {
+      "id": "21-upcasting-downcasting-instanceof",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "Upcasting, Downcasting & instanceof",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 21,
+      "url": "/docs/oop-additional/21-upcasting-downcasting-instanceof"
+    },
+    {
+      "id": "22-covariant-return-type",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "Covariant Return Types",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 22,
+      "url": "/docs/oop-additional/22-covariant-return-type"
+    },
+    {
+      "id": "23-abstract-class-constructors-private",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "Abstract Class Constructors & Private Constructors",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 23,
+      "url": "/docs/oop-additional/23-abstract-class-constructors-private"
+    },
+    {
+      "id": "25-object-class-methods",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "The java.lang.Object Methods",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 25,
+      "url": "/docs/oop-additional/25-object-class-methods"
+    },
+    {
+      "id": "26-object-creation-ways",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "Ways to Create an Object in Java",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 26,
+      "url": "/docs/oop-additional/26-object-creation-ways"
+    },
+    {
+      "id": "27-aggregation-vs-composition",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "Aggregation vs Composition",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 27,
+      "url": "/docs/oop-additional/27-aggregation-vs-composition"
+    },
+    {
+      "id": "28-comparable-vs-comparator",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "Comparable vs Comparator",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 28,
+      "url": "/docs/oop-additional/28-comparable-vs-comparator"
+    },
+    {
+      "id": "29-stringbuilder-vs-stringbuffer",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "StringBuilder vs StringBuffer",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 29,
+      "url": "/docs/oop-additional/29-stringbuilder-vs-stringbuffer"
+    },
+    {
+      "id": "30-packages-in-java",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "Packages in Java",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 30,
+      "url": "/docs/oop-additional/30-packages-in-java"
+    },
+    {
+      "id": "31-marker-interface",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "Marker Interfaces",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 31,
+      "url": "/docs/oop-additional/31-marker-interface"
+    },
+    {
+      "id": "34-throw-vs-throws-finally-return",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "throw vs throws, and finally with return",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 34,
+      "url": "/docs/oop-additional/34-throw-vs-throws-finally-return"
+    },
+    {
+      "id": "35-enums-as-classes-singleton",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "Java Enums as Classes & the Enum Singleton",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 35,
+      "url": "/docs/oop-additional/35-enums-as-classes-singleton"
+    },
+    {
+      "id": "36-static-nested-class-vs-inner-class",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "Static Nested Class vs Inner Class",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 36,
+      "url": "/docs/oop-additional/36-static-nested-class-vs-inner-class"
+    },
+    {
+      "id": "37-generics-and-type-erasure",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "Generics & Type Erasure",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 37,
+      "url": "/docs/oop-additional/37-generics-and-type-erasure"
+    },
+    {
+      "id": "38-reflection-concept-use-case-risk",
+      "group": "oop-additional",
+      "block": "oop-additional",
+      "title": "Java Reflection: Concept, Use Case & Risk",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 38,
+      "url": "/docs/oop-additional/38-reflection-concept-use-case-risk"
+    },
+    {
+      "id": "1-four-pillars-of-oop",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "The Four Pillars of OOP: Abstraction vs. Encapsulation",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/oop-essential/1-four-pillars-of-oop"
+    },
+    {
+      "id": "2-method-overloading-vs-overriding",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "Method Overloading vs. Overriding",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/oop-essential/2-method-overloading-vs-overriding"
+    },
+    {
+      "id": "3-interface-vs-abstract-class",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "Interfaces vs. Abstract Classes",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/oop-essential/3-interface-vs-abstract-class"
+    },
+    {
+      "id": "4-interface-vs-abstract-class-java8",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "Interfaces vs. Abstract Classes: Modern Java Differences",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/oop-essential/4-interface-vs-abstract-class-java8"
+    },
+    {
+      "id": "5-constructors-overloading-chaining",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "Constructors, Overloading, and Chaining",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 5,
+      "url": "/docs/oop-essential/5-constructors-overloading-chaining"
+    },
+    {
+      "id": "6-access-modifiers",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "Understanding Access Modifiers",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 6,
+      "url": "/docs/oop-essential/6-access-modifiers"
+    },
+    {
+      "id": "7-this-keyword",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "The this Keyword: Variable Shadowing, Chaining & Inner Classes",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 7,
+      "url": "/docs/oop-essential/7-this-keyword"
+    },
+    {
+      "id": "8-final-keyword",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "The final Keyword: Variables, Methods, Classes & Immutability",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 8,
+      "url": "/docs/oop-essential/8-final-keyword"
+    },
+    {
+      "id": "9-static-keyword",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "The static Keyword: Class vs. Instance Memory & Method Hiding",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 9,
+      "url": "/docs/oop-essential/9-static-keyword"
+    },
+    {
+      "id": "10-composition-vs-inheritance",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "Composition vs. Inheritance",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 10,
+      "url": "/docs/oop-essential/10-composition-vs-inheritance"
+    },
+    {
+      "id": "11-solid-principles",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "SOLID Principles: The Five Rules of Clean Architecture",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 11,
+      "url": "/docs/oop-essential/11-solid-principles"
+    },
+    {
+      "id": "12-coupling-and-cohesion",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "Coupling and Cohesion: Designing for Maintainability",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 12,
+      "url": "/docs/oop-essential/12-coupling-and-cohesion"
+    },
+    {
+      "id": "13-immutable-class-string",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "Immutability in Java: Designing Safe Classes and the String Pool",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 13,
+      "url": "/docs/oop-essential/13-immutable-class-string"
+    },
+    {
+      "id": "14-pass-by-value-vs-reference",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "Pass by Value vs. Pass by Reference: The Java Object Trap",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 14,
+      "url": "/docs/oop-essential/14-pass-by-value-vs-reference"
+    },
+    {
+      "id": "15-equals-hashcode-contract",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "The equals() and hashCode() Contract",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 15,
+      "url": "/docs/oop-essential/15-equals-hashcode-contract"
+    },
+    {
+      "id": "16-hashmap-internals",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "HashMap Internals: Buckets, Collisions, and Red-Black Trees",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 16,
+      "url": "/docs/oop-essential/16-hashmap-internals"
+    },
+    {
+      "id": "17-hash-collision",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "Hash Collisions: The Pigeonhole Principle in Practice",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 17,
+      "url": "/docs/oop-essential/17-hash-collision"
+    },
+    {
+      "id": "18-garbage-collection-stack-heap",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "Garbage Collection: Stack vs. Heap Memory",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 18,
+      "url": "/docs/oop-essential/18-garbage-collection-stack-heap"
+    },
+    {
+      "id": "24-shallow-vs-deep-copy",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "Shallow Copy vs. Deep Copy",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 19,
+      "url": "/docs/oop-essential/24-shallow-vs-deep-copy"
+    },
+    {
+      "id": "32-diamond-problem",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "The Diamond Problem: Multiple Inheritance in Java",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 20,
+      "url": "/docs/oop-essential/32-diamond-problem"
+    },
+    {
+      "id": "33-exceptions-checked-unchecked",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "Exceptions: Checked vs. Unchecked",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 21,
+      "url": "/docs/oop-essential/33-exceptions-checked-unchecked"
+    },
+    {
+      "id": "39-dependency-injection",
+      "group": "oop-essential",
+      "block": "oop-essential",
+      "title": "Dependency Injection vs. Dependency Inversion",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 22,
+      "url": "/docs/oop-essential/39-dependency-injection"
+    },
+    {
+      "id": "1-priority-inversion-mars-rover",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "Priority Inversion & the Mars Pathfinder",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 1,
+      "url": "/docs/os-additional/1-priority-inversion-mars-rover"
+    },
+    {
+      "id": "2-producer-consumer-bounded-buffer",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "Producer-Consumer (Bounded Buffer)",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/os-additional/2-producer-consumer-bounded-buffer"
+    },
+    {
+      "id": "3-bankers-algorithm-concept",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "The Banker's Algorithm",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 3,
+      "url": "/docs/os-additional/3-bankers-algorithm-concept"
+    },
+    {
+      "id": "4-context-switch-internals-overhead",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "Context Switch Internals & Overhead",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/os-additional/4-context-switch-internals-overhead"
+    },
+    {
+      "id": "5-hardware-timer-interrupts-preemption",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "Hardware Timer Interrupts & Preemption",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/os-additional/5-hardware-timer-interrupts-preemption"
+    },
+    {
+      "id": "6-what-happens-when-read-is-called",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "What Happens When read() Is Called",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 6,
+      "url": "/docs/os-additional/6-what-happens-when-read-is-called"
+    },
+    {
+      "id": "7-tlb-flush-and-context-switching",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "TLB Flush & Context Switching (PCID / ASID)",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 7,
+      "url": "/docs/os-additional/7-tlb-flush-and-context-switching"
+    },
+    {
+      "id": "8-pipes-vs-shared-memory-tradeoff",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "Pipes vs Shared Memory",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 8,
+      "url": "/docs/os-additional/8-pipes-vs-shared-memory-tradeoff"
+    },
+    {
+      "id": "9-signals-in-operating-systems",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "Signals in Unix and Linux",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 9,
+      "url": "/docs/os-additional/9-signals-in-operating-systems"
+    },
+    {
+      "id": "10-readers-writers-problem",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "The Readers-Writers Problem",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 10,
+      "url": "/docs/os-additional/10-readers-writers-problem"
+    },
+    {
+      "id": "11-spinlock-vs-mutex",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "Spinlock vs Mutex",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 11,
+      "url": "/docs/os-additional/11-spinlock-vs-mutex"
+    },
+    {
+      "id": "12-threading-models-kernel-vs-user-threads",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "Threading Models: User vs Kernel Threads",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 12,
+      "url": "/docs/os-additional/12-threading-models-kernel-vs-user-threads"
+    },
+    {
+      "id": "13-starvation-deadlock-livelock",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "Starvation vs Deadlock vs Livelock",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 13,
+      "url": "/docs/os-additional/13-starvation-deadlock-livelock"
+    },
+    {
+      "id": "14-interrupt-vs-trap-vs-exception",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "Interrupt vs Trap vs Exception",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 14,
+      "url": "/docs/os-additional/14-interrupt-vs-trap-vs-exception"
+    },
+    {
+      "id": "15-multilevel-feedback-queue-mlfq",
+      "group": "os-additional",
+      "block": "os-additional",
+      "title": "Multilevel Feedback Queue (MLFQ) Scheduling",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 15,
+      "url": "/docs/os-additional/15-multilevel-feedback-queue-mlfq"
+    },
+    {
+      "id": "1-process-vs-thread",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Process vs. Thread: Architecture, Memory & Tradeoffs",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 1,
+      "url": "/docs/os-essential/1-process-vs-thread"
+    },
+    {
+      "id": "2-process-states-and-lifecycle",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Process Lifecycle: The 5-State & 7-State Models",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 2,
+      "url": "/docs/os-essential/2-process-states-and-lifecycle"
+    },
+    {
+      "id": "3-preemptive-vs-non-preemptive-scheduling",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Preemptive vs. Non-Preemptive CPU Scheduling",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 3,
+      "url": "/docs/os-essential/3-preemptive-vs-non-preemptive-scheduling"
+    },
+    {
+      "id": "4-convoy-effect-fcfs-round-robin",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "The Convoy Effect: FCFS Bottlenecks & Round Robin Solutions",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/os-essential/4-convoy-effect-fcfs-round-robin"
+    },
+    {
+      "id": "5-race-condition-critical-section",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Race Conditions & The Critical Section Problem",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/os-essential/5-race-condition-critical-section"
+    },
+    {
+      "id": "6-mutex-vs-semaphore",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Mutex vs. Semaphore: Concurrency Primitives & Tradeoffs",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/os-essential/6-mutex-vs-semaphore"
+    },
+    {
+      "id": "7-binary-semaphore-vs-mutex",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Binary Semaphore vs. Mutex: Ownership & Signaling Differences",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 7,
+      "url": "/docs/os-essential/7-binary-semaphore-vs-mutex"
+    },
+    {
+      "id": "8-deadlock-four-coffman-conditions",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Deadlocks & The 4 Necessary Coffman Conditions",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 8,
+      "url": "/docs/os-essential/8-deadlock-four-coffman-conditions"
+    },
+    {
+      "id": "9-deadlock-prevention-avoidance-detection",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Handling Deadlocks: Prevention, Avoidance, Detection & Recovery",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 9,
+      "url": "/docs/os-essential/9-deadlock-prevention-avoidance-detection"
+    },
+    {
+      "id": "10-virtual-memory-and-page-faults",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Virtual Memory & Page Fault Mechanics",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 10,
+      "url": "/docs/os-essential/10-virtual-memory-and-page-faults"
+    },
+    {
+      "id": "11-page-replacement-algorithms-belady-anomaly",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Page Replacement Algorithms: FIFO, LRU, Optimal & Belady's Anomaly",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 11,
+      "url": "/docs/os-essential/11-page-replacement-algorithms-belady-anomaly"
+    },
+    {
+      "id": "12-tlb-translation-lookaside-buffer",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Translation Lookaside Buffer (TLB) & Address Caching",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 12,
+      "url": "/docs/os-essential/12-tlb-translation-lookaside-buffer"
+    },
+    {
+      "id": "13-thrashing-and-working-set",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Thrashing: Causes, Working Set Model & Page Fault Frequency",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 13,
+      "url": "/docs/os-essential/13-thrashing-and-working-set"
+    },
+    {
+      "id": "14-inter-process-communication-ipc",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Inter-Process Communication (IPC) Mechanisms",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 14,
+      "url": "/docs/os-essential/14-inter-process-communication-ipc"
+    },
+    {
+      "id": "15-user-mode-vs-kernel-mode",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "User Mode vs. Kernel Mode",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 15,
+      "url": "/docs/os-essential/15-user-mode-vs-kernel-mode"
+    },
+    {
+      "id": "16-system-call-lifecycle",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "System Calls: The Full Lifecycle",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 16,
+      "url": "/docs/os-essential/16-system-call-lifecycle"
+    },
+    {
+      "id": "17-zombie-vs-orphan-processes",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Zombie vs. Orphan Processes",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 17,
+      "url": "/docs/os-essential/17-zombie-vs-orphan-processes"
+    },
+    {
+      "id": "18-fork-exec-copy-on-write",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "fork(), exec(), and Copy-on-Write",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 18,
+      "url": "/docs/os-essential/18-fork-exec-copy-on-write"
+    },
+    {
+      "id": "19-paging-vs-segmentation",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Paging vs. Segmentation",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 19,
+      "url": "/docs/os-essential/19-paging-vs-segmentation"
+    },
+    {
+      "id": "20-internal-vs-external-fragmentation",
+      "group": "os-essential",
+      "block": "os-essential",
+      "title": "Internal vs. External Fragmentation",
+      "difficulty": "easy",
+      "points": 1,
+      "position": 20,
+      "url": "/docs/os-essential/20-internal-vs-external-fragmentation"
+    },
+    {
+      "id": "1-cpu-scheduling-fcfs-sjf-srtf-round-robin",
+      "group": "os-problems",
+      "block": "os-problems",
+      "title": "CPU Scheduling: FCFS, SJF, SRTF and Round Robin",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 1,
+      "url": "/docs/os-problems/1-cpu-scheduling-fcfs-sjf-srtf-round-robin"
+    },
+    {
+      "id": "2-priority-scheduling-starvation-aging",
+      "group": "os-problems",
+      "block": "os-problems",
+      "title": "Priority Scheduling, Starvation and Aging",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/os-problems/2-priority-scheduling-starvation-aging"
+    },
+    {
+      "id": "3-page-replacement-fifo-lru-optimal",
+      "group": "os-problems",
+      "block": "os-problems",
+      "title": "Page Replacement: FIFO, LRU and Optimal",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/os-problems/3-page-replacement-fifo-lru-optimal"
+    },
+    {
+      "id": "4-beladys-anomaly-numerical-proof",
+      "group": "os-problems",
+      "block": "os-problems",
+      "title": "Bélády's Anomaly: Three Frames Beat Four",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/os-problems/4-beladys-anomaly-numerical-proof"
+    },
+    {
+      "id": "5-effective-memory-access-time-emat-tlb",
+      "group": "os-problems",
+      "block": "os-problems",
+      "title": "Effective Memory Access Time: TLB Hit Ratios and Page Table Depth",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 5,
+      "url": "/docs/os-problems/5-effective-memory-access-time-emat-tlb"
+    },
+    {
+      "id": "6-address-translation-paging-page-table-size",
+      "group": "os-problems",
+      "block": "os-problems",
+      "title": "Address Translation: Offset Bits, Frames and Page Table Size",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 6,
+      "url": "/docs/os-problems/6-address-translation-paging-page-table-size"
+    },
+    {
+      "id": "7-bankers-algorithm-resource-allocation",
+      "group": "os-problems",
+      "block": "os-problems",
+      "title": "Banker's Algorithm: Need Matrix, Safety Check and Requests",
+      "difficulty": "hard",
+      "points": 3,
+      "position": 7,
+      "url": "/docs/os-problems/7-bankers-algorithm-resource-allocation"
+    },
+    {
+      "id": "8-disk-scheduling-fcfs-sstf-scan-cscan",
+      "group": "os-problems",
+      "block": "os-problems",
+      "title": "Disk Scheduling: FCFS, SSTF, SCAN and C-SCAN",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 8,
+      "url": "/docs/os-problems/8-disk-scheduling-fcfs-sstf-scan-cscan"
+    }
+  ]
+}

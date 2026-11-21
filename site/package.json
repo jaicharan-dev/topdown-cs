@@ -3,8 +3,9 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "prestart": "node scripts/generate-dsa-stats.js",
-    "prebuild": "node scripts/generate-dsa-stats.js",
+    "prestart": "node scripts/generate-dsa-stats.js && node scripts/generate-content-manifest.js",
+    "prebuild": "node scripts/generate-dsa-stats.js && node scripts/generate-content-manifest.js",
+    "manifest": "node scripts/generate-content-manifest.js",
     "docusaurus": "docusaurus",
     "start": "docusaurus start",
     "build": "docusaurus build",
