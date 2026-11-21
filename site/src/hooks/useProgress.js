@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import useIsBrowser from '@docusaurus/useIsBrowser';
 import {
+  activityStats,
   emptyStore,
   isComplete as storeIsComplete,
   readStore,
@@ -58,5 +59,14 @@ export default function useProgress() {
     [store]
   );
 
-  return { ready, store, toggle, isComplete, summarise };
+  /**
+   * Wipes everything. The caller is responsible for confirming first: this is
+   * the user's own data and the only copy of it, so it should never go without
+   * them having said so.
+   */
+  const reset = useCallback(() => {
+    setStore(writeStore(emptyStore()));
+  }, []);
+
+  return { ready, store, toggle, isComplete, reset, summarise, activityStats };
 }

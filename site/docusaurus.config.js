@@ -203,7 +203,9 @@ const config = {
           src: 'img/logo.png',
           srcDark: 'img/logo.png',
         },
-        items: [],
+        items: [
+          { to: '/progress', label: 'Progress', position: 'right' },
+        ],
       },
       footer: {
         links: [

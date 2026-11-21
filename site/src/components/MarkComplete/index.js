@@ -11,6 +11,7 @@
  * and the first client render agree and hydration stays quiet.
  */
 
+import Link from '@docusaurus/Link';
 import React from 'react';
 import useProgress from '@site/src/hooks/useProgress';
 import styles from './styles.module.css';
@@ -56,9 +57,14 @@ export default function MarkComplete({ contentId }) {
         <span>{done ? 'Completed' : 'Mark as complete'}</span>
       </button>
       <p className={styles.note}>
-        {done
-          ? 'Saved in this browser. Accounts and sync come later.'
-          : 'Tracks your progress. Stored in this browser only.'}
+        {done ? (
+          <>
+            Saved in this browser.{' '}
+            <Link to="/progress">See your progress</Link>.
+          </>
+        ) : (
+          'Tracks your progress. Stored in this browser only.'
+        )}
       </p>
     </div>
   );
