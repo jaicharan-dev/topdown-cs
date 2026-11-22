@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useHistory } from '@docusaurus/router';
 import dsaStats from '@site/src/data/dsaStats.json';
+import manifest from '@site/src/data/contentManifest.json';
+import useProgress from '@site/src/hooks/useProgress';
 
 // Question counts come from the generated stats, keyed by the same ids used
 // for the nodes below, so adding a question updates the roadmap on its own.
@@ -49,6 +51,24 @@ const DAG_NODES = [
 ];
 
 /**
+ * Which manifest block each roadmap node stands for, worked out from the
+ * node's own href rather than a hand written table.
+ *
+ * The ids here do not match the directory names (`trees-bst` is `9-trees`,
+ * `math-basics` is `3-math-number-theory`), so a table would be four
+ * exceptions waiting to rot. An href that stops resolving leaves the node
+ * without progress rather than crashing, and the manifest generator already
+ * fails the build on a bad id.
+ */
+const PAGE_BY_URL = new Map(manifest.pages.map((page) => [page.url, page]));
+
+const BLOCK_FOR_NODE = DAG_NODES.reduce((out, node) => {
+  const page = PAGE_BY_URL.get(node.href);
+  if (page) out[node.id] = page.block;
+  return out;
+}, {});
+
+/**
  * Connections. `toOffset` nudges the arrival port along the target's top edge so
  * two parents never land on the same pixel; every other connector enters dead
  * centre. Lines leave a node from the centre of its bottom edge, which turns a
@@ -87,6 +107,27 @@ const VIEW_W = 1130;
 const VIEW_H = 896;
 
 export default function DsaRoadmap() {
+  const { store } = useProgress();
+
+  // Completed pages per block. All zeros until the store loads after
+  // hydration, so the server markup and the first client render agree.
+  const doneByBlock = React.useMemo(() => {
+    const done = store && store.completed ? store.completed : {};
+    const out = {};
+    for (const page of manifest.pages) {
+      if (done[page.id]) out[page.block] = (out[page.block] || 0) + 1;
+    }
+    return out;
+  }, [store]);
+
+  /** done and total for a node, both from the manifest so they cannot disagree. */
+  const progressFor = (nodeId) => {
+    const block = BLOCK_FOR_NODE[nodeId];
+    if (!block || !manifest.blocks[block]) return { done: 0, total: 0 };
+    const total = manifest.blocks[block].pages;
+    return { done: Math.min(doneByBlock[block] || 0, total), total };
+  };
+
   const [hoveredNode, setHoveredNode] = useState(null);
   const history = useHistory();
 
@@ -197,6 +238,9 @@ export default function DsaRoadmap() {
 
           <g className="csf-dsa-nodes">
             {DAG_NODES.map((node) => {
+              const { done, total } = progressFor(node.id);
+              const hasProgress = done > 0 && total > 0;
+              const railWidth = node.w - 36;
               const isHovered = hoveredNode === node.id;
               const isConnected = hoveredNode && EDGES.some(
                 (e) => (e.from === hoveredNode && e.to === node.id) || (e.to === hoveredNode && e.from === node.id)
@@ -225,9 +269,11 @@ export default function DsaRoadmap() {
                   tabIndex="0"
                   role="button"
                   aria-label={
-                    COUNTS[node.id]
-                      ? `${node.label} roadmap topic, ${COUNTS[node.id].count} questions`
-                      : `${node.label} roadmap topic`
+                    hasProgress
+                      ? `${node.label} roadmap topic, ${done} of ${total} done`
+                      : COUNTS[node.id]
+                        ? `${node.label} roadmap topic, ${COUNTS[node.id].count} questions`
+                        : `${node.label} roadmap topic`
                   }
                 >
                   <rect
@@ -277,6 +323,33 @@ export default function DsaRoadmap() {
                   {/* Just under the card, right-aligned: the label fills the
                       card, and a connector leaves from the bottom centre, so
                       this corner is the only space that is reliably free. */}
+                  {/* Progress along the bottom edge, mirroring the accent
+                      rail on top. Only drawn once there is something to show,
+                      so an untouched roadmap looks exactly as it did before
+                      progress tracking existed. */}
+                  {hasProgress && (
+                    <>
+                      <rect
+                        x={-node.w / 2 + 18}
+                        y={node.h / 2 - 1.5}
+                        width={railWidth}
+                        height={3}
+                        rx="1.5"
+                        pointerEvents="none"
+                        fill="rgba(127, 127, 127, 0.3)"
+                      />
+                      <rect
+                        x={-node.w / 2 + 18}
+                        y={node.h / 2 - 1.5}
+                        width={Math.max(3, (railWidth * done) / total)}
+                        height={3}
+                        rx="1.5"
+                        pointerEvents="none"
+                        fill={node.accent}
+                      />
+                    </>
+                  )}
+
                   {COUNTS[node.id] && (
                     <text
                       x={node.w / 2}
@@ -285,7 +358,7 @@ export default function DsaRoadmap() {
                       pointerEvents="none"
                       className="csf-dsa-node-count"
                     >
-                      {COUNTS[node.id].count}
+                      {hasProgress ? `${done}/${total}` : COUNTS[node.id].count}
                     </text>
                   )}
                 </g>

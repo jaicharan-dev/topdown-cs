@@ -3,6 +3,9 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import React from 'react';
 import DsaRoadmap from '../components/DsaRoadmap';
+import manifest from '@site/src/data/contentManifest.json';
+import useProgress from '@site/src/hooks/useProgress';
+import { summarise } from '@site/src/lib/progressStore';
 
 // --- Custom 2D Line-Art SVGs ---
 
@@ -96,38 +99,56 @@ const IconSystemDesign = () => (
 
 
 const essentialsSubjects = [
-  { title: 'OOP Essential', href: '/docs/oop-essential/1-four-pillars-of-oop', Icon: IconOOP, accentColor: '#60a5fa', comingSoon: false },
-  { title: 'DBMS Essential', href: '/docs/dbms-essential/1-what-is-a-transaction', Icon: IconDBMS, accentColor: '#a78bfa', comingSoon: false },
-  { title: 'OS Essentials', href: '/docs/os-essential/1-process-vs-thread', Icon: IconOS, accentColor: '#f59e0b', comingSoon: false },
-  { title: 'CN Essential', href: '/docs/cn-essential/1-osi-model-tcp-ip', Icon: IconCN, accentColor: '#34d399', comingSoon: false },
+  { title: 'OOP Essential', group: 'oop-essential', href: '/docs/oop-essential/1-four-pillars-of-oop', Icon: IconOOP, accentColor: '#60a5fa', comingSoon: false },
+  { title: 'DBMS Essential', group: 'dbms-essential', href: '/docs/dbms-essential/1-what-is-a-transaction', Icon: IconDBMS, accentColor: '#a78bfa', comingSoon: false },
+  { title: 'OS Essentials', group: 'os-essential', href: '/docs/os-essential/1-process-vs-thread', Icon: IconOS, accentColor: '#f59e0b', comingSoon: false },
+  { title: 'CN Essential', group: 'cn-essential', href: '/docs/cn-essential/1-osi-model-tcp-ip', Icon: IconCN, accentColor: '#34d399', comingSoon: false },
 ];
 
 const additionalsSubjects = [
-  { title: 'OOP Additional', href: '/docs/oop-additional/19-static-binding-vs-dynamic-binding', Icon: IconOOP, accentColor: '#93c5fd', comingSoon: false },
-  { title: 'DBMS Additional', href: '/docs/dbms-additional/9-bcnf-vs-3nf', Icon: IconDBMS, accentColor: '#c4b5fd', comingSoon: false },
-  { title: 'OS Additional', href: '/docs/os-additional/1-priority-inversion-mars-rover', Icon: IconOS, accentColor: '#fbbf24', comingSoon: false },
-  { title: 'CN Additional', href: '/docs/cn-additional/1-sessions-vs-jwt', Icon: IconCN, accentColor: '#6ee7b7', comingSoon: false },
+  { title: 'OOP Additional', group: 'oop-additional', href: '/docs/oop-additional/19-static-binding-vs-dynamic-binding', Icon: IconOOP, accentColor: '#93c5fd', comingSoon: false },
+  { title: 'DBMS Additional', group: 'dbms-additional', href: '/docs/dbms-additional/9-bcnf-vs-3nf', Icon: IconDBMS, accentColor: '#c4b5fd', comingSoon: false },
+  { title: 'OS Additional', group: 'os-additional', href: '/docs/os-additional/1-priority-inversion-mars-rover', Icon: IconOS, accentColor: '#fbbf24', comingSoon: false },
+  { title: 'CN Additional', group: 'cn-additional', href: '/docs/cn-additional/1-sessions-vs-jwt', Icon: IconCN, accentColor: '#6ee7b7', comingSoon: false },
 ];
 
 const practiceSubjects = [
-  { title: 'OS Problems', href: '/docs/os-problems/1-cpu-scheduling-fcfs-sjf-srtf-round-robin', Icon: IconOS, accentColor: '#fb923c', comingSoon: false },
-  { title: 'Design Patterns', href: '/docs/design-patterns/1-singleton-pattern', Icon: IconDesignPatterns, accentColor: '#38bdf8', comingSoon: false },
-  { title: 'CN Problems', href: '/docs/cn-problems/1-subnetting', Icon: IconCN, accentColor: '#2dd4bf', comingSoon: false },
-  { title: 'Code Tracing', href: '/docs/code-tracing/1-code-trace-static-instance-constructor', Icon: IconCodeTracing, accentColor: '#fb7185', comingSoon: false },
-  { title: 'DB Design', href: '/docs/database-design/1-wallet-payment-system', Icon: IconDBDesign, accentColor: '#c084fc', comingSoon: false },
+  { title: 'OS Problems', group: 'os-problems', href: '/docs/os-problems/1-cpu-scheduling-fcfs-sjf-srtf-round-robin', Icon: IconOS, accentColor: '#fb923c', comingSoon: false },
+  { title: 'Design Patterns', group: 'design-patterns', href: '/docs/design-patterns/1-singleton-pattern', Icon: IconDesignPatterns, accentColor: '#38bdf8', comingSoon: false },
+  { title: 'CN Problems', group: 'cn-problems', href: '/docs/cn-problems/1-subnetting', Icon: IconCN, accentColor: '#2dd4bf', comingSoon: false },
+  { title: 'Code Tracing', group: 'code-tracing', href: '/docs/code-tracing/1-code-trace-static-instance-constructor', Icon: IconCodeTracing, accentColor: '#fb7185', comingSoon: false },
+  { title: 'DB Design', group: 'database-design', href: '/docs/database-design/1-wallet-payment-system', Icon: IconDBDesign, accentColor: '#c084fc', comingSoon: false },
 ];
 
 const lockedSubjects = [
   { title: 'System Design', href: '#', Icon: IconSystemDesign, accentColor: '#4ade80', comingSoon: true },
 ];
 
-function CompactCard({title, href, Icon, accentColor, comingSoon}) {
+/**
+ * A subject card, with the reader's progress along its bottom edge.
+ *
+ * The bar appears only once there is something to show. A first time visitor
+ * sees the homepage exactly as it was before progress tracking existed,
+ * rather than fourteen cards all reporting zero, which would read as a list
+ * of chores rather than an invitation.
+ *
+ * It is positioned absolutely, mirroring the accent tab on the top edge, so
+ * it takes no layout space and cannot shift the card when it appears after
+ * hydration.
+ */
+function CompactCard({title, href, Icon, accentColor, comingSoon, done = 0, total = 0}) {
+  const showProgress = !comingSoon && total > 0 && done > 0;
+  const percent = showProgress ? Math.round((done / total) * 100) : 0;
+  const complete = showProgress && done >= total;
+  const label = showProgress ? `${title}, ${done} of ${total} done` : title;
+
   return (
-    <Link 
-      to={href} 
+    <Link
+      to={href}
       className={`csf-compact-card ${comingSoon ? 'csf-compact-card--soon' : ''}`}
       style={{ '--card-accent': accentColor }}
-      title={comingSoon ? "Coming Soon" : title}
+      title={comingSoon ? 'Coming Soon' : label}
+      aria-label={comingSoon ? `${title}, coming soon` : label}
       onClick={(e) => comingSoon && e.preventDefault()}
     >
       <div className="csf-compact-card__glow" aria-hidden="true" />
@@ -136,12 +157,34 @@ function CompactCard({title, href, Icon, accentColor, comingSoon}) {
       </div>
       <div className="csf-compact-card__title">{title}</div>
       {comingSoon && <span className="csf-compact-card__badge">Soon</span>}
+      {showProgress && (
+        <div
+          className={`csf-compact-card__progress ${
+            complete ? 'is-complete' : ''
+          }`}
+          aria-hidden="true">
+          <div
+            className="csf-compact-card__progress-fill"
+            style={{ width: `${percent}%` }}
+          />
+        </div>
+      )}
     </Link>
   );
 }
 
 export default function Home() {
   const {siteConfig} = useDocusaurusContext();
+  const {store} = useProgress();
+
+  // Before hydration this is all zeros, so no bar renders and the server
+  // markup and the first client render agree.
+  const summary = React.useMemo(() => summarise(store, manifest), [store]);
+  const progressFor = (group) => {
+    const got = summary.groups[group];
+    const all = manifest.groups[group];
+    return { done: got ? got.completedPages : 0, total: all ? all.pages : 0 };
+  };
   return (
     <Layout
       title="Interview-Ready CS Fundamentals"
@@ -167,7 +210,11 @@ export default function Home() {
             <p className="csf-section-label">Essentials</p>
             <div className="csf-compact-grid">
               {essentialsSubjects.map((subject) => (
-                <CompactCard key={subject.title} {...subject} />
+                <CompactCard
+                  key={subject.title}
+                  {...subject}
+                  {...progressFor(subject.group)}
+                />
               ))}
             </div>
           </div>
@@ -178,7 +225,11 @@ export default function Home() {
             <p className="csf-section-label">Additionals</p>
             <div className="csf-compact-grid">
               {additionalsSubjects.map((subject) => (
-                <CompactCard key={subject.title} {...subject} />
+                <CompactCard
+                  key={subject.title}
+                  {...subject}
+                  {...progressFor(subject.group)}
+                />
               ))}
             </div>
           </div>
@@ -189,7 +240,11 @@ export default function Home() {
             <p className="csf-section-label">Practice & Problems</p>
             <div className="csf-compact-grid">
               {practiceSubjects.map((subject) => (
-                <CompactCard key={subject.title} {...subject} />
+                <CompactCard
+                  key={subject.title}
+                  {...subject}
+                  {...progressFor(subject.group)}
+                />
               ))}
             </div>
           </div>
@@ -200,7 +255,11 @@ export default function Home() {
             <p className="csf-section-label">Coming Soon</p>
             <div className="csf-compact-grid">
               {lockedSubjects.map((subject) => (
-                <CompactCard key={subject.title} {...subject} />
+                <CompactCard
+                  key={subject.title}
+                  {...subject}
+                  {...progressFor(subject.group)}
+                />
               ))}
             </div>
           </div>

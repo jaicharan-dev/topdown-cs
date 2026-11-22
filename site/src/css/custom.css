@@ -935,6 +935,39 @@ html:not([data-theme='dark']) .csf-section-divider {
   opacity: 1;
 }
 
+/* Reading progress along the bottom edge, mirroring the accent tab on top.
+   Absolutely positioned on purpose: it is rendered only after hydration, once
+   the store has loaded, and anything in the layout flow would make every card
+   on the homepage jump at that moment. The track is a neutral grey rather
+   than a themed token so it reads correctly in both themes without a second
+   rule. */
+.csf-compact-card__progress {
+  position: absolute;
+  bottom: 0;
+  left: 18px;
+  right: 18px;
+  height: 3px;
+  border-radius: 1.5px 1.5px 0 0;
+  background: rgba(127, 127, 127, 0.22);
+  overflow: hidden;
+}
+
+.csf-compact-card__progress-fill {
+  height: 100%;
+  background: var(--card-accent);
+  opacity: 0.85;
+  transition: width 0.4s ease;
+}
+
+.csf-compact-card__progress.is-complete .csf-compact-card__progress-fill {
+  opacity: 1;
+}
+
+/* A finished subject keeps its accent lit rather than fading on hover only. */
+.csf-compact-card__progress.is-complete {
+  background: var(--card-accent);
+}
+
 /* ----- Natural Blending DSA Roadmap ----- */
 .csf-dsa-roadmap-wrapper {
   position: relative;
