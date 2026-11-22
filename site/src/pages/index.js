@@ -1,7 +1,7 @@
 import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import DsaRoadmap from '../components/DsaRoadmap';
 import manifest from '@site/src/data/contentManifest.json';
 import useProgress from '@site/src/hooks/useProgress';
@@ -120,9 +120,65 @@ const practiceSubjects = [
   { title: 'DB Design', group: 'database-design', href: '/docs/database-design/1-wallet-payment-system', Icon: IconDBDesign, accentColor: '#c084fc', comingSoon: false },
 ];
 
-const lockedSubjects = [
-  { title: 'System Design', href: '#', Icon: IconSystemDesign, accentColor: '#4ade80', comingSoon: true },
+/**
+ * The homepage tabs.
+ *
+ * Data driven because the plan is for this list to grow: SQL, ML, deep
+ * learning and the rest each want a tab rather than another column. Adding
+ * one should be an entry here and a panel below, not a layout change.
+ *
+ * `groups` names the manifest groups a tab covers, which drives the progress
+ * underline on the tab itself.
+ */
+const TABS = [
+  {
+    id: 'cs',
+    label: 'CS Fundamentals',
+    groups: [
+      ...essentialsSubjects,
+      ...additionalsSubjects,
+      ...practiceSubjects,
+    ].map((subject) => subject.group),
+  },
+  { id: 'dsa', label: 'DSA', groups: ['dsa'] },
+  { id: 'system-design', label: 'System Design', groups: [] },
 ];
+
+const DEFAULT_TAB = TABS[0].id;
+
+function useHomeTabs() {
+  const [active, setActive] = useState(DEFAULT_TAB);
+
+  // The hash is read after hydration, never during render. Reading it while
+  // rendering would make the prerendered markup and the first client render
+  // disagree whenever somebody opens a link to a tab.
+  //
+  // It is also followed afterwards, not just on mount. This is a single page
+  // app, so arriving at a different hash often does not remount anything:
+  // without the listener the URL would say one tab and the page would show
+  // another, and the browser's back button would do nothing visible.
+  useEffect(() => {
+    const sync = () => {
+      const fromHash = window.location.hash.replace(/^#/, '');
+      if (TABS.some((tab) => tab.id === fromHash)) setActive(fromHash);
+      else if (!fromHash) setActive(DEFAULT_TAB);
+    };
+    sync();
+    window.addEventListener('hashchange', sync);
+    return () => window.removeEventListener('hashchange', sync);
+  }, []);
+
+  const select = useCallback((id) => {
+    setActive(id);
+    // replaceState rather than assigning location.hash: assigning would jump
+    // the page to any element sharing that id, and would push a history entry
+    // for every click, so Back would walk through tabs instead of leaving.
+    const url = id === DEFAULT_TAB ? window.location.pathname : `#${id}`;
+    window.history.replaceState(null, '', url);
+  }, []);
+
+  return [active, select];
+}
 
 /**
  * A subject card, with the reader's progress along its bottom edge.
@@ -202,15 +258,65 @@ function CompactCard({title, href, Icon, accentColor, comingSoon, done = 0, tota
 export default function Home() {
   const {siteConfig} = useDocusaurusContext();
   const {store} = useProgress();
+  const [activeTab, selectTab] = useHomeTabs();
 
-  // Before hydration this is all zeros, so no bar renders and the server
-  // markup and the first client render agree.
+  // Before hydration this is all zeros, so nothing is coloured in and the
+  // server markup and the first client render agree.
   const summary = React.useMemo(() => summarise(store, manifest), [store]);
+
   const progressFor = (group) => {
     const got = summary.groups[group];
     const all = manifest.groups[group];
     return { done: got ? got.completedPages : 0, total: all ? all.pages : 0 };
   };
+
+  /**
+   * Totals for a tab, so each tab can show how far along its own content is.
+   *
+   * Tabs hide things: before them you could see your CS and DSA progress side
+   * by side, and now you cannot. The underline on each tab gives that back.
+   */
+  const tabProgress = (tab) => {
+    let done = 0;
+    let total = 0;
+    for (const group of tab.groups) {
+      const all = manifest.groups[group];
+      if (!all) continue;
+      total += all.pages;
+      done += progressFor(group).done;
+    }
+    return { done, total };
+  };
+
+  const onTabKeyDown = (event) => {
+    const index = TABS.findIndex((tab) => tab.id === activeTab);
+    let next = null;
+    if (event.key === 'ArrowRight') next = (index + 1) % TABS.length;
+    else if (event.key === 'ArrowLeft') next = (index - 1 + TABS.length) % TABS.length;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = TABS.length - 1;
+    if (next === null) return;
+    event.preventDefault();
+    selectTab(TABS[next].id);
+    const el = document.getElementById(`csf-tab-${TABS[next].id}`);
+    if (el) el.focus();
+  };
+
+  const renderSection = (label, subjects) => (
+    <div className="csf-section-group">
+      <p className="csf-section-label">{label}</p>
+      <div className="csf-compact-grid csf-compact-grid--wide">
+        {subjects.map((subject) => (
+          <CompactCard
+            key={subject.title}
+            {...subject}
+            {...progressFor(subject.group)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <Layout
       title="Interview-Ready CS Fundamentals"
@@ -228,73 +334,88 @@ export default function Home() {
         </p>
       </section>
 
-      {/* Split-Screen Main Layout */}
-      <main className="csf-main-container">
-        {/* Left Column: CS Fundamentals */}
-        <div className="csf-column-left">
-          <div className="csf-section-group">
-            <p className="csf-section-label">Essentials</p>
-            <div className="csf-compact-grid">
-              {essentialsSubjects.map((subject) => (
-                <CompactCard
-                  key={subject.title}
-                  {...subject}
-                  {...progressFor(subject.group)}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="csf-section-divider" />
-
-          <div className="csf-section-group">
-            <p className="csf-section-label">Additionals</p>
-            <div className="csf-compact-grid">
-              {additionalsSubjects.map((subject) => (
-                <CompactCard
-                  key={subject.title}
-                  {...subject}
-                  {...progressFor(subject.group)}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="csf-section-divider" />
-
-          <div className="csf-section-group">
-            <p className="csf-section-label">Practice & Problems</p>
-            <div className="csf-compact-grid">
-              {practiceSubjects.map((subject) => (
-                <CompactCard
-                  key={subject.title}
-                  {...subject}
-                  {...progressFor(subject.group)}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="csf-section-divider" />
-
-          <div className="csf-section-group">
-            <p className="csf-section-label">Coming Soon</p>
-            <div className="csf-compact-grid">
-              {lockedSubjects.map((subject) => (
-                <CompactCard
-                  key={subject.title}
-                  {...subject}
-                  {...progressFor(subject.group)}
-                />
-              ))}
-            </div>
-          </div>
+      <main className="csf-tabs">
+        <div className="csf-tablist" role="tablist" aria-label="Content sections">
+          {TABS.map((tab) => {
+            const { done, total } = tabProgress(tab);
+            const ratio = total > 0 ? Math.min(1, done / total) : 0;
+            const selected = tab.id === activeTab;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                id={`csf-tab-${tab.id}`}
+                className="csf-tab"
+                aria-selected={selected}
+                aria-controls={`csf-panel-${tab.id}`}
+                /* Only the selected tab is in the tab order; the arrow keys
+                   move between them, which is how a tablist is expected to
+                   behave. */
+                tabIndex={selected ? 0 : -1}
+                onClick={() => selectTab(tab.id)}
+                onKeyDown={onTabKeyDown}>
+                <span className="csf-tab__label">{tab.label}</span>
+                {total > 0 && (
+                  <span className="csf-tab__count">
+                    {done} / {total}
+                  </span>
+                )}
+                {done > 0 && (
+                  <span
+                    className="csf-tab__progress"
+                    style={{ width: `${ratio * 100}%` }}
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
 
-        {/* Right Column: DSA Roadmap */}
-        <div className="csf-column-right">
+        {/* Every panel stays in the markup and is hidden rather than
+            unmounted, so all of the content is in the prerendered HTML for
+            search engines and for anyone landing on a linked tab. */}
+        <div
+          role="tabpanel"
+          id="csf-panel-cs"
+          aria-labelledby="csf-tab-cs"
+          className="csf-tabpanel"
+          hidden={activeTab !== 'cs'}>
+          {renderSection('Essentials', essentialsSubjects)}
+          <div className="csf-section-divider" />
+          {renderSection('Additionals', additionalsSubjects)}
+          <div className="csf-section-divider" />
+          {renderSection('Practice & Problems', practiceSubjects)}
+        </div>
+
+        <div
+          role="tabpanel"
+          id="csf-panel-dsa"
+          aria-labelledby="csf-tab-dsa"
+          className="csf-tabpanel"
+          hidden={activeTab !== 'dsa'}>
           <p className="csf-section-label">DSA Roadmap</p>
           <DsaRoadmap />
+        </div>
+
+        <div
+          role="tabpanel"
+          id="csf-panel-system-design"
+          aria-labelledby="csf-tab-system-design"
+          className="csf-tabpanel"
+          hidden={activeTab !== 'system-design'}>
+          <div className="csf-soon-panel">
+            <div className="csf-soon-panel__icon" aria-hidden="true">
+              <IconSystemDesign />
+            </div>
+            <h2 className="csf-soon-panel__title">System Design is on the way</h2>
+            <p className="csf-soon-panel__text">
+              The same treatment as the rest of the site: the answer an
+              interviewer actually wants, not a textbook chapter. Nothing to
+              read here yet.
+            </p>
+          </div>
         </div>
       </main>
     </Layout>

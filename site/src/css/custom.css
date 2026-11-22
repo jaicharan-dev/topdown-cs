@@ -775,67 +775,179 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
   .csf-hero__glow { width: 260px; height: 160px; }
 }
 
-/* ----- Two-Column Split Layout ----- */
-.csf-main-container {
+/* ----- Homepage tabs -----
+   Replaces the old two column split. The columns are gone rather than
+   hidden: .csf-main-container, .csf-column-left and .csf-column-right were
+   referenced by nothing once the panels took over. */
+.csf-tabs {
   width: 100%;
   max-width: 1260px;
   margin: 0 auto;
   padding: 0 2.25rem 4rem;
-  display: grid;
-  grid-template-columns: minmax(250px, 0.85fr) minmax(520px, 1.9fr);
-  gap: 3rem;
-  align-items: start;
 }
 
-@media screen and (max-width: 1280px) {
-  .csf-main-container {
-    grid-template-columns: minmax(225px, 0.8fr) minmax(460px, 1.9fr);
-    gap: 2rem;
+.csf-tablist {
+  display: flex;
+  gap: 0.35rem;
+  margin-bottom: 1.75rem;
+  border-bottom: 1px solid var(--csf-border-subtle, #e3dcce);
+  overflow-x: auto;
+  /* The strip scrolls sideways rather than wrapping, so adding SQL, ML and
+     the rest later cannot push the panels down the page. */
+  scrollbar-width: none;
+}
+
+.csf-tablist::-webkit-scrollbar {
+  display: none;
+}
+
+.csf-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  flex: none;
+  padding: 0.7rem 1.1rem 0.8rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.6;
+  white-space: nowrap;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.csf-tab:hover {
+  opacity: 0.9;
+}
+
+.csf-tab[aria-selected='true'] {
+  opacity: 1;
+}
+
+.csf-tab:focus-visible {
+  outline: 2px solid var(--csf-progress-accent, #16a34a);
+  outline-offset: -2px;
+  border-radius: 8px;
+}
+
+.csf-tab__count {
+  font-size: 0.74rem;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The selected tab's own underline, drawn over the strip's border. */
+.csf-tab[aria-selected='true']::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: currentColor;
+  opacity: 0.85;
+}
+
+/* How far through this tab's content the reader is. Sits on the same line as
+   the border so it reads as a filling bar rather than another underline. */
+.csf-tab__progress {
+  position: absolute;
+  left: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--csf-progress-accent, #16a34a);
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.csf-tab[aria-selected='true'] .csf-tab__progress {
+  height: 3px;
+}
+
+.csf-tabpanel[hidden] {
+  display: none;
+}
+
+/* Panels are full width now, so the cards get room to breathe rather than
+   staying in the narrow two column strip they used to live in. */
+/* Compound selector on purpose: .csf-compact-grid is defined further down
+   this file, so a single class modifier would lose to it on source order
+   despite meaning to override it. */
+.csf-compact-grid.csf-compact-grid--wide {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+}
+
+.csf-compact-grid--wide .csf-compact-card {
+  min-height: 84px;
+  padding: 14px 12px 13px;
+}
+
+/* System Design, until there is something to read. */
+.csf-soon-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.75rem;
+  padding: 4rem 1.5rem 5rem;
+  max-width: 48ch;
+  margin: 0 auto;
+}
+
+.csf-soon-panel__icon {
+  width: 42px;
+  height: 42px;
+  opacity: 0.4;
+}
+
+.csf-soon-panel__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.csf-soon-panel__title {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.csf-soon-panel__text {
+  margin: 0;
+  font-size: 0.9rem;
+  opacity: 0.65;
+}
+
+[data-theme='dark'] .csf-tablist {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+@media screen and (max-width: 1080px) {
+  .csf-tabs {
     padding: 0 1.25rem 3.5rem;
   }
 }
 
-@media screen and (max-width: 1080px) {
-  .csf-main-container {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-    padding: 0 1rem 3rem;
+@media screen and (max-width: 600px) {
+  .csf-tabs {
+    padding: 0 0.85rem 3rem;
   }
-}
 
-.csf-column-left {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  max-width: 340px;
-  width: 100%;
-  justify-self: end;
-}
-
-@media screen and (max-width: 1280px) {
-  .csf-column-left {
-    max-width: 300px;
+  .csf-tab {
+    padding: 0.6rem 0.8rem 0.7rem;
+    font-size: 0.85rem;
   }
-}
 
-@media screen and (max-width: 1080px) {
-  .csf-column-left {
-    max-width: 100%;
-    justify-self: stretch;
+  .csf-compact-grid.csf-compact-grid--wide {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
   }
-}
 
-.csf-column-right {
-  position: relative;
-  width: 100%;
-  max-width: 840px;
-  min-width: 0;
-  padding-left: 1rem;
-}
-
-@media screen and (max-width: 1080px) {
-  .csf-column-right {
-    padding-left: 0;
+  .csf-compact-grid--wide .csf-compact-card {
+    min-height: 70px;
+    padding: 11px 8px;
   }
 }
 
