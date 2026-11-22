@@ -1,0 +1,162 @@
+/* Account and sync state on the progress dashboard. */
+
+.card {
+  border: 1px solid var(--csf-border, #d5cdbc);
+  background: var(--csf-surface, #f8f5ee);
+  border-radius: 14px;
+  padding: 1.4rem 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.title {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.note {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.65;
+  max-width: 54ch;
+}
+
+/* Google's own mark on a neutral button, per their branding rules. */
+.google {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--csf-border, #d5cdbc);
+  background: var(--ifm-background-color, #fff);
+  color: inherit;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.google:hover {
+  border-color: #4285f4;
+  box-shadow: var(--csf-shadow-sm, 0 1px 2px rgba(24, 24, 27, 0.05));
+}
+
+.google:focus-visible {
+  outline: 2px solid #4285f4;
+  outline-offset: 2px;
+}
+
+.googleMark {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+
+.session {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-top: 1.2rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--csf-border-subtle, #e3dcce);
+}
+
+.who {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.email {
+  font-size: 0.88rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.status {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.status[data-status='error'] {
+  color: #b91c1c;
+  opacity: 1;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.button,
+.danger {
+  border: 1px solid var(--csf-border, #d5cdbc);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--csf-progress-accent, #16a34a);
+}
+
+.button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.danger:hover {
+  border-color: #dc2626;
+  color: #dc2626;
+}
+
+.error {
+  margin: 1rem 0 0;
+  font-size: 0.8rem;
+  color: #b91c1c;
+}
+
+[data-theme='dark'] .status[data-status='error'],
+[data-theme='dark'] .error {
+  color: #fca5a5;
+}
+
+[data-theme='dark'] .google {
+  background: var(--csf-surface-raised, #27272a);
+}
+
+[data-theme='dark'] .danger:hover {
+  border-color: #f87171;
+  color: #f87171;
+}
+
+@media (max-width: 600px) {
+  .head,
+  .session {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .google {
+    justify-content: center;
+  }
+}

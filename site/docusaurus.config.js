@@ -63,6 +63,20 @@ const config = {
     },
   ],
 
+  // Supabase progress sync. Both values are read at BUILD time and baked into
+  // the client bundle, so they live in the hosting provider's environment
+  // settings, not in the repository. The anon key is designed to be public
+  // and is only safe because row level security is enabled; see
+  // supabase/schema.sql. Never put the service role key here: it bypasses RLS
+  // entirely and would expose every user's data.
+  //
+  // Leave them unset and the site simply has no accounts, which is a
+  // perfectly good way to run it.
+  customFields: {
+    supabaseUrl: process.env.SUPABASE_URL || null,
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || null,
+  },
+
   url: 'https://topdowncs.com',
   baseUrl: '/',
   organizationName: 'jaicharan-dev',

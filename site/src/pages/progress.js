@@ -10,9 +10,11 @@
 import Link from '@docusaurus/Link';
 import Layout from '@theme/Layout';
 import React, { useEffect, useMemo, useState } from 'react';
+import AccountCard from '@site/src/components/AccountCard';
 import ProgressHeatmap from '@site/src/components/ProgressHeatmap';
 import manifest from '@site/src/data/contentManifest.json';
 import useProgress from '@site/src/hooks/useProgress';
+import { useCloudEnabled } from '@site/src/hooks/useCloudSync';
 import { activityStats, summarise, today } from '@site/src/lib/progressStore';
 import { RANKS, rankProgress } from '@site/src/lib/ranks';
 import { formatDuration } from '@site/src/lib/timeTracker';
@@ -67,6 +69,7 @@ function Row({ label, done, total, points, totalPoints, href }) {
 
 export default function Progress() {
   const { ready, store, reset } = useProgress();
+  const cloudEnabled = useCloudEnabled();
 
   // The heatmap needs today's date, which must not be read during render on a
   // prerendered page: the server would stamp it with the build date.
@@ -127,8 +130,9 @@ export default function Progress() {
         <header className={styles.header}>
           <h1 className={styles.title}>Your Progress</h1>
           <p className={styles.subtitle}>
-            Saved in this browser only. Nothing is uploaded, and there is no
-            account to create yet.
+            {cloudEnabled
+              ? 'Saved in this browser. Sign in below to carry it between devices.'
+              : 'Saved in this browser only. Nothing is uploaded, and there is no account to create.'}
           </p>
         </header>
 
@@ -271,13 +275,16 @@ export default function Progress() {
           </details>
         </section>
 
+        <AccountCard />
+
         <section className={styles.footerCard}>
           <div>
             <h2 className={styles.cardTitle}>Your data</h2>
             <p className={styles.cardNote}>
-              Progress lives in this browser, so it will not follow you to
-              another device, and clearing your site data clears it. Accounts
-              and sync are the next step.
+              Progress is kept in this browser, so clearing your site data
+              clears it. Signing in keeps a second copy that follows you
+              between devices; without an account it stays here and nowhere
+              else.
             </p>
           </div>
           <button
