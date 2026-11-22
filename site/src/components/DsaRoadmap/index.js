@@ -258,7 +258,12 @@ export default function DsaRoadmap() {
                   key={node.id}
                   className={`csf-dsa-node-group is-done-${doneState} ${isHovered ? 'is-hovered' : ''} ${isConnected ? 'is-connected' : ''} ${isDimmed ? 'is-dimmed' : ''}`}
                   transform={`translate(${node.x}, ${node.y})`}
-                  style={{ '--node-accent': node.accent, cursor: 'pointer' }}
+                  style={{
+                    '--node-accent': node.accent,
+                    // drives the saturation ramp in CSS
+                    '--progress': total > 0 ? done / total : 0,
+                    cursor: 'pointer',
+                  }}
                   onClick={() => node.href && history.push(node.href)}
                   onKeyDown={(e) => {
                     if ((e.key === 'Enter' || e.key === ' ') && node.href) {

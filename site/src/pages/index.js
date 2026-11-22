@@ -166,7 +166,21 @@ function CompactCard({title, href, Icon, accentColor, comingSoon, done = 0, tota
     <Link
       to={href}
       className={`csf-compact-card ${comingSoon ? 'csf-compact-card--soon' : ''}`}
-      style={{ '--card-accent': accentColor, '--progress': ratio }}
+      style={{
+        '--card-accent': accentColor,
+        '--progress': ratio,
+        // Written as a concrete value rather than left to CSS. The identical
+        // calc works on the roadmap nodes but would not track --progress on
+        // these cards: the filter kept resolving with the fallback even
+        // though the variable computed correctly on the same element. Not
+        // worth more digging when the component can simply state the answer.
+        // Coming Soon is desaturated too. Excluding it left the one card
+        // nobody can do as the most colourful unfinished thing on the page.
+        // It stays distinguishable by its lower opacity and its badge, and
+        // the hover preview deliberately skips it: there is nothing to
+        // preview.
+        filter: `saturate(${(0.08 + 0.92 * ratio).toFixed(3)})`,
+      }}
       data-progress={comingSoon ? undefined : state}
       title={comingSoon ? 'Coming Soon' : label}
       aria-label={comingSoon ? `${title}, coming soon` : label}

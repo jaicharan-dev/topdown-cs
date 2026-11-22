@@ -911,10 +911,34 @@ html:not([data-theme='dark']) .csf-section-divider {
   text-decoration: none !important;
   color: inherit !important;
   transition: transform 0.25s ease, border-color 0.25s ease,
-    box-shadow 0.25s ease, background-color 0.25s ease;
+    box-shadow 0.25s ease, background-color 0.25s ease, filter 0.45s ease;
   position: relative;
   overflow: hidden;
   cursor: pointer;
+}
+
+/* ------------------------------------------------------------------
+   Colour is the reward.
+
+   An untouched subject is nearly grey and gains saturation as it fills
+   up, so the homepage colours itself in as you work through it. The ramp
+   is continuous rather than three steps on purpose: a half finished
+   subject should look half alive, which pulls harder than snapping
+   between states.
+
+   Saturation, not greyscale. A fully grey card would collide with
+   .csf-compact-card--soon, which already greys its icon to mean "this
+   does not exist yet". Keeping a trace of hue leaves "not started" and
+   "not available" telling different stories.
+
+   Only saturation changes, so the title keeps its full contrast and the
+   card stays as readable as any other.
+   ------------------------------------------------------------------ */
+/* The resting value is written inline by the component, so the hover preview
+   has to outrank it. This is the one place !important is the honest tool:
+   an inline style can only be beaten by one. */
+.csf-compact-card:not(.csf-compact-card--soon):hover {
+  filter: saturate(1) !important;
 }
 
 /* The accent tab along the top edge, same as .csf-dsa-node-tab */
@@ -1256,7 +1280,15 @@ html:not([data-theme='dark']) .csf-dsa-node-group.is-done-complete .csf-dsa-node
 }
 
 .csf-dsa-node-group {
-  transition: opacity 0.25s ease;
+  transition: opacity 0.25s ease, filter 0.45s ease;
+  filter: saturate(calc(0.08 + 0.92 * var(--progress, 0)));
+}
+
+/* Same preview on hover as the subject cards. The hover drop-shadow lives
+   on .csf-dsa-node-card, a child, so the two filters do not fight. */
+.csf-dsa-node-group:hover,
+.csf-dsa-node-group.is-hovered {
+  filter: saturate(1);
 }
 
 html:not([data-theme='dark']) .csf-dsa-node-card {
