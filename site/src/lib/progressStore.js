@@ -12,6 +12,8 @@
  * just does not survive a reload.
  */
 
+import { MAX_SECONDS_PER_DAY } from './timeTracker';
+
 const STORAGE_KEY = 'topdowncs:progress';
 const CURRENT_VERSION = 1;
 
@@ -83,6 +85,18 @@ export function readStore() {
   }
 }
 
+/**
+ * Same-tab subscribers. The `storage` event deliberately does not fire in the
+ * tab that caused the write, so without this a dashboard left open would sit
+ * there showing stale minutes while the tracker flushed behind it.
+ */
+const listeners = new Set();
+
+export function subscribe(listener) {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
 export function writeStore(store) {
   if (typeof window === 'undefined') {
     memoryFallback = store;
@@ -94,6 +108,16 @@ export function writeStore(store) {
   } catch (err) {
     // quota or blocked: keep going with the in-memory copy
     memoryFallback = store;
+  }
+  // One broken subscriber must not stop the others, and must never take down
+  // the write that triggered it: a crash here would mean clicking "mark as
+  // complete" silently failing.
+  for (const listener of listeners) {
+    try {
+      listener(store);
+    } catch (err) {
+      // a subscriber's problem, not the store's
+    }
   }
   return store;
 }
@@ -126,6 +150,30 @@ export function setComplete(store, contentId, complete, now = new Date()) {
   }
 
   return next;
+}
+
+/**
+ * Adds recorded reading time to today's tally.
+ *
+ * Returns the SAME object when there is nothing to add, so a flush of zero
+ * seconds does not re-render every subscriber. The daily cap is enforced here
+ * rather than in the tracker because this is the only place that knows what
+ * the day already holds.
+ */
+export function addSeconds(store, seconds, now = new Date()) {
+  const amount = Math.max(0, Math.floor(Number(seconds) || 0));
+  if (!amount) return store;
+
+  const day = today(now);
+  const entry = store?.activity?.[day] || { completed: 0, seconds: 0 };
+  const capped = Math.min(MAX_SECONDS_PER_DAY, (entry.seconds || 0) + amount);
+  if (capped === entry.seconds) return store;
+
+  return {
+    version: CURRENT_VERSION,
+    completed: { ...store.completed },
+    activity: { ...store.activity, [day]: { ...entry, seconds: capped } },
+  };
 }
 
 export function toggleComplete(store, contentId, now = new Date()) {

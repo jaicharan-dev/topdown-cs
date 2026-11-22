@@ -21,6 +21,7 @@ import {
   emptyStore,
   isComplete as storeIsComplete,
   readStore,
+  subscribe,
   summarise,
   toggleComplete,
   writeStore,
@@ -49,6 +50,11 @@ export default function useProgress() {
     window.addEventListener('storage', onStorage);
     return () => window.removeEventListener('storage', onStorage);
   }, [isBrowser]);
+
+  // something in THIS tab wrote, most often the time tracker flushing. The
+  // storage event does not fire in the tab that caused the write, so without
+  // this an open dashboard would sit there showing stale minutes.
+  useEffect(() => subscribe(setStore), []);
 
   const toggle = useCallback((contentId) => {
     setStore((current) => writeStore(toggleComplete(current, contentId)));
