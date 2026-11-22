@@ -291,8 +291,10 @@ export default function Home() {
   const onTabKeyDown = (event) => {
     const index = TABS.findIndex((tab) => tab.id === activeTab);
     let next = null;
-    if (event.key === 'ArrowRight') next = (index + 1) % TABS.length;
-    else if (event.key === 'ArrowLeft') next = (index - 1 + TABS.length) % TABS.length;
+    if (event.key === 'ArrowDown' || event.key === 'ArrowRight')
+      next = (index + 1) % TABS.length;
+    else if (event.key === 'ArrowUp' || event.key === 'ArrowLeft')
+      next = (index - 1 + TABS.length) % TABS.length;
     else if (event.key === 'Home') next = 0;
     else if (event.key === 'End') next = TABS.length - 1;
     if (next === null) return;
@@ -335,7 +337,11 @@ export default function Home() {
       </section>
 
       <main className="csf-tabs">
-        <div className="csf-tablist" role="tablist" aria-label="Content sections">
+        <div
+          className="csf-tablist"
+          role="tablist"
+          aria-label="Content sections"
+          aria-orientation="vertical">
           {TABS.map((tab) => {
             const { done, total } = tabProgress(tab);
             const ratio = total > 0 ? Math.min(1, done / total) : 0;
@@ -376,6 +382,7 @@ export default function Home() {
         {/* Every panel stays in the markup and is hidden rather than
             unmounted, so all of the content is in the prerendered HTML for
             search engines and for anyone landing on a linked tab. */}
+        <div className="csf-tabpanels">
         <div
           role="tabpanel"
           id="csf-panel-cs"
@@ -416,6 +423,7 @@ export default function Home() {
               read here yet.
             </p>
           </div>
+        </div>
         </div>
       </main>
     </Layout>

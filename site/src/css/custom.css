@@ -776,52 +776,59 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
 }
 
 /* ----- Homepage tabs -----
-   Replaces the old two column split. The columns are gone rather than
-   hidden: .csf-main-container, .csf-column-left and .csf-column-right were
-   referenced by nothing once the panels took over. */
+   A sidebar rather than a strip along the top, because the tab list is
+   expected to grow: SQL, ML and the rest read fine as a vertical list and
+   would crowd a horizontal one.
+
+   Replaces the old two column split. .csf-main-container, .csf-column-left
+   and .csf-column-right were referenced by nothing once the panels took
+   over, so they are gone rather than left behind. */
 .csf-tabs {
   width: 100%;
-  max-width: 1260px;
+  /* Wide enough that the panel's track reaches 872px, which is exactly five
+     card columns. Twelve pixels narrower and the fifth card wraps onto a row
+     of its own, which looks like a mistake rather than a layout. */
+  max-width: 1180px;
   margin: 0 auto;
-  padding: 0 2.25rem 4rem;
+  padding: 0 2rem 4rem;
+  display: grid;
+  grid-template-columns: 186px minmax(0, 1fr);
+  gap: 2.5rem;
+  align-items: start;
 }
 
 .csf-tablist {
   display: flex;
-  gap: 0.35rem;
-  margin-bottom: 1.75rem;
-  border-bottom: 1px solid var(--csf-border-subtle, #e3dcce);
-  overflow-x: auto;
-  /* The strip scrolls sideways rather than wrapping, so adding SQL, ML and
-     the rest later cannot push the panels down the page. */
-  scrollbar-width: none;
-}
-
-.csf-tablist::-webkit-scrollbar {
-  display: none;
+  flex-direction: column;
+  gap: 2px;
+  position: sticky;
+  top: calc(var(--ifm-navbar-height, 60px) + 1rem);
 }
 
 .csf-tab {
   position: relative;
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  flex: none;
-  padding: 0.7rem 1.1rem 0.8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  width: 100%;
+  padding: 0.55rem 0.7rem 0.6rem;
   border: none;
+  border-radius: 9px;
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 600;
+  text-align: left;
   cursor: pointer;
-  opacity: 0.6;
-  white-space: nowrap;
-  transition: opacity 0.2s ease, color 0.2s ease;
+  opacity: 0.62;
+  overflow: hidden;
+  transition: opacity 0.2s ease, background-color 0.2s ease;
 }
 
 .csf-tab:hover {
-  opacity: 0.9;
+  opacity: 0.92;
 }
 
 .csf-tab[aria-selected='true'] {
@@ -831,59 +838,74 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
 .csf-tab:focus-visible {
   outline: 2px solid var(--csf-progress-accent, #16a34a);
   outline-offset: -2px;
-  border-radius: 8px;
 }
 
 .csf-tab__count {
-  font-size: 0.74rem;
+  font-size: 0.72rem;
+  font-weight: 500;
   opacity: 0.55;
   font-variant-numeric: tabular-nums;
 }
 
-/* The selected tab's own underline, drawn over the strip's border. */
-.csf-tab[aria-selected='true']::after {
+/* The selected tab is marked down its left edge, which is where the eye
+   looks in a vertical list. */
+.csf-tab[aria-selected='true']::before {
   content: '';
   position: absolute;
   left: 0;
-  right: 0;
-  bottom: -1px;
-  height: 2px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 0 2px 2px 0;
   background: currentColor;
-  opacity: 0.85;
+  opacity: 0.8;
 }
 
-/* How far through this tab's content the reader is. Sits on the same line as
-   the border so it reads as a filling bar rather than another underline. */
+/* How far through this tab's content the reader is, along its bottom edge. */
 .csf-tab__progress {
   position: absolute;
   left: 0;
-  bottom: -1px;
+  bottom: 0;
   height: 2px;
   background: var(--csf-progress-accent, #16a34a);
   transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.csf-tab[aria-selected='true'] .csf-tab__progress {
-  height: 3px;
+[data-theme='dark'] .csf-tab[aria-selected='true'] {
+  background-color: rgba(255, 255, 255, 0.055);
+}
+
+html:not([data-theme='dark']) .csf-tab[aria-selected='true'] {
+  background-color: rgba(0, 0, 0, 0.045);
+}
+
+/* Panels are held to a comfortable reading width and centred in their track,
+   rather than stretched to the window. Wide rows of cards are harder to scan:
+   the eye loses the row on the way back. */
+/* Exactly five card columns wide, so the grid fills the panel and the cards
+   line up with their section labels. */
+.csf-tabpanel {
+  max-width: 872px;
+  margin: 0 auto;
 }
 
 .csf-tabpanel[hidden] {
   display: none;
 }
 
-/* Panels are full width now, so the cards get room to breathe rather than
-   staying in the narrow two column strip they used to live in. */
-/* Compound selector on purpose: .csf-compact-grid is defined further down
-   this file, so a single class modifier would lose to it on source order
-   despite meaning to override it. */
+/* Small cards, at a fixed width so every section matches. Letting them
+   stretch with 1fr made a four card row and a five card row different sizes,
+   which looked accidental. Rows centre instead. */
+/* Small cards at a fixed width, so every section matches. Letting them
+   stretch with 1fr made a four card row and a five card row different sizes,
+   which looked accidental.
+   Aligned to the start rather than centred: centring left the cards sitting
+   to the right of their own section label. The panel is centred instead, so
+   the page still has blank edges. */
 .csf-compact-grid.csf-compact-grid--wide {
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 12px;
-}
-
-.csf-compact-grid--wide .csf-compact-card {
-  min-height: 84px;
-  padding: 14px 12px 13px;
+  grid-template-columns: repeat(auto-fit, 168px);
+  justify-content: start;
+  gap: 8px;
 }
 
 /* System Design, until there is something to read. */
@@ -920,13 +942,48 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
   opacity: 0.65;
 }
 
-[data-theme='dark'] .csf-tablist {
-  border-bottom-color: rgba(255, 255, 255, 0.08);
-}
-
-@media screen and (max-width: 1080px) {
+@media screen and (max-width: 996px) {
+  /* Below this the sidebar costs more than it gives, so it lies back down
+     across the top and scrolls sideways. */
   .csf-tabs {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
     padding: 0 1.25rem 3.5rem;
+  }
+
+  .csf-tablist {
+    position: static;
+    flex-direction: row;
+    gap: 0.3rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+    border-bottom: 1px solid var(--csf-border-subtle, #e3dcce);
+  }
+
+  .csf-tablist::-webkit-scrollbar {
+    display: none;
+  }
+
+  .csf-tab {
+    flex: none;
+    width: auto;
+    border-radius: 8px 8px 0 0;
+    padding: 0.5rem 0.85rem 0.55rem;
+  }
+
+  /* Down here the marker belongs under the tab, not beside it. */
+  .csf-tab[aria-selected='true']::before {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+  }
+
+  [data-theme='dark'] .csf-tablist {
+    border-bottom-color: rgba(255, 255, 255, 0.08);
   }
 }
 
@@ -935,19 +992,9 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
     padding: 0 0.85rem 3rem;
   }
 
-  .csf-tab {
-    padding: 0.6rem 0.8rem 0.7rem;
-    font-size: 0.85rem;
-  }
-
   .csf-compact-grid.csf-compact-grid--wide {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-
-  .csf-compact-grid--wide .csf-compact-card {
-    min-height: 70px;
-    padding: 11px 8px;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 168px));
+    justify-content: start;
   }
 }
 
