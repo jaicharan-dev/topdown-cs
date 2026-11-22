@@ -1,0 +1,89 @@
+# Keeps the Supabase project awake.
+#
+# Supabase pauses Free plan projects after 7 days of low activity, and
+# restoring one is a manual job. Until the site has enough signed in readers
+# to generate its own traffic, this reads a single row once a day.
+#
+# Daily rather than weekly on purpose. GitHub makes no promise about when a
+# scheduled run fires and may skip them under load, so the job needs enough
+# margin that several misses in a row still leave the project awake.
+#
+# Two things that would stop this working silently, so they are worth knowing:
+#
+#  - GitHub disables scheduled workflows in a repository with no commits for
+#    60 days. An active repository is fine.
+#  - If the secrets below are missing the job fails loudly rather than
+#    passing with nothing done. A keepalive that quietly stopped would be
+#    worse than none, because you would believe you were covered.
+#
+# Requires two repository secrets, under
+# Settings -> Secrets and variables -> Actions:
+#
+#   SUPABASE_URL       https://<project-ref>.supabase.co
+#   SUPABASE_ANON_KEY  the anon / publishable key, NOT the service role key
+#
+# Delete this workflow once real traffic keeps the project awake by itself.
+
+name: Supabase keepalive
+
+on:
+  schedule:
+    # 06:17 UTC daily. An odd minute, because everything scheduled on the hour
+    # competes with everything else scheduled on the hour.
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+# No permissions needed: this talks to Supabase, not to GitHub.
+permissions: {}
+
+jobs:
+  ping:
+    name: Read the keepalive row
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Query Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_URL}" ] || [ -z "${SUPABASE_ANON_KEY}" ]; then
+            echo "::error::SUPABASE_URL or SUPABASE_ANON_KEY is not set."
+            echo "Add them under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+          # Strip a trailing slash so the path below cannot end up doubled.
+          base="${SUPABASE_URL%/}"
+
+          # --fail is deliberately NOT used: it discards the response body,
+          # and on a failure that body is the only thing explaining why.
+          status=$(curl --silent --show-error --location \
+            --max-time 30 \
+            --output response.json \
+            --write-out '%{http_code}' \
+            --header "apikey: ${SUPABASE_ANON_KEY}" \
+            --header "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${base}/rest/v1/keepalive?select=noted_at&limit=1")
+
+          echo "HTTP ${status}"
+
+          if [ "${status}" != "200" ]; then
+            echo "::error::Keepalive request failed with HTTP ${status}."
+            # The body may name the cause, for example a missing table or a
+            # revoked key. It contains no secret: the key travels in a header.
+            echo "Response:"
+            cat response.json || true
+            echo
+            echo "Common causes:"
+            echo "  404  the keepalive table does not exist: run supabase/keepalive.sql"
+            echo "  401  the anon key is wrong, or has been rotated"
+            echo "  000  the project is already paused: restore it in the dashboard"
+            exit 1
+          fi
+
+          echo "Project is awake."
+          cat response.json

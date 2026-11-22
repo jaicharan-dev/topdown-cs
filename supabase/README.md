@@ -103,6 +103,50 @@ every user's data. The anon key is the only one that belongs here.
 Step 4 is the one worth actually doing. Merging is covered by tests, but it is
 your data and it is worth seeing with your own eyes once.
 
+## Keeping the project awake
+
+Supabase pauses Free plan projects after **7 days of low activity**, and a
+paused project must be restored by hand from the dashboard. The symptom is
+specific: sign in and sync stop working while everyone's local progress
+carries on fine, so it looks like an account problem rather than an outage.
+Supabase emails the project owner a warning roughly a week beforehand, and a
+paused project stays restorable for 90 days.
+
+Until enough readers sign in to generate steady traffic, a scheduled job
+covers the gap:
+
+1. Run [`keepalive.sql`](keepalive.sql) in the SQL editor, the same way as
+   `schema.sql`. It adds a one row table that anyone may read and nobody may
+   write. It exists so the ping does not need access to `progress`, where
+   anonymous access is deliberately revoked.
+2. Add two repository secrets on GitHub, under
+   **Settings -> Secrets and variables -> Actions**:
+
+   ```
+   SUPABASE_URL       https://<project-ref>.supabase.co
+   SUPABASE_ANON_KEY  the anon / publishable key
+   ```
+
+   These are the same two values Cloudflare has. Still not the service role
+   key.
+3. The workflow at `.github/workflows/supabase-keepalive.yml` then reads that
+   row once a day. Run it by hand first, from the **Actions** tab, rather than
+   waiting a day to find out whether it works.
+
+It runs daily rather than weekly because GitHub makes no promise about when a
+scheduled job fires and may skip runs under load. Daily means several misses
+in a row still leave the project awake.
+
+The job fails loudly if the secrets are missing or the request does not return
+200, so GitHub emails you. A keepalive that had quietly stopped would be worse
+than none at all, because you would believe you were covered.
+
+Two things worth knowing:
+
+- GitHub disables scheduled workflows in a repository with no commits for 60
+  days. An active repository is fine.
+- Delete the workflow once real traffic keeps the project awake by itself.
+
 ## How syncing behaves
 
 - Local first. The browser copy is the one being read and written as you
