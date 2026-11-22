@@ -151,9 +151,11 @@
 }
 
 /* stat tiles */
+/* auto-fit rather than a fixed count: the tiles flow as they are added, and
+   wrap cleanly instead of squeezing */
 .stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
   gap: 1rem;
   margin-bottom: 1.5rem;
 }
@@ -288,12 +290,6 @@
 [data-theme='dark'] .reset:hover:not(:disabled) {
   border-color: #f87171;
   color: #f87171;
-}
-
-@media (max-width: 860px) {
-  .stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
 }
 
 @media (max-width: 600px) {

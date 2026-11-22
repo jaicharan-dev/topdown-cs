@@ -15,6 +15,7 @@ import manifest from '@site/src/data/contentManifest.json';
 import useProgress from '@site/src/hooks/useProgress';
 import { activityStats, summarise, today } from '@site/src/lib/progressStore';
 import { RANKS, rankProgress } from '@site/src/lib/ranks';
+import { formatDuration } from '@site/src/lib/timeTracker';
 import styles from './progress.module.css';
 
 /** DSA block keys carry a number prefix, so sort on it rather than the string. */
@@ -203,14 +204,27 @@ export default function Progress() {
             label="Points earned"
             hint="Hard pages are worth more"
           />
+          <Stat
+            value={formatDuration(activity.totalSeconds)}
+            label="Time reading"
+            hint={
+              activity.activeDays
+                ? `About ${formatDuration(
+                    Math.round(activity.totalSeconds / activity.activeDays)
+                  )} a day`
+                : 'Counted only while you are here'
+            }
+          />
         </section>
 
         <section className={styles.card}>
           <h2 className={styles.cardTitle}>Activity</h2>
           <ProgressHeatmap activity={store?.activity} endDay={endDay} />
           <p className={styles.cardNote}>
-            One square per day, darker for more pages finished. Time spent per
-            day is recorded but not shown yet.
+            One square per day, darker for more pages finished. Hover a square
+            for that day's pages and reading time. Time counts only while this
+            tab is open and you are active, so it undercounts rather than
+            flatters.
           </p>
         </section>
 

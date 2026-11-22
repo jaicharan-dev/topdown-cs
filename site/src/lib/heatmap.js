@@ -12,6 +12,7 @@
  */
 
 import { fromDay, today } from './progressStore';
+import { formatDuration } from './timeTracker';
 
 export const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
@@ -34,6 +35,14 @@ export function levelFor(completed) {
 }
 
 export const MAX_LEVEL = 4;
+
+/**
+ * Minimum columns between two month labels. A label is roughly three columns
+ * wide, so labelling two months that start a fortnight apart renders them on
+ * top of each other ("MayJun"). The month is simply left unlabelled; the
+ * squares still carry the exact date in their tooltip.
+ */
+const MIN_LABEL_GAP = 3;
 
 /**
  * @param activity the store's `activity` map
@@ -81,11 +90,14 @@ export function buildHeatmap(activity = {}, endDay, weeks = 26) {
       cursor.setDate(cursor.getDate() + 1);
     }
 
-    // label a column when its month differs from the one before it
-    const firstOfColumn = fromDay(column[0].day);
-    const month = firstOfColumn.getMonth();
+    // label a column when its month differs from the one before it, and
+    // there is room for the label to sit without colliding
+    const month = fromDay(column[0].day).getMonth();
     if (month !== lastMonth) {
-      months.push({ column: week, label: MONTH_NAMES[month] });
+      const previous = months[months.length - 1];
+      if (!previous || week - previous.column >= MIN_LABEL_GAP) {
+        months.push({ column: week, label: MONTH_NAMES[month] });
+      }
       lastMonth = month;
     }
 
@@ -95,10 +107,22 @@ export function buildHeatmap(activity = {}, endDay, weeks = 26) {
   return { columns, months, totalCompleted, days };
 }
 
-/** "3 pages on 14 Mar", for a square's tooltip. */
+/**
+ * A square's tooltip: "3 pages, 45m on 14 Mar".
+ *
+ * Time is only mentioned when there is some, so a day spent reading without
+ * ticking anything still reads as a day of work rather than an empty one.
+ */
 export function describeDay(cell) {
   const date = fromDay(cell.day);
   const when = `${date.getDate()} ${MONTH_NAMES[date.getMonth()]}`;
-  if (!cell.completed) return `No pages on ${when}`;
-  return `${cell.completed} page${cell.completed === 1 ? '' : 's'} on ${when}`;
+
+  const parts = [];
+  if (cell.completed) {
+    parts.push(`${cell.completed} page${cell.completed === 1 ? '' : 's'}`);
+  }
+  if (cell.seconds) parts.push(formatDuration(cell.seconds));
+
+  if (!parts.length) return `Nothing on ${when}`;
+  return `${parts.join(', ')} on ${when}`;
 }
