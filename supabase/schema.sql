@@ -42,6 +42,26 @@ drop policy if exists progress_delete_own on public.progress;
 create policy progress_delete_own on public.progress
   for delete using (auth.uid() = user_id);
 
+-- Table level permissions.
+--
+-- Row level security decides WHICH ROWS a role may touch. It does not grant
+-- the role access to the table in the first place, and those are separate
+-- gates: without the grant below, every query fails with a permission error
+-- however correct the policies are.
+--
+-- Supabase can hand this out automatically for new tables, but that is a
+-- dashboard setting that can be switched off later by someone who has no idea
+-- it is load bearing. Stating it here means this file alone is enough to make
+-- the feature work.
+--
+-- Only `authenticated` is granted anything. The site never reads this table
+-- without a session, so the anonymous role has no business reaching it, and
+-- revoking leaves two independent barriers rather than relying on RLS alone.
+grant usage on schema public to authenticated;
+grant select, insert, update, delete on public.progress to authenticated;
+revoke all on public.progress from anon;
+
+
 -- Keep updated_at honest rather than trusting the client to send it.
 create or replace function public.touch_updated_at()
 returns trigger
