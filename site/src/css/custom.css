@@ -924,7 +924,7 @@ html:not([data-theme='dark']) .csf-section-divider {
   top: 0;
   left: 18px;
   right: 18px;
-  height: 3px;
+  height: 4px;
   border-radius: 0 0 1.5px 1.5px;
   background: var(--card-accent);
   opacity: 0.75;
@@ -935,37 +935,146 @@ html:not([data-theme='dark']) .csf-section-divider {
   opacity: 1;
 }
 
-/* Reading progress along the bottom edge, mirroring the accent tab on top.
-   Absolutely positioned on purpose: it is rendered only after hydration, once
-   the store has loaded, and anything in the layout flow would make every card
-   on the homepage jump at that moment. The track is a neutral grey rather
-   than a themed token so it reads correctly in both themes without a second
-   rule. */
-.csf-compact-card__progress {
+/* ------------------------------------------------------------------
+   Progress on a subject card.
+
+   The accent tab along the top edge doubles as the progress bar: the
+   ::before above is the track, and .csf-compact-card__rail is the filled
+   part drawn over it. An earlier version put a second bar along the bottom
+   edge in the same colour, which just read as decoration and left you
+   unable to tell which line meant anything.
+
+   Everything is absolutely positioned. The bar is rendered after hydration,
+   once the store has loaded, so anything in the layout flow would make every
+   card on the homepage jump at that moment.
+   ------------------------------------------------------------------ */
+
+.csf-compact-card {
+  --progress: 0;
+}
+
+.csf-compact-card__rail {
   position: absolute;
-  bottom: 0;
+  top: 0;
   left: 18px;
-  right: 18px;
-  height: 3px;
-  border-radius: 1.5px 1.5px 0 0;
-  background: rgba(127, 127, 127, 0.22);
-  overflow: hidden;
-}
-
-.csf-compact-card__progress-fill {
-  height: 100%;
+  height: 4px;
+  width: calc((100% - 36px) * var(--progress));
   background: var(--card-accent);
-  opacity: 0.85;
-  transition: width 0.4s ease;
+  border-radius: 0 0 2px 2px;
+  z-index: 2;
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.25s ease;
 }
 
-.csf-compact-card__progress.is-complete .csf-compact-card__progress-fill {
+.csf-compact-card[data-progress='complete'] .csf-compact-card__rail {
+  box-shadow: 0 0 10px -1px var(--card-accent);
+}
+
+/* The track sits behind the fill, so it has to be dimmer than the tab was
+   on its own, or a half finished subject looks finished. */
+.csf-compact-card[data-progress='partial']::before,
+.csf-compact-card[data-progress='complete']::before {
+  opacity: 0.3;
+}
+
+/* Dimmer than the track on a card that HAS progress, so the three states
+   form one ramp. At 0.45 an untouched card's full width tab looked brighter
+   than the unfinished part of a half done one, which read backwards. */
+.csf-compact-card[data-progress='none']::before {
+  opacity: 0.34;
+}
+
+/* Icon brightens with progress. */
+.csf-compact-card[data-progress='none'] .csf-compact-card__icon {
+  color: color-mix(in srgb, var(--card-accent) 52%, transparent);
+}
+
+.csf-compact-card[data-progress='partial'] .csf-compact-card__icon {
+  color: color-mix(in srgb, var(--card-accent) 82%, transparent);
+}
+
+.csf-compact-card[data-progress='complete'] .csf-compact-card__icon {
+  color: var(--card-accent);
+}
+
+/* Dark theme tiers. Same color-mix vocabulary as the hover state, so the
+   three steps sit on one scale rather than looking like three ideas. */
+[data-theme='dark'] .csf-compact-card[data-progress='none'] {
+  background-color: color-mix(in srgb, var(--card-accent) 4%, rgba(255, 255, 255, 0.025)) !important;
+  border-color: color-mix(in srgb, var(--card-accent) 12%, rgba(255, 255, 255, 0.07));
+}
+
+[data-theme='dark'] .csf-compact-card[data-progress='partial'] {
+  background-color: color-mix(in srgb, var(--card-accent) 11%, rgba(255, 255, 255, 0.05)) !important;
+  border-color: color-mix(in srgb, var(--card-accent) 40%, rgba(255, 255, 255, 0.09));
+}
+
+[data-theme='dark'] .csf-compact-card[data-progress='complete'] {
+  background-color: color-mix(in srgb, var(--card-accent) 18%, rgba(255, 255, 255, 0.075)) !important;
+  border-color: color-mix(in srgb, var(--card-accent) 75%, transparent);
+  box-shadow: 0 0 16px -7px var(--card-accent);
+}
+
+/* Light theme tiers. The surface stays light and the accent arrives through
+   the border and a wash, since a dark tint would muddy the card. */
+html:not([data-theme='dark']) .csf-compact-card[data-progress='none'] {
+  border-color: color-mix(in srgb, var(--card-accent) 16%, rgba(0, 0, 0, 0.07));
+}
+
+html:not([data-theme='dark']) .csf-compact-card[data-progress='partial'] {
+  background-color: color-mix(in srgb, var(--card-accent) 6%, var(--csf-surface)) !important;
+  border-color: color-mix(in srgb, var(--card-accent) 45%, rgba(0, 0, 0, 0.07));
+}
+
+html:not([data-theme='dark']) .csf-compact-card[data-progress='complete'] {
+  background-color: color-mix(in srgb, var(--card-accent) 13%, var(--csf-surface)) !important;
+  border-color: color-mix(in srgb, var(--card-accent) 85%, transparent);
+  box-shadow: 0 2px 10px -2px color-mix(in srgb, var(--card-accent) 40%, transparent);
+}
+
+/* Light mode cannot use the opacity ramp above.
+ *
+ * A rule further down this file deliberately darkens the accent tab with ink
+ * so it has contrast against a white card, and forces opacity to 1. It is
+ * more specific than the plain [data-progress] rules, so those do nothing
+ * here, and the fill was ending up PALER than its own track: exactly
+ * backwards.
+ *
+ * So light mode expresses the three states as colours instead. The track is a
+ * wash of the accent on white, and the filled part is the same ink-mixed
+ * accent the tab already used, which keeps the bar reading as "this much is
+ * filled in" rather than "this much is highlighted".
+ */
+html:not([data-theme='dark']) .csf-compact-card[data-progress='none']::before {
+  background: color-mix(in srgb, var(--card-accent) 34%, #ffffff);
   opacity: 1;
 }
 
-/* A finished subject keeps its accent lit rather than fading on hover only. */
-.csf-compact-card__progress.is-complete {
-  background: var(--card-accent);
+html:not([data-theme='dark']) .csf-compact-card[data-progress='partial']::before,
+html:not([data-theme='dark']) .csf-compact-card[data-progress='complete']::before {
+  background: color-mix(in srgb, var(--card-accent) 24%, #ffffff);
+  opacity: 1;
+}
+
+html:not([data-theme='dark']) .csf-compact-card__rail {
+  background: color-mix(in srgb, var(--card-accent) var(--csf-accent-mix), var(--csf-ink));
+}
+
+html:not([data-theme='dark'])
+  .csf-compact-card[data-progress='complete']
+  .csf-compact-card__rail {
+  box-shadow: none;
+}
+
+/* The same inversion applies to the roadmap nodes. A CSS fill beats the
+   fill attribute set in the markup, so the dark theme keeps the raw accent
+   from the component and light mode overrides it here. */
+html:not([data-theme='dark']) .csf-dsa-node-group.is-done-none .csf-dsa-node-tab {
+  fill: color-mix(in srgb, var(--node-accent) 34%, #ffffff);
+}
+
+html:not([data-theme='dark']) .csf-dsa-node-tab-fill {
+  fill: color-mix(in srgb, var(--node-accent) var(--csf-accent-mix), var(--csf-ink));
 }
 
 /* ----- Natural Blending DSA Roadmap ----- */
@@ -1112,6 +1221,34 @@ html:not([data-theme='dark']) .csf-dsa-edge--highlighted {
 .csf-dsa-node-group:hover .csf-dsa-node-tab,
 .csf-dsa-node-group.is-hovered .csf-dsa-node-tab {
   opacity: 1;
+}
+
+/* Roadmap nodes carry the same three states as the subject cards, for the
+   same reason: the tab on the top edge is the progress bar, and the card
+   brightens as the topic fills up. */
+.csf-dsa-node-tab-fill {
+  pointer-events: none;
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-theme='dark'] .csf-dsa-node-group.is-done-partial .csf-dsa-node-card {
+  fill: color-mix(in srgb, var(--node-accent, #60a5fa) 12%, rgba(255, 255, 255, 0.05));
+  stroke: color-mix(in srgb, var(--node-accent, #60a5fa) 40%, rgba(255, 255, 255, 0.09));
+}
+
+[data-theme='dark'] .csf-dsa-node-group.is-done-complete .csf-dsa-node-card {
+  fill: color-mix(in srgb, var(--node-accent, #60a5fa) 20%, rgba(255, 255, 255, 0.075));
+  stroke: color-mix(in srgb, var(--node-accent, #60a5fa) 78%, transparent);
+}
+
+html:not([data-theme='dark']) .csf-dsa-node-group.is-done-partial .csf-dsa-node-card {
+  fill: color-mix(in srgb, var(--node-accent, #0284c7) 7%, #ffffff);
+  stroke: color-mix(in srgb, var(--node-accent, #0284c7) 45%, rgba(0, 0, 0, 0.07));
+}
+
+html:not([data-theme='dark']) .csf-dsa-node-group.is-done-complete .csf-dsa-node-card {
+  fill: color-mix(in srgb, var(--node-accent, #0284c7) 14%, #ffffff);
+  stroke: color-mix(in srgb, var(--node-accent, #0284c7) 85%, transparent);
 }
 
 .csf-dsa-node-group.is-dimmed {

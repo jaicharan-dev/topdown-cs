@@ -136,17 +136,38 @@ const lockedSubjects = [
  * it takes no layout space and cannot shift the card when it appears after
  * hydration.
  */
+/**
+ * A subject card, tinted by how much of it the reader has finished.
+ *
+ * The progress indicator IS the accent tab along the top edge, rather than a
+ * second bar underneath it. Two lines in the same colour on one small card
+ * read as decoration, not information, and nobody could tell which of them
+ * meant something.
+ *
+ * Three states, each a step brighter, expressed in the same color-mix
+ * vocabulary the cards already used for hover:
+ *
+ *   none      calm: a dim tab and a muted icon
+ *   partial   the tab fills in, the tint and border come up
+ *   complete  the accent at full strength, with a soft glow
+ *
+ * `--progress` drives the fill width in CSS, so the bar animates on its own
+ * when the store loads instead of appearing fully grown.
+ */
 function CompactCard({title, href, Icon, accentColor, comingSoon, done = 0, total = 0}) {
-  const showProgress = !comingSoon && total > 0 && done > 0;
-  const percent = showProgress ? Math.round((done / total) * 100) : 0;
-  const complete = showProgress && done >= total;
-  const label = showProgress ? `${title}, ${done} of ${total} done` : title;
+  const ratio = total > 0 ? Math.min(1, done / total) : 0;
+  const state = done >= total && total > 0 ? 'complete' : done > 0 ? 'partial' : 'none';
+  const label =
+    !comingSoon && total > 0 && done > 0
+      ? `${title}, ${done} of ${total} done`
+      : title;
 
   return (
     <Link
       to={href}
       className={`csf-compact-card ${comingSoon ? 'csf-compact-card--soon' : ''}`}
-      style={{ '--card-accent': accentColor }}
+      style={{ '--card-accent': accentColor, '--progress': ratio }}
+      data-progress={comingSoon ? undefined : state}
       title={comingSoon ? 'Coming Soon' : label}
       aria-label={comingSoon ? `${title}, coming soon` : label}
       onClick={(e) => comingSoon && e.preventDefault()}
@@ -157,17 +178,8 @@ function CompactCard({title, href, Icon, accentColor, comingSoon, done = 0, tota
       </div>
       <div className="csf-compact-card__title">{title}</div>
       {comingSoon && <span className="csf-compact-card__badge">Soon</span>}
-      {showProgress && (
-        <div
-          className={`csf-compact-card__progress ${
-            complete ? 'is-complete' : ''
-          }`}
-          aria-hidden="true">
-          <div
-            className="csf-compact-card__progress-fill"
-            style={{ width: `${percent}%` }}
-          />
-        </div>
+      {!comingSoon && done > 0 && (
+        <span className="csf-compact-card__rail" aria-hidden="true" />
       )}
     </Link>
   );

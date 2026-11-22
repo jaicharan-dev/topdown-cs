@@ -241,6 +241,12 @@ export default function DsaRoadmap() {
               const { done, total } = progressFor(node.id);
               const hasProgress = done > 0 && total > 0;
               const railWidth = node.w - 36;
+              const doneState =
+                total > 0 && done >= total
+                  ? 'complete'
+                  : done > 0
+                    ? 'partial'
+                    : 'none';
               const isHovered = hoveredNode === node.id;
               const isConnected = hoveredNode && EDGES.some(
                 (e) => (e.from === hoveredNode && e.to === node.id) || (e.to === hoveredNode && e.from === node.id)
@@ -250,7 +256,7 @@ export default function DsaRoadmap() {
               return (
                 <g
                   key={node.id}
-                  className={`csf-dsa-node-group ${isHovered ? 'is-hovered' : ''} ${isConnected ? 'is-connected' : ''} ${isDimmed ? 'is-dimmed' : ''}`}
+                  className={`csf-dsa-node-group is-done-${doneState} ${isHovered ? 'is-hovered' : ''} ${isConnected ? 'is-connected' : ''} ${isDimmed ? 'is-dimmed' : ''}`}
                   transform={`translate(${node.x}, ${node.y})`}
                   style={{ '--node-accent': node.accent, cursor: 'pointer' }}
                   onClick={() => node.href && history.push(node.href)}
@@ -297,17 +303,47 @@ export default function DsaRoadmap() {
                     className="csf-dsa-node-card"
                   />
 
-                  {/* Accent rail along the top edge - every wire lands on it */}
+                  {/* The accent rail along the top edge doubles as the
+                      progress bar: this rect is the track and the next is the
+                      filled part. A second bar along the bottom edge in the
+                      same colour, which is what this replaced, just read as
+                      decoration. Every incoming wire still lands on it. */}
                   <rect
                     x={-node.w / 2 + 18}
-                    y={-node.h / 2 - 1.5}
-                    width={node.w - 36}
-                    height={3}
-                    rx="1.5"
+                    y={-node.h / 2 - 2}
+                    width={railWidth}
+                    height={4}
+                    rx="2"
                     pointerEvents="none"
                     className="csf-dsa-node-tab"
                     fill={node.accent}
+                    {...(hasProgress
+                      ? {
+                          // Inline, because an inline style beats both the
+                          // base rule and the theme scoped ones, which made
+                          // the winner hard to predict and hard to verify.
+                          // Alpha rather than opacity so it reads correctly
+                          // on a dark card and on a white one: dimmed accent
+                          // against dark, pale accent against light.
+                          style: {
+                            fill: `color-mix(in srgb, ${node.accent} 30%, transparent)`,
+                          },
+                        }
+                      : {})}
                   />
+
+                  {hasProgress && (
+                    <rect
+                      x={-node.w / 2 + 18}
+                      y={-node.h / 2 - 2}
+                      width={Math.max(4, (railWidth * done) / total)}
+                      height={4}
+                      rx="2"
+                      pointerEvents="none"
+                      className="csf-dsa-node-tab-fill"
+                      fill={node.accent}
+                    />
+                  )}
 
                   <text
                     x="0"
@@ -323,33 +359,6 @@ export default function DsaRoadmap() {
                   {/* Just under the card, right-aligned: the label fills the
                       card, and a connector leaves from the bottom centre, so
                       this corner is the only space that is reliably free. */}
-                  {/* Progress along the bottom edge, mirroring the accent
-                      rail on top. Only drawn once there is something to show,
-                      so an untouched roadmap looks exactly as it did before
-                      progress tracking existed. */}
-                  {hasProgress && (
-                    <>
-                      <rect
-                        x={-node.w / 2 + 18}
-                        y={node.h / 2 - 1.5}
-                        width={railWidth}
-                        height={3}
-                        rx="1.5"
-                        pointerEvents="none"
-                        fill="rgba(127, 127, 127, 0.3)"
-                      />
-                      <rect
-                        x={-node.w / 2 + 18}
-                        y={node.h / 2 - 1.5}
-                        width={Math.max(3, (railWidth * done) / total)}
-                        height={3}
-                        rx="1.5"
-                        pointerEvents="none"
-                        fill={node.accent}
-                      />
-                    </>
-                  )}
-
                   {COUNTS[node.id] && (
                     <text
                       x={node.w / 2}
