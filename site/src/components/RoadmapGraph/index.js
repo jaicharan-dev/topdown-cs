@@ -39,15 +39,18 @@ export default function RoadmapGraph({
     return acc;
   }, {});
 
-  // Endpoints of a connector: centre bottom of the source, ported top of the
-  // target. `toOffset` nudges the arrival point so two parents landing on one
-  // child do not stack on the same pixel.
+  // Endpoints of a connector: bottom of the source, top of the target.
+  // `toOffset` nudges the arrival point so two parents landing on one child do
+  // not stack on the same pixel; `fromOffset` does the same for the departure
+  // point, which matters for a hub with several children. Without it every
+  // wire out of the hub shares one vertical stem and they draw on top of each
+  // other.
   const getPorts = (edge) => {
     const source = nodeMap[edge.from];
     const target = nodeMap[edge.to];
     if (!source || !target) return null;
     return {
-      x1: source.x,
+      x1: source.x + (edge.fromOffset || 0),
       y1: source.y + source.h / 2,
       x2: target.x + (edge.toOffset || 0),
       y2: target.y - target.h / 2,
@@ -64,9 +67,17 @@ export default function RoadmapGraph({
 
     if (Math.abs(x1 - x2) < 1) return `M ${x1} ${y1} L ${x2} ${y2}`;
 
-    const laneY = y1 + (y2 - y1) / 2;
+    // Halfway down by default. `laneOffset` moves the horizontal run to its
+    // own lane, so two wires heading the same way out of one node do not lay
+    // their long segments on top of each other.
+    const laneY = y1 + (y2 - y1) / 2 + (edge.laneOffset || 0);
     const dir = x2 > x1 ? 1 : -1;
-    const r = Math.min(18, Math.abs(x2 - x1) / 2, Math.abs(y2 - y1) / 2);
+    const r = Math.min(
+      18,
+      Math.abs(x2 - x1) / 2,
+      Math.abs(laneY - y1),
+      Math.abs(y2 - laneY)
+    );
 
     return [
       `M ${x1} ${y1}`,
@@ -176,7 +187,7 @@ export default function RoadmapGraph({
                     '--node-accent': node.accent,
                     // drives the saturation ramp in CSS
                     '--progress': total > 0 ? done / total : 0,
-                    cursor: 'pointer',
+                    cursor: node.href ? 'pointer' : 'default',
                   }}
                   onClick={() => node.href && history.push(node.href)}
                   onKeyDown={(e) => {
@@ -191,8 +202,10 @@ export default function RoadmapGraph({
                     e.stopPropagation();
                     setHoveredNode(node.id);
                   }}
-                  tabIndex="0"
-                  role="button"
+                  /* A node with nowhere to go is not a button and does not
+                     take focus: a hub node that summarises the graph would
+                     otherwise be a tab stop that does nothing when pressed. */
+                  {...(node.href ? { tabIndex: '0', role: 'button' } : {})}
                   aria-label={
                     hasProgress
                       ? `${node.label}, ${done} of ${total} done`

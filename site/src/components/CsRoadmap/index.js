@@ -1,18 +1,25 @@
 /**
- * The CS fundamentals, as a flowchart.
+ * The CS fundamentals, as one connected flowchart.
  *
  * This replaced a grid of cards. The grid said nothing about order, which
  * mattered: a reader landing on the homepage could not tell that OOP
  * Additional expects OOP Essential first, or that Design Patterns sits on top
  * of both. The graph says it without a word of explanation.
  *
- * The edges are real prerequisites rather than decoration. Four subject
- * lanes, three tiers: the essentials, then the additional material, then the
- * practice that depends on it.
+ * The four subjects have no prerequisites between each other. Nothing in DBMS
+ * needs OS first, so an edge between them would be a lie. They are joined at a
+ * hub instead: one entry node that fans out into the four lanes, which makes
+ * the whole thing a single graph without inventing an order that is not real.
+ * The hub carries no link of its own and shows the total across all four, so
+ * it doubles as the overall CS progress bar.
  *
  * Node ids are manifest group keys, which is what lets progress be looked up
  * without a translation table. The DSA roadmap needs one because its node ids
  * predate the manifest; this one does not, so it does not have one.
+ *
+ * The viewBox is the same width as the DSA roadmap on purpose. Both are drawn
+ * into the same panel, so matching widths means matching scale, and a label or
+ * a border is the same size whichever tab you are on.
  */
 
 import React from 'react';
@@ -20,39 +27,53 @@ import manifest from '@site/src/data/contentManifest.json';
 import useProgress from '@site/src/hooks/useProgress';
 import RoadmapGraph from '@site/src/components/RoadmapGraph';
 
-const VIEW_W = 1100;
-const VIEW_H = 430;
+const VIEW_W = 1130;
+const VIEW_H = 466;
 
-/** Three tiers. Every edge travels exactly one tier, so no wire doubles back. */
-const ROW = { essentials: 66, additional: 212, practice: 358 };
+/**
+ * The hub, then three tiers. Every edge travels exactly one tier, so no wire
+ * doubles back.
+ */
+const ROW = { hub: 56, essentials: 176, additional: 296, practice: 416 };
 
 const NODES = [
+  // The entry point. No href: there is no single page that means "all of CS",
+  // and a node that looks clickable and goes nowhere is worse than a node
+  // that does not look clickable.
+  {
+    id: 'cs-all',
+    label: 'CS Fundamentals',
+    hub: true,
+    x: 565, y: ROW.hub, w: 230, h: 48,
+    accent: '#818cf8',
+  },
+
   // OOP lane. The only one that branches, so its lane is the widest.
   {
     id: 'oop-essential',
     label: 'OOP Essential',
-    x: 205, y: ROW.essentials, w: 175, h: 46,
+    x: 221, y: ROW.essentials, w: 178, h: 46,
     accent: '#60a5fa',
     href: '/docs/oop-essential/1-four-pillars-of-oop',
   },
   {
     id: 'oop-additional',
     label: 'OOP Additional',
-    x: 205, y: ROW.additional, w: 175, h: 44,
+    x: 221, y: ROW.additional, w: 178, h: 44,
     accent: '#93c5fd',
     href: '/docs/oop-additional/19-static-binding-vs-dynamic-binding',
   },
   {
     id: 'design-patterns',
     label: 'Design Patterns',
-    x: 118, y: ROW.practice, w: 158, h: 44,
+    x: 131, y: ROW.practice, w: 160, h: 44,
     accent: '#38bdf8',
     href: '/docs/design-patterns/1-singleton-pattern',
   },
   {
     id: 'code-tracing',
     label: 'Code Tracing',
-    x: 292, y: ROW.practice, w: 158, h: 44,
+    x: 311, y: ROW.practice, w: 160, h: 44,
     accent: '#fb7185',
     href: '/docs/code-tracing/1-code-trace-static-instance-constructor',
   },
@@ -61,21 +82,21 @@ const NODES = [
   {
     id: 'dbms-essential',
     label: 'DBMS Essential',
-    x: 520, y: ROW.essentials, w: 175, h: 46,
+    x: 521, y: ROW.essentials, w: 182, h: 46,
     accent: '#a78bfa',
     href: '/docs/dbms-essential/1-what-is-a-transaction',
   },
   {
     id: 'dbms-additional',
     label: 'DBMS Additional',
-    x: 520, y: ROW.additional, w: 175, h: 44,
+    x: 521, y: ROW.additional, w: 182, h: 44,
     accent: '#c4b5fd',
     href: '/docs/dbms-additional/9-bcnf-vs-3nf',
   },
   {
     id: 'database-design',
     label: 'DB Design',
-    x: 520, y: ROW.practice, w: 158, h: 44,
+    x: 521, y: ROW.practice, w: 164, h: 44,
     accent: '#c084fc',
     href: '/docs/database-design/1-wallet-payment-system',
   },
@@ -84,21 +105,21 @@ const NODES = [
   {
     id: 'os-essential',
     label: 'OS Essentials',
-    x: 760, y: ROW.essentials, w: 165, h: 46,
+    x: 771, y: ROW.essentials, w: 168, h: 46,
     accent: '#f59e0b',
     href: '/docs/os-essential/1-process-vs-thread',
   },
   {
     id: 'os-additional',
     label: 'OS Additional',
-    x: 760, y: ROW.additional, w: 165, h: 44,
+    x: 771, y: ROW.additional, w: 168, h: 44,
     accent: '#fbbf24',
     href: '/docs/os-additional/1-priority-inversion-mars-rover',
   },
   {
     id: 'os-problems',
     label: 'OS Problems',
-    x: 760, y: ROW.practice, w: 158, h: 44,
+    x: 771, y: ROW.practice, w: 164, h: 44,
     accent: '#fb923c',
     href: '/docs/os-problems/1-cpu-scheduling-fcfs-sjf-srtf-round-robin',
   },
@@ -107,27 +128,43 @@ const NODES = [
   {
     id: 'cn-essential',
     label: 'CN Essential',
-    x: 975, y: ROW.essentials, w: 165, h: 46,
+    x: 991, y: ROW.essentials, w: 168, h: 46,
     accent: '#34d399',
     href: '/docs/cn-essential/1-osi-model-tcp-ip',
   },
   {
     id: 'cn-additional',
     label: 'CN Additional',
-    x: 975, y: ROW.additional, w: 165, h: 44,
+    x: 991, y: ROW.additional, w: 168, h: 44,
     accent: '#6ee7b7',
     href: '/docs/cn-additional/1-sessions-vs-jwt',
   },
   {
     id: 'cn-problems',
     label: 'CN Problems',
-    x: 975, y: ROW.practice, w: 158, h: 44,
+    x: 991, y: ROW.practice, w: 164, h: 44,
     accent: '#2dd4bf',
     href: '/docs/cn-problems/1-subnetting',
   },
 ];
 
+/**
+ * Connections.
+ *
+ * The four out of the hub need both offsets. `fromOffset` spreads the
+ * departure points along the hub's bottom edge so each wire gets its own
+ * vertical stem instead of four stems drawn on top of each other.
+ * `laneOffset` puts the two long runs on the upper lane and the two short ones
+ * on the lower lane, which is the one arrangement of the four where no wire
+ * crosses another: a short run turning late stays inside the span its long
+ * neighbour already left behind.
+ */
 const EDGES = [
+  { from: 'cs-all', to: 'oop-essential', fromOffset: -54, laneOffset: -14 },
+  { from: 'cs-all', to: 'dbms-essential', fromOffset: -18, laneOffset: 12 },
+  { from: 'cs-all', to: 'os-essential', fromOffset: 18, laneOffset: 12 },
+  { from: 'cs-all', to: 'cn-essential', fromOffset: 54, laneOffset: -14 },
+
   { from: 'oop-essential', to: 'oop-additional' },
   { from: 'oop-additional', to: 'design-patterns' },
   { from: 'oop-additional', to: 'code-tracing' },
@@ -144,9 +181,10 @@ const EDGES = [
 
 /**
  * The groups this graph covers, so the homepage tab can total them without
- * keeping its own copy of the list and letting the two drift.
+ * keeping its own copy of the list and letting the two drift. The hub is not
+ * a group, so it is not in here.
  */
-export const CS_GROUPS = NODES.map((node) => node.id);
+export const CS_GROUPS = NODES.filter((node) => !node.hub).map((node) => node.id);
 
 export default function CsRoadmap() {
   const { store } = useProgress();
@@ -163,6 +201,20 @@ export default function CsRoadmap() {
   }, [store]);
 
   const progressFor = (nodeId) => {
+    // The hub stands for everything below it, so its numbers are the sum of
+    // the lanes rather than a group of its own.
+    if (nodeId === 'cs-all') {
+      let done = 0;
+      let total = 0;
+      for (const id of CS_GROUPS) {
+        const group = manifest.groups[id];
+        if (!group) continue;
+        total += group.pages;
+        done += Math.min(doneByGroup[id] || 0, group.pages);
+      }
+      return { done, total };
+    }
+
     const group = manifest.groups[nodeId];
     if (!group) return { done: 0, total: 0 };
     return {

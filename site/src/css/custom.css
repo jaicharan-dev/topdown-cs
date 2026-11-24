@@ -776,63 +776,125 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
 }
 
 /* ----- Homepage tabs -----
-   A sidebar rather than a strip along the top, because the tab list is
-   expected to grow: SQL, ML and the rest read fine as a vertical list and
-   would crowd a horizontal one.
+   A rail down the left rather than a strip along the top, because the tab
+   list is expected to grow: SQL, ML and the rest read fine as a vertical list
+   and would crowd a horizontal one.
 
-   Replaces the old two column split. .csf-main-container, .csf-column-left
-   and .csf-column-right were referenced by nothing once the panels took
-   over, so they are gone rather than left behind. */
+   Three columns, and nothing is ever placed in the third. The reserved column
+   on the right is as wide as the rail on the left, so the panel between them
+   sits on the page's centre line instead of being pushed right by the rail.
+   Centring costs that width, so below the point where there is room for it
+   the third column collapses and the panel goes back to filling what is
+   left. The breakpoint is the container's own max width, which means the
+   panel never has to narrow to stay centred: it is either centred at full
+   width or off centre at full width. */
 .csf-tabs {
+  /* 190px, not less: "CS Fundamentals" plus its count wraps below this. */
+  --csf-rail-w: 190px;
   width: 100%;
-  /* Wide enough that the panel's track reaches 872px, which is exactly five
-     card columns. Twelve pixels narrower and the fifth card wraps onto a row
-     of its own, which looks like a mistake rather than a layout. */
-  max-width: 1180px;
+  max-width: 1388px;
   margin: 0 auto;
-  padding: 0 2rem 4rem;
+  padding: 0 1.25rem 4rem;
   display: grid;
-  grid-template-columns: 186px minmax(0, 1fr);
-  gap: 2.5rem;
+  grid-template-columns: var(--csf-rail-w) minmax(0, 1fr) var(--csf-rail-w);
+  gap: 1.5rem;
   align-items: start;
+}
+
+/* Keep the symmetry down to the width where the panel starts paying too
+   much for it. Between here and the container's full width the panel is
+   narrower than its maximum but still centred, which trades a little of the
+   graph's size for having it on the page's centre line; below it the
+   reserved column goes and the panel takes back the full width off centre.
+   1218px is where the three column panel would put a node label under 11px. */
+@media screen and (max-width: 1218px) {
+  .csf-tabs {
+    grid-template-columns: var(--csf-rail-w) minmax(0, 1fr);
+  }
+}
+
+.csf-rail {
+  position: sticky;
+  top: calc(var(--ifm-navbar-height, 60px) + 1.25rem);
+}
+
+.csf-rail__heading {
+  margin: 0 0 0.45rem 0.75rem;
+  font-size: 0.64rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  opacity: 0.42;
 }
 
 .csf-tablist {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  position: sticky;
-  top: calc(var(--ifm-navbar-height, 60px) + 1rem);
+  gap: 1px;
 }
 
 .csf-tab {
   position: relative;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 1px;
+  gap: 0.4rem;
   width: 100%;
-  padding: 0.55rem 0.7rem 0.6rem;
+  padding: 0.5rem 0.75rem 0.55rem;
   border: none;
-  border-radius: 9px;
+  border-radius: 8px;
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 0.88rem;
-  font-weight: 600;
   text-align: left;
   cursor: pointer;
-  opacity: 0.62;
-  overflow: hidden;
-  transition: opacity 0.2s ease, background-color 0.2s ease;
+  transition: background-color 0.18s ease;
 }
 
-.csf-tab:hover {
-  opacity: 0.92;
+/* Label and count share a row. Stacked, every tab was two ragged lines and
+   the counts did not line up with each other. */
+.csf-tab__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
-.csf-tab[aria-selected='true'] {
+.csf-tab__label {
+  font-size: 0.855rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  opacity: 0.6;
+  transition: opacity 0.18s ease;
+}
+
+.csf-tab__count {
+  font-size: 0.68rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.42;
+  flex: none;
+  transition: opacity 0.18s ease;
+}
+
+.csf-tab__soon {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  opacity: 0.3;
+  flex: none;
+}
+
+.csf-tab:hover .csf-tab__label {
+  opacity: 0.85;
+}
+
+.csf-tab[aria-selected='true'] .csf-tab__label {
   opacity: 1;
+}
+
+.csf-tab[aria-selected='true'] .csf-tab__count {
+  opacity: 0.62;
 }
 
 .csf-tab:focus-visible {
@@ -840,52 +902,70 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
   outline-offset: -2px;
 }
 
-.csf-tab__count {
-  font-size: 0.72rem;
-  font-weight: 500;
-  opacity: 0.55;
-  font-variant-numeric: tabular-nums;
-}
-
-/* The selected tab is marked down its left edge, which is where the eye
-   looks in a vertical list. */
+/* The selected tab is marked down its left edge, which is where the eye looks
+   in a vertical list. Inset from the rounded corners rather than flush with
+   them, so it reads as a marker and not as a clipped border. */
 .csf-tab[aria-selected='true']::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 6px;
-  bottom: 6px;
-  width: 3px;
-  border-radius: 0 2px 2px 0;
+  top: 7px;
+  bottom: 7px;
+  width: 2px;
+  border-radius: 2px;
+  /* currentColor, not the progress accent: green already means progress on
+     the track just below, and a selected tab with nothing done is not a
+     green tab. */
   background: currentColor;
-  opacity: 0.8;
+  opacity: 0.7;
 }
 
-/* How far through this tab's content the reader is, along its bottom edge. */
-.csf-tab__progress {
+/* How far through this tab's content the reader is. The track is drawn even
+   at zero, so the tab shows what is left as well as what is done. */
+.csf-tab__track {
+  position: relative;
+  height: 3px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.csf-tab__fill {
   position: absolute;
-  left: 0;
+  top: 0;
   bottom: 0;
-  height: 2px;
+  left: 0;
+  border-radius: 2px;
   background: var(--csf-progress-accent, #16a34a);
   transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+[data-theme='dark'] .csf-tab:hover {
+  background-color: rgba(255, 255, 255, 0.035);
+}
+
 [data-theme='dark'] .csf-tab[aria-selected='true'] {
-  background-color: rgba(255, 255, 255, 0.055);
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+[data-theme='dark'] .csf-tab__track {
+  background-color: rgba(255, 255, 255, 0.085);
+}
+
+html:not([data-theme='dark']) .csf-tab:hover {
+  background-color: rgba(0, 0, 0, 0.03);
 }
 
 html:not([data-theme='dark']) .csf-tab[aria-selected='true'] {
-  background-color: rgba(0, 0, 0, 0.045);
+  background-color: rgba(0, 0, 0, 0.05);
 }
 
-/* Panels are held to a comfortable reading width and centred in their track,
-   rather than stretched to the window. Wide rows of cards are harder to scan:
-   the eye loses the row on the way back. */
-/* Exactly five card columns wide, so the grid fills the panel and the cards
-   line up with their section labels. */
+html:not([data-theme='dark']) .csf-tab__track {
+  background-color: rgba(0, 0, 0, 0.085);
+}
+
+/* Centred in its track and held to the width the graphs were laid out for. */
 .csf-tabpanel {
-  max-width: 872px;
+  max-width: 920px;
   margin: 0 auto;
 }
 
@@ -928,19 +1008,26 @@ html:not([data-theme='dark']) .csf-tab[aria-selected='true'] {
 }
 
 @media screen and (max-width: 996px) {
-  /* Below this the sidebar costs more than it gives, so it lies back down
-     across the top and scrolls sideways. */
+  /* Below this the rail costs more than it gives, so it lies back down across
+     the top and scrolls sideways. */
   .csf-tabs {
     /* minmax(0, 1fr), not 1fr: a 1fr track takes its minimum from its
        content, so the roadmap could force the column wider than the screen
        and the whole page scrolled sideways instead of just the graph. */
     grid-template-columns: minmax(0, 1fr);
-    gap: 1.5rem;
+    gap: 1.25rem;
     padding: 0 1.25rem 3.5rem;
   }
 
-  .csf-tablist {
+  .csf-rail {
     position: static;
+  }
+
+  .csf-rail__heading {
+    display: none;
+  }
+
+  .csf-tablist {
     flex-direction: row;
     gap: 0.3rem;
     overflow-x: auto;
@@ -955,8 +1042,9 @@ html:not([data-theme='dark']) .csf-tab[aria-selected='true'] {
   .csf-tab {
     flex: none;
     width: auto;
+    gap: 0.3rem;
     border-radius: 8px 8px 0 0;
-    padding: 0.5rem 0.85rem 0.55rem;
+    padding: 0.45rem 0.8rem 0.5rem;
   }
 
   /* Down here the marker belongs under the tab, not beside it. */
@@ -968,6 +1056,12 @@ html:not([data-theme='dark']) .csf-tab[aria-selected='true'] {
     width: auto;
     height: 2px;
     border-radius: 2px 2px 0 0;
+  }
+
+  /* The marker already runs along the bottom edge, so a track there as well
+     is two bars saying almost the same thing. */
+  .csf-tab__track {
+    display: none;
   }
 
   [data-theme='dark'] .csf-tablist {
@@ -1016,11 +1110,33 @@ html:not([data-theme='dark']) .csf-graph-node-tab-fill {
   fill: color-mix(in srgb, var(--node-accent) var(--csf-accent-mix), var(--csf-ink));
 }
 
-/* ----- Natural Blending DSA Roadmap ----- */
+/* ----- Roadmap graph -----
+   Framed as a panel with a dot grid behind it.
+
+   It used to float on the page background over three blurred colour blobs,
+   placed at percentages tuned for the DSA graph's proportions, which landed
+   somewhere else entirely on a graph of any other shape. A dot grid is what
+   every tool that draws diagrams puts behind one, so the panel reads as a
+   diagram on sight, and it does not care how tall the graph is. */
 .csf-graph-wrapper {
   position: relative;
   width: 100%;
-  margin-top: 0.25rem;
+  margin-top: 0.35rem;
+  padding: 1.5rem 0.75rem 1rem;
+  border-radius: 18px;
+  border: 1px solid transparent;
+}
+
+[data-theme='dark'] .csf-graph-wrapper {
+  background-color: rgba(255, 255, 255, 0.018);
+  border-color: rgba(255, 255, 255, 0.055);
+}
+
+/* Fractionally darker than the page, so the cream node cards read as raised
+   on it rather than as holes in it. */
+html:not([data-theme='dark']) .csf-graph-wrapper {
+  background-color: rgba(60, 46, 20, 0.022);
+  border-color: var(--csf-border-subtle, #e3dcce);
 }
 
 .csf-graph-svg-wrapper {
@@ -1028,47 +1144,56 @@ html:not([data-theme='dark']) .csf-graph-node-tab-fill {
   width: 100%;
 }
 
+/* The dots take the text colour, so they invert with the theme on their own.
+   Masked to fade out towards the edges, which stops the grid short of the
+   panel's border instead of letting the border slice through it. */
 .csf-graph-svg-wrapper::before {
   content: '';
   position: absolute;
-  inset: -6% -4%;
+  inset: -1.5rem -0.75rem -1rem;
   pointer-events: none;
   z-index: 0;
-  background:
-    radial-gradient(45% 34% at 50% 6%, rgba(96, 165, 250, 0.07), transparent 72%),
-    radial-gradient(44% 32% at 62% 52%, rgba(245, 158, 11, 0.045), transparent 72%),
-    radial-gradient(42% 32% at 84% 90%, rgba(244, 63, 94, 0.05), transparent 72%);
-  filter: blur(10px);
+  background-image: radial-gradient(currentColor 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: center;
+  -webkit-mask-image: radial-gradient(125% 115% at 50% 42%, #000 40%, transparent 100%);
+  mask-image: radial-gradient(125% 115% at 50% 42%, #000 40%, transparent 100%);
+}
+
+[data-theme='dark'] .csf-graph-svg-wrapper::before {
+  opacity: 0.14;
 }
 
 html:not([data-theme='dark']) .csf-graph-svg-wrapper::before {
-  opacity: 0.55;
+  opacity: 0.1;
 }
 
 .csf-graph-svg {
   position: relative;
   z-index: 1;
-}
-
-.csf-graph-svg {
   width: 100%;
   height: auto;
   display: block;
   overflow: visible;
 }
 
-/* Mobile: allow roadmap to breathe - horizontal scroll on tiny screens */
+/* Mobile: allow the roadmap to breathe - horizontal scroll on tiny screens */
 @media screen and (max-width: 600px) {
   .csf-graph-wrapper {
     overflow-x: auto;
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: 0.5rem;
+    padding: 1rem 0.75rem 0.75rem;
+    border-radius: 14px;
   }
 
   .csf-graph-svg-wrapper {
-    min-width: 640px;
-    width: 640px;
+    /* Wide enough that a node label is still readable once the viewBox is
+       scaled to fit it. Narrower fits more of the graph on screen at the
+       cost of the labels, which is the wrong trade when you are going to
+       scroll either way. */
+    min-width: 700px;
+    width: 700px;
   }
 
   .csf-graph-svg {
@@ -1135,7 +1260,9 @@ html:not([data-theme='dark']) .csf-graph-edge--highlighted {
 
 .csf-graph-hit-box {
   pointer-events: all;
-  cursor: pointer;
+  /* inherit, not pointer: the group sets the cursor, because a node
+     without a link is not clickable and should not look it. */
+  cursor: inherit;
   fill: transparent;
 }
 
@@ -1215,7 +1342,7 @@ html:not([data-theme='dark']) .csf-graph-node-card {
 
 .csf-graph-node-label {
   font-size: 16.5px;
-  font-weight: 700;
+  font-weight: 650;
   font-family: var(--ifm-font-family-base);
   letter-spacing: -0.015em;
   pointer-events: none;
@@ -1237,7 +1364,8 @@ html:not([data-theme='dark']) .csf-graph-node-label {
   fill: rgba(255, 255, 255, 0.065);
   stroke: color-mix(in srgb, var(--node-accent, #38bdf8) 85%, transparent);
   stroke-width: 1.5px;
-  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 16px var(--node-accent, #38bdf8));
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.4))
+    drop-shadow(0 0 8px color-mix(in srgb, var(--node-accent, #38bdf8) 55%, transparent));
 }
 
 [data-theme='dark'] .csf-graph-node-group:hover .csf-graph-node-label,
@@ -1250,7 +1378,8 @@ html:not([data-theme='dark']) .csf-graph-node-group.is-hovered .csf-graph-node-c
   fill: #ffffff;
   stroke: var(--node-accent, #0284c7);
   stroke-width: 1.5px;
-  filter: drop-shadow(0 8px 20px rgba(50, 40, 30, 0.15)) drop-shadow(0 0 12px color-mix(in srgb, var(--node-accent, #0284c7) 35%, transparent));
+  filter: drop-shadow(0 6px 14px rgba(50, 40, 30, 0.13))
+    drop-shadow(0 0 7px color-mix(in srgb, var(--node-accent, #0284c7) 28%, transparent));
 }
 
 html:not([data-theme='dark']) .csf-graph-node-group:hover .csf-graph-node-label,

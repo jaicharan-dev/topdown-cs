@@ -131,46 +131,59 @@ export default function Home() {
       </section>
 
       <main className="csf-tabs">
-        <div
-          className="csf-tablist"
-          role="tablist"
-          aria-label="Content sections"
-          aria-orientation="vertical">
-          {TABS.map((tab) => {
-            const { done, total } = tabProgress(tab);
-            const ratio = total > 0 ? Math.min(1, done / total) : 0;
-            const selected = tab.id === activeTab;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                id={`csf-tab-${tab.id}`}
-                className="csf-tab"
-                aria-selected={selected}
-                aria-controls={`csf-panel-${tab.id}`}
-                /* Only the selected tab is in the tab order; the arrow keys
-                   move between them, which is how a tablist is expected to
-                   behave. */
-                tabIndex={selected ? 0 : -1}
-                onClick={() => selectTab(tab.id)}
-                onKeyDown={onTabKeyDown}>
-                <span className="csf-tab__label">{tab.label}</span>
-                {total > 0 && (
-                  <span className="csf-tab__count">
-                    {done} / {total}
+        <div className="csf-rail">
+          <p className="csf-rail__heading">Sections</p>
+          <div
+            className="csf-tablist"
+            role="tablist"
+            aria-label="Content sections"
+            aria-orientation="vertical">
+            {TABS.map((tab) => {
+              const { done, total } = tabProgress(tab);
+              const ratio = total > 0 ? Math.min(1, done / total) : 0;
+              const selected = tab.id === activeTab;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  role="tab"
+                  id={`csf-tab-${tab.id}`}
+                  className="csf-tab"
+                  aria-selected={selected}
+                  aria-controls={`csf-panel-${tab.id}`}
+                  /* Only the selected tab is in the tab order; the arrow keys
+                     move between them, which is how a tablist is expected to
+                     behave. */
+                  tabIndex={selected ? 0 : -1}
+                  onClick={() => selectTab(tab.id)}
+                  onKeyDown={onTabKeyDown}>
+                  <span className="csf-tab__row">
+                    <span className="csf-tab__label">{tab.label}</span>
+                    {total > 0 ? (
+                      <span className="csf-tab__count">
+                        {done}/{total}
+                      </span>
+                    ) : (
+                      /* A tab with nothing behind it yet says so, rather
+                         than showing a blank where every other tab has a
+                         number and looking like a loading failure. */
+                      <span className="csf-tab__soon">Soon</span>
+                    )}
                   </span>
-                )}
-                {done > 0 && (
-                  <span
-                    className="csf-tab__progress"
-                    style={{ width: `${ratio * 100}%` }}
-                    aria-hidden="true"
-                  />
-                )}
-              </button>
-            );
-          })}
+                  {total > 0 && (
+                    /* The track is drawn even at zero, so the tab shows how
+                       much is left as well as how much is done. */
+                    <span className="csf-tab__track" aria-hidden="true">
+                      <span
+                        className="csf-tab__fill"
+                        style={{ width: `${ratio * 100}%` }}
+                      />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Every panel stays in the markup and is hidden rather than
