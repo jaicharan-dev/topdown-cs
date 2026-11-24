@@ -893,21 +893,6 @@ html:not([data-theme='dark']) .csf-tab[aria-selected='true'] {
   display: none;
 }
 
-/* Small cards, at a fixed width so every section matches. Letting them
-   stretch with 1fr made a four card row and a five card row different sizes,
-   which looked accidental. Rows centre instead. */
-/* Small cards at a fixed width, so every section matches. Letting them
-   stretch with 1fr made a four card row and a five card row different sizes,
-   which looked accidental.
-   Aligned to the start rather than centred: centring left the cards sitting
-   to the right of their own section label. The panel is centred instead, so
-   the page still has blank edges. */
-.csf-compact-grid.csf-compact-grid--wide {
-  grid-template-columns: repeat(auto-fit, 168px);
-  justify-content: start;
-  gap: 8px;
-}
-
 /* System Design, until there is something to read. */
 .csf-soon-panel {
   display: flex;
@@ -946,7 +931,10 @@ html:not([data-theme='dark']) .csf-tab[aria-selected='true'] {
   /* Below this the sidebar costs more than it gives, so it lies back down
      across the top and scrolls sideways. */
   .csf-tabs {
-    grid-template-columns: 1fr;
+    /* minmax(0, 1fr), not 1fr: a 1fr track takes its minimum from its
+       content, so the roadmap could force the column wider than the screen
+       and the whole page scrolled sideways instead of just the graph. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 1.5rem;
     padding: 0 1.25rem 3.5rem;
   }
@@ -991,17 +979,6 @@ html:not([data-theme='dark']) .csf-tab[aria-selected='true'] {
   .csf-tabs {
     padding: 0 0.85rem 3rem;
   }
-
-  .csf-compact-grid.csf-compact-grid--wide {
-    grid-template-columns: repeat(auto-fit, minmax(140px, 168px));
-    justify-content: start;
-  }
-}
-
-.csf-grid-wrapper {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 0 1.5rem 5rem;
 }
 
 .csf-section-label {
@@ -1028,251 +1005,30 @@ html:not([data-theme='dark']) .csf-tab[aria-selected='true'] {
 [data-theme='dark'] .csf-section-label { color: #b4b4bd; }
 html:not([data-theme='dark']) .csf-section-label { color: #52525b; }
 
-.csf-section-divider {
-  height: 1px;
-  margin: 0.85rem 0 0.75rem;
-  border: none;
-}
-
-[data-theme='dark'] .csf-section-divider {
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06) 50%, transparent);
-}
-
-html:not([data-theme='dark']) .csf-section-divider {
-  background: linear-gradient(90deg, transparent, rgba(0,0,0,0.06) 50%, transparent);
-}
-
-.csf-compact-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-
-@media screen and (max-width: 480px) {
-  .csf-compact-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
-  .csf-compact-card { min-height: 66px; padding: 11px 8px; gap: 6px; }
-  .csf-compact-card__icon { width: 30px; height: 30px; }
-  .csf-compact-card__icon svg { width: 17px; height: 17px; }
-  .csf-compact-card__title { font-size: 0.74rem; }
-}
-
-/* ----- Compact Cards - built to match the DSA roadmap nodes ----- */
-.csf-compact-card {
-  --card-accent: #60a5fa;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 10px 10px 9px;
-  min-height: 62px;
-  border-radius: 14px;
-  text-decoration: none !important;
-  color: inherit !important;
-  transition: transform 0.25s ease, border-color 0.25s ease,
-    box-shadow 0.25s ease, background-color 0.25s ease, filter 0.45s ease;
-  position: relative;
-  overflow: hidden;
-  cursor: pointer;
-}
-
-/* ------------------------------------------------------------------
-   Colour is the reward.
-
-   An untouched subject is nearly grey and gains saturation as it fills
-   up, so the homepage colours itself in as you work through it. The ramp
-   is continuous rather than three steps on purpose: a half finished
-   subject should look half alive, which pulls harder than snapping
-   between states.
-
-   Saturation, not greyscale. A fully grey card would collide with
-   .csf-compact-card--soon, which already greys its icon to mean "this
-   does not exist yet". Keeping a trace of hue leaves "not started" and
-   "not available" telling different stories.
-
-   Only saturation changes, so the title keeps its full contrast and the
-   card stays as readable as any other.
-   ------------------------------------------------------------------ */
-/* The resting value is written inline by the component, so the hover preview
-   has to outrank it. This is the one place !important is the honest tool:
-   an inline style can only be beaten by one. */
-.csf-compact-card:not(.csf-compact-card--soon):hover {
-  filter: saturate(1) !important;
-}
-
-/* The accent tab along the top edge, same as .csf-dsa-node-tab */
-.csf-compact-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 18px;
-  right: 18px;
-  height: 4px;
-  border-radius: 0 0 1.5px 1.5px;
-  background: var(--card-accent);
-  opacity: 0.75;
-  transition: opacity 0.25s ease;
-}
-
-.csf-compact-card:not(.csf-compact-card--soon):hover::before {
-  opacity: 1;
-}
-
-/* ------------------------------------------------------------------
-   Progress on a subject card.
-
-   The accent tab along the top edge doubles as the progress bar: the
-   ::before above is the track, and .csf-compact-card__rail is the filled
-   part drawn over it. An earlier version put a second bar along the bottom
-   edge in the same colour, which just read as decoration and left you
-   unable to tell which line meant anything.
-
-   Everything is absolutely positioned. The bar is rendered after hydration,
-   once the store has loaded, so anything in the layout flow would make every
-   card on the homepage jump at that moment.
-   ------------------------------------------------------------------ */
-
-.csf-compact-card {
-  --progress: 0;
-}
-
-.csf-compact-card__rail {
-  position: absolute;
-  top: 0;
-  left: 18px;
-  height: 4px;
-  width: calc((100% - 36px) * var(--progress));
-  background: var(--card-accent);
-  border-radius: 0 0 2px 2px;
-  z-index: 2;
-  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 0.25s ease;
-}
-
-.csf-compact-card[data-progress='complete'] .csf-compact-card__rail {
-  box-shadow: 0 0 10px -1px var(--card-accent);
-}
-
-/* The track sits behind the fill, so it has to be dimmer than the tab was
-   on its own, or a half finished subject looks finished. */
-.csf-compact-card[data-progress='partial']::before,
-.csf-compact-card[data-progress='complete']::before {
-  opacity: 0.3;
-}
-
-/* Dimmer than the track on a card that HAS progress, so the three states
-   form one ramp. At 0.45 an untouched card's full width tab looked brighter
-   than the unfinished part of a half done one, which read backwards. */
-.csf-compact-card[data-progress='none']::before {
-  opacity: 0.34;
-}
-
-/* Icon brightens with progress. */
-.csf-compact-card[data-progress='none'] .csf-compact-card__icon {
-  color: color-mix(in srgb, var(--card-accent) 52%, transparent);
-}
-
-.csf-compact-card[data-progress='partial'] .csf-compact-card__icon {
-  color: color-mix(in srgb, var(--card-accent) 82%, transparent);
-}
-
-.csf-compact-card[data-progress='complete'] .csf-compact-card__icon {
-  color: var(--card-accent);
-}
-
-/* Dark theme tiers. Same color-mix vocabulary as the hover state, so the
-   three steps sit on one scale rather than looking like three ideas. */
-[data-theme='dark'] .csf-compact-card[data-progress='none'] {
-  background-color: color-mix(in srgb, var(--card-accent) 4%, rgba(255, 255, 255, 0.025)) !important;
-  border-color: color-mix(in srgb, var(--card-accent) 12%, rgba(255, 255, 255, 0.07));
-}
-
-[data-theme='dark'] .csf-compact-card[data-progress='partial'] {
-  background-color: color-mix(in srgb, var(--card-accent) 11%, rgba(255, 255, 255, 0.05)) !important;
-  border-color: color-mix(in srgb, var(--card-accent) 40%, rgba(255, 255, 255, 0.09));
-}
-
-[data-theme='dark'] .csf-compact-card[data-progress='complete'] {
-  background-color: color-mix(in srgb, var(--card-accent) 18%, rgba(255, 255, 255, 0.075)) !important;
-  border-color: color-mix(in srgb, var(--card-accent) 75%, transparent);
-  box-shadow: 0 0 16px -7px var(--card-accent);
-}
-
-/* Light theme tiers. The surface stays light and the accent arrives through
-   the border and a wash, since a dark tint would muddy the card. */
-html:not([data-theme='dark']) .csf-compact-card[data-progress='none'] {
-  border-color: color-mix(in srgb, var(--card-accent) 16%, rgba(0, 0, 0, 0.07));
-}
-
-html:not([data-theme='dark']) .csf-compact-card[data-progress='partial'] {
-  background-color: color-mix(in srgb, var(--card-accent) 6%, var(--csf-surface)) !important;
-  border-color: color-mix(in srgb, var(--card-accent) 45%, rgba(0, 0, 0, 0.07));
-}
-
-html:not([data-theme='dark']) .csf-compact-card[data-progress='complete'] {
-  background-color: color-mix(in srgb, var(--card-accent) 13%, var(--csf-surface)) !important;
-  border-color: color-mix(in srgb, var(--card-accent) 85%, transparent);
-  box-shadow: 0 2px 10px -2px color-mix(in srgb, var(--card-accent) 40%, transparent);
-}
-
-/* Light mode cannot use the opacity ramp above.
- *
- * A rule further down this file deliberately darkens the accent tab with ink
- * so it has contrast against a white card, and forces opacity to 1. It is
- * more specific than the plain [data-progress] rules, so those do nothing
- * here, and the fill was ending up PALER than its own track: exactly
- * backwards.
- *
- * So light mode expresses the three states as colours instead. The track is a
- * wash of the accent on white, and the filled part is the same ink-mixed
- * accent the tab already used, which keeps the bar reading as "this much is
- * filled in" rather than "this much is highlighted".
- */
-html:not([data-theme='dark']) .csf-compact-card[data-progress='none']::before {
-  background: color-mix(in srgb, var(--card-accent) 34%, #ffffff);
-  opacity: 1;
-}
-
-html:not([data-theme='dark']) .csf-compact-card[data-progress='partial']::before,
-html:not([data-theme='dark']) .csf-compact-card[data-progress='complete']::before {
-  background: color-mix(in srgb, var(--card-accent) 24%, #ffffff);
-  opacity: 1;
-}
-
-html:not([data-theme='dark']) .csf-compact-card__rail {
-  background: color-mix(in srgb, var(--card-accent) var(--csf-accent-mix), var(--csf-ink));
-}
-
-html:not([data-theme='dark'])
-  .csf-compact-card[data-progress='complete']
-  .csf-compact-card__rail {
-  box-shadow: none;
-}
-
 /* The same inversion applies to the roadmap nodes. A CSS fill beats the
    fill attribute set in the markup, so the dark theme keeps the raw accent
    from the component and light mode overrides it here. */
-html:not([data-theme='dark']) .csf-dsa-node-group.is-done-none .csf-dsa-node-tab {
+html:not([data-theme='dark']) .csf-graph-node-group.is-done-none .csf-graph-node-tab {
   fill: color-mix(in srgb, var(--node-accent) 34%, #ffffff);
 }
 
-html:not([data-theme='dark']) .csf-dsa-node-tab-fill {
+html:not([data-theme='dark']) .csf-graph-node-tab-fill {
   fill: color-mix(in srgb, var(--node-accent) var(--csf-accent-mix), var(--csf-ink));
 }
 
 /* ----- Natural Blending DSA Roadmap ----- */
-.csf-dsa-roadmap-wrapper {
+.csf-graph-wrapper {
   position: relative;
   width: 100%;
   margin-top: 0.25rem;
 }
 
-.csf-dsa-svg-wrapper {
+.csf-graph-svg-wrapper {
   position: relative;
   width: 100%;
 }
 
-.csf-dsa-svg-wrapper::before {
+.csf-graph-svg-wrapper::before {
   content: '';
   position: absolute;
   inset: -6% -4%;
@@ -1285,16 +1041,16 @@ html:not([data-theme='dark']) .csf-dsa-node-tab-fill {
   filter: blur(10px);
 }
 
-html:not([data-theme='dark']) .csf-dsa-svg-wrapper::before {
+html:not([data-theme='dark']) .csf-graph-svg-wrapper::before {
   opacity: 0.55;
 }
 
-.csf-dsa-svg {
+.csf-graph-svg {
   position: relative;
   z-index: 1;
 }
 
-.csf-dsa-svg {
+.csf-graph-svg {
   width: 100%;
   height: auto;
   display: block;
@@ -1303,25 +1059,25 @@ html:not([data-theme='dark']) .csf-dsa-svg-wrapper::before {
 
 /* Mobile: allow roadmap to breathe - horizontal scroll on tiny screens */
 @media screen and (max-width: 600px) {
-  .csf-dsa-roadmap-wrapper {
+  .csf-graph-wrapper {
     overflow-x: auto;
     overflow-y: visible;
     -webkit-overflow-scrolling: touch;
     padding-bottom: 0.5rem;
   }
 
-  .csf-dsa-svg-wrapper {
+  .csf-graph-svg-wrapper {
     min-width: 640px;
     width: 640px;
   }
 
-  .csf-dsa-svg {
+  .csf-graph-svg {
     width: 100%;
   }
 }
 
 /* Connector wires - gradient tinted from source accent to target accent */
-.csf-dsa-edge {
+.csf-graph-edge {
   fill: none;
   stroke-width: 2px;
   stroke-linecap: round;
@@ -1329,135 +1085,135 @@ html:not([data-theme='dark']) .csf-dsa-svg-wrapper::before {
   transition: stroke-width 0.25s ease, opacity 0.25s ease, stroke-opacity 0.25s ease;
 }
 
-[data-theme='dark'] .csf-dsa-edge {
+[data-theme='dark'] .csf-graph-edge {
   stroke-opacity: 0.3;
 }
 
-html:not([data-theme='dark']) .csf-dsa-edge {
+html:not([data-theme='dark']) .csf-graph-edge {
   stroke-opacity: 0.42;
 }
 
-.csf-dsa-edge--highlighted {
+.csf-graph-edge--highlighted {
   stroke-width: 3px;
   stroke-opacity: 1;
 }
 
-[data-theme='dark'] .csf-dsa-edge--highlighted {
+[data-theme='dark'] .csf-graph-edge--highlighted {
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.28));
 }
 
-html:not([data-theme='dark']) .csf-dsa-edge--highlighted {
+html:not([data-theme='dark']) .csf-graph-edge--highlighted {
   filter: drop-shadow(0 1px 3px rgba(15, 23, 42, 0.2));
 }
 
-.csf-dsa-edge--dimmed {
+.csf-graph-edge--dimmed {
   stroke-opacity: 0.08;
 }
 
 /* Travelling pulse that rides the hovered wire */
-.csf-dsa-edge__pulse {
+.csf-graph-edge__pulse {
   stroke-width: 3.5px;
   stroke-opacity: 0.95;
   stroke-dasharray: 16 260;
-  animation: csf-dsa-wire-flow 1.45s linear infinite;
+  animation: csf-graph-wire-flow 1.45s linear infinite;
   filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.35));
 }
 
-@keyframes csf-dsa-wire-flow {
+@keyframes csf-graph-wire-flow {
   from { stroke-dashoffset: 276; }
   to { stroke-dashoffset: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .csf-dsa-edge__pulse { animation: none; opacity: 0; }
+  .csf-graph-edge__pulse { animation: none; opacity: 0; }
 }
 
 /* Tree Topic Nodes - Matching TopDown CS Homepage Cards */
-.csf-dsa-node-group {
+.csf-graph-node-group {
   outline: none;
 }
 
-.csf-dsa-hit-box {
+.csf-graph-hit-box {
   pointer-events: all;
   cursor: pointer;
   fill: transparent;
 }
 
-.csf-dsa-node-card {
+.csf-graph-node-card {
   pointer-events: none;
   transition: fill 0.25s ease, stroke 0.25s ease, stroke-width 0.25s ease, filter 0.25s ease;
 }
 
-[data-theme='dark'] .csf-dsa-node-card {
+[data-theme='dark'] .csf-graph-node-card {
   fill: color-mix(in srgb, var(--node-accent, #60a5fa) 7%, rgba(255, 255, 255, 0.035));
   stroke: color-mix(in srgb, var(--node-accent, #60a5fa) 18%, rgba(255, 255, 255, 0.09));
   stroke-width: 1px;
 }
 
 /* Accent tab at the top edge - the incoming wire lands straight into it */
-.csf-dsa-node-tab {
+.csf-graph-node-tab {
   pointer-events: none;
   opacity: 0.75;
   transition: opacity 0.25s ease;
 }
 
-.csf-dsa-node-group:hover .csf-dsa-node-tab,
-.csf-dsa-node-group.is-hovered .csf-dsa-node-tab {
+.csf-graph-node-group:hover .csf-graph-node-tab,
+.csf-graph-node-group.is-hovered .csf-graph-node-tab {
   opacity: 1;
 }
 
 /* Roadmap nodes carry the same three states as the subject cards, for the
    same reason: the tab on the top edge is the progress bar, and the card
    brightens as the topic fills up. */
-.csf-dsa-node-tab-fill {
+.csf-graph-node-tab-fill {
   pointer-events: none;
   transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-[data-theme='dark'] .csf-dsa-node-group.is-done-partial .csf-dsa-node-card {
+[data-theme='dark'] .csf-graph-node-group.is-done-partial .csf-graph-node-card {
   fill: color-mix(in srgb, var(--node-accent, #60a5fa) 12%, rgba(255, 255, 255, 0.05));
   stroke: color-mix(in srgb, var(--node-accent, #60a5fa) 40%, rgba(255, 255, 255, 0.09));
 }
 
-[data-theme='dark'] .csf-dsa-node-group.is-done-complete .csf-dsa-node-card {
+[data-theme='dark'] .csf-graph-node-group.is-done-complete .csf-graph-node-card {
   fill: color-mix(in srgb, var(--node-accent, #60a5fa) 20%, rgba(255, 255, 255, 0.075));
   stroke: color-mix(in srgb, var(--node-accent, #60a5fa) 78%, transparent);
 }
 
-html:not([data-theme='dark']) .csf-dsa-node-group.is-done-partial .csf-dsa-node-card {
+html:not([data-theme='dark']) .csf-graph-node-group.is-done-partial .csf-graph-node-card {
   fill: color-mix(in srgb, var(--node-accent, #0284c7) 7%, #ffffff);
   stroke: color-mix(in srgb, var(--node-accent, #0284c7) 45%, rgba(0, 0, 0, 0.07));
 }
 
-html:not([data-theme='dark']) .csf-dsa-node-group.is-done-complete .csf-dsa-node-card {
+html:not([data-theme='dark']) .csf-graph-node-group.is-done-complete .csf-graph-node-card {
   fill: color-mix(in srgb, var(--node-accent, #0284c7) 14%, #ffffff);
   stroke: color-mix(in srgb, var(--node-accent, #0284c7) 85%, transparent);
 }
 
-.csf-dsa-node-group.is-dimmed {
+.csf-graph-node-group.is-dimmed {
   opacity: 0.32;
 }
 
-.csf-dsa-node-group {
+.csf-graph-node-group {
   transition: opacity 0.25s ease, filter 0.45s ease;
   filter: saturate(calc(0.08 + 0.92 * var(--progress, 0)));
 }
 
 /* Same preview on hover as the subject cards. The hover drop-shadow lives
-   on .csf-dsa-node-card, a child, so the two filters do not fight. */
-.csf-dsa-node-group:hover,
-.csf-dsa-node-group.is-hovered {
+   on .csf-graph-node-card, a child, so the two filters do not fight. */
+.csf-graph-node-group:hover,
+.csf-graph-node-group.is-hovered {
   filter: saturate(1);
 }
 
-html:not([data-theme='dark']) .csf-dsa-node-card {
+html:not([data-theme='dark']) .csf-graph-node-card {
   fill: var(--csf-surface, #ffffff);
   stroke: color-mix(in srgb, var(--node-accent, #0284c7) 28%, rgba(0, 0, 0, 0.07));
   stroke-width: 1px;
   filter: drop-shadow(0 2px 6px rgba(15, 23, 42, 0.06));
 }
 
-.csf-dsa-node-label {
+.csf-graph-node-label {
   font-size: 16.5px;
   font-weight: 700;
   font-family: var(--ifm-font-family-base);
@@ -1467,53 +1223,53 @@ html:not([data-theme='dark']) .csf-dsa-node-card {
   transition: fill 0.2s ease;
 }
 
-[data-theme='dark'] .csf-dsa-node-label {
+[data-theme='dark'] .csf-graph-node-label {
   fill: #e4e4e7;
 }
 
-html:not([data-theme='dark']) .csf-dsa-node-label {
+html:not([data-theme='dark']) .csf-graph-node-label {
   fill: #18181b;
 }
 
 /* Hover State - Pure Visual Elevation without Coordinate Jitter */
-[data-theme='dark'] .csf-dsa-node-group:hover .csf-dsa-node-card,
-[data-theme='dark'] .csf-dsa-node-group.is-hovered .csf-dsa-node-card {
+[data-theme='dark'] .csf-graph-node-group:hover .csf-graph-node-card,
+[data-theme='dark'] .csf-graph-node-group.is-hovered .csf-graph-node-card {
   fill: rgba(255, 255, 255, 0.065);
   stroke: color-mix(in srgb, var(--node-accent, #38bdf8) 85%, transparent);
   stroke-width: 1.5px;
   filter: drop-shadow(0 8px 24px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 16px var(--node-accent, #38bdf8));
 }
 
-[data-theme='dark'] .csf-dsa-node-group:hover .csf-dsa-node-label,
-[data-theme='dark'] .csf-dsa-node-group.is-hovered .csf-dsa-node-label {
+[data-theme='dark'] .csf-graph-node-group:hover .csf-graph-node-label,
+[data-theme='dark'] .csf-graph-node-group.is-hovered .csf-graph-node-label {
   fill: #ffffff;
 }
 
-html:not([data-theme='dark']) .csf-dsa-node-group:hover .csf-dsa-node-card,
-html:not([data-theme='dark']) .csf-dsa-node-group.is-hovered .csf-dsa-node-card {
+html:not([data-theme='dark']) .csf-graph-node-group:hover .csf-graph-node-card,
+html:not([data-theme='dark']) .csf-graph-node-group.is-hovered .csf-graph-node-card {
   fill: #ffffff;
   stroke: var(--node-accent, #0284c7);
   stroke-width: 1.5px;
   filter: drop-shadow(0 8px 20px rgba(50, 40, 30, 0.15)) drop-shadow(0 0 12px color-mix(in srgb, var(--node-accent, #0284c7) 35%, transparent));
 }
 
-html:not([data-theme='dark']) .csf-dsa-node-group:hover .csf-dsa-node-label,
-html:not([data-theme='dark']) .csf-dsa-node-group.is-hovered .csf-dsa-node-label {
+html:not([data-theme='dark']) .csf-graph-node-group:hover .csf-graph-node-label,
+html:not([data-theme='dark']) .csf-graph-node-group.is-hovered .csf-graph-node-label {
   fill: #09090b;
 }
 
-[data-theme='dark'] .csf-dsa-node-group.is-connected .csf-dsa-node-card {
+[data-theme='dark'] .csf-graph-node-group.is-connected .csf-graph-node-card {
   stroke: color-mix(in srgb, var(--node-accent, #38bdf8) 40%, rgba(255, 255, 255, 0.2));
   stroke-width: 1.25px;
 }
 
-html:not([data-theme='dark']) .csf-dsa-node-group.is-connected .csf-dsa-node-card {
+html:not([data-theme='dark']) .csf-graph-node-group.is-connected .csf-graph-node-card {
   stroke: color-mix(in srgb, var(--node-accent, #0284c7) 40%, rgba(0, 0, 0, 0.2));
   stroke-width: 1.25px;
 }
 
 /* Roadmap Node Problem Count */
-.csf-dsa-node-count {
+.csf-graph-node-count {
   font-size: 11px;
   font-weight: 600;
   font-family: var(--ifm-font-family-base);
@@ -1523,139 +1279,12 @@ html:not([data-theme='dark']) .csf-dsa-node-group.is-connected .csf-dsa-node-car
   opacity: 0.88;
 }
 
-[data-theme='dark'] .csf-dsa-node-count {
+[data-theme='dark'] .csf-graph-node-count {
   fill: var(--node-accent, #60a5fa);
 }
 
-html:not([data-theme='dark']) .csf-dsa-node-count {
+html:not([data-theme='dark']) .csf-graph-node-count {
   fill: var(--node-accent, #0284c7);
-}
-
-.csf-compact-card__glow {
-  position: absolute;
-  top: 34%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0.75);
-  width: 46px;
-  height: 46px;
-  background: var(--card-accent);
-  border-radius: 50%;
-  opacity: 0;
-  filter: blur(22px);
-  transition: opacity 0.35s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.csf-compact-card:not(.csf-compact-card--soon):hover .csf-compact-card__glow {
-  opacity: 0;
-}
-
-[data-theme='dark'] .csf-compact-card {
-  background-color: color-mix(in srgb, var(--card-accent) 7%, rgba(255, 255, 255, 0.035)) !important;
-  border: 1px solid color-mix(in srgb, var(--card-accent) 18%, rgba(255, 255, 255, 0.09));
-}
-
-[data-theme='dark'] .csf-compact-card:not(.csf-compact-card--soon):hover {
-  transform: translateY(-3px);
-  background-color: color-mix(in srgb, var(--card-accent) 11%, rgba(255, 255, 255, 0.065)) !important;
-  border-color: color-mix(in srgb, var(--card-accent) 85%, transparent);
-  box-shadow:
-    0 8px 24px rgba(0, 0, 0, 0.45),
-    0 0 16px -4px var(--card-accent);
-}
-
-html:not([data-theme='dark']) .csf-compact-card {
-  background-color: var(--csf-surface) !important;
-  border: 1px solid color-mix(in srgb, var(--card-accent) 28%, rgba(0, 0, 0, 0.07));
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
-}
-
-html:not([data-theme='dark']) .csf-compact-card:not(.csf-compact-card--soon):hover {
-  transform: translateY(-3px);
-  border-color: var(--card-accent);
-  box-shadow:
-    0 8px 20px rgba(50, 40, 30, 0.15),
-    0 0 12px -2px color-mix(in srgb, var(--card-accent) 35%, transparent);
-}
-
-.csf-compact-card--soon {
-  opacity: 0.5;
-  cursor: default;
-}
-
-.csf-compact-card--soon .csf-compact-card__icon {
-  filter: grayscale(1) brightness(0.85);
-}
-
-.csf-compact-card--soon::before {
-  background: currentColor;
-  opacity: 0.18;
-}
-
-.csf-compact-card__badge {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  font-size: 0.48rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  padding: 1.5px 5px;
-  border-radius: 3px;
-}
-
-[data-theme='dark'] .csf-compact-card__badge {
-  background: rgba(255,255,255,0.06);
-  color: #52525b;
-}
-
-html:not([data-theme='dark']) .csf-compact-card__badge {
-  background: rgba(0,0,0,0.04);
-  color: #a1a1aa;
-}
-
-.csf-compact-card__icon {
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  color: color-mix(in srgb, var(--card-accent) 70%, transparent);
-  transition: color 0.25s ease;
-}
-
-.csf-compact-card__icon svg {
-  width: 18px;
-  height: 18px;
-  display: block;
-}
-
-.csf-compact-card:not(.csf-compact-card--soon):hover .csf-compact-card__icon {
-  color: var(--card-accent);
-}
-
-.csf-compact-card__title {
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: -0.005em;
-  line-height: 1.2;
-  position: relative;
-  z-index: 2;
-  text-align: center;
-  transition: color 0.2s ease;
-}
-
-[data-theme='dark'] .csf-compact-card__title { color: #e4e4e7 !important; }
-html:not([data-theme='dark']) .csf-compact-card__title { color: #18181b !important; }
-
-[data-theme='dark'] .csf-compact-card:not(.csf-compact-card--soon):hover .csf-compact-card__title {
-  color: #ffffff !important;
-}
-
-html:not([data-theme='dark']) .csf-compact-card:not(.csf-compact-card--soon):hover .csf-compact-card__title {
-  color: #09090b !important;
 }
 
 /* ===================================================================
@@ -1807,30 +1436,6 @@ html:not([data-theme='dark']) .theme-code-block pre.prism-code {
   color: #2b2823 !important;
 }
 
-/* ===================================================================
-   17. MOBILE UI POLISH & RESPONSIVENESS
-   =================================================================== */
-
-/* Tactile tap feedback on touch devices without sticky hover */
-@media (hover: none) {
-  html:not([data-theme='dark']) .csf-compact-card:hover,
-  [data-theme='dark'] .csf-compact-card:hover {
-    transform: none;
-    box-shadow: none;
-  }
-  .csf-compact-card:hover .csf-compact-card__glow {
-    opacity: 0;
-  }
-  .csf-compact-card:hover::after {
-    transform: translateX(-130%);
-    opacity: 0;
-  }
-  .csf-compact-card:active {
-    transform: scale(0.97) !important;
-    background-color: var(--docusaurus-highlighted-code-line-bg) !important;
-  }
-}
-
 /* Base Mobile Polish (<= 996px) */
 @media screen and (max-width: 996px) {
   /* Prevent horizontal overflow and ensure clean container alignment */
@@ -1893,15 +1498,6 @@ html:not([data-theme='dark']) .theme-code-block pre.prism-code {
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-  }
-
-  /* Grid spacing */
-  .csf-compact-grid {
-    gap: 9px;
-  }
-
-  .csf-compact-card {
-    padding: 12px 10px;
   }
 }
 
@@ -2649,53 +2245,23 @@ html:not([data-theme='dark']) .badge--danger {
   border-color: #dd8a85 !important;
 }
 
-/* ------------------------------------------------- accents on paper */
-
-/* The card accents are picked for a dark background; on a light page the
-   same hues read as pastel, so they are taken well down toward the ink. */
-html:not([data-theme='dark']) .csf-compact-card::before {
-  background: color-mix(in srgb, var(--card-accent) var(--csf-accent-mix), var(--csf-ink));
-  opacity: 1;
-}
-
-html:not([data-theme='dark']) .csf-compact-card__icon {
-  color: color-mix(in srgb, var(--card-accent) 56%, var(--csf-ink));
-}
-
-html:not([data-theme='dark'])
-  .csf-compact-card:not(.csf-compact-card--soon):hover
-  .csf-compact-card__icon {
-  color: color-mix(in srgb, var(--card-accent) 72%, var(--csf-ink));
-}
-
-html:not([data-theme='dark']) .csf-compact-card {
-  border-color: color-mix(in srgb, var(--card-accent) 22%, rgba(24, 24, 27, 0.1));
-  box-shadow: var(--csf-shadow-sm);
-}
-
-html:not([data-theme='dark'])
-  .csf-compact-card:not(.csf-compact-card--soon):hover {
-  border-color: color-mix(in srgb, var(--card-accent) 60%, var(--csf-ink));
-  box-shadow: var(--csf-shadow-md);
-}
-
-html:not([data-theme='dark']) .csf-dsa-node-tab {
+html:not([data-theme='dark']) .csf-graph-node-tab {
   fill: color-mix(in srgb, var(--node-accent) var(--csf-accent-mix), var(--csf-ink));
 }
 
-html:not([data-theme='dark']) .csf-dsa-node-card {
+html:not([data-theme='dark']) .csf-graph-node-card {
   stroke: color-mix(in srgb, var(--node-accent) 30%, rgba(24, 24, 27, 0.12));
 }
 
-html:not([data-theme='dark']) .csf-dsa-edge {
+html:not([data-theme='dark']) .csf-graph-edge {
   stroke-opacity: 0.62;
 }
 
-html:not([data-theme='dark']) .csf-dsa-node-count {
+html:not([data-theme='dark']) .csf-graph-node-count {
   fill: color-mix(in srgb, var(--node-accent) 56%, var(--csf-ink));
 }
 
-html:not([data-theme='dark']) .csf-dsa-svg-wrapper::before {
+html:not([data-theme='dark']) .csf-graph-svg-wrapper::before {
   opacity: 0.3;
 }
 
@@ -2771,12 +2337,6 @@ html:not([data-theme='dark']) .prism-code .token.property,
 html:not([data-theme='dark']) .prism-code .token.attr-name,
 html:not([data-theme='dark']) .prism-code .token.variable {
   color: #2f6068 !important;
-}
-
-/* ----------------------------------------------------------- misc */
-
-html:not([data-theme='dark']) .csf-section-divider {
-  background: linear-gradient(90deg, transparent, rgba(24, 24, 27, 0.13) 50%, transparent);
 }
 
 html:not([data-theme='dark']) .pagination-nav__link {
