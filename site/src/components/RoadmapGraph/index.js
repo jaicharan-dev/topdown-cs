@@ -1,5 +1,5 @@
 /**
- * A dependency graph drawn as an SVG flowchart on a pannable, zoomable canvas.
+ * A dependency graph drawn as an SVG flowchart, on a canvas that spans the page.
  *
  * Extracted from the DSA roadmap so the CS fundamentals can be shown the same
  * way. Everything here is geometry and interaction. What the nodes mean, where
@@ -11,20 +11,39 @@
  * unmounted), and duplicate ids would make one graph's wires pick up the
  * other's colours.
  *
- * The view is a transform on one group inside a fixed viewBox, not a changing
- * viewBox, so the gradients keep their userSpaceOnUse coordinates and travel
- * with the geometry they belong to.
+ * ---- The view ----
  *
- * On what the gestures are allowed to take:
+ * Three numbers describe it: how big the graph is drawn (`scale`), how much
+ * of it the window shows, and how far along it has been pushed (`view.x`).
+ *
+ * `scale` comes from the panel, not from the page: the panel is what the
+ * graphs were laid out against, so the graph stays the same size whatever
+ * else is on screen. The box is then as wide as the page, which is the whole
+ * point. Panning used to run into an invisible wall at the panel's edge well
+ * short of anything a reader could see, and now the canvas reaches both
+ * edges of the window.
+ *
+ * Vertically there is nothing to pan. The box is exactly as tall as the graph
+ * at the current zoom, so zooming in makes the canvas taller and pushes the
+ * page down rather than cutting the bottom rows off, and zooming out shrinks
+ * it back with no band of empty canvas left above. The graph's top edge never
+ * moves, which is what makes a zoom read as the blocks growing downwards
+ * instead of the whole thing sliding off the page. It also means the bottom
+ * rows stay reachable on a phone, where a vertical drag belongs to the page
+ * and could never have panned the graph anyway.
+ *
+ * The viewBox is computed to match the box, rather than being a fixed
+ * `0 0 width height` with preserveAspectRatio making up the difference. That
+ * keeps one scale for both axes and leaves no letterboxing to reason about.
+ *
+ * ---- What the gestures take ----
  *
  *  - A plain wheel belongs to the page. Zooming on it would mean a reader
- *    scrolling past the homepage gets caught by the graph instead, so zoom
- *    needs ctrl or cmd held, which is also what a trackpad pinch sends.
+ *    scrolling past the homepage gets caught by the graph, so zoom needs ctrl
+ *    or cmd held, which is also what a trackpad pinch sends.
  *  - Touch gets `touch-action: pan-y`, so a vertical swipe still scrolls the
- *    page and only a sideways drag moves the graph. That is exactly what the
- *    sideways scrollbox it replaces already did. Pinch stays with the browser
- *    and the buttons do the zooming, which is the trade for never leaving
- *    somebody stuck inside a graph they cannot scroll past.
+ *    page and only a sideways drag moves the graph. Sideways is the only
+ *    direction there is anything to pan in, so nothing is lost.
  *  - The buttons work everywhere and need no gesture at all.
  */
 
@@ -33,17 +52,15 @@ import { useHistory } from '@docusaurus/router';
 
 const MIN_ZOOM = 0.55;
 const MAX_ZOOM = 2.6;
-const RESET_VIEW = { k: 1, x: 0, y: 0 };
+const HOME_VIEW = { k: 1, x: 0 };
 
 /**
- * The smallest the graph is allowed to start at, in rendered pixels per
- * viewBox unit.
+ * The smallest the graph is drawn, in rendered pixels per viewBox unit.
  *
- * A phone is about 330px wide inside the page, and these graphs are 1130
- * units across, which would start them at 0.29 and put a node label at under
- * 5px. Fitting the width is the wrong default when the result cannot be read:
- * below this the view opens zoomed in instead, and panning reaches the rest.
- * 0.62 is what the sideways scrollbox this replaced used to give.
+ * A phone gives the panel about 330px and these graphs are 1130 units across,
+ * which would draw them at 0.29 and put a node label under 5px. Below this
+ * the graph is drawn bigger than the panel instead and panned sideways, which
+ * is what the scrollbox here used to do.
  */
 const MIN_READABLE = 0.62;
 
@@ -52,7 +69,26 @@ const DRAG_SLOP = 4;
 
 const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 
-const sameView = (a, b) => a.k === b.k && a.x === b.x && a.y === b.y;
+/**
+ * Keep the graph within reach sideways.
+ *
+ * The window runs originX..originX+visW and the content runs x..x+width*k.
+ * Whichever is wider, the two values below are the positions where their
+ * edges line up, so anything between them overlaps. The slack lets the graph
+ * be pushed past the edge rather than stopping dead against it.
+ */
+function limitWith(frame, next, width) {
+  if (!frame) return next;
+  const a = frame.originX;
+  const b = frame.originX + frame.visW - width * next.k;
+  const slack = frame.visW * 0.2;
+  return {
+    k: next.k,
+    x: clamp(next.x, Math.min(a, b) - slack, Math.max(a, b) + slack),
+  };
+}
+
+const isHome = (view) => view.k === HOME_VIEW.k && view.x === HOME_VIEW.x;
 
 export default function RoadmapGraph({
   nodes,
@@ -65,21 +101,20 @@ export default function RoadmapGraph({
   title,
 }) {
   const [hoveredNode, setHoveredNode] = useState(null);
-  const [view, setView] = useState(RESET_VIEW);
-  // Where "reset" goes. Identity on a screen wide enough to read the graph at
-  // its natural size, and zoomed in on one that is not.
-  const [home, setHome] = useState(RESET_VIEW);
+  const [view, setView] = useState(HOME_VIEW);
+  // Measured, so null until the first layout. The server and the first client
+  // render both see null and draw the plain fitted graph, which is why they
+  // agree.
+  const [frame, setFrame] = useState(null);
 
+  const wrapperRef = useRef(null);
   const surfaceRef = useRef(null);
   const gestureRef = useRef(null);
   const movedRef = useRef(false);
   const viewRef = useRef(view);
   viewRef.current = view;
-  const homeRef = useRef(home);
-  homeRef.current = home;
-  // Until the reader moves the graph themselves, it keeps following the
-  // measured home view, so rotating a phone re-fits instead of stranding them.
-  const touchedRef = useRef(false);
+  const frameRef = useRef(frame);
+  frameRef.current = frame;
 
   const history = useHistory();
 
@@ -88,126 +123,81 @@ export default function RoadmapGraph({
     return acc;
   }, {});
 
-  /**
-   * The window onto the graph, in viewBox units.
-   *
-   * The surface is given the viewBox's aspect ratio stretched by the home
-   * zoom, so a view that opens zoomed in gets a box tall enough to hold the
-   * whole graph at that zoom. Without it a phone sees the top two rows and
-   * cannot reach the rest: a vertical drag belongs to the page, so there is
-   * no way to pan down.
-   *
-   * Because the box is always `width` units across, the window is only ever
-   * taller than the viewBox, never wider, which is what keeps this to one
-   * number.
-   */
-  const windowFor = useCallback(
-    (homeK) => ({
-      visW: width,
-      visH: height * homeK,
-      originX: 0,
-      originY: (height * (1 - homeK)) / 2,
-    }),
-    [width, height]
-  );
+  // The wrapper keeps the panel's width whatever the surface inside it does,
+  // so it is the stable thing to measure. Both it and the page matter: the
+  // panel can stay at its maximum while the window around it grows.
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper || typeof ResizeObserver === 'undefined') return undefined;
+    const measure = () => {
+      const rect = wrapper.getBoundingClientRect();
+      const pageWidth = document.documentElement.clientWidth;
+      if (!rect.width || !pageWidth) return;
+      const scale = Math.max(rect.width / width, MIN_READABLE);
+      const visW = pageWidth / scale;
+      const next = {
+        boxW: pageWidth,
+        // Pull the box back to the page's left edge. The wrapper's own
+        // position does not depend on this, so measuring it is not circular.
+        offsetX: -rect.left,
+        scale,
+        visW,
+        originX: (width - visW) / 2,
+      };
+      const prev = frameRef.current;
+      if (
+        prev &&
+        prev.boxW === next.boxW &&
+        prev.offsetX === next.offsetX &&
+        prev.scale === next.scale
+      ) {
+        return;
+      }
+      frameRef.current = next;
+      setFrame(next);
+      // A graph that has not been moved stays centred when the window changes.
+      if (isHome(viewRef.current)) return;
+      setView((current) => limitWith(next, current, width));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(wrapper);
+    observer.observe(document.documentElement);
+    return () => observer.disconnect();
+  }, [width]);
 
-  /**
-   * Keep the graph on screen.
-   *
-   * Content spans origin..origin+vis for the window and x..span*k + x for the
-   * content. Whichever is larger, the pair of bounds below are the two
-   * positions where their edges meet, so anything between them overlaps.
-   * Slack lets the graph be pushed a little past the edge without ever being
-   * pushed out of sight.
-   */
   const limit = useCallback(
-    (next) => {
-      const win = windowFor(homeRef.current.k);
-      const axis = (origin, vis, span, value) => {
-        const a = origin;
-        const b = origin + vis - span * next.k;
-        const slack = vis * 0.25;
-        return clamp(value, Math.min(a, b) - slack, Math.max(a, b) + slack);
-      };
-      return {
-        k: next.k,
-        x: axis(win.originX, win.visW, width, next.x),
-        y: axis(win.originY, win.visH, height, next.y),
-      };
-    },
-    [width, height, windowFor]
+    (next) => limitWith(frameRef.current, next, width),
+    [width]
   );
 
-  /** Screen coordinates to graph coordinates, before the view transform. */
-  const toLocal = useCallback(
-    (clientX, clientY) => {
+  /** Screen x to graph x, before the view transform. */
+  const localX = useCallback(
+    (clientX) => {
       const el = surfaceRef.current;
-      if (!el) return { x: width / 2, y: height / 2 };
-      const rect = el.getBoundingClientRect();
-      // One scale for both axes: the viewBox meets the box on width, always.
-      const perPixel = width / rect.width;
-      const win = windowFor(homeRef.current.k);
-      return {
-        x: (clientX - rect.left) * perPixel + win.originX,
-        y: (clientY - rect.top) * perPixel + win.originY,
-      };
+      const f = frameRef.current;
+      if (!el || !f) return width / 2;
+      return (clientX - el.getBoundingClientRect().left) / f.scale + f.originX;
     },
-    [width, windowFor]
+    [width]
   );
 
-  /** Zoom while holding one graph point still under the cursor. */
+  /** Zoom while holding one graph x still. Vertically the top never moves. */
   const zoomAround = useCallback(
-    (factor, px, py) => {
+    (factor, anchorX) => {
       setView((current) => {
         const k = clamp(current.k * factor, MIN_ZOOM, MAX_ZOOM);
         if (k === current.k) return current;
         const ratio = k / current.k;
-        return limit({
-          k,
-          x: px - (px - current.x) * ratio,
-          y: py - (py - current.y) * ratio,
-        });
+        return limit({ k, x: anchorX - (anchorX - current.x) * ratio });
       });
     },
     [limit]
   );
 
-  const zoomFromButton = (factor) => {
-    touchedRef.current = true;
-    zoomAround(factor, width / 2, height / 2);
-  };
-
-  // Work out the home view from how much room the surface actually got. The
-  // panel is hidden rather than unmounted when its tab is not showing, so the
-  // first measurement can be a zero width one; the observer fires again with
-  // a real width when the tab opens.
-  useEffect(() => {
-    const el = surfaceRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return undefined;
-    const measure = () => {
-      const rect = el.getBoundingClientRect();
-      if (!rect.width) return;
-      const fitted = rect.width / width;
-      const k =
-        fitted >= MIN_READABLE
-          ? 1
-          : Math.min(MAX_ZOOM, MIN_READABLE / fitted);
-      // Centred in the window the box will have at this zoom. The window is
-      // `width` by `height * k`, so centring both axes is the same sum.
-      const next =
-        k === 1
-          ? RESET_VIEW
-          : { k, x: (width * (1 - k)) / 2, y: (height * (1 - k)) / 2 };
-      if (sameView(homeRef.current, next)) return;
-      setHome(next);
-      homeRef.current = next;
-      if (!touchedRef.current) setView(next);
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [width]);
+  // The buttons zoom about the middle of the graph, so repeated presses do not
+  // walk it sideways.
+  const zoomFromButton = (factor) => zoomAround(factor, width / 2);
 
   // The wheel listener is attached by hand because it has to be able to call
   // preventDefault, and React's own wheel handler is passive.
@@ -217,13 +207,11 @@ export default function RoadmapGraph({
     const onWheel = (event) => {
       if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
-      touchedRef.current = true;
-      const point = toLocal(event.clientX, event.clientY);
-      zoomAround(Math.pow(0.9985, event.deltaY), point.x, point.y);
+      zoomAround(Math.pow(0.9985, event.deltaY), localX(event.clientX));
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [toLocal, zoomAround]);
+  }, [localX, zoomAround]);
 
   // Dragging is tracked on the window rather than through setPointerCapture:
   // capturing would redirect the click that follows to the surface, and the
@@ -231,24 +219,12 @@ export default function RoadmapGraph({
   useEffect(() => {
     const onMove = (event) => {
       const gesture = gestureRef.current;
-      if (!gesture) return;
-      const el = surfaceRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const perPixel = width / rect.width;
+      const f = frameRef.current;
+      if (!gesture || !f) return;
       const dx = event.clientX - gesture.startX;
       const dy = event.clientY - gesture.startY;
-      if (Math.abs(dx) + Math.abs(dy) > DRAG_SLOP) {
-        movedRef.current = true;
-        touchedRef.current = true;
-      }
-      setView(
-        limit({
-          k: gesture.view.k,
-          x: gesture.view.x + dx * perPixel,
-          y: gesture.view.y + dy * perPixel,
-        })
-      );
+      if (Math.abs(dx) + Math.abs(dy) > DRAG_SLOP) movedRef.current = true;
+      setView(limit({ k: gesture.view.k, x: gesture.view.x + dx / f.scale }));
     };
     const onEnd = () => {
       gestureRef.current = null;
@@ -261,7 +237,7 @@ export default function RoadmapGraph({
       window.removeEventListener('pointerup', onEnd);
       window.removeEventListener('pointercancel', onEnd);
     };
-  }, [limit, width]);
+  }, [limit]);
 
   const onPointerDown = (event) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
@@ -337,42 +313,57 @@ export default function RoadmapGraph({
 
   const clearHover = () => setHoveredNode(null);
 
+  // Before the first measurement this is the plain fitted graph, which is what
+  // the server renders too.
+  const scale = frame ? frame.scale : null;
+  const visW = frame ? frame.visW : width;
+  const originX = frame ? frame.originX : 0;
+  const surfaceStyle = frame
+    ? {
+        width: `${frame.boxW}px`,
+        marginLeft: `${frame.offsetX}px`,
+        height: `${height * scale * view.k}px`,
+      }
+    : { aspectRatio: `${width} / ${height}` };
+
   return (
-    <div className="csf-graph-wrapper">
+    <div className="csf-graph-wrapper" ref={wrapperRef}>
       <div className="csf-graph-bar">
         <p className="csf-graph-title">{title}</p>
-        {/* The controls are the thing in a box now, not the graph. They are
-            also the only way to zoom that needs no gesture at all, which is
-            what makes the canvas usable on a phone and from a keyboard. */}
-        <div className="csf-graph-zoom">
+        {/* Zoom out and zoom in are one control in two halves. Reset is a
+            different kind of action, so it sits apart with an icon that says
+            what it does: between a plus and a minus it was just the button in
+            the middle, and nothing about it said reset. */}
+        <div className="csf-graph-controls">
+          <div className="csf-graph-zoom">
+            <button
+              type="button"
+              onClick={() => zoomFromButton(1 / 1.25)}
+              disabled={view.k <= MIN_ZOOM + 0.001}
+              aria-label={`Zoom out of the ${title}`}>
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M4 8h8" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => zoomFromButton(1.25)}
+              disabled={view.k >= MAX_ZOOM - 0.001}
+              aria-label={`Zoom into the ${title}`}>
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M4 8h8M8 4v8" />
+              </svg>
+            </button>
+          </div>
           <button
             type="button"
-            onClick={() => zoomFromButton(1 / 1.25)}
-            disabled={view.k <= MIN_ZOOM + 0.001}
-            aria-label={`Zoom out of the ${title}`}>
+            className="csf-graph-reset"
+            onClick={() => setView(HOME_VIEW)}
+            disabled={isHome(view)}
+            aria-label={`Reset the ${title}`}>
             <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M4 8h8" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              touchedRef.current = false;
-              setView(homeRef.current);
-            }}
-            disabled={sameView(view, home)}
-            aria-label={`Reset the ${title} to its original size`}>
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <rect x="3.5" y="3.5" width="9" height="9" rx="2" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            onClick={() => zoomFromButton(1.25)}
-            disabled={view.k >= MAX_ZOOM - 0.001}
-            aria-label={`Zoom into the ${title}`}>
-            <svg viewBox="0 0 16 16" aria-hidden="true">
-              <path d="M4 8h8M8 4v8" />
+              <path d="M8 3.2A4.8 4.8 0 1 1 3.9 5.6" />
+              <path d="M8 3.2L5.9 1.9M8 3.2L5.9 4.5" />
             </svg>
           </button>
         </div>
@@ -384,13 +375,10 @@ export default function RoadmapGraph({
       <div
         className="csf-graph-surface"
         ref={surfaceRef}
-        /* The box carries the viewBox's shape, stretched by the home zoom, so
-           a view that opens zoomed in is tall enough to hold the whole graph
-           and only needs panning sideways. */
-        style={{ aspectRatio: `${width} / ${height * home.k}` }}
+        style={surfaceStyle}
         onPointerDown={onPointerDown}>
         <svg
-          viewBox={`0 0 ${width} ${height}`}
+          viewBox={`${originX} 0 ${visW} ${height * view.k}`}
           className="csf-graph-svg"
           preserveAspectRatio="xMidYMid meet"
           role="group"
@@ -419,7 +407,7 @@ export default function RoadmapGraph({
           {/* Everything that moves lives in here. */}
           <g
             className="csf-graph-viewport"
-            transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
+            transform={`translate(${view.x} 0) scale(${view.k})`}>
             <g className="csf-graph-edges">
               {edges.map((edge, index) => {
                 if (!nodeMap[edge.from] || !nodeMap[edge.to]) return null;

@@ -817,6 +817,7 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
 /* The rail is chrome, so it gets the box the graph gave up. */
 .csf-rail {
   position: sticky;
+  z-index: 2;
   top: calc(var(--ifm-navbar-height, 60px) + 1.25rem);
   padding: 0.7rem 0.35rem 0.55rem;
   border-radius: 14px;
@@ -988,6 +989,11 @@ html:not([data-theme='dark']) .csf-tab__track {
    minmax(0, 1fr); that bounds the column, not the item inside it. */
 .csf-tabpanels {
   min-width: 0;
+  /* The graph bleeds out of this column to the page's edges and would paint
+     over the rail, which comes earlier in the markup. Layering puts the rail
+     on top, where a floating panel over a canvas belongs. */
+  position: relative;
+  z-index: 1;
 }
 
 /* Centred in its track and held to the width the graphs were laid out for. */
@@ -1204,17 +1210,58 @@ html:not([data-theme='dark']) .csf-graph-title {
   color: #52525b;
 }
 
-/* The zoom cluster. It floats over the canvas, so it carries its own surface
-   and blurs what is behind it rather than sitting on a solid page. */
+/* The controls float over the canvas, so they carry their own surface and
+   blur what is behind them rather than sitting on a solid page. Zoom is one
+   control in two halves; reset is a separate thing and looks it. */
+.csf-graph-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.csf-graph-zoom,
+.csf-graph-reset {
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
 .csf-graph-zoom {
   display: flex;
   align-items: center;
   gap: 1px;
   padding: 2px;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Sized to the pair beside it: 2px padding either side of a 24px button plus
+   the two borders. */
+.csf-graph-reset {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.csf-graph-reset:hover:not(:disabled) {
+  opacity: 1;
+}
+
+.csf-graph-reset:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.csf-graph-reset:focus-visible {
+  outline: 2px solid var(--csf-progress-accent, #16a34a);
+  outline-offset: -2px;
 }
 
 .csf-graph-zoom button {
@@ -1246,7 +1293,8 @@ html:not([data-theme='dark']) .csf-graph-title {
   outline-offset: -2px;
 }
 
-.csf-graph-zoom svg {
+.csf-graph-zoom svg,
+.csf-graph-reset svg {
   width: 15px;
   height: 15px;
   fill: none;
@@ -1255,21 +1303,25 @@ html:not([data-theme='dark']) .csf-graph-title {
   stroke-linecap: round;
 }
 
-[data-theme='dark'] .csf-graph-zoom {
+[data-theme='dark'] .csf-graph-zoom,
+[data-theme='dark'] .csf-graph-reset {
   background-color: rgba(30, 30, 34, 0.78);
   border-color: rgba(255, 255, 255, 0.08);
 }
 
-[data-theme='dark'] .csf-graph-zoom button:hover:not(:disabled) {
+[data-theme='dark'] .csf-graph-zoom button:hover:not(:disabled),
+[data-theme='dark'] .csf-graph-reset:hover:not(:disabled) {
   background-color: rgba(255, 255, 255, 0.075);
 }
 
-html:not([data-theme='dark']) .csf-graph-zoom {
+html:not([data-theme='dark']) .csf-graph-zoom,
+html:not([data-theme='dark']) .csf-graph-reset {
   background-color: rgba(255, 255, 255, 0.82);
   border-color: var(--csf-border-subtle, #e3dcce);
 }
 
-html:not([data-theme='dark']) .csf-graph-zoom button:hover:not(:disabled) {
+html:not([data-theme='dark']) .csf-graph-zoom button:hover:not(:disabled),
+html:not([data-theme='dark']) .csf-graph-reset:hover:not(:disabled) {
   background-color: rgba(0, 0, 0, 0.05);
 }
 
