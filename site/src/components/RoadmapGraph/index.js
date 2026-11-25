@@ -23,14 +23,21 @@
  * short of anything a reader could see, and now the canvas reaches both
  * edges of the window.
  *
- * Vertically there is nothing to pan. The box is exactly as tall as the graph
- * at the current zoom, so zooming in makes the canvas taller and pushes the
- * page down rather than cutting the bottom rows off, and zooming out shrinks
- * it back with no band of empty canvas left above. The graph's top edge never
- * moves, which is what makes a zoom read as the blocks growing downwards
- * instead of the whole thing sliding off the page. It also means the bottom
- * rows stay reachable on a phone, where a vertical drag belongs to the page
- * and could never have panned the graph anyway.
+ * Both axes pan freely. The box is a window the graph moves behind, not a
+ * frame that resizes itself around whatever the graph currently needs.
+ *
+ * The zoom buttons anchor on the top edge of that window, so whatever is at
+ * the top stays at the top and the blocks grow downwards from it rather than
+ * the whole graph swelling out of the page in both directions. That is a
+ * property of the zoom, not of the canvas: it does not require the graph to
+ * be pinned, and pinning it would take away the dragging that makes this a
+ * canvas in the first place. The wheel zooms about the pointer instead,
+ * which is what a pointer is for.
+ *
+ * One exception, for a coarse pointer. There a vertical drag belongs to the
+ * page, so nothing that falls below the window could ever be panned back
+ * into view; the window grows with the zoom instead, which keeps the whole
+ * graph reachable without taking the page's scrolling away.
  *
  * The viewBox is computed to match the box, rather than being a fixed
  * `0 0 width height` with preserveAspectRatio making up the difference. That
@@ -52,7 +59,7 @@ import { useHistory } from '@docusaurus/router';
 
 const MIN_ZOOM = 0.55;
 const MAX_ZOOM = 2.6;
-const HOME_VIEW = { k: 1, x: 0 };
+const HOME_VIEW = { k: 1, x: 0, y: 0 };
 
 /**
  * The smallest the graph is drawn, in rendered pixels per viewBox unit.
@@ -70,25 +77,44 @@ const DRAG_SLOP = 4;
 const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
 
 /**
- * Keep the graph within reach sideways.
+ * How tall the window is, in graph units.
  *
- * The window runs originX..originX+visW and the content runs x..x+width*k.
- * Whichever is wider, the two values below are the positions where their
- * edges line up, so anything between them overlaps. The slack lets the graph
- * be pushed past the edge rather than stopping dead against it.
+ * A fixed window everywhere a drag can reach both ways. Where it cannot, the
+ * window grows with the zoom so that zooming in never puts a row somewhere
+ * the reader has no gesture to get to.
  */
-function limitWith(frame, next, width) {
+function windowHeight(frame, height, k) {
+  return height * (frame.coarse ? Math.max(1, k) : 1);
+}
+
+/**
+ * Keep the graph within reach.
+ *
+ * The window runs origin..origin+vis and the content runs value..value+span*k
+ * on each axis. Whichever is bigger, the two values below are the positions
+ * where their edges line up, so anything between them overlaps. The slack
+ * lets the graph be pushed past the edge rather than stopping dead against
+ * it: enough to feel loose, not enough to lose it.
+ */
+function limitWith(frame, next, width, height) {
   if (!frame) return next;
-  const a = frame.originX;
-  const b = frame.originX + frame.visW - width * next.k;
-  const slack = frame.visW * 0.2;
+  const axis = (origin, vis, span, value) => {
+    const a = origin;
+    const b = origin + vis - span * next.k;
+    const slack = vis * 0.35;
+    return clamp(value, Math.min(a, b) - slack, Math.max(a, b) + slack);
+  };
   return {
     k: next.k,
-    x: clamp(next.x, Math.min(a, b) - slack, Math.max(a, b) + slack),
+    x: axis(frame.originX, frame.visW, width, next.x),
+    // The window's top is graph y = 0, so extra height always falls below the
+    // graph and never opens a band above it.
+    y: axis(0, windowHeight(frame, height, next.k), height, next.y),
   };
 }
 
-const isHome = (view) => view.k === HOME_VIEW.k && view.x === HOME_VIEW.x;
+const isHome = (view) =>
+  view.k === HOME_VIEW.k && view.x === HOME_VIEW.x && view.y === HOME_VIEW.y;
 
 export default function RoadmapGraph({
   nodes,
@@ -143,13 +169,16 @@ export default function RoadmapGraph({
         scale,
         visW,
         originX: (width - visW) / 2,
+        // Whether a drag can go up and down here, or only sideways.
+        coarse: window.matchMedia('(pointer: coarse)').matches,
       };
       const prev = frameRef.current;
       if (
         prev &&
         prev.boxW === next.boxW &&
         prev.offsetX === next.offsetX &&
-        prev.scale === next.scale
+        prev.scale === next.scale &&
+        prev.coarse === next.coarse
       ) {
         return;
       }
@@ -157,7 +186,7 @@ export default function RoadmapGraph({
       setFrame(next);
       // A graph that has not been moved stays centred when the window changes.
       if (isHome(viewRef.current)) return;
-      setView((current) => limitWith(next, current, width));
+      setView((current) => limitWith(next, current, width, height));
     };
     measure();
     const observer = new ResizeObserver(measure);
@@ -167,37 +196,46 @@ export default function RoadmapGraph({
   }, [width]);
 
   const limit = useCallback(
-    (next) => limitWith(frameRef.current, next, width),
-    [width]
+    (next) => limitWith(frameRef.current, next, width, height),
+    [width, height]
   );
 
-  /** Screen x to graph x, before the view transform. */
-  const localX = useCallback(
-    (clientX) => {
+  /** Screen point to graph point, before the view transform. */
+  const toLocal = useCallback(
+    (clientX, clientY) => {
       const el = surfaceRef.current;
       const f = frameRef.current;
-      if (!el || !f) return width / 2;
-      return (clientX - el.getBoundingClientRect().left) / f.scale + f.originX;
+      if (!el || !f) return { x: width / 2, y: 0 };
+      const rect = el.getBoundingClientRect();
+      return {
+        x: (clientX - rect.left) / f.scale + f.originX,
+        y: (clientY - rect.top) / f.scale,
+      };
     },
     [width]
   );
 
-  /** Zoom while holding one graph x still. Vertically the top never moves. */
+  /** Zoom while holding one graph point still under the anchor. */
   const zoomAround = useCallback(
-    (factor, anchorX) => {
+    (factor, anchorX, anchorY) => {
       setView((current) => {
         const k = clamp(current.k * factor, MIN_ZOOM, MAX_ZOOM);
         if (k === current.k) return current;
         const ratio = k / current.k;
-        return limit({ k, x: anchorX - (anchorX - current.x) * ratio });
+        return limit({
+          k,
+          x: anchorX - (anchorX - current.x) * ratio,
+          y: anchorY - (anchorY - current.y) * ratio,
+        });
       });
     },
     [limit]
   );
 
-  // The buttons zoom about the middle of the graph, so repeated presses do not
-  // walk it sideways.
-  const zoomFromButton = (factor) => zoomAround(factor, width / 2);
+  // The buttons anchor on the middle of the top edge: sideways so repeated
+  // presses do not walk the graph off to one side, and on the top so whatever
+  // is up there stays put and the blocks grow downwards from it.
+  const zoomFromButton = (factor) => zoomAround(factor, width / 2, 0);
 
   // The wheel listener is attached by hand because it has to be able to call
   // preventDefault, and React's own wheel handler is passive.
@@ -207,11 +245,13 @@ export default function RoadmapGraph({
     const onWheel = (event) => {
       if (!event.ctrlKey && !event.metaKey) return;
       event.preventDefault();
-      zoomAround(Math.pow(0.9985, event.deltaY), localX(event.clientX));
+      // About the pointer, not the top: the reader has said where they mean.
+      const point = toLocal(event.clientX, event.clientY);
+      zoomAround(Math.pow(0.9985, event.deltaY), point.x, point.y);
     };
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
-  }, [localX, zoomAround]);
+  }, [toLocal, zoomAround]);
 
   // Dragging is tracked on the window rather than through setPointerCapture:
   // capturing would redirect the click that follows to the surface, and the
@@ -224,7 +264,13 @@ export default function RoadmapGraph({
       const dx = event.clientX - gesture.startX;
       const dy = event.clientY - gesture.startY;
       if (Math.abs(dx) + Math.abs(dy) > DRAG_SLOP) movedRef.current = true;
-      setView(limit({ k: gesture.view.k, x: gesture.view.x + dx / f.scale }));
+      setView(
+        limit({
+          k: gesture.view.k,
+          x: gesture.view.x + dx / f.scale,
+          y: gesture.view.y + dy / f.scale,
+        })
+      );
     };
     const onEnd = () => {
       gestureRef.current = null;
@@ -317,12 +363,13 @@ export default function RoadmapGraph({
   // the server renders too.
   const scale = frame ? frame.scale : null;
   const visW = frame ? frame.visW : width;
+  const visH = frame ? windowHeight(frame, height, view.k) : height;
   const originX = frame ? frame.originX : 0;
   const surfaceStyle = frame
     ? {
         width: `${frame.boxW}px`,
         marginLeft: `${frame.offsetX}px`,
-        height: `${height * scale * view.k}px`,
+        height: `${visH * scale}px`,
       }
     : { aspectRatio: `${width} / ${height}` };
 
@@ -378,7 +425,7 @@ export default function RoadmapGraph({
         style={surfaceStyle}
         onPointerDown={onPointerDown}>
         <svg
-          viewBox={`${originX} 0 ${visW} ${height * view.k}`}
+          viewBox={`${originX} 0 ${visW} ${visH}`}
           className="csf-graph-svg"
           preserveAspectRatio="xMidYMid meet"
           role="group"
@@ -407,7 +454,7 @@ export default function RoadmapGraph({
           {/* Everything that moves lives in here. */}
           <g
             className="csf-graph-viewport"
-            transform={`translate(${view.x} 0) scale(${view.k})`}>
+            transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
             <g className="csf-graph-edges">
               {edges.map((edge, index) => {
                 if (!nodeMap[edge.from] || !nodeMap[edge.to]) return null;
