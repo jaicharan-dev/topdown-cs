@@ -2,9 +2,20 @@
 
 .page {
   --csf-progress-accent: #16a34a;
-  max-width: 980px;
+  /* 1100, not 980: twelve months of squares plus their gaps come to about
+     980 on their own, so the year needed scrolling to see the last month of
+     it on the one page that exists to show the year. */
+  /* width: 100% is load bearing. This is a flex item of Docusaurus's column
+     main-wrapper, where an auto margin in the cross axis cancels the stretch
+     that would otherwise size it, leaving it to shrink to fit its content.
+     That made the dashboard as wide as the widest thing on it and scrolled
+     the page sideways on a phone. With an explicit width it fills, max-width
+     caps it, and the auto margins go back to merely centring it. */
+  width: 100%;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 2.5rem 1rem 4rem;
+  min-width: 0;
 }
 
 /* While the store is loading the numbers are all zero, so dim the page rather
@@ -13,24 +24,8 @@
   opacity: 0.55;
 }
 
-.header {
-  margin-bottom: 2rem;
-}
-
-.title {
-  margin: 0 0 0.4rem;
-  font-size: 2rem;
-}
-
-.subtitle {
-  margin: 0;
-  opacity: 0.7;
-  font-size: 0.92rem;
-}
-
 /* cards */
 .card,
-.rankCard,
 .footerCard {
   border: 1px solid var(--csf-border, #d5cdbc);
   background: var(--csf-surface, #f8f5ee);
@@ -68,15 +63,6 @@
   margin-top: 0;
 }
 
-/* rank */
-.rankTop {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.9rem;
-}
-
 .rankLabel {
   font-size: 0.72rem;
   text-transform: uppercase;
@@ -89,23 +75,6 @@
   font-size: 1.9rem;
   font-weight: 700;
   line-height: 1.1;
-}
-
-.rankPoints {
-  font-size: 0.9rem;
-  opacity: 0.75;
-  text-align: right;
-  white-space: nowrap;
-}
-
-.rankPoints strong {
-  font-size: 1.3rem;
-}
-
-.rankNext {
-  margin: 0.7rem 0 0;
-  font-size: 0.86rem;
-  opacity: 0.8;
 }
 
 /* the ladder of every rank, so the next few are visible rather than a mystery */
@@ -155,9 +124,13 @@
    wrap cleanly instead of squeezing */
 .stats {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(168px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
+  /* A grid item's automatic minimum is its content, and four 150px columns
+     refuse to shrink below 600px. Beside the profile column that overflowed
+     the page; with this they wrap to two rows instead. */
+  min-width: 0;
 }
 
 .stat {
@@ -297,25 +270,247 @@
     padding: 1.75rem 0.85rem 3rem;
   }
 
-  .title {
-    font-size: 1.6rem;
-  }
-
-  .rankTop {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .rankPoints {
-    text-align: left;
-  }
-
   .rankName {
-    font-size: 1.6rem;
+    font-size: 1.25rem;
   }
 
   .footerCard {
     flex-direction: column;
     align-items: flex-start;
+  }
+}
+
+
+/* ----- The profile column ----- */
+.top {
+  display: grid;
+  grid-template-columns: 290px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 1rem;
+}
+
+.topRight {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+/* Same reason: the heatmap scrolls inside itself, but the card around it is
+   a grid item and would still take its minimum from the strip. */
+.topRight > .card {
+  min-width: 0;
+}
+
+.profile {
+  padding: 1.25rem 1.1rem 1.1rem;
+  border-radius: 14px;
+  border: 1px solid var(--csf-border-subtle);
+  background: var(--csf-surface);
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  border-radius: 999px;
+  object-fit: cover;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.avatar[data-initials='true'] {
+  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+  color: #ffffff;
+}
+
+.name {
+  margin: 0.7rem 0 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.email {
+  margin: 0.15rem 0 0;
+  font-size: 0.78rem;
+  opacity: 0.55;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.levelBadge {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin-top: 1.1rem;
+}
+
+.levelWord {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.levelNumber {
+  font-size: 1.5rem;
+  font-weight: 750;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.levelHint {
+  margin: 0.35rem 0 0;
+  font-size: 0.74rem;
+  opacity: 0.55;
+}
+
+.rankLine {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin-top: 1.1rem;
+}
+
+.rankLabel {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.rankName {
+  font-size: 1.02rem;
+  font-weight: 700;
+}
+
+/* ----- Tabs ----- */
+.tabs {
+  display: flex;
+  gap: 0.3rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid var(--csf-border-subtle);
+}
+
+.tab {
+  padding: 0.45rem 0.8rem 0.55rem;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+.tab:hover {
+  opacity: 0.85;
+}
+
+.tab[aria-selected='true'] {
+  opacity: 1;
+  border-bottom-color: var(--csf-progress-accent, #16a34a);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--csf-progress-accent, #16a34a);
+  outline-offset: -2px;
+}
+
+/* ----- History ----- */
+.history {
+  display: grid;
+  gap: 1.3rem;
+}
+
+.historyDay {
+  min-width: 0;
+}
+
+.historyHeading {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.historyList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.historyRow {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--csf-border-subtle);
+}
+
+.historyRow:last-child {
+  border-bottom: none;
+}
+
+.historyTime {
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.5;
+}
+
+.historyTitle {
+  font-size: 0.9rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historyGroup {
+  font-size: 0.72rem;
+  opacity: 0.45;
+  white-space: nowrap;
+}
+
+.empty {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  opacity: 0.6;
+  max-width: 56ch;
+}
+
+/* Reading time for one subject, beside its name. */
+.rowTime {
+  margin-left: 0.5rem;
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.45;
+}
+
+@media screen and (max-width: 900px) {
+  .top {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .historyRow {
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+
+  /* Third column dropped: the subject is the least useful of the three on a
+     phone, and the title already implies it. */
+  .historyGroup {
+    display: none;
   }
 }

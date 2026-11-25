@@ -19,9 +19,9 @@
  * is a shrug, and silently destroying a hundred is not.
  */
 
-import { migrate, today } from './progressStore';
+import { HISTORY_LIMIT, migrate, today } from './progressStore';
 
-const CURRENT_VERSION = 1;
+const CURRENT_VERSION = 2;
 
 /**
  * Rebuilds an object with its keys in sorted order.
@@ -101,11 +101,50 @@ export function mergeStores(a, b) {
     if (!entry.completed && !entry.seconds) delete activity[day];
   }
 
+  // Section time: the larger of the two, for the same reason as the daily
+  // seconds. Summing is not idempotent and syncing twice would double it.
+  const sections = {};
+  for (const [group, seconds] of Object.entries(left.sections)) {
+    sections[group] = seconds;
+  }
+  for (const [group, seconds] of Object.entries(right.sections)) {
+    sections[group] = Math.max(sections[group] || 0, seconds);
+  }
+
+  // History: the union, keyed on the page and the moment it was opened, so
+  // the same visit arriving from both sides stays one row. Newest first and
+  // cut to the limit, which is deterministic and therefore still commutative:
+  // both devices cut the same union at the same place.
+  const visits = new Map();
+  for (const visit of [...left.history, ...right.history]) {
+    visits.set(`${visit.id}|${visit.at}`, visit);
+  }
+  const history = [...visits.values()]
+    .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
+    .slice(0, HISTORY_LIMIT);
+
+  // Profile: whichever was edited later. Ties go to the larger serialisation
+  // rather than to a side, because "whichever I was handed first" would not
+  // be commutative and the two devices would disagree forever.
+  const profile = pickProfile(left.profile, right.profile);
+
   return {
     version: CURRENT_VERSION,
     completed: canonical(completed),
     activity: canonical(activity),
+    sections: canonical(sections),
+    history,
+    profile,
   };
+}
+
+function pickProfile(a, b) {
+  const ta = timeOf(a.updatedAt) ?? -1;
+  const tb = timeOf(b.updatedAt) ?? -1;
+  if (ta !== tb) return ta > tb ? { ...a } : { ...b };
+  const sa = JSON.stringify(canonical(a));
+  const sb = JSON.stringify(canonical(b));
+  return sa >= sb ? { ...a } : { ...b };
 }
 
 /**

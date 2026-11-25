@@ -1,0 +1,182 @@
+/* The standing box. Sized to the rail opposite it, so the canvas between
+   them stays on the page's centre line. */
+.box {
+  position: sticky;
+  top: calc(var(--ifm-navbar-height, 60px) + 1.25rem);
+  padding: 0.85rem 0.8rem 0.7rem;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Before the store loads the numbers are all zero and saying so would be a
+   lie, so they fade in once there is something true to say. */
+.box[data-ready='false'] {
+  opacity: 0.45;
+}
+
+.levelRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.levelWord {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.levelNumber {
+  font-size: 1.6rem;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.label {
+  display: block;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.rankName {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.track {
+  position: relative;
+  height: 4px;
+  margin-top: 0.45rem;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 3px;
+  background: var(--csf-progress-accent, #16a34a);
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.7rem;
+  opacity: 0.55;
+}
+
+.divider {
+  height: 1px;
+  margin: 0.75rem 0;
+  opacity: 0.5;
+}
+
+.figures {
+  display: grid;
+  gap: 0.5rem;
+  margin: 0;
+}
+
+.figure {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.figure .label {
+  letter-spacing: 0.08em;
+}
+
+.value {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.of {
+  font-weight: 500;
+  opacity: 0.45;
+}
+
+.more {
+  display: block;
+  margin-top: 0.85rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  text-decoration: none;
+  opacity: 0.6;
+}
+
+.more:hover {
+  opacity: 1;
+  text-decoration: none;
+}
+
+[data-theme='dark'] .box {
+  background-color: rgba(30, 30, 34, 0.68);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+[data-theme='dark'] .track {
+  background-color: rgba(255, 255, 255, 0.09);
+}
+
+[data-theme='dark'] .divider {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
+html:not([data-theme='dark']) .box {
+  background-color: rgba(255, 255, 255, 0.72);
+  border-color: var(--csf-border-subtle, #e3dcce);
+}
+
+html:not([data-theme='dark']) .track {
+  background-color: rgba(0, 0, 0, 0.09);
+}
+
+html:not([data-theme='dark']) .divider {
+  background-color: var(--csf-border-subtle, #e3dcce);
+}
+
+/* Below the three column layout it stops being a sidebar and becomes a row
+   of figures above the graph, which is the only place left with room. */
+@media screen and (max-width: 1226px) {
+  .box {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    align-items: center;
+    gap: 0.6rem 1.1rem;
+  }
+
+  .divider {
+    display: none;
+  }
+
+  .figures {
+    grid-column: 1 / -1;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+
+  .more {
+    margin-top: 0;
+  }
+}

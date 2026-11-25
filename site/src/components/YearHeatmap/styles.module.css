@@ -1,0 +1,157 @@
+/* Twelve months as one strip: each month a block of week columns, with a gap
+   between months so the boundaries are visible without counting squares. */
+
+.wrapper {
+  --cell: 11px;
+  --gap: 3px;
+  --month-gap: 10px;
+  width: 100%;
+}
+
+.wrapper[data-compact='true'] {
+  --cell: 9px;
+  --gap: 2px;
+  --month-gap: 8px;
+}
+
+/* Twelve months do not fit a phone at a legible square size, and shrinking
+   them until they do makes a year of work look like grit. It scrolls. */
+.scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
+  padding-bottom: 2px;
+}
+
+.strip {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--month-gap);
+  width: max-content;
+  padding-right: 2px;
+}
+
+.weekdays {
+  display: grid;
+  grid-template-rows: auto repeat(7, var(--cell));
+  row-gap: var(--gap);
+  margin-right: 4px;
+  flex: none;
+}
+
+.weekday {
+  font-size: 9px;
+  line-height: var(--cell);
+  opacity: 0.45;
+  white-space: nowrap;
+  padding-right: 2px;
+}
+
+.month {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+}
+
+.weeks {
+  display: flex;
+  gap: var(--gap);
+}
+
+.week {
+  display: grid;
+  grid-template-rows: repeat(7, var(--cell));
+  row-gap: var(--gap);
+}
+
+.cell {
+  width: var(--cell);
+  height: var(--cell);
+  border-radius: 2px;
+  background: var(--heatmap-0);
+}
+
+/* A day that has not happened yet is drawn flat rather than as a zero day,
+   so the rest of the month does not read as a run of missed days. */
+.cell[data-future='true'] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--heatmap-0);
+}
+
+.cell[data-level='1'] { background: var(--heatmap-1); }
+.cell[data-level='2'] { background: var(--heatmap-2); }
+.cell[data-level='3'] { background: var(--heatmap-3); }
+.cell[data-level='4'] { background: var(--heatmap-4); }
+
+/* Where a column runs off the start or end of its month. Nothing is drawn:
+   the space keeps the weekday rows aligned and says nothing else. */
+.pad {
+  width: var(--cell);
+  height: var(--cell);
+}
+
+.monthLabel {
+  margin-top: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  opacity: 0.55;
+  text-align: center;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 0.6rem;
+}
+
+.summary {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.75;
+}
+
+.summary strong {
+  font-weight: 650;
+  opacity: 1;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.7rem;
+  opacity: 0.5;
+}
+
+.legend > span:first-child {
+  margin-right: 2px;
+}
+
+.legend > span:last-child {
+  margin-left: 2px;
+}
+
+/* Holds the height before the day is known, so nothing jumps when it is. */
+.placeholder {
+  height: 118px;
+}
+
+html:not([data-theme='dark']) .wrapper {
+  --heatmap-0: #e9e4d7;
+  --heatmap-1: #a7e3bd;
+  --heatmap-2: #5fcb8b;
+  --heatmap-3: #2fa665;
+  --heatmap-4: #17713f;
+}
+
+[data-theme='dark'] .wrapper {
+  --heatmap-0: #2a2a2e;
+  --heatmap-1: #14532d;
+  --heatmap-2: #1d7a41;
+  --heatmap-3: #2fa65c;
+  --heatmap-4: #58d98a;
+}

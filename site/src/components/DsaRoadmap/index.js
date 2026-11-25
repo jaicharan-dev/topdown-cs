@@ -1,6 +1,8 @@
 import React from 'react';
 import manifest from '@site/src/data/contentManifest.json';
 import useProgress from '@site/src/hooks/useProgress';
+import { sectionSeconds } from '@site/src/lib/progressStore';
+import { formatDuration } from '@site/src/lib/timeTracker';
 import RoadmapGraph from '@site/src/components/RoadmapGraph';
 
 // Question counts come from the generated stats, keyed by the same ids used
@@ -125,6 +127,11 @@ export default function DsaRoadmap() {
     return { done: Math.min(doneByBlock[block] || 0, total), total };
   };
 
+  // Only shown once there is some: "0m" beside a heading is a
+  // reproach, not a statistic.
+  const seconds = sectionSeconds(store, ['dsa']);
+  const readingTime = seconds ? formatDuration(seconds) : null;
+
   return (
     <RoadmapGraph
       nodes={DAG_NODES}
@@ -132,6 +139,7 @@ export default function DsaRoadmap() {
       width={VIEW_W}
       height={VIEW_H}
       progressFor={progressFor}
+      meta={readingTime}
       idPrefix="csf-dsa"
       title="DSA roadmap"
       label="DSA roadmap: topics and what each one leads to"

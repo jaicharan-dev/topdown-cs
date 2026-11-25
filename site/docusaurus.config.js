@@ -219,6 +219,12 @@ const config = {
         },
         items: [
           { to: '/progress', label: 'Progress', position: 'right' },
+          // Custom kinds, defined in src/theme/NavbarItem/ComponentTypes.js.
+          // Level and rank follow the reader around the site rather than
+          // living only on a dashboard they have to go and find.
+          { type: 'custom-heatmap', position: 'right' },
+          { type: 'custom-stats', position: 'right' },
+          { type: 'custom-account', position: 'right' },
         ],
       },
       footer: {

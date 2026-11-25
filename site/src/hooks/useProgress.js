@@ -21,6 +21,7 @@ import {
   emptyStore,
   isComplete as storeIsComplete,
   readStore,
+  setProfile as storeSetProfile,
   subscribe,
   summarise,
   toggleComplete,
@@ -74,5 +75,21 @@ export default function useProgress() {
     setStore(writeStore(emptyStore()));
   }, []);
 
-  return { ready, store, toggle, isComplete, reset, summarise, activityStats };
+  // Read, modify, write against storage rather than the React copy: the time
+  // tracker may have flushed since this component last rendered, and saving a
+  // name from a stale store would throw that away.
+  const updateProfile = useCallback((patch) => {
+    setStore(writeStore(storeSetProfile(readStore(), patch)));
+  }, []);
+
+  return {
+    ready,
+    store,
+    toggle,
+    isComplete,
+    reset,
+    updateProfile,
+    summarise,
+    activityStats,
+  };
 }

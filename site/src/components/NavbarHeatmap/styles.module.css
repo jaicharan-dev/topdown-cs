@@ -1,0 +1,138 @@
+.wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-right: 0.2rem;
+}
+
+.placeholder {
+  display: inline-block;
+  width: 96px;
+  height: 28px;
+}
+
+.trigger {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  height: 28px;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.trigger svg {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  opacity: 0.75;
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--csf-progress-accent, #16a34a);
+  outline-offset: 2px;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 300;
+  width: max-content;
+  max-width: min(960px, calc(100vw - 2rem));
+  padding: 0.85rem 0.9rem 0.75rem;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+
+  /* Hidden by opacity rather than display, so the strip inside has a real
+     width to measure and does not reflow the first time it is opened. */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s;
+}
+
+/* Hover for a pointer, focus for a keyboard, and the pinned flag for a touch
+   screen, which sends a click and never a hover. */
+.wrapper:hover .panel,
+.wrapper:focus-within .panel,
+.wrapper[data-pinned='true'] .panel {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.panelHead {
+  margin-bottom: 0.6rem;
+}
+
+.panelTitle {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+[data-theme='dark'] .trigger {
+  background-color: rgba(255, 255, 255, 0.055);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='dark'] .trigger:hover {
+  background-color: rgba(255, 255, 255, 0.09);
+}
+
+[data-theme='dark'] .panel {
+  background-color: #1e1e22;
+  border-color: rgba(255, 255, 255, 0.09);
+}
+
+html:not([data-theme='dark']) .trigger {
+  background-color: rgba(0, 0, 0, 0.04);
+  border-color: var(--csf-border-subtle, #e3dcce);
+}
+
+html:not([data-theme='dark']) .trigger:hover {
+  background-color: rgba(0, 0, 0, 0.07);
+}
+
+html:not([data-theme='dark']) .panel {
+  background-color: #ffffff;
+  border-color: var(--csf-border-subtle, #e3dcce);
+}
+
+/* The word goes before the button does: the icon still says what it is. */
+@media screen and (max-width: 996px) {
+  .label {
+    display: none;
+  }
+
+  .trigger {
+    padding: 0 0.5rem;
+  }
+
+  .placeholder {
+    width: 42px;
+  }
+}
+
+/* On a phone the whole button goes. Something has to: the navbar was down to
+   26px for the site name, which is the one place the site says it any more.
+   This is the right thing to lose, because a twelve month strip in a popover
+   on a 390px screen was barely readable and the progress page has it at full
+   size one tap away. */
+@media screen and (max-width: 767px) {
+  .wrapper,
+  .placeholder {
+    display: none;
+  }
+}

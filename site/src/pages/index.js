@@ -3,6 +3,7 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import React, { useCallback, useEffect, useState } from 'react';
 import CsRoadmap, { CS_GROUPS } from '../components/CsRoadmap';
 import DsaRoadmap from '../components/DsaRoadmap';
+import HomeStats from '@site/src/components/HomeStats';
 import manifest from '@site/src/data/contentManifest.json';
 import useProgress from '@site/src/hooks/useProgress';
 import { summarise } from '@site/src/lib/progressStore';
@@ -119,17 +120,6 @@ export default function Home() {
       description="Interview-ready CS fundamentals. Not a textbook. Just the answers any interviewer would want to hear."
       wrapperClassName="homepage">
 
-      {/* Hero */}
-      <section className="csf-hero">
-        <div className="csf-hero__glow" aria-hidden="true" />
-        <h1 className="csf-hero__title">
-          Top<span className="csf-hero__accent">Down</span> CS
-        </h1>
-        <p className="csf-hero__subtitle">
-          Not a textbook. Not a course. Just the answers any interviewer would want to hear.
-        </p>
-      </section>
-
       <main className="csf-tabs">
         <div className="csf-rail">
           <p className="csf-rail__heading">Sections</p>
@@ -227,6 +217,11 @@ export default function Home() {
             </div>
           </div>
         </div>
+
+        {/* Third column. It was reserved and empty, to balance the rail so
+            the canvas sits on the page's centre line; the balance is the
+            same now that there is something in it. */}
+        <HomeStats />
       </main>
     </Layout>
   );

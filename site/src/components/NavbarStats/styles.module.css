@@ -1,0 +1,114 @@
+.pill {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  height: 28px;
+  padding: 0 0.6rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  transition: background-color 0.15s ease;
+}
+
+.pill:hover {
+  text-decoration: none;
+  color: inherit;
+}
+
+/* Same width as the pill, so the navbar does not shuffle when it appears. */
+.placeholder {
+  display: inline-block;
+  width: 132px;
+  height: 28px;
+}
+
+.level {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.levelWord {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.levelNumber {
+  font-size: 0.86rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.divider {
+  width: 1px;
+  height: 12px;
+  opacity: 0.25;
+  background: currentColor;
+}
+
+.rank {
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+/* Along the bottom edge, so it reads as the pill filling up rather than as
+   another thing to look at. */
+.track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: currentColor;
+  opacity: 0.12;
+}
+
+.fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: var(--csf-progress-accent, #16a34a);
+  opacity: 1;
+  transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+[data-theme='dark'] .pill {
+  background-color: rgba(255, 255, 255, 0.055);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='dark'] .pill:hover {
+  background-color: rgba(255, 255, 255, 0.09);
+}
+
+html:not([data-theme='dark']) .pill {
+  background-color: rgba(0, 0, 0, 0.04);
+  border-color: var(--csf-border-subtle, #e3dcce);
+}
+
+html:not([data-theme='dark']) .pill:hover {
+  background-color: rgba(0, 0, 0, 0.07);
+}
+
+/* The rank name is the first thing to go; the level survives to phone width
+   because it is the number that changes most often. */
+@media screen and (max-width: 996px) {
+  .rank,
+  .divider {
+    display: none;
+  }
+
+  .placeholder {
+    width: 56px;
+  }
+}

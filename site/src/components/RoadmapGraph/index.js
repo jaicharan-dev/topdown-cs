@@ -125,6 +125,7 @@ export default function RoadmapGraph({
   idPrefix,
   label,
   title,
+  meta,
 }) {
   const [hoveredNode, setHoveredNode] = useState(null);
   const [view, setView] = useState(HOME_VIEW);
@@ -376,7 +377,13 @@ export default function RoadmapGraph({
   return (
     <div className="csf-graph-wrapper" ref={wrapperRef}>
       <div className="csf-graph-bar">
-        <p className="csf-graph-title">{title}</p>
+        <p className="csf-graph-title">
+          {title}
+          {/* How long has gone into this section specifically. Quiet, beside
+              the heading, because it is a fact about the reader rather than
+              a thing to act on. */}
+          {meta && <span className="csf-graph-meta">{meta}</span>}
+        </p>
         {/* Zoom out and zoom in are one control in two halves. Reset is a
             different kind of action, so it sits apart with an icon that says
             what it does: between a plus and a minus it was just the button in

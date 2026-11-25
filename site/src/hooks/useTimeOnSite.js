@@ -31,9 +31,31 @@ const ACTIVITY_EVENTS = [
   'mousemove',
 ];
 
-export default function useTimeOnSite() {
+/**
+ * @param group the manifest group of the page being read, or '' off content.
+ *   Passed through a ref rather than a dependency: changing it must not tear
+ *   the timer down and restart it, which is the whole reason this lives in
+ *   Root. The ref is read at flush time, so time already banked is credited
+ *   to the section it was actually spent in.
+ */
+export default function useTimeOnSite(group = '') {
   const isBrowser = useIsBrowser();
   const trackerRef = useRef(null);
+  const groupRef = useRef(group);
+
+  // Bank what the previous section earned before the ref starts pointing
+  // somewhere else, or an hour on OOP gets credited to whatever was opened
+  // next. This runs before the new group is stored, which is the point.
+  useEffect(() => {
+    const tracker = trackerRef.current;
+    if (tracker && groupRef.current !== group) {
+      const seconds = tracker.flush();
+      if (seconds) {
+        writeStore(addSeconds(readStore(), seconds, new Date(), groupRef.current));
+      }
+    }
+    groupRef.current = group;
+  }, [group]);
 
   useEffect(() => {
     if (!isBrowser) return undefined;
@@ -45,7 +67,7 @@ export default function useTimeOnSite() {
     const persist = () => {
       const seconds = tracker.flush();
       if (!seconds) return;
-      const next = addSeconds(readStore(), seconds);
+      const next = addSeconds(readStore(), seconds, new Date(), groupRef.current);
       writeStore(next);
     };
 

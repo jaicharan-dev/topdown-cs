@@ -692,87 +692,49 @@ html[data-theme='dark'] .prism-code .token.punctuation {
    15. HOMEPAGE - Hero & Subject Cards
    =================================================================== */
 
-/* Hide navbar logo + title on the homepage only */
-.homepage .navbar__brand {
-  display: none !important;
+/* On a phone the wordmark is the brand. The logo is 44px of decoration
+   beside a name that was being truncated to "TopD...", and the name is now
+   the only place the site says what it is called. */
+@media screen and (max-width: 767px) {
+  .navbar__logo {
+    display: none;
+  }
 }
 
-/* ----- Hero Section ----- */
-.csf-hero {
-  text-align: center;
-  padding: 1.75rem 2rem 1.25rem;
-  max-width: 900px;
-  margin: 0 auto;
-  position: relative;
-  overflow: visible;
-}
-
-.csf-hero__glow {
-  position: absolute;
-  top: 5%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 480px;
-  height: 220px;
-  background: radial-gradient(
-    ellipse at center,
-    rgba(96, 165, 250, 0.14) 0%,
-    rgba(167, 139, 250, 0.08) 40%,
-    transparent 70%
-  );
-  border-radius: 50%;
-  filter: blur(80px);
-  pointer-events: none;
-  z-index: 0;
-}
-
-.csf-hero__title {
-  font-size: 3.5rem;
-  font-weight: 800;
-  letter-spacing: -0.04em;
-  line-height: 1.05;
-  margin-bottom: 0.5rem;
-  position: relative;
-  z-index: 1;
-}
-
-[data-theme='dark'] .csf-hero__title {
-  color: #fafafa;
-}
-
-html:not([data-theme='dark']) .csf-hero__title {
-  color: #18181b;
-}
-
-.csf-hero__accent {
+/* The navbar name carries the gradient the hero headline used to. It is the
+   only place the site says its own name now: the homepage used to repeat it
+   underneath in 3.5rem type, which is the site advertising itself to
+   somebody who is already standing in it. */
+.navbar__title {
   background: linear-gradient(135deg, #60a5fa, #a78bfa);
   -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   background-clip: text;
+  -webkit-text-fill-color: transparent;
+  font-weight: 750;
+  letter-spacing: -0.02em;
 }
 
-.csf-hero__subtitle {
-  font-size: 1.05rem;
-  max-width: 820px;
-  margin: 0 auto;
-  line-height: 1.5;
-  position: relative;
-  z-index: 1;
-  font-weight: 400;
+/* How long has gone into one section, beside its heading. */
+.csf-graph-meta {
+  margin-left: 0.15rem;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
 }
 
-[data-theme='dark'] .csf-hero__subtitle {
-  color: #71717a;
-}
-
-html:not([data-theme='dark']) .csf-hero__subtitle {
-  color: #71717a;
-}
-
-@media screen and (max-width: 640px) {
-  .csf-hero__title { font-size: 2.2rem; }
-  .csf-hero { padding: 1.5rem 1rem 1rem; }
-  .csf-hero__glow { width: 260px; height: 160px; }
+.csf-graph-meta::before {
+  content: '';
+  display: inline-block;
+  width: 3px;
+  height: 3px;
+  margin-right: 0.45rem;
+  margin-bottom: 2px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
 }
 
 /* ----- Homepage tabs -----
@@ -811,6 +773,25 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
 @media screen and (max-width: 1226px) {
   .csf-tabs {
     grid-template-columns: var(--csf-rail-w) minmax(0, 1fr);
+  }
+
+  /* With the reserved column gone the standing box has nowhere to be a
+     sidebar, so it lies down across the top of both other columns. Every
+     placement is explicit from here down: auto placement would drop it
+     under the rail, in a 198px column it was never designed for. */
+  .csf-home-stats {
+    grid-column: 1 / -1;
+    grid-row: 1;
+  }
+
+  .csf-rail {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .csf-tabpanels {
+    grid-column: 2;
+    grid-row: 2;
   }
 }
 
@@ -1064,6 +1045,22 @@ html:not([data-theme='dark']) .csf-soon-panel {
     grid-template-columns: minmax(0, 1fr);
     gap: 1.25rem;
     padding: 0 1.25rem 3.5rem;
+  }
+
+  /* One column: tabs, then where you stand, then the graph. */
+  .csf-rail {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .csf-home-stats {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .csf-tabpanels {
+    grid-column: 1;
+    grid-row: 3;
   }
 
   /* Across the top it is a strip of tabs, not a panel, so the box comes
@@ -1785,25 +1782,6 @@ html:not([data-theme='dark']) .theme-code-block pre.prism-code {
     width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-  }
-}
-
-/* Small screen hero optimizations (<= 640px) */
-@media screen and (max-width: 640px) {
-  .csf-hero {
-    padding: 1.5rem 1rem 1rem;
-  }
-  .csf-hero__title {
-    font-size: 2.2rem;
-    line-height: 1.12;
-  }
-  .csf-hero__subtitle {
-    font-size: 0.95rem;
-    padding: 0 8px;
-  }
-  .csf-hero__glow {
-    width: 220px;
-    height: 150px;
   }
 }
 

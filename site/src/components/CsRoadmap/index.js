@@ -25,6 +25,8 @@
 import React from 'react';
 import manifest from '@site/src/data/contentManifest.json';
 import useProgress from '@site/src/hooks/useProgress';
+import { sectionSeconds } from '@site/src/lib/progressStore';
+import { formatDuration } from '@site/src/lib/timeTracker';
 import RoadmapGraph from '@site/src/components/RoadmapGraph';
 
 const VIEW_W = 1130;
@@ -223,6 +225,11 @@ export default function CsRoadmap() {
     };
   };
 
+  // Only shown once there is some: "0m" beside a heading is a
+  // reproach, not a statistic.
+  const seconds = sectionSeconds(store, CS_GROUPS);
+  const readingTime = seconds ? formatDuration(seconds) : null;
+
   return (
     <RoadmapGraph
       nodes={NODES}
@@ -230,6 +237,7 @@ export default function CsRoadmap() {
       width={VIEW_W}
       height={VIEW_H}
       progressFor={progressFor}
+      meta={readingTime}
       idPrefix="csf-cs"
       title="Learning path"
       label="CS fundamentals: subjects and the order to take them in"

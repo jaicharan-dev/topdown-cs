@@ -1,5 +1,5 @@
 /**
- * Lays out the activity heatmap: a GitHub-style grid of weeks.
+ * Lays out the activity heatmap: twelve months as a horizontal strip.
  *
  * Pure on purpose, and takes the end day as an argument rather than calling
  * `new Date()` itself. A component that reads the clock while rendering is a
@@ -9,12 +9,14 @@
  * browser, so the server never renders a dated grid at all.
  *
  * Weeks run Sunday to Saturday, matching the calendar most users picture.
+ *
+ * There used to be a second builder here that drew one unbroken run of week
+ * columns and labelled whichever months had room. The year strip replaced it
+ * and it had no readers left, so it is gone rather than kept warm.
  */
 
 import { fromDay, today } from './progressStore';
 import { formatDuration } from './timeTracker';
-
-export const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const MONTH_NAMES = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -37,77 +39,6 @@ export function levelFor(completed) {
 export const MAX_LEVEL = 4;
 
 /**
- * Minimum columns between two month labels. A label is roughly three columns
- * wide, so labelling two months that start a fortnight apart renders them on
- * top of each other ("MayJun"). The month is simply left unlabelled; the
- * squares still carry the exact date in their tooltip.
- */
-const MIN_LABEL_GAP = 3;
-
-/**
- * @param activity the store's `activity` map
- * @param endDay   'YYYY-MM-DD', the last day shown (normally today)
- * @param weeks    how many week columns to draw
- */
-export function buildHeatmap(activity = {}, endDay, weeks = 26) {
-  if (!endDay) return { columns: [], months: [], totalCompleted: 0, days: 0 };
-
-  const end = fromDay(endDay);
-
-  // walk back to the Sunday of the end day's week, then back again to the
-  // first column, so the grid always ends with a complete current week
-  const gridStart = fromDay(endDay);
-  gridStart.setDate(gridStart.getDate() - end.getDay() - (weeks - 1) * 7);
-
-  const columns = [];
-  const months = [];
-  let totalCompleted = 0;
-  let days = 0;
-  let lastMonth = null;
-
-  const cursor = new Date(gridStart);
-  for (let week = 0; week < weeks; week += 1) {
-    const column = [];
-    for (let weekday = 0; weekday < 7; weekday += 1) {
-      const day = today(cursor);
-      const future = cursor > end;
-      const entry = future ? null : activity[day];
-      const completed = Number(entry?.completed) || 0;
-      const seconds = Number(entry?.seconds) || 0;
-
-      if (!future) {
-        totalCompleted += completed;
-        if (completed > 0 || seconds > 0) days += 1;
-      }
-
-      column.push({
-        day,
-        future,
-        completed,
-        seconds,
-        level: future ? 0 : levelFor(completed),
-      });
-      cursor.setDate(cursor.getDate() + 1);
-    }
-
-    // label a column when its month differs from the one before it, and
-    // there is room for the label to sit without colliding
-    const month = fromDay(column[0].day).getMonth();
-    if (month !== lastMonth) {
-      const previous = months[months.length - 1];
-      if (!previous || week - previous.column >= MIN_LABEL_GAP) {
-        months.push({ column: week, label: MONTH_NAMES[month] });
-      }
-      lastMonth = month;
-    }
-
-    columns.push(column);
-  }
-
-  return { columns, months, totalCompleted, days };
-}
-
-/**
  * A square's tooltip: "3 pages, 45m on 14 Mar".
  *
  * Time is only mentioned when there is some, so a day spent reading without
@@ -125,4 +56,81 @@ export function describeDay(cell) {
 
   if (!parts.length) return `Nothing on ${when}`;
   return `${parts.join(', ')} on ${when}`;
+}
+
+
+/**
+ * The year strip: twelve months, each its own block of weeks.
+ *
+ * The old grid was one unbroken run of columns with a label wherever there
+ * was room for one, which meant the months it did label were approximate and
+ * the ones it did not were invisible. Splitting on the month makes every
+ * boundary exact and every label honest, at the cost of a ragged bottom row
+ * where a month does not finish on a Saturday.
+ *
+ * Twelve months ending with the one the end day falls in, so today is always
+ * the last square drawn rather than somewhere in the middle.
+ *
+ * Cells are null where a column runs off the start or end of its month. The
+ * caller renders those as a gap, not as an empty day: a square for 31 June
+ * would be a lie and a square for next Tuesday would be a promise.
+ */
+export function buildYearHeatmap(activity = {}, endDay, monthCount = 12) {
+  if (!endDay) return { months: [], totalCompleted: 0, totalSeconds: 0, days: 0 };
+
+  const end = fromDay(endDay);
+  const months = [];
+  let totalCompleted = 0;
+  let totalSeconds = 0;
+  let days = 0;
+
+  const first = new Date(end.getFullYear(), end.getMonth() - (monthCount - 1), 1);
+
+  for (let index = 0; index < monthCount; index += 1) {
+    const monthStart = new Date(first.getFullYear(), first.getMonth() + index, 1);
+    const year = monthStart.getFullYear();
+    const month = monthStart.getMonth();
+    const length = new Date(year, month + 1, 0).getDate();
+
+    const weeks = [];
+    let column = new Array(7).fill(null);
+
+    for (let date = 1; date <= length; date += 1) {
+      const current = new Date(year, month, date);
+      const weekday = current.getDay();
+      const day = today(current);
+      const future = current > end;
+      const entry = future ? null : activity[day];
+      const completed = Number(entry?.completed) || 0;
+      const seconds = Number(entry?.seconds) || 0;
+
+      if (!future) {
+        totalCompleted += completed;
+        totalSeconds += seconds;
+        if (completed > 0 || seconds > 0) days += 1;
+      }
+
+      column[weekday] = {
+        day,
+        future,
+        completed,
+        seconds,
+        level: future ? 0 : levelFor(completed),
+      };
+
+      if (weekday === 6 || date === length) {
+        weeks.push(column);
+        column = new Array(7).fill(null);
+      }
+    }
+
+    months.push({
+      key: `${year}-${String(month + 1).padStart(2, '0')}`,
+      label: MONTH_NAMES[month],
+      year,
+      weeks,
+    });
+  }
+
+  return { months, totalCompleted, totalSeconds, days };
 }

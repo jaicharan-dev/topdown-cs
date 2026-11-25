@@ -1,0 +1,260 @@
+.wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin-left: 0.4rem;
+}
+
+.login {
+  padding: 0.3rem 0.8rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--csf-progress-accent, #16a34a);
+  color: #ffffff;
+  transition: filter 0.15s ease;
+}
+
+.login:hover {
+  filter: brightness(1.08);
+}
+
+.trigger {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--csf-progress-accent, #16a34a);
+  outline-offset: 2px;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  object-fit: cover;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+}
+
+.avatar[data-initials='true'] {
+  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+  color: #ffffff;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 300;
+  width: 266px;
+  padding: 0.9rem;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+}
+
+.pictureButton {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  flex: none;
+}
+
+.pictureButton:disabled {
+  cursor: wait;
+}
+
+.bigAvatar {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  object-fit: cover;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.bigAvatar[data-initials='true'] {
+  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+  color: #ffffff;
+}
+
+/* Sits over the bottom of the picture rather than beside it, so the row does
+   not change height between "Change" and "Resizing". */
+.pictureHint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 1px 0 2px;
+  border-radius: 0 0 999px 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.who {
+  min-width: 0;
+}
+
+.name {
+  font-size: 0.92rem;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.email {
+  font-size: 0.72rem;
+  opacity: 0.55;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file {
+  display: none;
+}
+
+.form {
+  margin-top: 0.85rem;
+}
+
+.label {
+  display: block;
+  margin-bottom: 0.3rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.row {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.38rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 0.85rem;
+  color: inherit;
+}
+
+.input:focus-visible {
+  outline: 2px solid var(--csf-progress-accent, #16a34a);
+  outline-offset: -1px;
+}
+
+.save {
+  padding: 0.38rem 0.7rem;
+  border: none;
+  border-radius: 8px;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--csf-progress-accent, #16a34a);
+  color: #ffffff;
+}
+
+.error {
+  margin: 0.6rem 0 0;
+  font-size: 0.76rem;
+  color: #f87171;
+}
+
+.link {
+  display: block;
+  width: 100%;
+  margin-top: 0.55rem;
+  padding: 0.34rem 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+  opacity: 0.65;
+  color: inherit;
+}
+
+.link:hover {
+  opacity: 1;
+}
+
+.note {
+  margin: 0.7rem 0 0;
+  font-size: 0.72rem;
+  opacity: 0.5;
+}
+
+[data-theme='dark'] .panel {
+  background-color: #1e1e22;
+  border-color: rgba(255, 255, 255, 0.09);
+}
+
+[data-theme='dark'] .avatar,
+[data-theme='dark'] .input {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme='dark'] .input {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+html:not([data-theme='dark']) .panel {
+  background-color: #ffffff;
+  border-color: var(--csf-border-subtle, #e3dcce);
+}
+
+html:not([data-theme='dark']) .avatar,
+html:not([data-theme='dark']) .input {
+  border-color: var(--csf-border-subtle, #e3dcce);
+}
+
+html:not([data-theme='dark']) .input {
+  background-color: #ffffff;
+}
+
+@media screen and (max-width: 500px) {
+  .panel {
+    width: min(266px, calc(100vw - 2rem));
+  }
+}
