@@ -789,10 +789,11 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
    panel never has to narrow to stay centred: it is either centred at full
    width or off centre at full width. */
 .csf-tabs {
-  /* 190px, not less: "CS Fundamentals" plus its count wraps below this. */
-  --csf-rail-w: 190px;
+  /* 198px, not less: "CS Fundamentals" plus its count wraps below this
+     once the rail box and the tab padding have taken their share. */
+  --csf-rail-w: 198px;
   width: 100%;
-  max-width: 1388px;
+  max-width: 1404px;
   margin: 0 auto;
   padding: 0 1.25rem 4rem;
   display: grid;
@@ -807,19 +808,35 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
    graph's size for having it on the page's centre line; below it the
    reserved column goes and the panel takes back the full width off centre.
    1218px is where the three column panel would put a node label under 11px. */
-@media screen and (max-width: 1218px) {
+@media screen and (max-width: 1226px) {
   .csf-tabs {
     grid-template-columns: var(--csf-rail-w) minmax(0, 1fr);
   }
 }
 
+/* The rail is chrome, so it gets the box the graph gave up. */
 .csf-rail {
   position: sticky;
   top: calc(var(--ifm-navbar-height, 60px) + 1.25rem);
+  padding: 0.7rem 0.35rem 0.55rem;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+[data-theme='dark'] .csf-rail {
+  background-color: rgba(30, 30, 34, 0.68);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+html:not([data-theme='dark']) .csf-rail {
+  background-color: rgba(255, 255, 255, 0.72);
+  border-color: var(--csf-border-subtle, #e3dcce);
 }
 
 .csf-rail__heading {
-  margin: 0 0 0.45rem 0.75rem;
+  margin: 0 0 0.45rem 0.6rem;
   font-size: 0.64rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -839,7 +856,7 @@ html:not([data-theme='dark']) .csf-hero__subtitle {
   flex-direction: column;
   gap: 0.4rem;
   width: 100%;
-  padding: 0.5rem 0.75rem 0.55rem;
+  padding: 0.5rem 0.6rem 0.55rem;
   border: none;
   border-radius: 8px;
   background: transparent;
@@ -963,6 +980,16 @@ html:not([data-theme='dark']) .csf-tab__track {
   background-color: rgba(0, 0, 0, 0.085);
 }
 
+/* min-width: 0, because this is a grid item and a grid item's automatic
+   minimum is its content's min-content size. The graph is an svg with a
+   viewBox, whose min-content width is its intrinsic 1130px, so without this
+   the panel refuses to shrink below the graph and a phone gets a graph three
+   times the width of its screen with the sides cut off. The track was already
+   minmax(0, 1fr); that bounds the column, not the item inside it. */
+.csf-tabpanels {
+  min-width: 0;
+}
+
 /* Centred in its track and held to the width the graphs were laid out for. */
 .csf-tabpanel {
   max-width: 920px;
@@ -980,9 +1007,23 @@ html:not([data-theme='dark']) .csf-tab__track {
   align-items: center;
   text-align: center;
   gap: 0.75rem;
-  padding: 4rem 1.5rem 5rem;
+  padding: 3.25rem 1.75rem 3.5rem;
   max-width: 48ch;
-  margin: 0 auto;
+  margin: 2rem auto;
+  border-radius: 18px;
+  border: 1px solid transparent;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+[data-theme='dark'] .csf-soon-panel {
+  background-color: rgba(30, 30, 34, 0.68);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+html:not([data-theme='dark']) .csf-soon-panel {
+  background-color: rgba(255, 255, 255, 0.72);
+  border-color: var(--csf-border-subtle, #e3dcce);
 }
 
 .csf-soon-panel__icon {
@@ -1019,8 +1060,15 @@ html:not([data-theme='dark']) .csf-tab__track {
     padding: 0 1.25rem 3.5rem;
   }
 
+  /* Across the top it is a strip of tabs, not a panel, so the box comes
+     off and the divider under the strip does the separating. */
   .csf-rail {
     position: static;
+    padding: 0;
+    border: none;
+    background-color: transparent;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 
   .csf-rail__heading {
@@ -1075,33 +1123,57 @@ html:not([data-theme='dark']) .csf-tab__track {
   }
 }
 
-/* ----- Roadmap graph -----
-   Framed as a panel with a dot grid behind it.
+/* ----- The homepage canvas -----
+   The dot grid used to line one panel, positioned for one graph's shape. As
+   the page's own background it does not care what shape anything is, and the
+   flowchart reads as sitting on a canvas rather than inside a window. It is
+   the homepage only: a grid behind body text fights the text, and the docs
+   pages are for reading. */
+.homepage {
+  position: relative;
+}
 
-   It used to float on the page background over three blurred colour blobs,
-   placed at percentages tuned for the DSA graph's proportions, which landed
-   somewhere else entirely on a graph of any other shape. A dot grid is what
-   every tool that draws diagrams puts behind one, so the panel reads as a
-   diagram on sight, and it does not care how tall the graph is. */
+.homepage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: radial-gradient(currentColor 1px, transparent 1px);
+  background-size: 26px 26px;
+}
+
+/* The grid is behind everything, so everything needs a layer of its own. */
+.homepage > * {
+  position: relative;
+  z-index: 1;
+}
+
+[data-theme='dark'] .homepage::before {
+  opacity: 0.13;
+}
+
+html:not([data-theme='dark']) .homepage::before {
+  opacity: 0.1;
+}
+
+/* ----- Roadmap graph -----
+   No frame. The dot grid moved to the page itself, so the graph sits on the
+   canvas rather than in a window onto one, and the only boxed thing here is
+   the zoom cluster, which is chrome. */
 .csf-graph-wrapper {
   position: relative;
   width: 100%;
   margin-top: 0.35rem;
-  padding: 0.9rem 0.75rem 1rem;
-  border-radius: 18px;
-  border: 1px solid transparent;
 }
 
-/* Title on the left, legend on the right, divider under both. */
-.csf-graph-header {
+.csf-graph-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-  margin: 0 0 0.75rem;
-  padding: 0 0.35rem 0.7rem;
-  border-bottom: 1px solid transparent;
+  gap: 1rem;
+  margin: 0 0 0.45rem;
+  padding: 0 0.15rem;
 }
 
 .csf-graph-title {
@@ -1132,168 +1204,105 @@ html:not([data-theme='dark']) .csf-graph-title {
   color: #52525b;
 }
 
-[data-theme='dark'] .csf-graph-header {
-  border-bottom-color: rgba(255, 255, 255, 0.06);
-}
-
-html:not([data-theme='dark']) .csf-graph-header {
-  border-bottom-color: rgba(0, 0, 0, 0.06);
-}
-
-.csf-graph-legend {
+/* The zoom cluster. It floats over the canvas, so it carries its own surface
+   and blurs what is behind it rather than sitting on a solid page. */
+.csf-graph-zoom {
   display: flex;
   align-items: center;
-  gap: 0.85rem;
-  margin: 0;
+  gap: 1px;
+  padding: 2px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.csf-graph-zoom button {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 24px;
   padding: 0;
-  list-style: none;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
 }
 
-.csf-graph-legend li {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin: 0;
-  font-size: 0.67rem;
-  font-weight: 500;
-  opacity: 0.62;
-  white-space: nowrap;
+.csf-graph-zoom button:hover:not(:disabled) {
+  opacity: 1;
 }
 
-/* A miniature of a node card, run through the same saturation ramp the real
-   ones use, so the legend cannot drift from what it describes without the
-   drift being visible. */
-.csf-graph-legend__swatch {
-  width: 22px;
-  height: 12px;
-  border-radius: 3px;
-  flex: none;
-  border: 1px solid;
+.csf-graph-zoom button:disabled {
+  opacity: 0.25;
+  cursor: default;
 }
 
-/* A real node steps its fill and its border as well as its saturation, so a
-   swatch that only stepped the saturation barely separated at this size. The
-   percentages are the node rules, nudged up because there is far less area
-   here to read the difference in. */
-.csf-graph-legend__swatch.is-none {
-  background: color-mix(in srgb, var(--csf-legend-accent) 10%, transparent);
-  border-color: color-mix(in srgb, var(--csf-legend-accent) 24%, transparent);
-  filter: saturate(0.08);
+.csf-graph-zoom button:focus-visible {
+  outline: 2px solid var(--csf-progress-accent, #16a34a);
+  outline-offset: -2px;
 }
 
-.csf-graph-legend__swatch.is-partial {
-  background: color-mix(in srgb, var(--csf-legend-accent) 18%, transparent);
-  border-color: color-mix(in srgb, var(--csf-legend-accent) 50%, transparent);
-  filter: saturate(0.54);
+.csf-graph-zoom svg {
+  width: 15px;
+  height: 15px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
 }
 
-.csf-graph-legend__swatch.is-done {
-  background: color-mix(in srgb, var(--csf-legend-accent) 30%, transparent);
-  border-color: color-mix(in srgb, var(--csf-legend-accent) 88%, transparent);
+[data-theme='dark'] .csf-graph-zoom {
+  background-color: rgba(30, 30, 34, 0.78);
+  border-color: rgba(255, 255, 255, 0.08);
 }
 
-[data-theme='dark'] .csf-graph-legend {
-  --csf-legend-accent: #60a5fa;
+[data-theme='dark'] .csf-graph-zoom button:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.075);
 }
 
-html:not([data-theme='dark']) .csf-graph-legend {
-  --csf-legend-accent: #0284c7;
-}
-
-.csf-graph-scroll {
-  position: relative;
-  width: 100%;
-}
-
-[data-theme='dark'] .csf-graph-wrapper {
-  background-color: rgba(255, 255, 255, 0.018);
-  border-color: rgba(255, 255, 255, 0.055);
-}
-
-/* Fractionally darker than the page, so the cream node cards read as raised
-   on it rather than as holes in it. */
-html:not([data-theme='dark']) .csf-graph-wrapper {
-  background-color: rgba(60, 46, 20, 0.022);
+html:not([data-theme='dark']) .csf-graph-zoom {
+  background-color: rgba(255, 255, 255, 0.82);
   border-color: var(--csf-border-subtle, #e3dcce);
 }
 
-.csf-graph-svg-wrapper {
+html:not([data-theme='dark']) .csf-graph-zoom button:hover:not(:disabled) {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.csf-graph-surface {
   position: relative;
   width: 100%;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  /* pan-y, not none: a vertical swipe has to keep scrolling the page, or a
+     reader meets a graph taller than their phone and cannot get past it. A
+     sideways drag is ours, which is what the scrollbox here used to do. */
+  touch-action: pan-y;
 }
 
-/* The dots take the text colour, so they invert with the theme on their own.
-   Masked to fade out towards the edges, which stops the grid short of the
-   panel's border instead of letting the border slice through it. */
-.csf-graph-svg-wrapper::before {
-  content: '';
-  position: absolute;
-  inset: 0 -0.75rem -1rem;
-  pointer-events: none;
-  z-index: 0;
-  background-image: radial-gradient(currentColor 1px, transparent 1px);
-  background-size: 24px 24px;
-  background-position: center;
-  -webkit-mask-image: radial-gradient(125% 115% at 50% 42%, #000 40%, transparent 100%);
-  mask-image: radial-gradient(125% 115% at 50% 42%, #000 40%, transparent 100%);
+.csf-graph-surface:active {
+  cursor: grabbing;
 }
 
-[data-theme='dark'] .csf-graph-svg-wrapper::before {
-  opacity: 0.14;
-}
-
-html:not([data-theme='dark']) .csf-graph-svg-wrapper::before {
-  opacity: 0.1;
-}
-
+/* Absolutely filling the surface, because the surface sets the shape of the
+   window now and the svg must take it rather than impose its own. */
 .csf-graph-svg {
-  position: relative;
-  z-index: 1;
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
-  overflow: visible;
-}
-
-/* Mobile: allow the roadmap to breathe - horizontal scroll on tiny screens */
-@media screen and (max-width: 600px) {
-  .csf-graph-wrapper {
-    padding: 0.8rem 0.6rem 0.75rem;
-    border-radius: 14px;
-  }
-
-  /* The frame and its header stay put; only this slides. */
-  .csf-graph-scroll {
-    overflow-x: auto;
-    /* hidden, not visible: a box with one axis scrolling cannot leave the
-       other visible, so the browser turns visible into auto. The dot grid
-       is absolutely positioned and bleeds past the bottom edge, which counts
-       as scrollable overflow, so auto put a second scrollbar down the side
-       of the graph. Measured: take the grid away and the overflow is zero. */
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    padding-bottom: 0.35rem;
-  }
-
-  /* Three legend items do not fit next to the title on a phone, and wrapping
-     them onto their own line pushes the graph down for something that is
-     read once. */
-  .csf-graph-legend {
-    display: none;
-  }
-
-  .csf-graph-svg-wrapper {
-    /* Wide enough that a node label is still readable once the viewBox is
-       scaled to fit it. Narrower fits more of the graph on screen at the
-       cost of the labels, which is the wrong trade when you are going to
-       scroll either way. */
-    min-width: 700px;
-    width: 700px;
-  }
-
-  .csf-graph-svg {
-    width: 100%;
-  }
+  /* hidden, because the graph moves inside this box now and panned content
+     would otherwise be drawn across the rest of the page. The cost is that a
+     hover glow clips at the edge, and there is enough margin in the viewBox
+     that it does not reach. */
+  overflow: hidden;
 }
 
 /* Connector wires - gradient tinted from source accent to target accent */
@@ -2481,10 +2490,6 @@ html:not([data-theme='dark']) .csf-graph-edge {
 
 html:not([data-theme='dark']) .csf-graph-node-count {
   fill: color-mix(in srgb, var(--node-accent) 56%, var(--csf-ink));
-}
-
-html:not([data-theme='dark']) .csf-graph-svg-wrapper::before {
-  opacity: 0.3;
 }
 
 /* ------------------------------------------------------------ code */
