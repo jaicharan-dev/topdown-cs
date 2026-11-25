@@ -32,17 +32,22 @@ export default function NavbarStats() {
   return (
     <Link
       to="/progress"
-      className={styles.pill}
-      title={`Level ${level.level}, ${rank.name}, ${formatDuration(
+      className={`csf-tip ${styles.pill}`}
+      data-csf-tip={`Level rises with time spent reading. Rank rises with what you finish. ${formatDuration(
         stats.totalSeconds
-      )} read`}>
+      )} read so far`}>
+      {/* Spelled out rather than abbreviated. "Lv 7" beside a word nobody
+          asked for reads as a game score; "Level 7" reads as a fact. */}
       <span className={styles.level}>
-        <span className={styles.levelWord}>Lv</span>
+        <span className={styles.levelWord}>Level</span>
         <span className={styles.levelNumber}>{level.level}</span>
       </span>
       <span className={styles.divider} aria-hidden="true" />
-      <span className={styles.rank} style={{ color: rank.color }}>
-        {rank.name}
+      <span className={styles.rank}>
+        <span className={styles.rankWord}>Rank</span>
+        <span className={styles.rankName} style={{ color: rank.color }}>
+          {rank.name}
+        </span>
       </span>
       {/* The bar is how far through the current level they are, which is the
           number that moves on an ordinary evening. */}

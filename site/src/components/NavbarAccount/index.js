@@ -1,11 +1,14 @@
 /**
  * The account control in the navbar: a picture that opens a small editor.
  *
- * Signed out, with accounts configured, it is a Log in button instead. With
- * no Supabase project configured there is nothing to log into, so it stays a
- * picture and edits a profile that lives only in this browser; the rest of
- * the site already behaves that way and an account button that cannot work
- * would be worse than none.
+ * Signed out it is a Sign in button, not an empty avatar. A circle with a
+ * question mark in it is the site admitting it does not know who you are,
+ * which is both unfriendly and useless; a button says what to do about it.
+ *
+ * With no Supabase project configured there is nothing to sign into, so it
+ * stays a picture and edits a profile that lives only in this browser. The
+ * rest of the site already behaves that way, and a sign in button that
+ * cannot work would be worse than none.
  *
  * The name and picture are kept in the progress store rather than beside it,
  * which means they ride the existing sync to other devices for nothing.
@@ -29,6 +32,16 @@ function displayName(profile, user) {
   return meta.full_name || meta.name || user?.email || '';
 }
 
+/** Stands in for a picture nobody has set. Anything but a question mark. */
+function PersonMark() {
+  return (
+    <svg className={styles.personMark} viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="8.5" r="3.6" />
+      <path d="M4.8 20c0-3.6 3.2-5.8 7.2-5.8s7.2 2.2 7.2 5.8" />
+    </svg>
+  );
+}
+
 export default function NavbarAccount() {
   const { ready, store, updateProfile } = useProgress();
   const { enabled, user, status, signIn, signOut } = useCloudSync();
@@ -44,7 +57,7 @@ export default function NavbarAccount() {
   const profile = store?.profile || { name: '', avatar: '' };
   const name = displayName(profile, user);
   const picture = profile.avatar || googleAvatar(user);
-  const initials = initialsFor(profile.name, name) || '?';
+  const initials = initialsFor(profile.name, name);
 
   // The panel follows the stored name until it is opened, so another device's
   // edit is not overwritten by a field that was filled in before it arrived.
@@ -90,29 +103,35 @@ export default function NavbarAccount() {
     setOpen(false);
   };
 
-  // Signed out with accounts available: a button, not an empty avatar.
+  // Signed out with accounts available: a button that says what it is for.
   if (enabled && !user && status !== 'loading') {
     return (
-      <button type="button" className={styles.login} onClick={signIn}>
-        Log in
+      <button
+        type="button"
+        className={`csf-navbar-account csf-tip ${styles.signIn}`}
+        data-csf-tip="Sign in to save your progress and read it on any device"
+        onClick={signIn}>
+        Sign in
       </button>
     );
   }
 
   return (
-    <div className={styles.wrapper} ref={wrapperRef}>
+    <div className={`csf-navbar-account csf-tip ${styles.wrapper}`} ref={wrapperRef} data-csf-tip={
+      name ? `Signed in as ${name}. Edit your name and picture` : 'Your name and picture'
+    }>
       <button
         type="button"
         className={styles.trigger}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={name ? `Account: ${name}` : 'Your account'}
+        aria-label={name ? `Account: ${name}` : 'Your profile'}
         onClick={() => setOpen((value) => !value)}>
         {picture ? (
           <img className={styles.avatar} src={picture} alt="" />
         ) : (
-          <span className={styles.avatar} data-initials="true">
-            {ready ? initials : ''}
+          <span className={styles.avatar} data-initials={initials ? 'true' : 'false'}>
+            {ready && initials ? initials : <PersonMark />}
           </span>
         )}
       </button>
@@ -128,8 +147,10 @@ export default function NavbarAccount() {
               {picture ? (
                 <img className={styles.bigAvatar} src={picture} alt="" />
               ) : (
-                <span className={styles.bigAvatar} data-initials="true">
-                  {initials}
+                <span
+                  className={styles.bigAvatar}
+                  data-initials={initials ? 'true' : 'false'}>
+                  {initials || <PersonMark />}
                 </span>
               )}
               <span className={styles.pictureHint}>
@@ -188,9 +209,7 @@ export default function NavbarAccount() {
           )}
 
           {!enabled && (
-            <p className={styles.note}>
-              Saved in this browser only.
-            </p>
+            <p className={styles.note}>Saved in this browser only.</p>
           )}
         </div>
       )}

@@ -307,6 +307,27 @@ export function setProfile(store, patch, now = new Date()) {
   return next;
 }
 
+/**
+ * Completed pages split by difficulty, for the ring on the homepage.
+ *
+ * Counted from the pages themselves rather than from a stored tally: a tally
+ * would be a second source of truth for something already recorded, and the
+ * two would drift the first time a page changed difficulty.
+ */
+export function difficultyBreakdown(store, manifest) {
+  const done = store?.completed || {};
+  const out = {};
+  for (const [key, total] of Object.entries(manifest.difficulties || {})) {
+    out[key] = { done: 0, total };
+  }
+  for (const page of manifest.pages) {
+    if (!done[page.id]) continue;
+    const bucket = out[page.difficulty];
+    if (bucket) bucket.done += 1;
+  }
+  return out;
+}
+
 /** Seconds read across a set of manifest groups. */
 export function sectionSeconds(store, groups = []) {
   const sections = store?.sections || {};

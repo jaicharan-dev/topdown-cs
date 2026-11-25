@@ -692,6 +692,109 @@ html[data-theme='dark'] .prism-code .token.punctuation {
    15. HOMEPAGE - Hero & Subject Cards
    =================================================================== */
 
+/* ----- Navbar pills and tooltips -----
+   Progress is a plain navbar link, so it is given the same surface the
+   custom controls draw for themselves rather than sitting as bare text
+   between two boxes. */
+.navbar__items--right .csf-navbar-pill {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 0.7rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  font-size: 0.76rem;
+  font-weight: 600;
+  line-height: 1;
+  transition: background-color 0.15s ease;
+}
+
+[data-theme='dark'] .csf-navbar-pill {
+  background-color: rgba(255, 255, 255, 0.055);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='dark'] .csf-navbar-pill:hover {
+  background-color: rgba(255, 255, 255, 0.09);
+}
+
+html:not([data-theme='dark']) .csf-navbar-pill {
+  background-color: rgba(0, 0, 0, 0.04);
+  border-color: var(--csf-border-subtle, #e3dcce);
+}
+
+html:not([data-theme='dark']) .csf-navbar-pill:hover {
+  background-color: rgba(0, 0, 0, 0.07);
+}
+
+/* The colour mode toggle is rendered by the theme after every configured
+   item, so the only way to put the account past it is to order it there.
+   The far corner is where a reader looks for their own account. */
+.navbar__items--right .csf-navbar-account {
+  order: 1;
+  margin-left: 0.5rem;
+}
+
+/* A tooltip for anything carrying data-csf-tip. CSS rather than a component
+   because every control that wants one is already a button or a link: there
+   is nothing to mount, nothing to position in script, and no way for it to
+   drift from the element it describes. */
+.csf-tip {
+  position: relative;
+}
+
+.csf-tip::after {
+  content: attr(data-csf-tip);
+  position: absolute;
+  top: calc(100% + 9px);
+  right: 0;
+  z-index: 400;
+  width: max-content;
+  max-width: 230px;
+  padding: 0.4rem 0.55rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.72rem;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: left;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(-3px);
+  transition: opacity 0.15s ease 0.35s, transform 0.15s ease 0.35s;
+}
+
+.csf-tip:hover::after,
+.csf-tip:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+[data-theme='dark'] .csf-tip::after {
+  background-color: #26262b;
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #e4e4e7;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+html:not([data-theme='dark']) .csf-tip::after {
+  background-color: #ffffff;
+  border-color: var(--csf-border-subtle, #e3dcce);
+  color: #3f3f46;
+  box-shadow: 0 10px 24px rgba(50, 40, 30, 0.14);
+}
+
+/* No hover on a touch screen, so the tooltip would only ever appear stuck to
+   whatever was last tapped. */
+@media (hover: none) {
+  .csf-tip::after {
+    display: none;
+  }
+}
+
 /* On a phone the wordmark is the brand. The logo is 44px of decoration
    beside a name that was being truncated to "TopD...", and the name is now
    the only place the site says what it is called. */
@@ -754,6 +857,11 @@ html[data-theme='dark'] .prism-code .token.punctuation {
   /* 198px, not less: "CS Fundamentals" plus its count wraps below this
      once the rail box and the tab padding have taken their share. */
   --csf-rail-w: 198px;
+  /* Tall enough that the footer starts below the fold rather than peeking
+     into it. The grid is the page's background, so a short homepage ended it
+     a third of the way down the screen with the legal links sitting in the
+     gap, which read as the end of the site rather than the start of it. */
+  min-height: calc(100vh - var(--ifm-navbar-height, 60px));
   width: 100%;
   max-width: 1404px;
   margin: 0 auto;

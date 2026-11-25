@@ -3,7 +3,7 @@
  *
  * Sits in the column that used to be reserved and empty. That column existed
  * only to balance the rail so the flowchart could sit on the page's centre
- * line; filling it with the two numbers that make somebody come back costs
+ * line; filling it with the numbers that make somebody come back costs
  * nothing and keeps the graph exactly where it was.
  *
  * Level and rank measure different things on purpose. Rank is what you have
@@ -14,10 +14,15 @@
 
 import React from 'react';
 import Link from '@docusaurus/Link';
+import DifficultyRing from '@site/src/components/DifficultyRing';
 import manifest from '@site/src/data/contentManifest.json';
 import useProgress from '@site/src/hooks/useProgress';
 import { describeNextLevel, levelFromSeconds } from '@site/src/lib/levels';
-import { activityStats, summarise } from '@site/src/lib/progressStore';
+import {
+  activityStats,
+  difficultyBreakdown,
+  summarise,
+} from '@site/src/lib/progressStore';
 import { rankProgress } from '@site/src/lib/ranks';
 import { formatDuration } from '@site/src/lib/timeTracker';
 import styles from './styles.module.css';
@@ -33,6 +38,7 @@ export default function HomeStats() {
   const level = levelFromSeconds(stats.totalSeconds);
   const ladder = rankProgress(summary.completedPoints);
   const nextLevel = describeNextLevel(level);
+  const breakdown = difficultyBreakdown(store, manifest);
 
   return (
     /* The global class is a layout hook: the homepage grid has to place this
@@ -41,16 +47,21 @@ export default function HomeStats() {
     <aside
       className={`csf-home-stats ${styles.box}`}
       data-ready={ready ? 'true' : 'false'}>
+      <DifficultyRing
+        breakdown={breakdown}
+        done={summary.completedPages}
+        total={summary.totalPages}
+      />
+
+      <div className={styles.divider} />
+
       <div className={styles.levelBlock}>
         <div className={styles.levelRow}>
           <span className={styles.levelWord}>Level</span>
           <span className={styles.levelNumber}>{level.level}</span>
         </div>
         <div className={styles.track}>
-          <div
-            className={styles.fill}
-            style={{ width: `${level.percent}%` }}
-          />
+          <div className={styles.fill} style={{ width: `${level.percent}%` }} />
         </div>
         <p className={styles.hint}>
           {nextLevel || 'Top level. Nothing left to prove.'}
@@ -60,10 +71,14 @@ export default function HomeStats() {
       <div className={styles.divider} />
 
       <div className={styles.rankBlock}>
-        <span className={styles.label}>Rank</span>
-        <span className={styles.rankName} style={{ color: ladder.rank.color }}>
-          {ladder.rank.name}
-        </span>
+        {/* "Rank Novice", not a label above a word: the two read as one
+            phrase and that is how they are meant. */}
+        <div className={styles.rankRow}>
+          <span className={styles.label}>Rank</span>
+          <span className={styles.rankName} style={{ color: ladder.rank.color }}>
+            {ladder.rank.name}
+          </span>
+        </div>
         <div className={styles.track}>
           <div
             className={styles.fill}
@@ -85,20 +100,15 @@ export default function HomeStats() {
           <dd className={styles.value}>{formatDuration(stats.totalSeconds)}</dd>
         </div>
         <div className={styles.figure}>
-          <dt className={styles.label}>Pages done</dt>
-          <dd className={styles.value}>
-            {summary.completedPages}
-            <span className={styles.of}>/{summary.totalPages}</span>
-          </dd>
-        </div>
-        <div className={styles.figure}>
           <dt className={styles.label}>Active days</dt>
           <dd className={styles.value}>{stats.activeDays}</dd>
         </div>
       </dl>
 
-      <Link className={styles.more} to="/progress">
-        Full progress
+      {/* History rather than the dashboard: Progress is already a button in
+          the navbar, so a second way to the same page is a wasted line. */}
+      <Link className={styles.more} to="/progress?tab=history">
+        Recently read
       </Link>
     </aside>
   );

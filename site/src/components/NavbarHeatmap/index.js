@@ -42,6 +42,9 @@ export default function NavbarHeatmap() {
   if (!ready) return <span className={styles.placeholder} aria-hidden="true" />;
 
   return (
+    /* No tooltip here. The panel opens on the same hover a tooltip would
+       use, so the two would always appear together, and a strip of a year's
+       reading explains itself better than a sentence about it could. */
     <div
       className={styles.wrapper}
       ref={wrapperRef}

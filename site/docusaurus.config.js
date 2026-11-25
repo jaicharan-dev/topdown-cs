@@ -217,13 +217,29 @@ const config = {
           src: 'img/logo.png',
           srcDark: 'img/logo.png',
         },
+        // Order matters here. The search bar is placed by hand rather than
+        // left to the theme, which appends it last: the account belongs in
+        // the far corner, and that is the only way to put anything after it.
         items: [
-          { to: '/progress', label: 'Progress', position: 'right' },
+          {
+            to: '/progress',
+            label: 'Progress',
+            position: 'right',
+            // Gives it the same pill the custom controls draw for
+            // themselves, instead of bare text between two boxes, and the
+            // same hover note as the controls beside it. Unknown props on a
+            // navbar item are spread onto the link, which is what carries
+            // the data attribute through.
+            className: 'csf-navbar-pill csf-tip',
+            'data-csf-tip':
+              'Everything you have read, your rank, and your reading history',
+          },
           // Custom kinds, defined in src/theme/NavbarItem/ComponentTypes.js.
           // Level and rank follow the reader around the site rather than
           // living only on a dashboard they have to go and find.
           { type: 'custom-heatmap', position: 'right' },
           { type: 'custom-stats', position: 'right' },
+          { type: 'search', position: 'right' },
           { type: 'custom-account', position: 'right' },
         ],
       },

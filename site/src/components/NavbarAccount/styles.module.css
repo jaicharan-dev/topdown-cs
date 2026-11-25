@@ -5,7 +5,7 @@
   margin-left: 0.4rem;
 }
 
-.login {
+.signIn {
   padding: 0.3rem 0.8rem;
   border: 1px solid transparent;
   border-radius: 999px;
@@ -17,7 +17,7 @@
   transition: filter 0.15s ease;
 }
 
-.login:hover {
+.signIn:hover {
   filter: brightness(1.08);
 }
 
@@ -54,6 +54,24 @@
 .avatar[data-initials='true'] {
   background: linear-gradient(135deg, #60a5fa, #a78bfa);
   color: #ffffff;
+}
+
+/* No picture and no name. A plain figure, not a question mark: the site not
+   knowing who you are is not a thing to ask the reader about. */
+.avatar[data-initials='false'],
+.bigAvatar[data-initials='false'] {
+  background: transparent;
+  border: 1px solid currentColor;
+  opacity: 0.55;
+}
+
+.personMark {
+  width: 60%;
+  height: 60%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
 }
 
 .panel {

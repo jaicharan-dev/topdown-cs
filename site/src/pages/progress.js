@@ -13,6 +13,7 @@
  */
 
 import Link from '@docusaurus/Link';
+import { useLocation } from '@docusaurus/router';
 import Layout from '@theme/Layout';
 import React, { useEffect, useMemo, useState } from 'react';
 import AccountCard from '@site/src/components/AccountCard';
@@ -150,11 +151,39 @@ function History({ visits, groups }) {
 }
 
 export default function Progress() {
-  const { ready, store, reset } = useProgress();
+  const { ready, store } = useProgress();
   const cloudEnabled = useCloudEnabled();
   const { user } = useCloudSync();
 
   const [tab, setTab] = useState('subjects');
+  const location = useLocation();
+
+  // Followed rather than read once: the homepage links straight to the
+  // history, and in a single page app arriving at a URL that differs only in
+  // its query often remounts nothing at all.
+  //
+  // A parameter and not a hash, because Docusaurus checks anchors against the
+  // headings it collected from MDX and warns about every id a React page
+  // writes for itself, however real it is.
+  useEffect(() => {
+    const wanted = new URLSearchParams(location.search).get('tab');
+    setTab(wanted === 'history' ? 'history' : 'subjects');
+  }, [location.search]);
+
+  // replaceState rather than a router push: clicking a tab is not somewhere
+  // to go back to, and pushing would make Back walk the tabs instead of
+  // leaving the page. It also leaves useLocation untouched, so the effect
+  // above does not fire and argue with what was just chosen.
+  const selectTab = (next) => {
+    setTab(next);
+    window.history.replaceState(
+      null,
+      '',
+      next === 'history'
+        ? `${window.location.pathname}?tab=history`
+        : window.location.pathname
+    );
+  };
 
   // The heatmap needs today's date, which must not be read during render on a
   // prerendered page: the server would stamp it with the build date.
@@ -207,14 +236,6 @@ export default function Progress() {
   const dsaBlocks = Object.keys(manifest.blocks)
     .filter((key) => manifest.blocks[key].group === 'dsa')
     .sort(byBlockOrder);
-
-  const onReset = () => {
-    const confirmed = window.confirm(
-      'Clear all of your progress? This cannot be undone, and it only affects ' +
-        'this browser.'
-    );
-    if (confirmed) reset();
-  };
 
   return (
     <Layout
@@ -340,7 +361,7 @@ export default function Progress() {
               role="tab"
               className={styles.tab}
               aria-selected={tab === 'subjects'}
-              onClick={() => setTab('subjects')}>
+              onClick={() => selectTab('subjects')}>
               By subject
             </button>
             <button
@@ -348,7 +369,7 @@ export default function Progress() {
               role="tab"
               className={styles.tab}
               aria-selected={tab === 'history'}
-              onClick={() => setTab('history')}>
+              onClick={() => selectTab('history')}>
               History
             </button>
           </div>
@@ -404,6 +425,11 @@ export default function Progress() {
 
         <AccountCard />
 
+        {/* The note stays and the button does not. Where somebody's data
+            lives is worth saying; a one click way to destroy all of it,
+            sitting under the page that shows how much there is to lose, is
+            not worth offering. Clearing site data still clears it, and the
+            account card above can delete the stored copy. */}
         <section className={styles.footerCard}>
           <div>
             <h2 className={styles.cardTitle}>Your data</h2>
@@ -415,13 +441,6 @@ export default function Progress() {
                 : 'Nothing is uploaded, and there is no account to create.'}
             </p>
           </div>
-          <button
-            type="button"
-            className={styles.reset}
-            onClick={onReset}
-            disabled={!ready}>
-            Clear progress
-          </button>
         </section>
       </main>
     </Layout>

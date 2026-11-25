@@ -56,8 +56,22 @@
 }
 
 .rank {
-  font-weight: 650;
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
   white-space: nowrap;
+}
+
+.rankWord {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.rankName {
+  font-weight: 650;
 }
 
 /* Along the bottom edge, so it reads as the pill filling up rather than as
@@ -109,6 +123,6 @@ html:not([data-theme='dark']) .pill:hover {
   }
 
   .placeholder {
-    width: 56px;
+    width: 72px;
   }
 }

@@ -116,3 +116,79 @@
     justify-content: center;
   }
 }
+
+
+/* The offer that follows a first tick while signed out. Styled as a quiet
+   note rather than a banner: it is a suggestion, and the work it refers to
+   has already been saved either way. */
+.prompt {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.6rem 1rem;
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+}
+
+.promptText {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  max-width: 46ch;
+}
+
+.promptText strong {
+  font-weight: 650;
+}
+
+.promptActions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: none;
+}
+
+.signIn {
+  padding: 0.34rem 0.85rem;
+  border: none;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--csf-progress-accent, #16a34a);
+  color: #ffffff;
+}
+
+.signIn:hover {
+  filter: brightness(1.08);
+}
+
+.later {
+  padding: 0.34rem 0.6rem;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.82rem;
+  cursor: pointer;
+  opacity: 0.6;
+}
+
+.later:hover {
+  opacity: 1;
+}
+
+[data-theme='dark'] .prompt {
+  background-color: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.09);
+}
+
+html:not([data-theme='dark']) .prompt {
+  background-color: rgba(0, 0, 0, 0.025);
+  border-color: var(--csf-border-subtle, #e3dcce);
+}

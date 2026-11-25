@@ -1,0 +1,97 @@
+.wrapper {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: center;
+}
+
+.ringBox {
+  position: relative;
+  width: 100%;
+  max-width: 132px;
+}
+
+.ring {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* The band's own colour, faint: the part of this difficulty still to do. */
+.track {
+  fill: none;
+  opacity: 0.17;
+  stroke-linecap: round;
+}
+
+.fill {
+  fill: none;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.centre {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  pointer-events: none;
+}
+
+.done {
+  font-size: 1.5rem;
+  font-weight: 750;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.of {
+  font-size: 0.72rem;
+  font-weight: 600;
+  opacity: 0.45;
+  font-variant-numeric: tabular-nums;
+}
+
+.word {
+  margin-top: 0.15rem;
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.4;
+}
+
+.legend {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 0.15rem 0.7rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  width: 100%;
+  justify-content: center;
+}
+
+.legendRow {
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+}
+
+.legendLabel {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.legendCount {
+  font-size: 0.72rem;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.legendOf {
+  font-weight: 500;
+  opacity: 0.4;
+}
