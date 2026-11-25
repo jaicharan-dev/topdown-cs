@@ -30,6 +30,7 @@ export default function RoadmapGraph({
   progressFor,
   idPrefix,
   label,
+  title,
 }) {
   const [hoveredNode, setHoveredNode] = useState(null);
   const history = useHistory();
@@ -96,210 +97,239 @@ export default function RoadmapGraph({
 
   return (
     <div className="csf-graph-wrapper">
-      <div className="csf-graph-svg-wrapper">
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          className="csf-graph-svg"
-          preserveAspectRatio="xMidYMid meet"
-          role="group"
-          aria-label={label}
-          onTouchEnd={clearHover}>
-          <defs>
-            {edges.map((edge, index) => {
-              const p = getPorts(edge);
-              if (!p) return null;
-              return (
-                <linearGradient
-                  key={`grad-${index}`}
-                  id={`${idPrefix}-wire-${index}`}
-                  gradientUnits="userSpaceOnUse"
-                  x1={p.x1}
-                  y1={p.y1}
-                  x2={p.x2}
-                  y2={p.y2}>
-                  <stop offset="0%" stopColor={p.source.accent} />
-                  <stop offset="100%" stopColor={p.target.accent} />
-                </linearGradient>
-              );
-            })}
-          </defs>
+      {/* The title used to float above the frame as a loose line of text.
+          Inside it, against a divider and with the legend opposite, the panel
+          reads as one designed thing rather than a diagram with a caption. */}
+      <div className="csf-graph-header">
+        <p className="csf-graph-title">{title}</p>
+        {/* Nothing else on the page says what the colours mean. A card
+            brightening as its topic fills up is the whole point of the
+            homepage, and until now you had to complete something to find
+            that out. */}
+        <ul className="csf-graph-legend">
+          <li>
+            <span className="csf-graph-legend__swatch is-none" aria-hidden="true" />
+            Not started
+          </li>
+          <li>
+            <span className="csf-graph-legend__swatch is-partial" aria-hidden="true" />
+            In progress
+          </li>
+          <li>
+            <span className="csf-graph-legend__swatch is-done" aria-hidden="true" />
+            Done
+          </li>
+        </ul>
+      </div>
 
-          <g className="csf-graph-edges">
-            {edges.map((edge, index) => {
-              if (!nodeMap[edge.from] || !nodeMap[edge.to]) return null;
+      {/* The scroller is this element and not the frame around it, so on a
+          narrow screen the graph slides under a header that stays put. */}
+      <div className="csf-graph-scroll">
+        <div className="csf-graph-svg-wrapper">
+          <svg
+            viewBox={`0 0 ${width} ${height}`}
+            className="csf-graph-svg"
+            preserveAspectRatio="xMidYMid meet"
+            role="group"
+            aria-label={label}
+            onTouchEnd={clearHover}>
+            <defs>
+              {edges.map((edge, index) => {
+                const p = getPorts(edge);
+                if (!p) return null;
+                return (
+                  <linearGradient
+                    key={`grad-${index}`}
+                    id={`${idPrefix}-wire-${index}`}
+                    gradientUnits="userSpaceOnUse"
+                    x1={p.x1}
+                    y1={p.y1}
+                    x2={p.x2}
+                    y2={p.y2}>
+                    <stop offset="0%" stopColor={p.source.accent} />
+                    <stop offset="100%" stopColor={p.target.accent} />
+                  </linearGradient>
+                );
+              })}
+            </defs>
 
-              const highlighted = isEdgeHighlighted(edge);
-              const dimmed = hoveredNode && !highlighted;
-              const d = getConnectorPath(edge);
+            <g className="csf-graph-edges">
+              {edges.map((edge, index) => {
+                if (!nodeMap[edge.from] || !nodeMap[edge.to]) return null;
 
-              return (
-                <g key={`${edge.from}-${edge.to}-${index}`}>
-                  <path
-                    d={d}
-                    stroke={`url(#${idPrefix}-wire-${index})`}
-                    className={`csf-graph-edge ${
-                      highlighted ? 'csf-graph-edge--highlighted' : ''
-                    } ${dimmed ? 'csf-graph-edge--dimmed' : ''}`}
-                  />
-                  {highlighted && (
+                const highlighted = isEdgeHighlighted(edge);
+                const dimmed = hoveredNode && !highlighted;
+                const d = getConnectorPath(edge);
+
+                return (
+                  <g key={`${edge.from}-${edge.to}-${index}`}>
                     <path
                       d={d}
                       stroke={`url(#${idPrefix}-wire-${index})`}
-                      className="csf-graph-edge csf-graph-edge__pulse"
+                      className={`csf-graph-edge ${
+                        highlighted ? 'csf-graph-edge--highlighted' : ''
+                      } ${dimmed ? 'csf-graph-edge--dimmed' : ''}`}
                     />
-                  )}
-                </g>
-              );
-            })}
-          </g>
-
-          <g className="csf-graph-nodes">
-            {nodes.map((node) => {
-              const { done, total } = progressFor(node.id);
-              const hasProgress = done > 0 && total > 0;
-              const railWidth = node.w - 36;
-              const doneState =
-                total > 0 && done >= total
-                  ? 'complete'
-                  : done > 0
-                    ? 'partial'
-                    : 'none';
-              const isHovered = hoveredNode === node.id;
-              const isConnected =
-                hoveredNode &&
-                edges.some(
-                  (e) =>
-                    (e.from === hoveredNode && e.to === node.id) ||
-                    (e.to === hoveredNode && e.from === node.id)
+                    {highlighted && (
+                      <path
+                        d={d}
+                        stroke={`url(#${idPrefix}-wire-${index})`}
+                        className="csf-graph-edge csf-graph-edge__pulse"
+                      />
+                    )}
+                  </g>
                 );
-              const isDimmed = hoveredNode && !isHovered && !isConnected;
+              })}
+            </g>
 
-              return (
-                <g
-                  key={node.id}
-                  className={`csf-graph-node-group is-done-${doneState} ${
-                    isHovered ? 'is-hovered' : ''
-                  } ${isConnected ? 'is-connected' : ''} ${
-                    isDimmed ? 'is-dimmed' : ''
-                  }`}
-                  transform={`translate(${node.x}, ${node.y})`}
-                  style={{
-                    '--node-accent': node.accent,
-                    // drives the saturation ramp in CSS
-                    '--progress': total > 0 ? done / total : 0,
-                    cursor: node.href ? 'pointer' : 'default',
-                  }}
-                  onClick={() => node.href && history.push(node.href)}
-                  onKeyDown={(e) => {
-                    if ((e.key === 'Enter' || e.key === ' ') && node.href) {
-                      e.preventDefault();
-                      history.push(node.href);
-                    }
-                  }}
-                  onMouseEnter={() => setHoveredNode(node.id)}
-                  onMouseLeave={clearHover}
-                  onTouchStart={(e) => {
-                    e.stopPropagation();
-                    setHoveredNode(node.id);
-                  }}
-                  /* A node with nowhere to go is not a button and does not
-                     take focus: a hub node that summarises the graph would
-                     otherwise be a tab stop that does nothing when pressed. */
-                  {...(node.href ? { tabIndex: '0', role: 'button' } : {})}
-                  aria-label={
-                    hasProgress
-                      ? `${node.label}, ${done} of ${total} done`
-                      : total > 0
-                        ? `${node.label}, ${total} pages`
-                        : node.label
-                  }>
-                  <rect
-                    x={-node.w / 2 - 12}
-                    y={-node.h / 2 - 12}
-                    width={node.w + 24}
-                    height={node.h + 24}
-                    fill="transparent"
-                    pointerEvents="all"
-                    className="csf-graph-hit-box"
-                  />
+            <g className="csf-graph-nodes">
+              {nodes.map((node) => {
+                const { done, total } = progressFor(node.id);
+                const hasProgress = done > 0 && total > 0;
+                const railWidth = node.w - 36;
+                const doneState =
+                  total > 0 && done >= total
+                    ? 'complete'
+                    : done > 0
+                      ? 'partial'
+                      : 'none';
+                const isHovered = hoveredNode === node.id;
+                const isConnected =
+                  hoveredNode &&
+                  edges.some(
+                    (e) =>
+                      (e.from === hoveredNode && e.to === node.id) ||
+                      (e.to === hoveredNode && e.from === node.id)
+                  );
+                const isDimmed = hoveredNode && !isHovered && !isConnected;
 
-                  <rect
-                    x={-node.w / 2}
-                    y={-node.h / 2}
-                    width={node.w}
-                    height={node.h}
-                    rx="12"
-                    ry="12"
-                    pointerEvents="none"
-                    className="csf-graph-node-card"
-                  />
+                return (
+                  <g
+                    key={node.id}
+                    className={`csf-graph-node-group is-done-${doneState} ${
+                      isHovered ? 'is-hovered' : ''
+                    } ${isConnected ? 'is-connected' : ''} ${
+                      isDimmed ? 'is-dimmed' : ''
+                    }`}
+                    transform={`translate(${node.x}, ${node.y})`}
+                    style={{
+                      '--node-accent': node.accent,
+                      // drives the saturation ramp in CSS
+                      '--progress': total > 0 ? done / total : 0,
+                      cursor: node.href ? 'pointer' : 'default',
+                    }}
+                    onClick={() => node.href && history.push(node.href)}
+                    onKeyDown={(e) => {
+                      if ((e.key === 'Enter' || e.key === ' ') && node.href) {
+                        e.preventDefault();
+                        history.push(node.href);
+                      }
+                    }}
+                    onMouseEnter={() => setHoveredNode(node.id)}
+                    onMouseLeave={clearHover}
+                    onTouchStart={(e) => {
+                      e.stopPropagation();
+                      setHoveredNode(node.id);
+                    }}
+                    /* A node with nowhere to go is not a button and does not
+                       take focus: a hub node that summarises the graph would
+                       otherwise be a tab stop that does nothing when pressed. */
+                    {...(node.href ? { tabIndex: '0', role: 'button' } : {})}
+                    aria-label={
+                      hasProgress
+                        ? `${node.label}, ${done} of ${total} done`
+                        : total > 0
+                          ? `${node.label}, ${total} pages`
+                          : node.label
+                    }>
+                    <rect
+                      x={-node.w / 2 - 12}
+                      y={-node.h / 2 - 12}
+                      width={node.w + 24}
+                      height={node.h + 24}
+                      fill="transparent"
+                      pointerEvents="all"
+                      className="csf-graph-hit-box"
+                    />
 
-                  {/* The accent rail along the top edge doubles as the
-                      progress bar: this rect is the track and the next is the
-                      filled part. Every incoming wire lands on it. */}
-                  <rect
-                    x={-node.w / 2 + 18}
-                    y={-node.h / 2 - 2}
-                    width={railWidth}
-                    height={4}
-                    rx="2"
-                    pointerEvents="none"
-                    className="csf-graph-node-tab"
-                    fill={node.accent}
-                    {...(hasProgress
-                      ? {
-                          // Inline, because an inline style beats both the
-                          // base rule and the theme scoped ones. Alpha rather
-                          // than opacity so it reads correctly on a dark card
-                          // and on a white one.
-                          style: {
-                            fill: `color-mix(in srgb, ${node.accent} 30%, transparent)`,
-                          },
-                        }
-                      : {})}
-                  />
+                    <rect
+                      x={-node.w / 2}
+                      y={-node.h / 2}
+                      width={node.w}
+                      height={node.h}
+                      rx="12"
+                      ry="12"
+                      pointerEvents="none"
+                      className="csf-graph-node-card"
+                    />
 
-                  {hasProgress && (
+                    {/* The accent rail along the top edge doubles as the
+                        progress bar: this rect is the track and the next is the
+                        filled part. Every incoming wire lands on it. */}
                     <rect
                       x={-node.w / 2 + 18}
                       y={-node.h / 2 - 2}
-                      width={Math.max(4, (railWidth * done) / total)}
+                      width={railWidth}
                       height={4}
                       rx="2"
                       pointerEvents="none"
-                      className="csf-graph-node-tab-fill"
+                      className="csf-graph-node-tab"
                       fill={node.accent}
+                      {...(hasProgress
+                        ? {
+                            // Inline, because an inline style beats both the
+                            // base rule and the theme scoped ones. Alpha rather
+                            // than opacity so it reads correctly on a dark card
+                            // and on a white one.
+                            style: {
+                              fill: `color-mix(in srgb, ${node.accent} 30%, transparent)`,
+                            },
+                          }
+                        : {})}
                     />
-                  )}
 
-                  <text
-                    x="0"
-                    y="0"
-                    textAnchor="middle"
-                    dominantBaseline="middle"
-                    pointerEvents="none"
-                    className="csf-graph-node-label">
-                    {node.label}
-                  </text>
+                    {hasProgress && (
+                      <rect
+                        x={-node.w / 2 + 18}
+                        y={-node.h / 2 - 2}
+                        width={Math.max(4, (railWidth * done) / total)}
+                        height={4}
+                        rx="2"
+                        pointerEvents="none"
+                        className="csf-graph-node-tab-fill"
+                        fill={node.accent}
+                      />
+                    )}
 
-                  {/* Just under the card, right aligned: the label fills the
-                      card and a connector leaves from the bottom centre, so
-                      this corner is the only space reliably free. */}
-                  {total > 0 && (
                     <text
-                      x={node.w / 2}
-                      y={node.h / 2 + 14}
-                      textAnchor="end"
+                      x="0"
+                      y="0"
+                      textAnchor="middle"
+                      dominantBaseline="middle"
                       pointerEvents="none"
-                      className="csf-graph-node-count">
-                      {hasProgress ? `${done}/${total}` : total}
+                      className="csf-graph-node-label">
+                      {node.label}
                     </text>
-                  )}
-                </g>
-              );
-            })}
-          </g>
-        </svg>
+
+                    {/* Just under the card, right aligned: the label fills the
+                        card and a connector leaves from the bottom centre, so
+                        this corner is the only space reliably free. */}
+                    {total > 0 && (
+                      <text
+                        x={node.w / 2}
+                        y={node.h / 2 + 14}
+                        textAnchor="end"
+                        pointerEvents="none"
+                        className="csf-graph-node-count">
+                        {hasProgress ? `${done}/${total}` : total}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
+            </g>
+          </svg>
+        </div>
       </div>
     </div>
   );

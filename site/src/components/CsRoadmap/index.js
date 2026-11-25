@@ -231,6 +231,7 @@ export default function CsRoadmap() {
       height={VIEW_H}
       progressFor={progressFor}
       idPrefix="csf-cs"
+      title="Learning path"
       label="CS fundamentals: subjects and the order to take them in"
     />
   );

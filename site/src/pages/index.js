@@ -196,7 +196,6 @@ export default function Home() {
             aria-labelledby="csf-tab-cs"
             className="csf-tabpanel"
             hidden={activeTab !== 'cs'}>
-            <p className="csf-section-label">Learning path</p>
             <CsRoadmap />
           </div>
 
@@ -206,7 +205,6 @@ export default function Home() {
             aria-labelledby="csf-tab-dsa"
             className="csf-tabpanel"
             hidden={activeTab !== 'dsa'}>
-            <p className="csf-section-label">DSA Roadmap</p>
             <DsaRoadmap />
           </div>
 

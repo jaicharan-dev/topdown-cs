@@ -133,6 +133,7 @@ export default function DsaRoadmap() {
       height={VIEW_H}
       progressFor={progressFor}
       idPrefix="csf-dsa"
+      title="DSA roadmap"
       label="DSA roadmap: topics and what each one leads to"
     />
   );
