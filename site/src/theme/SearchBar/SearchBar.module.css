@@ -14,15 +14,18 @@
 /* ----------------------------------------------------------- the field */
 
 .searchBarContainer {
-  margin-left: 16px;
+  margin-left: 0;
 }
 
+/* 30px and fully round, matching every other control in the navbar. The
+   field used to be 36px with a 10px radius, which made it the one thing in
+   the row that was a different shape and a different size. */
 .searchBarContainer :global(.navbar__search-input) {
-  height: 2.25rem;
+  height: 30px;
   width: 13rem;
-  padding: 0 4.6rem 0 2.3rem;
-  border-radius: 10px;
-  font-size: 0.82rem;
+  padding: 0 4.4rem 0 2.1rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
   font-weight: 500;
   background-image: none;
   transition: width 0.22s ease, border-color 0.2s ease, background-color 0.2s ease,

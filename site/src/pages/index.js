@@ -204,16 +204,15 @@ export default function Home() {
             aria-labelledby="csf-tab-system-design"
             className="csf-tabpanel"
             hidden={activeTab !== 'system-design'}>
+            {/* Two words. The paragraph that was here promised what the
+                section would be like, which is a thing to show rather than
+                to say, and said it to somebody who had just been told there
+                was nothing to read. */}
             <div className="csf-soon-panel">
               <div className="csf-soon-panel__icon" aria-hidden="true">
                 <IconSystemDesign />
               </div>
-              <h2 className="csf-soon-panel__title">System Design is on the way</h2>
-              <p className="csf-soon-panel__text">
-                The same treatment as the rest of the site: the answer an
-                interviewer actually wants, not a textbook chapter. Nothing to
-                read here yet.
-              </p>
+              <h2 className="csf-soon-panel__title">Coming soon</h2>
             </div>
           </div>
         </div>

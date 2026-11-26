@@ -1,10 +1,5 @@
-/* The progress dashboard. */
-
 .page {
   --csf-progress-accent: #16a34a;
-  /* 1100, not 980: twelve months of squares plus their gaps come to about
-     980 on their own, so the year needed scrolling to see the last month of
-     it on the one page that exists to show the year. */
   /* width: 100% is load bearing. This is a flex item of Docusaurus's column
      main-wrapper, where an auto margin in the cross axis cancels the stretch
      that would otherwise size it, leaving it to shrink to fit its content.
@@ -16,297 +11,73 @@
   margin: 0 auto;
   padding: 2.5rem 1rem 4rem;
   min-width: 0;
+  display: grid;
+  /* minmax(0, 1fr), not the implicit auto: a grid track takes its minimum
+     from its content, and the heatmap strip and the rank ladder are both
+     wider than a phone. Without this the track sized itself to the widest
+     card and every card stretched to match, overflowing the page. */
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
 }
 
-/* While the store is loading the numbers are all zero, so dim the page rather
-   than show a confident looking empty dashboard. */
 .page[data-ready='false'] {
   opacity: 0.55;
 }
 
-/* cards */
-.card,
-.footerCard {
-  border: 1px solid var(--csf-border, #d5cdbc);
-  background: var(--csf-surface, #f8f5ee);
-  border-radius: 14px;
-  padding: 1.4rem 1.5rem;
-  margin-bottom: 1.5rem;
-}
-
-.footerCard {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-
-.cardTitle {
-  margin: 0 0 1rem;
-  font-size: 1.05rem;
-  letter-spacing: 0.01em;
-}
-
-.footerCard .cardTitle {
-  margin-bottom: 0.5rem;
-}
-
-.cardNote {
-  margin: 0.8rem 0 0;
-  font-size: 0.8rem;
-  opacity: 0.65;
-  max-width: 54ch;
-}
-
-.footerCard .cardNote {
-  margin-top: 0;
-}
-
-.rankLabel {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  opacity: 0.6;
-  margin-bottom: 0.25rem;
-}
-
-.rankName {
-  font-size: 1.9rem;
-  font-weight: 700;
-  line-height: 1.1;
-}
-
-/* the ladder of every rank, so the next few are visible rather than a mystery */
-.ladder {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem 1.1rem;
-  list-style: none;
-  margin: 1.2rem 0 0;
-  padding: 0.9rem 0 0;
-  border-top: 1px solid var(--csf-border-subtle, #e3dcce);
-}
-
-.ladderItem {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.78rem;
-}
-
-.ladderItem[data-state='future'] {
-  opacity: 0.4;
-}
-
-.ladderItem[data-state='current'] {
-  font-weight: 700;
-}
-
-.ladderDot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  flex: none;
-}
-
-.ladderItem[data-state='future'] .ladderDot {
-  background: var(--csf-border, #d5cdbc) !important;
-}
-
-.ladderAt {
-  opacity: 0.55;
-  font-variant-numeric: tabular-nums;
-}
-
-/* stat tiles */
-/* auto-fit rather than a fixed count: the tiles flow as they are added, and
-   wrap cleanly instead of squeezing */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 1rem;
-  margin-bottom: 0;
-  /* A grid item's automatic minimum is its content, and four 150px columns
-     refuse to shrink below 600px. Beside the profile column that overflowed
-     the page; with this they wrap to two rows instead. */
+.card {
   min-width: 0;
+  padding: 1.25rem 1.3rem;
+  border-radius: 16px;
+  border: 1px solid var(--csf-border-subtle);
+  background: var(--csf-surface);
+  /* Each section is a scroll target, so it must not sit flush under the
+     sticky navbar when it is scrolled to. */
+  scroll-margin-top: calc(var(--ifm-navbar-height, 60px) + 1rem);
 }
 
-.stat {
-  border: 1px solid var(--csf-border, #d5cdbc);
-  background: var(--csf-surface, #f8f5ee);
-  border-radius: 12px;
-  padding: 1rem 1.1rem;
-}
-
-.statValue {
-  font-size: 1.7rem;
-  font-weight: 700;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-
-.statLabel {
-  font-size: 0.82rem;
-  margin-top: 0.15rem;
-}
-
-.statHint {
-  font-size: 0.72rem;
-  opacity: 0.6;
-  margin-top: 0.3rem;
-}
-
-/* progress bars */
-.bar {
-  height: 8px;
-  border-radius: 999px;
-  background: var(--csf-surface-raised, #eae4d6);
-  overflow: hidden;
-}
-
-.barFill {
-  height: 100%;
-  border-radius: 999px;
-  transition: width 0.35s ease;
-  min-width: 0;
-}
-
-/* subject rows */
-.rows {
-  display: flex;
-  flex-direction: column;
-  gap: 0.85rem;
-}
-
-.rowHead {
+.sectionHead {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.35rem;
-}
-
-.rowLabel {
-  font-size: 0.88rem;
-  font-weight: 600;
-}
-
-.rowLabel a {
-  color: inherit;
-  text-decoration: none;
-}
-
-.rowLabel a:hover {
-  text-decoration: underline;
-}
-
-.rowCount {
-  font-size: 0.78rem;
-  opacity: 0.7;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-
-.rowPoints {
-  margin-left: 0.6rem;
-  opacity: 0.75;
-}
-
-/* DSA topic breakdown */
-.details {
-  margin-top: 1.4rem;
-  border-top: 1px solid var(--csf-border-subtle, #e3dcce);
-  padding-top: 1rem;
-}
-
-.summary {
-  cursor: pointer;
-  font-size: 0.84rem;
-  font-weight: 600;
-  margin-bottom: 0.9rem;
-}
-
-.summary:focus-visible {
-  outline: 2px solid var(--csf-progress-accent);
-  outline-offset: 2px;
-}
-
-/* reset */
-.reset {
-  border: 1px solid var(--csf-border, #d5cdbc);
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 0.84rem;
-  padding: 0.5rem 0.9rem;
-  border-radius: 9px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.reset:hover:not(:disabled) {
-  border-color: #dc2626;
-  color: #dc2626;
-}
-
-.reset:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-[data-theme='dark'] .page {
-  --csf-progress-accent: #4ade80;
-}
-
-[data-theme='dark'] .reset:hover:not(:disabled) {
-  border-color: #f87171;
-  color: #f87171;
-}
-
-@media (max-width: 600px) {
-  .page {
-    padding: 1.75rem 0.85rem 3rem;
-  }
-
-  .rankName {
-    font-size: 1.25rem;
-  }
-
-  .footerCard {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-}
-
-
-/* ----- The profile column ----- */
-.top {
-  display: grid;
-  grid-template-columns: 290px minmax(0, 1fr);
-  gap: 1rem;
-  align-items: start;
+  flex-wrap: wrap;
+  gap: 0.6rem 1.5rem;
   margin-bottom: 1rem;
 }
 
-.topRight {
-  display: grid;
+.cardTitle {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.sectionMeta {
+  font-size: 0.78rem;
+  opacity: 0.5;
+}
+
+/* ----- Profile ----- */
+.profileHead {
+  display: flex;
+  align-items: center;
   gap: 1rem;
-  min-width: 0;
+  margin-bottom: 1.25rem;
 }
 
-/* Same reason: the heatmap scrolls inside itself, but the card around it is
-   a grid item and would still take its minimum from the strip. */
-.topRight > .card {
-  min-width: 0;
+.pictureButton {
+  position: relative;
+  display: block;
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 999px;
+  cursor: pointer;
+  flex: none;
+  overflow: hidden;
 }
 
-.profile {
-  padding: 1.25rem 1.1rem 1.1rem;
-  border-radius: 14px;
-  border: 1px solid var(--csf-border-subtle);
-  background: var(--csf-surface);
+.pictureButton:disabled {
+  cursor: wait;
 }
 
 .avatar {
@@ -325,119 +96,310 @@
   color: #ffffff;
 }
 
-.name {
-  margin: 0.7rem 0 0;
-  font-size: 1.25rem;
-  font-weight: 700;
+.avatar[data-initials='false'] {
+  background: linear-gradient(135deg, #60a5fa, #a78bfa);
+  opacity: 0.4;
+}
+
+/* Over the bottom of the picture, so the row does not change height between
+   "Change" and "Resizing". */
+.pictureHint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px 0 3px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.profileWho {
+  min-width: 0;
+}
+
+.profileName {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 750;
   letter-spacing: -0.02em;
   line-height: 1.2;
 }
 
-.email {
-  margin: 0.15rem 0 0;
-  font-size: 0.78rem;
-  opacity: 0.55;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.levelBadge {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  margin-top: 1.1rem;
-}
-
-.levelWord {
-  font-size: 0.64rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  opacity: 0.5;
-}
-
-.levelNumber {
-  font-size: 1.5rem;
-  font-weight: 750;
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.levelHint {
-  margin: 0.35rem 0 0;
-  font-size: 0.74rem;
+.profileSub {
+  margin: 0.2rem 0 0;
+  font-size: 0.82rem;
   opacity: 0.55;
 }
 
-.rankLine {
-  display: flex;
-  align-items: baseline;
-  gap: 0.45rem;
-  margin-top: 1.1rem;
+.authButton {
+  margin-top: 0.6rem;
+  padding: 0.34rem 0.9rem;
+  border: 1px solid var(--csf-border-subtle);
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
 }
 
-.rankLabel {
-  font-size: 0.64rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  opacity: 0.5;
+.authButton:hover {
+  border-color: var(--csf-progress-accent);
+  color: var(--csf-progress-accent);
 }
 
-.rankName {
-  font-size: 1.02rem;
-  font-weight: 700;
+.file {
+  display: none;
 }
 
-/* ----- Tabs ----- */
-.tabs {
-  display: flex;
+.fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.85rem 1rem;
+}
+
+.field {
+  display: grid;
   gap: 0.3rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid var(--csf-border-subtle);
+  min-width: 0;
 }
 
-.tab {
-  padding: 0.45rem 0.8rem 0.55rem;
-  border: none;
-  border-bottom: 2px solid transparent;
+.fieldWide {
+  grid-column: 1 / -1;
+}
+
+.fieldLabel {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.input,
+.textarea {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  border-radius: 9px;
+  border: 1px solid var(--csf-border-subtle);
   background: transparent;
   color: inherit;
   font: inherit;
   font-size: 0.88rem;
+}
+
+.textarea {
+  resize: vertical;
+  line-height: 1.5;
+}
+
+.input:focus-visible,
+.textarea:focus-visible {
+  outline: 2px solid var(--csf-progress-accent);
+  outline-offset: -1px;
+}
+
+/* The @ lives outside the field so it cannot be deleted or typed twice. */
+.prefixed {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding-left: 0.55rem;
+  border-radius: 9px;
+  border: 1px solid var(--csf-border-subtle);
+}
+
+.prefixed .input {
+  border: none;
+  padding-left: 0;
+}
+
+.prefixed .input:focus-visible {
+  outline: none;
+}
+
+.prefixed:focus-within {
+  outline: 2px solid var(--csf-progress-accent);
+  outline-offset: -1px;
+}
+
+.prefix {
+  opacity: 0.4;
+  font-size: 0.88rem;
+}
+
+.formFoot {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  margin-top: 1.1rem;
+}
+
+.save {
+  padding: 0.44rem 1.1rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--csf-progress-accent);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
+}
+
+.save:hover {
+  filter: brightness(1.08);
+}
+
+.savedNote {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--csf-progress-accent);
+}
+
+.quiet {
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
   opacity: 0.55;
-  transition: opacity 0.15s ease;
 }
 
-.tab:hover {
-  opacity: 0.85;
-}
-
-.tab[aria-selected='true'] {
+.quiet:hover {
   opacity: 1;
-  border-bottom-color: var(--csf-progress-accent, #16a34a);
 }
 
-.tab:focus-visible {
-  outline: 2px solid var(--csf-progress-accent, #16a34a);
-  outline-offset: -2px;
+.optionalNote {
+  margin-left: auto;
+  font-size: 0.76rem;
+  opacity: 0.45;
+}
+
+.syncError {
+  margin: 0.5rem 0 0;
+  font-size: 0.76rem;
+  color: #f87171;
+}
+
+.error {
+  margin: 0.7rem 0 0;
+  font-size: 0.8rem;
+  color: #f87171;
+}
+
+/* ----- Standing ----- */
+.standing {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.bars {
+  display: grid;
+  gap: 1.4rem;
+  min-width: 0;
+}
+
+.barHead {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.barLabel {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.barValue {
+  font-size: 1.05rem;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.barMeta {
+  margin-left: auto;
+  font-size: 0.74rem;
+  opacity: 0.55;
+}
+
+.bar {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.barFill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 999px;
+  background: var(--csf-progress-accent);
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.barNote {
+  margin: 0.45rem 0 0;
+  font-size: 0.74rem;
+  opacity: 0.5;
+}
+
+/* ----- Activity figures ----- */
+.figures {
+  display: flex;
+  align-items: baseline;
+  gap: 1.5rem;
+  margin: 0;
+}
+
+.figure {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+}
+
+.figure dt {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.45;
+}
+
+.figure dd {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ----- History ----- */
 .history {
   display: grid;
-  gap: 1.3rem;
-}
-
-.historyDay {
-  min-width: 0;
+  gap: 1.4rem;
 }
 
 .historyHeading {
-  margin: 0 0 0.5rem;
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin: 0 0 0.4rem;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -445,41 +407,59 @@
   opacity: 0.5;
 }
 
+.historyCount {
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  font-size: 0.72rem;
+  opacity: 0.7;
+}
+
 .historyList {
   margin: 0;
   padding: 0;
   list-style: none;
+  display: grid;
+  gap: 2px;
 }
 
+/* The whole row is the link, so the target is a row rather than a few words
+   of title, and it lights up as one thing. */
 .historyRow {
   display: grid;
-  grid-template-columns: 56px minmax(0, 1fr) auto;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
   align-items: baseline;
-  gap: 0.6rem;
-  padding: 0.4rem 0;
-  border-bottom: 1px solid var(--csf-border-subtle);
+  gap: 0.7rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 9px;
+  color: inherit;
+  transition: background-color 0.15s ease;
 }
 
-.historyRow:last-child {
-  border-bottom: none;
+.historyRow:hover {
+  text-decoration: none;
+  color: inherit;
 }
 
 .historyTime {
-  font-size: 0.75rem;
+  font-size: 0.74rem;
   font-variant-numeric: tabular-nums;
-  opacity: 0.5;
+  opacity: 0.45;
 }
 
 .historyTitle {
   font-size: 0.9rem;
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .historyGroup {
-  font-size: 0.72rem;
-  opacity: 0.45;
+  font-size: 0.7rem;
+  padding: 0.14rem 0.5rem;
+  border-radius: 999px;
+  opacity: 0.6;
   white-space: nowrap;
 }
 
@@ -491,26 +471,71 @@
   max-width: 56ch;
 }
 
-/* Reading time for one subject, beside its name. */
-.rowTime {
-  margin-left: 0.5rem;
-  font-size: 0.72rem;
-  font-variant-numeric: tabular-nums;
-  opacity: 0.45;
+[data-theme='dark'] .bar,
+[data-theme='dark'] .historyGroup {
+  background-color: rgba(255, 255, 255, 0.08);
 }
 
-@media screen and (max-width: 900px) {
-  .top {
+[data-theme='dark'] .historyRow:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+html:not([data-theme='dark']) .bar,
+html:not([data-theme='dark']) .historyGroup {
+  background-color: rgba(0, 0, 0, 0.07);
+}
+
+html:not([data-theme='dark']) .historyRow:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+@media screen and (max-width: 760px) {
+  .standing {
     grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+
+  .bars {
+    width: 100%;
+  }
+
+  .profileHead {
+    gap: 0.85rem;
+  }
+
+  .avatar {
+    width: 62px;
+    height: 62px;
+    font-size: 1.2rem;
+  }
+
+  .profileName {
+    font-size: 1.2rem;
+  }
+
+  .optionalNote {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  /* The subject badge is the least useful of the three on a phone, and the
+     title already implies it. */
+  .historyGroup {
+    display: none;
   }
 
   .historyRow {
-    grid-template-columns: 52px minmax(0, 1fr);
+    grid-template-columns: 50px minmax(0, 1fr);
   }
 
-  /* Third column dropped: the subject is the least useful of the three on a
-     phone, and the title already implies it. */
-  .historyGroup {
-    display: none;
+  .figures {
+    flex-wrap: wrap;
+    gap: 0.5rem 1.1rem;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .page {
+    padding: 1.75rem 0.85rem 3rem;
   }
 }

@@ -692,39 +692,109 @@ html[data-theme='dark'] .prism-code .token.punctuation {
    15. HOMEPAGE - Hero & Subject Cards
    =================================================================== */
 
-/* ----- Navbar pills and tooltips -----
-   Progress is a plain navbar link, so it is given the same surface the
-   custom controls draw for themselves rather than sitting as bare text
-   between two boxes. */
-.navbar__items--right .csf-navbar-pill {
+/* ----- Navbar controls -----
+   One description of what a control in the navbar looks like, applied to
+   every one of them including the theme's own search button and colour mode
+   toggle. They had three paddings, two heights and four font sizes between
+   them, which is what made the row look assembled rather than designed. */
+.navbar__items--right {
+  gap: 0.45rem;
+}
+
+.navbar__items--right > * {
+  margin: 0;
+}
+
+.csf-nav-item,
+.navbar__items--right .navbar__link.csf-nav-item,
+.navbar__items--right .navbarSearchContainer_Bca1 > button,
+.navbar__items--right [class*='navbarSearchContainer'] > button,
+.navbar__items--right [class*='colorModeToggle'] button,
+.navbar__items--right [class*='toggleButton'] {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  height: 28px;
+  justify-content: center;
+  gap: 0.4rem;
+  height: 30px;
   padding: 0 0.7rem;
   border-radius: 999px;
   border: 1px solid transparent;
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 600;
   line-height: 1;
+  white-space: nowrap;
   transition: background-color 0.15s ease;
 }
 
-[data-theme='dark'] .csf-navbar-pill {
+/* The two icon-only controls are circles of the same height rather than
+   pills, which is the one deliberate difference in the row.
+
+   The theme's own toggle needs the extra class in the selector: the rule
+   above already wins its background, but Docusaurus sets this button's
+   height and radius from a selector that ties on specificity and loads
+   later, so those two properties need one more class to carry. */
+.navbar__items--right [class*='colorModeToggle'] button.clean-btn,
+.csf-nav-item--icon {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 999px;
+}
+
+[data-theme='dark'] .csf-nav-item,
+[data-theme='dark'] .navbar__items--right [class*='navbarSearchContainer'] > button,
+[data-theme='dark'] .navbar__items--right [class*='colorModeToggle'] button,
+[data-theme='dark'] .navbar__items--right [class*='toggleButton'] {
   background-color: rgba(255, 255, 255, 0.055);
   border-color: rgba(255, 255, 255, 0.08);
+  color: #e4e4e7;
 }
 
-[data-theme='dark'] .csf-navbar-pill:hover {
+[data-theme='dark'] .csf-nav-item:hover,
+[data-theme='dark'] .navbar__items--right [class*='navbarSearchContainer'] > button:hover,
+[data-theme='dark'] .navbar__items--right [class*='colorModeToggle'] button:hover,
+[data-theme='dark'] .navbar__items--right [class*='toggleButton']:hover {
   background-color: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
 }
 
-html:not([data-theme='dark']) .csf-navbar-pill {
+html:not([data-theme='dark']) .csf-nav-item,
+html:not([data-theme='dark']) .navbar__items--right [class*='navbarSearchContainer'] > button,
+html:not([data-theme='dark']) .navbar__items--right [class*='colorModeToggle'] button,
+html:not([data-theme='dark']) .navbar__items--right [class*='toggleButton'] {
   background-color: rgba(0, 0, 0, 0.04);
   border-color: var(--csf-border-subtle, #e3dcce);
+  color: #3f3f46;
 }
 
-html:not([data-theme='dark']) .csf-navbar-pill:hover {
+html:not([data-theme='dark']) .csf-nav-item:hover,
+html:not([data-theme='dark']) .navbar__items--right [class*='navbarSearchContainer'] > button:hover,
+html:not([data-theme='dark']) .navbar__items--right [class*='colorModeToggle'] button:hover,
+html:not([data-theme='dark']) .navbar__items--right [class*='toggleButton']:hover {
   background-color: rgba(0, 0, 0, 0.07);
+  color: #18181b;
+}
+
+.csf-nav-item:hover {
+  text-decoration: none;
+}
+
+.csf-nav-item:focus-visible {
+  outline: 2px solid var(--csf-progress-accent, #16a34a);
+  outline-offset: 2px;
+}
+
+.csf-nav-item svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+/* The search button carries its own keyboard hint, which is the one piece of
+   theme chrome that has to keep its own size. */
+.navbar__items--right [class*='navbarSearchContainer'] > button [class*='searchHint'] {
+  font-size: 0.66rem;
 }
 
 /* The colour mode toggle is rendered by the theme after every configured
@@ -732,7 +802,6 @@ html:not([data-theme='dark']) .csf-navbar-pill:hover {
    The far corner is where a reader looks for their own account. */
 .navbar__items--right .csf-navbar-account {
   order: 1;
-  margin-left: 0.5rem;
 }
 
 /* A tooltip for anything carrying data-csf-tip. CSS rather than a component

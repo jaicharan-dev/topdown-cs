@@ -19,6 +19,7 @@ import useIsBrowser from '@docusaurus/useIsBrowser';
 import {
   activityStats,
   emptyStore,
+  ensureReaderNumber,
   isComplete as storeIsComplete,
   readStore,
   setProfile as storeSetProfile,
@@ -37,7 +38,16 @@ export default function useProgress() {
   // load after hydration, never during it
   useEffect(() => {
     if (!isBrowser) return;
-    setStore(readStore());
+    // The reader number is handed out here rather than in emptyStore, which
+    // has to stay deterministic: it runs on the server too, and a random
+    // number there would differ from the one the browser generated and break
+    // hydration. ensureReaderNumber returns the same object when there is
+    // already one, so this does not write on every load.
+    const current = readStore();
+    const loaded = ensureReaderNumber(current);
+    // Read once, not twice: two reads are two objects and the identity check
+    // below would never hold, so it would write on every single page load.
+    setStore(loaded === current ? current : writeStore(loaded));
     setReady(true);
   }, [isBrowser]);
 

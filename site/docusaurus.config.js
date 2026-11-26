@@ -230,7 +230,7 @@ const config = {
             // same hover note as the controls beside it. Unknown props on a
             // navbar item are spread onto the link, which is what carries
             // the data attribute through.
-            className: 'csf-navbar-pill csf-tip',
+            className: 'csf-nav-item csf-tip',
             'data-csf-tip':
               'Everything you have read, your rank, and your reading history',
           },

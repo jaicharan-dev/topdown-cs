@@ -1,49 +1,38 @@
-.pill {
+.wrapper {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 0.45rem;
-  height: 28px;
-  padding: 0 0.6rem;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  font-size: 0.76rem;
-  font-weight: 600;
-  line-height: 1;
-  text-decoration: none;
-  color: inherit;
-  overflow: hidden;
-  transition: background-color 0.15s ease;
 }
 
-.pill:hover {
-  text-decoration: none;
+/* The box itself is .csf-nav-item in custom.css, shared with every other
+   control in the row. Only what is inside belongs here. */
+.pill {
   color: inherit;
 }
 
 /* Same width as the pill, so the navbar does not shuffle when it appears. */
 .placeholder {
   display: inline-block;
-  width: 132px;
-  height: 28px;
+  width: 158px;
+  height: 30px;
 }
 
-.level {
+.pair {
   display: flex;
   align-items: baseline;
-  gap: 2px;
+  gap: 4px;
 }
 
-.levelWord {
-  font-size: 0.6rem;
+.word {
+  font-size: 0.63rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   opacity: 0.5;
 }
 
-.levelNumber {
-  font-size: 0.86rem;
+.value {
+  font-size: 0.78rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
@@ -55,74 +44,123 @@
   background: currentColor;
 }
 
-.rank {
+/* ----- The hover card ----- */
+.card {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: 400;
+  width: 262px;
+  padding: 0.85rem 0.9rem 0.7rem;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+
+  /* Hidden by opacity rather than display, so the bars have a real width to
+     animate from the first time it opens. */
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s;
+}
+
+.wrapper:hover .card,
+.wrapper:focus-within .card {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.block + .block {
+  margin-top: 0.85rem;
+}
+
+.blockHead {
   display: flex;
   align-items: baseline;
-  gap: 3px;
-  white-space: nowrap;
+  justify-content: space-between;
+  gap: 0.5rem;
 }
 
-.rankWord {
-  font-size: 0.6rem;
+.blockTitle {
+  font-size: 0.86rem;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+}
+
+.blockMeta {
+  font-size: 0.7rem;
   opacity: 0.5;
+  font-variant-numeric: tabular-nums;
 }
 
-.rankName {
-  font-weight: 650;
-}
-
-/* Along the bottom edge, so it reads as the pill filling up rather than as
-   another thing to look at. */
 .track {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: currentColor;
-  opacity: 0.12;
+  position: relative;
+  height: 5px;
+  margin-top: 0.4rem;
+  border-radius: 3px;
+  overflow: hidden;
 }
 
 .fill {
   position: absolute;
-  left: 0;
   top: 0;
   bottom: 0;
+  left: 0;
+  border-radius: 3px;
   background: var(--csf-progress-accent, #16a34a);
-  opacity: 1;
   transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-[data-theme='dark'] .pill {
-  background-color: rgba(255, 255, 255, 0.055);
-  border-color: rgba(255, 255, 255, 0.08);
+.hint {
+  margin: 0.3rem 0 0;
+  font-size: 0.72rem;
+  opacity: 0.6;
 }
 
-[data-theme='dark'] .pill:hover {
-  background-color: rgba(255, 255, 255, 0.09);
+.footnote {
+  margin: 0.85rem 0 0;
+  padding-top: 0.6rem;
+  border-top: 1px solid transparent;
+  font-size: 0.68rem;
+  line-height: 1.45;
+  opacity: 0.45;
 }
 
-html:not([data-theme='dark']) .pill {
-  background-color: rgba(0, 0, 0, 0.04);
+[data-theme='dark'] .card {
+  background-color: #1e1e22;
+  border-color: rgba(255, 255, 255, 0.09);
+}
+
+[data-theme='dark'] .track {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+[data-theme='dark'] .footnote {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+
+html:not([data-theme='dark']) .card {
+  background-color: #ffffff;
   border-color: var(--csf-border-subtle, #e3dcce);
 }
 
-html:not([data-theme='dark']) .pill:hover {
-  background-color: rgba(0, 0, 0, 0.07);
+html:not([data-theme='dark']) .track {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+html:not([data-theme='dark']) .footnote {
+  border-top-color: var(--csf-border-subtle, #e3dcce);
 }
 
 /* The rank name is the first thing to go; the level survives to phone width
    because it is the number that changes most often. */
 @media screen and (max-width: 996px) {
-  .rank,
+  .pair:last-of-type,
   .divider {
     display: none;
   }
 
   .placeholder {
-    width: 72px;
+    width: 76px;
   }
 }

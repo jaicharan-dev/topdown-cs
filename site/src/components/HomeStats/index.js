@@ -6,10 +6,9 @@
  * line; filling it with the numbers that make somebody come back costs
  * nothing and keeps the graph exactly where it was.
  *
- * Level and rank measure different things on purpose. Rank is what you have
- * finished and is the real score. Level is that you turned up, and it moves
- * on an evening when nothing clicked, which is the evening somebody is most
- * likely to give up.
+ * Level and rank are deliberately not here. They live in the navbar, where
+ * they follow the reader around the whole site, and showing the same two
+ * numbers twice on one screen made neither of them worth reading.
  */
 
 import React from 'react';
@@ -17,13 +16,11 @@ import Link from '@docusaurus/Link';
 import DifficultyRing from '@site/src/components/DifficultyRing';
 import manifest from '@site/src/data/contentManifest.json';
 import useProgress from '@site/src/hooks/useProgress';
-import { describeNextLevel, levelFromSeconds } from '@site/src/lib/levels';
 import {
   activityStats,
   difficultyBreakdown,
   summarise,
 } from '@site/src/lib/progressStore';
-import { rankProgress } from '@site/src/lib/ranks';
 import { formatDuration } from '@site/src/lib/timeTracker';
 import styles from './styles.module.css';
 
@@ -35,9 +32,6 @@ export default function HomeStats() {
   // appearing and shoving the page around.
   const summary = summarise(store, manifest);
   const stats = activityStats(store);
-  const level = levelFromSeconds(stats.totalSeconds);
-  const ladder = rankProgress(summary.completedPoints);
-  const nextLevel = describeNextLevel(level);
   const breakdown = difficultyBreakdown(store, manifest);
 
   return (
@@ -55,45 +49,6 @@ export default function HomeStats() {
 
       <div className={styles.divider} />
 
-      <div className={styles.levelBlock}>
-        <div className={styles.levelRow}>
-          <span className={styles.levelWord}>Level</span>
-          <span className={styles.levelNumber}>{level.level}</span>
-        </div>
-        <div className={styles.track}>
-          <div className={styles.fill} style={{ width: `${level.percent}%` }} />
-        </div>
-        <p className={styles.hint}>
-          {nextLevel || 'Top level. Nothing left to prove.'}
-        </p>
-      </div>
-
-      <div className={styles.divider} />
-
-      <div className={styles.rankBlock}>
-        {/* "Rank Novice", not a label above a word: the two read as one
-            phrase and that is how they are meant. */}
-        <div className={styles.rankRow}>
-          <span className={styles.label}>Rank</span>
-          <span className={styles.rankName} style={{ color: ladder.rank.color }}>
-            {ladder.rank.name}
-          </span>
-        </div>
-        <div className={styles.track}>
-          <div
-            className={styles.fill}
-            style={{ width: `${ladder.percent}%`, background: ladder.rank.color }}
-          />
-        </div>
-        <p className={styles.hint}>
-          {ladder.next
-            ? `${ladder.pointsNeeded} pt to ${ladder.next.name}`
-            : `${summary.completedPoints} points`}
-        </p>
-      </div>
-
-      <div className={styles.divider} />
-
       <dl className={styles.figures}>
         <div className={styles.figure}>
           <dt className={styles.label}>Time read</dt>
@@ -107,8 +62,8 @@ export default function HomeStats() {
 
       {/* History rather than the dashboard: Progress is already a button in
           the navbar, so a second way to the same page is a wasted line. */}
-      <Link className={styles.more} to="/progress?tab=history">
-        Recently read
+      <Link className={styles.more} to="/progress?at=history">
+        History
       </Link>
     </aside>
   );

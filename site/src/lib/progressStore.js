@@ -54,7 +54,77 @@ export function emptyStore() {
 }
 
 export function emptyProfile() {
-  return { name: '', avatar: '', updatedAt: '' };
+  return {
+    name: '',
+    /** Lowercase handle. Optional, and the only field with a format. */
+    username: '',
+    bio: '',
+    contact: '',
+    avatar: '',
+    /** Assigned once, in the browser, so there is a name before there is one. */
+    reader: '',
+    updatedAt: '',
+  };
+}
+
+/** 3 to 20 characters, lowercase letters, digits, underscore, hyphen. */
+export const USERNAME_PATTERN = /^[a-z0-9_-]{3,20}$/;
+
+/**
+ * Why a username is not acceptable, or '' when it is.
+ *
+ * Empty is acceptable: none of this is required. What is checked here is
+ * shape, not availability. Availability needs a table everyone can read and a
+ * unique index, which is a server change rather than a client one, so the
+ * honest thing is to validate what can be validated here and not pretend.
+ */
+export function checkUsername(value) {
+  const name = String(value || '').trim();
+  if (!name) return '';
+  if (name.length < 3) return 'At least 3 characters.';
+  if (name.length > 20) return 'At most 20 characters.';
+  if (!USERNAME_PATTERN.test(name)) {
+    return 'Lowercase letters, numbers, underscore and hyphen only.';
+  }
+  return '';
+}
+
+/**
+ * A number for somebody who has not signed in.
+ *
+ * Random rather than a counter, because a counter would need a server and
+ * would also tell every reader how many came before them, which is a number
+ * a young site should not be volunteering.
+ */
+export function makeReaderNumber() {
+  return String(1000 + Math.floor(Math.random() * 9000));
+}
+
+/**
+ * Hands out a reader number if there is not one yet.
+ *
+ * Returns the SAME store when nothing changed, so a caller can write the
+ * result unconditionally without causing a render on every load.
+ */
+export function ensureReaderNumber(store, now = new Date()) {
+  if (store?.profile?.reader) return store;
+  const next = carry(store);
+  next.profile = { ...next.profile, reader: makeReaderNumber() };
+  // Deliberately not touching updatedAt: this is not an edit the reader made,
+  // and letting it win a merge would overwrite a real profile from elsewhere
+  // with an empty one that happens to have a number.
+  return next;
+}
+
+/** What to call somebody, in the order they would want to be called it. */
+export function displayNameFor(profile, user) {
+  if (profile?.name) return profile.name;
+  if (profile?.username) return profile.username;
+  const meta = user?.user_metadata || {};
+  if (meta.full_name) return meta.full_name;
+  if (meta.name) return meta.name;
+  if (user?.email) return user.email;
+  return profile?.reader ? `Reader #${profile.reader}` : 'Reader';
 }
 
 /**
@@ -119,11 +189,16 @@ export function migrate(raw) {
   }
 
   if (raw.profile && typeof raw.profile === 'object') {
+    const text = (value, max) =>
+      typeof value === 'string' ? value.slice(0, max) : '';
     store.profile = {
-      name: typeof raw.profile.name === 'string' ? raw.profile.name.slice(0, 40) : '',
+      name: text(raw.profile.name, 40),
+      username: text(raw.profile.username, 20).toLowerCase(),
+      bio: text(raw.profile.bio, 280),
+      contact: text(raw.profile.contact, 120),
       avatar: typeof raw.profile.avatar === 'string' ? raw.profile.avatar : '',
-      updatedAt:
-        typeof raw.profile.updatedAt === 'string' ? raw.profile.updatedAt : '',
+      reader: text(raw.profile.reader, 12),
+      updatedAt: text(raw.profile.updatedAt, 40),
     };
   }
 
@@ -296,12 +371,18 @@ export function recordVisit(store, visit, now = new Date()) {
 /** Name and picture. An empty patch value clears that field. */
 export function setProfile(store, patch, now = new Date()) {
   const next = carry(store);
+  const take = (key, max, transform) => {
+    if (patch[key] === undefined) return next.profile[key];
+    const value = String(patch[key]).slice(0, max);
+    return transform ? transform(value) : value;
+  };
   next.profile = {
-    name:
-      patch.name === undefined
-        ? next.profile.name
-        : String(patch.name).slice(0, 40),
+    name: take('name', 40),
+    username: take('username', 20, (v) => v.trim().toLowerCase()),
+    bio: take('bio', 280),
+    contact: take('contact', 120),
     avatar: patch.avatar === undefined ? next.profile.avatar : patch.avatar || '',
+    reader: take('reader', 12),
     updatedAt: now.toISOString(),
   };
   return next;

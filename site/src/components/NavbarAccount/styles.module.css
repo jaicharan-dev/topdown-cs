@@ -2,69 +2,42 @@
   position: relative;
   display: flex;
   align-items: center;
-  margin-left: 0.4rem;
 }
 
+/* Both the button and the trigger take their box from .csf-nav-item in
+   custom.css, shared with every other control in the row. */
 .signIn {
-  padding: 0.3rem 0.8rem;
-  border: 1px solid transparent;
-  border-radius: 999px;
-  font-size: 0.82rem;
-  font-weight: 600;
   cursor: pointer;
-  background: var(--csf-progress-accent, #16a34a);
-  color: #ffffff;
-  transition: filter 0.15s ease;
-}
-
-.signIn:hover {
-  filter: brightness(1.08);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
 }
 
 .trigger {
-  display: grid;
-  place-items: center;
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: none;
-  border-radius: 999px;
-  background: transparent;
   cursor: pointer;
-}
-
-.trigger:focus-visible {
-  outline: 2px solid var(--csf-progress-accent, #16a34a);
-  outline-offset: 2px;
+  overflow: hidden;
 }
 
 .avatar {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 100%;
+  height: 100%;
   border-radius: 999px;
   object-fit: cover;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   letter-spacing: 0.02em;
-  border: 1px solid transparent;
 }
 
-.avatar[data-initials='true'] {
+.avatar[data-initials='true'],
+.bigAvatar[data-initials='true'] {
   background: linear-gradient(135deg, #60a5fa, #a78bfa);
   color: #ffffff;
 }
 
 /* No picture and no name. A plain figure, not a question mark: the site not
    knowing who you are is not a thing to ask the reader about. */
-.avatar[data-initials='false'],
-.bigAvatar[data-initials='false'] {
-  background: transparent;
-  border: 1px solid currentColor;
-  opacity: 0.55;
-}
-
 .personMark {
   width: 60%;
   height: 60%;
@@ -72,15 +45,16 @@
   stroke: currentColor;
   stroke-width: 1.7;
   stroke-linecap: round;
+  opacity: 0.75;
 }
 
 .panel {
   position: absolute;
   top: calc(100% + 10px);
   right: 0;
-  z-index: 300;
-  width: 266px;
-  padding: 0.9rem;
+  z-index: 400;
+  width: 232px;
+  padding: 0.75rem;
   border-radius: 14px;
   border: 1px solid transparent;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
@@ -89,56 +63,22 @@
 .head {
   display: flex;
   align-items: center;
-  gap: 0.7rem;
-}
-
-.pictureButton {
-  position: relative;
-  display: block;
-  padding: 0;
-  border: none;
-  background: transparent;
-  border-radius: 999px;
-  cursor: pointer;
-  flex: none;
-}
-
-.pictureButton:disabled {
-  cursor: wait;
+  gap: 0.6rem;
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.45rem;
+  border-bottom: 1px solid transparent;
 }
 
 .bigAvatar {
   display: grid;
   place-items: center;
-  width: 52px;
-  height: 52px;
+  width: 40px;
+  height: 40px;
   border-radius: 999px;
   object-fit: cover;
-  font-size: 1.05rem;
+  font-size: 0.86rem;
   font-weight: 700;
-}
-
-.bigAvatar[data-initials='true'] {
-  background: linear-gradient(135deg, #60a5fa, #a78bfa);
-  color: #ffffff;
-}
-
-/* Sits over the bottom of the picture rather than beside it, so the row does
-   not change height between "Change" and "Resizing". */
-.pictureHint {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 1px 0 2px;
-  border-radius: 0 0 999px 999px;
-  background: rgba(0, 0, 0, 0.55);
-  color: #ffffff;
-  font-size: 0.56rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  text-align: center;
+  flex: none;
 }
 
 .who {
@@ -146,14 +86,14 @@
 }
 
 .name {
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 650;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.email {
+.sub {
   font-size: 0.72rem;
   opacity: 0.55;
   overflow: hidden;
@@ -161,85 +101,32 @@
   white-space: nowrap;
 }
 
-.file {
-  display: none;
-}
-
-.form {
-  margin-top: 0.85rem;
-}
-
-.label {
-  display: block;
-  margin-bottom: 0.3rem;
-  font-size: 0.68rem;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  opacity: 0.5;
-}
-
-.row {
-  display: flex;
-  gap: 0.4rem;
-}
-
-.input {
-  flex: 1;
-  min-width: 0;
-  padding: 0.38rem 0.55rem;
-  border-radius: 8px;
-  border: 1px solid transparent;
-  font: inherit;
-  font-size: 0.85rem;
-  color: inherit;
-}
-
-.input:focus-visible {
-  outline: 2px solid var(--csf-progress-accent, #16a34a);
-  outline-offset: -1px;
-}
-
-.save {
-  padding: 0.38rem 0.7rem;
-  border: none;
-  border-radius: 8px;
-  font: inherit;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-  background: var(--csf-progress-accent, #16a34a);
-  color: #ffffff;
-}
-
-.error {
-  margin: 0.6rem 0 0;
-  font-size: 0.76rem;
-  color: #f87171;
-}
-
-.link {
+/* Menu rows, all the same shape whether they navigate or act. */
+.action {
   display: block;
   width: 100%;
-  margin-top: 0.55rem;
-  padding: 0.34rem 0;
+  padding: 0.4rem 0.5rem;
   border: none;
+  border-radius: 8px;
   background: transparent;
+  color: inherit;
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   text-align: left;
   cursor: pointer;
-  opacity: 0.65;
-  color: inherit;
+  transition: background-color 0.15s ease;
 }
 
-.link:hover {
-  opacity: 1;
+.action:hover {
+  text-decoration: none;
+  color: inherit;
 }
 
 .note {
-  margin: 0.7rem 0 0;
+  margin: 0.3rem 0 0;
+  padding: 0 0.5rem;
   font-size: 0.72rem;
+  line-height: 1.45;
   opacity: 0.5;
 }
 
@@ -248,13 +135,17 @@
   border-color: rgba(255, 255, 255, 0.09);
 }
 
-[data-theme='dark'] .avatar,
-[data-theme='dark'] .input {
-  border-color: rgba(255, 255, 255, 0.12);
+[data-theme='dark'] .head {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
 }
 
-[data-theme='dark'] .input {
-  background-color: rgba(255, 255, 255, 0.05);
+[data-theme='dark'] .action:hover {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
+[data-theme='dark'] .avatar[data-initials='false'],
+[data-theme='dark'] .bigAvatar[data-initials='false'] {
+  background-color: rgba(255, 255, 255, 0.06);
 }
 
 html:not([data-theme='dark']) .panel {
@@ -262,17 +153,21 @@ html:not([data-theme='dark']) .panel {
   border-color: var(--csf-border-subtle, #e3dcce);
 }
 
-html:not([data-theme='dark']) .avatar,
-html:not([data-theme='dark']) .input {
-  border-color: var(--csf-border-subtle, #e3dcce);
+html:not([data-theme='dark']) .head {
+  border-bottom-color: var(--csf-border-subtle, #e3dcce);
 }
 
-html:not([data-theme='dark']) .input {
-  background-color: #ffffff;
+html:not([data-theme='dark']) .action:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+html:not([data-theme='dark']) .avatar[data-initials='false'],
+html:not([data-theme='dark']) .bigAvatar[data-initials='false'] {
+  background-color: rgba(0, 0, 0, 0.04);
 }
 
 @media screen and (max-width: 500px) {
   .panel {
-    width: min(266px, calc(100vw - 2rem));
+    width: min(232px, calc(100vw - 2rem));
   }
 }

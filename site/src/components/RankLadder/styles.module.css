@@ -1,0 +1,118 @@
+.wrapper {
+  width: 100%;
+}
+
+.head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.label {
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.5;
+}
+
+.current {
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.meta {
+  margin-left: auto;
+  font-size: 0.74rem;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
+}
+
+.track {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.notch {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  transform: translateX(-1px);
+}
+
+/* Eight equal columns under eight equal segments, so each name sits under
+   the stretch of bar it belongs to. */
+.names {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  margin: 0.45rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.name {
+  font-size: 0.66rem;
+  font-weight: 600;
+  text-align: center;
+  opacity: 0.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0 2px;
+}
+
+.name[data-state='past'] {
+  opacity: 0.6;
+}
+
+.name[data-state='current'] {
+  opacity: 1;
+  font-weight: 750;
+}
+
+[data-theme='dark'] .track {
+  background-color: rgba(255, 255, 255, 0.09);
+}
+
+[data-theme='dark'] .notch {
+  background-color: #1e1e22;
+}
+
+html:not([data-theme='dark']) .track {
+  background-color: rgba(0, 0, 0, 0.09);
+}
+
+html:not([data-theme='dark']) .notch {
+  background-color: var(--csf-surface, #f8f5ee);
+}
+
+/* Eight names will not fit across a phone. The bar still shows the shape of
+   the journey, and the current rank is named above it either way. */
+@media screen and (max-width: 640px) {
+  .names {
+    display: none;
+  }
+
+  .meta {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .head {
+    flex-wrap: wrap;
+  }
+}

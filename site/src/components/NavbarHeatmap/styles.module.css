@@ -2,51 +2,35 @@
   position: relative;
   display: flex;
   align-items: center;
-  margin-right: 0.2rem;
 }
 
 .placeholder {
   display: inline-block;
-  width: 96px;
-  height: 28px;
+  width: 104px;
+  height: 30px;
 }
 
+/* The box is .csf-nav-item in custom.css, shared with the rest of the row. */
 .trigger {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  height: 28px;
-  padding: 0 0.6rem;
-  border-radius: 999px;
-  border: 1px solid transparent;
-  background: transparent;
   color: inherit;
-  font: inherit;
-  font-size: 0.76rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background-color 0.15s ease;
 }
 
 .trigger svg {
-  width: 14px;
-  height: 14px;
   fill: currentColor;
   opacity: 0.75;
 }
 
-.trigger:focus-visible {
-  outline: 2px solid var(--csf-progress-accent, #16a34a);
-  outline-offset: 2px;
-}
-
+/* Fixed and centred on the window, not hung off the button. The strip is
+   close to a thousand pixels wide, so anchoring it to a control sitting in
+   the corner pushed most of the year off the side of the screen. */
 .panel {
-  position: absolute;
-  top: calc(100% + 10px);
-  right: 0;
-  z-index: 300;
+  position: fixed;
+  top: calc(var(--ifm-navbar-height, 60px) + 8px);
+  left: 50%;
+  transform: translate(-50%, -4px);
+  z-index: 400;
   width: max-content;
-  max-width: min(960px, calc(100vw - 2rem));
+  max-width: min(1000px, calc(100vw - 2rem));
   padding: 0.85rem 0.9rem 0.75rem;
   border-radius: 14px;
   border: 1px solid transparent;
@@ -56,21 +40,21 @@
      width to measure and does not reflow the first time it is opened. */
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-4px);
   transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s;
 }
 
-/* Hover for a pointer, focus for a keyboard, and the pinned flag for a touch
-   screen, which sends a click and never a hover. */
 .wrapper:hover .panel,
-.wrapper:focus-within .panel,
-.wrapper[data-pinned='true'] .panel {
+.wrapper:focus-within .panel {
   opacity: 1;
   visibility: visible;
-  transform: translateY(0);
+  transform: translate(-50%, 0);
 }
 
 .panelHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
   margin-bottom: 0.6rem;
 }
 
@@ -82,27 +66,15 @@
   opacity: 0.5;
 }
 
-[data-theme='dark'] .trigger {
-  background-color: rgba(255, 255, 255, 0.055);
-  border-color: rgba(255, 255, 255, 0.08);
-}
-
-[data-theme='dark'] .trigger:hover {
-  background-color: rgba(255, 255, 255, 0.09);
+.panelMeta {
+  font-size: 0.72rem;
+  opacity: 0.55;
+  font-variant-numeric: tabular-nums;
 }
 
 [data-theme='dark'] .panel {
   background-color: #1e1e22;
   border-color: rgba(255, 255, 255, 0.09);
-}
-
-html:not([data-theme='dark']) .trigger {
-  background-color: rgba(0, 0, 0, 0.04);
-  border-color: var(--csf-border-subtle, #e3dcce);
-}
-
-html:not([data-theme='dark']) .trigger:hover {
-  background-color: rgba(0, 0, 0, 0.07);
 }
 
 html:not([data-theme='dark']) .panel {
@@ -117,11 +89,12 @@ html:not([data-theme='dark']) .panel {
   }
 
   .trigger {
-    padding: 0 0.5rem;
+    width: 30px;
+    padding: 0;
   }
 
   .placeholder {
-    width: 42px;
+    width: 30px;
   }
 }
 
