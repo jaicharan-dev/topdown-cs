@@ -19,6 +19,7 @@ import React from 'react';
 import Link from '@docusaurus/Link';
 import manifest from '@site/src/data/contentManifest.json';
 import useProgress from '@site/src/hooks/useProgress';
+import useSession from '@site/src/hooks/useSession';
 import { describeNextLevel, levelFromSeconds } from '@site/src/lib/levels';
 import { activityStats, summarise } from '@site/src/lib/progressStore';
 import { rankProgress } from '@site/src/lib/ranks';
@@ -27,8 +28,13 @@ import styles from './styles.module.css';
 
 export default function NavbarStats() {
   const { ready, store } = useProgress();
+  const { canSave } = useSession();
 
-  if (!ready) return <span className={styles.placeholder} aria-hidden="true" />;
+  // Nothing to report without an account, and a level 1 beside an empty
+  // year is a worse answer than no badge at all.
+  if (!ready || !canSave) {
+    return <span className={styles.placeholder} aria-hidden="true" />;
+  }
 
   const summary = summarise(store, manifest);
   const stats = activityStats(store);

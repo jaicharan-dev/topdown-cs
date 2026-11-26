@@ -38,10 +38,14 @@ const ACTIVITY_EVENTS = [
  *   Root. The ref is read at flush time, so time already banked is credited
  *   to the section it was actually spent in.
  */
-export default function useTimeOnSite(group = '') {
+export default function useTimeOnSite(group = '', enabled = true) {
   const isBrowser = useIsBrowser();
   const trackerRef = useRef(null);
   const groupRef = useRef(group);
+  // A ref, not a dependency: flipping it must not tear the timer down, and
+  // it is read at flush time, which is the moment that matters.
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
 
   // Bank what the previous section earned before the ref starts pointing
   // somewhere else, or an hour on OOP gets credited to whatever was opened
@@ -50,7 +54,7 @@ export default function useTimeOnSite(group = '') {
     const tracker = trackerRef.current;
     if (tracker && groupRef.current !== group) {
       const seconds = tracker.flush();
-      if (seconds) {
+      if (seconds && enabledRef.current) {
         writeStore(addSeconds(readStore(), seconds, new Date(), groupRef.current));
       }
     }
@@ -65,8 +69,11 @@ export default function useTimeOnSite(group = '') {
     tracker.setVisible(document.visibilityState === 'visible');
 
     const persist = () => {
+      // Flushed either way, so the seconds are discarded rather than banked
+      // up and written the moment somebody signs in. Time spent before there
+      // was an account was not spent as that account.
       const seconds = tracker.flush();
-      if (!seconds) return;
+      if (!seconds || !enabledRef.current) return;
       const next = addSeconds(readStore(), seconds, new Date(), groupRef.current);
       writeStore(next);
     };

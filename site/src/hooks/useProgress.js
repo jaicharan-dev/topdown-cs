@@ -16,6 +16,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import useIsBrowser from '@docusaurus/useIsBrowser';
+import useSession from '@site/src/hooks/useSession';
 import {
   activityStats,
   emptyStore,
@@ -32,24 +33,26 @@ import {
 
 export default function useProgress() {
   const isBrowser = useIsBrowser();
+  const { canSave } = useSession();
   const [store, setStore] = useState(emptyStore);
   const [ready, setReady] = useState(false);
 
   // load after hydration, never during it
   useEffect(() => {
     if (!isBrowser) return;
+    const current = readStore();
     // The reader number is handed out here rather than in emptyStore, which
     // has to stay deterministic: it runs on the server too, and a random
     // number there would differ from the one the browser generated and break
-    // hydration. ensureReaderNumber returns the same object when there is
-    // already one, so this does not write on every load.
-    const current = readStore();
-    const loaded = ensureReaderNumber(current);
-    // Read once, not twice: two reads are two objects and the identity check
-    // below would never hold, so it would write on every single page load.
+    // hydration. Only for somebody who can save, because it is part of a
+    // profile and there are no profiles without an account.
+    //
+    // Read once, not twice: two reads are two objects, so the identity check
+    // would never hold and this would write on every single page load.
+    const loaded = canSave ? ensureReaderNumber(current) : current;
     setStore(loaded === current ? current : writeStore(loaded));
     setReady(true);
-  }, [isBrowser]);
+  }, [isBrowser, canSave]);
 
   // another tab ticked something: keep this one honest
   useEffect(() => {
@@ -67,13 +70,35 @@ export default function useProgress() {
   // this an open dashboard would sit there showing stale minutes.
   useEffect(() => subscribe(setStore), []);
 
-  const toggle = useCallback((contentId) => {
-    setStore((current) => writeStore(toggleComplete(current, contentId)));
-  }, []);
+  /**
+   * Marks a page done, or undoes it.
+   *
+   * Returns false when there is no account to record it against, so the
+   * caller can offer one. It deliberately does not write anything in that
+   * case: a tick that is kept in this browser and nowhere else is a promise
+   * the site is no longer making.
+   */
+  const toggle = useCallback(
+    (contentId) => {
+      if (!canSave) return false;
+      setStore((current) => writeStore(toggleComplete(current, contentId)));
+      return true;
+    },
+    [canSave]
+  );
 
+  /**
+   * Whether this page is done, as far as the current session is concerned.
+   *
+   * Always false without an account, even when the blob on disk says
+   * otherwise. The data is left alone and comes back on the next sign in;
+   * what is wrong is showing somebody a tick and the words "saved to your
+   * account" at a moment when they have no account. Signed out means no
+   * progress anywhere, and the tick is part of anywhere.
+   */
   const isComplete = useCallback(
-    (contentId) => storeIsComplete(store, contentId),
-    [store]
+    (contentId) => canSave && storeIsComplete(store, contentId),
+    [store, canSave]
   );
 
   /**
@@ -88,13 +113,19 @@ export default function useProgress() {
   // Read, modify, write against storage rather than the React copy: the time
   // tracker may have flushed since this component last rendered, and saving a
   // name from a stale store would throw that away.
-  const updateProfile = useCallback((patch) => {
-    setStore(writeStore(storeSetProfile(readStore(), patch)));
-  }, []);
+  const updateProfile = useCallback(
+    (patch) => {
+      if (!canSave) return false;
+      setStore(writeStore(storeSetProfile(readStore(), patch)));
+      return true;
+    },
+    [canSave]
+  );
 
   return {
     ready,
     store,
+    canSave,
     toggle,
     isComplete,
     reset,

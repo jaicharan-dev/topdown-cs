@@ -26,6 +26,7 @@ import {
   syncOnce,
   USERNAME_TAKEN,
 } from '@site/src/lib/cloudSync';
+import { setGuest } from '@site/src/lib/guest';
 import { readStore, subscribe, writeStore } from '@site/src/lib/progressStore';
 
 /**
@@ -69,6 +70,8 @@ const DISABLED = Object.freeze({
   signIn: () => {},
   signOut: () => {},
   switchAccount: () => {},
+  guestMode: () => {},
+  leave: () => {},
   claimHandle: async () => ({ ok: true, reserved: false }),
   syncNow: () => {},
   forgetRemote: () => {},
@@ -326,9 +329,22 @@ function useCloudSyncState() {
   const switchAccount = useCallback(async () => {
     const client = clientRef.current;
     if (!client) return;
+    setGuest(false);
     await signOut();
     await signIn(true);
   }, [signIn, signOut]);
+
+  /** Out of the account, and done being asked about accounts. */
+  const guestMode = useCallback(async () => {
+    setGuest(true);
+    await signOut();
+  }, [signOut]);
+
+  /** Out of the account, and still open to being offered one. */
+  const leave = useCallback(async () => {
+    setGuest(false);
+    await signOut();
+  }, [signOut]);
 
   /** Removes the stored copy, leaving this device's progress alone. */
   const forgetRemote = useCallback(async () => {
@@ -359,6 +375,8 @@ function useCloudSyncState() {
       signIn,
       signOut,
       switchAccount,
+      guestMode,
+      leave,
       claimHandle,
       syncNow: runSync,
       forgetRemote,
@@ -374,6 +392,8 @@ function useCloudSyncState() {
       signIn,
       signOut,
       switchAccount,
+      guestMode,
+      leave,
       claimHandle,
       runSync,
       forgetRemote,

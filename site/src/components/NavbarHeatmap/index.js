@@ -15,19 +15,25 @@ import React, { useEffect, useState } from 'react';
 import Link from '@docusaurus/Link';
 import YearHeatmap from '@site/src/components/YearHeatmap';
 import useProgress from '@site/src/hooks/useProgress';
+import useSession from '@site/src/hooks/useSession';
 import { activityStats, today } from '@site/src/lib/progressStore';
 import { formatDuration } from '@site/src/lib/timeTracker';
 import styles from './styles.module.css';
 
 export default function NavbarHeatmap() {
   const { ready, store } = useProgress();
+  const { canSave } = useSession();
 
   // Today's date is read after mount, never during render: on a prerendered
   // page the server would stamp the grid with the build date.
   const [endDay, setEndDay] = useState(null);
   useEffect(() => setEndDay(today()), []);
 
-  if (!ready) return <span className={styles.placeholder} aria-hidden="true" />;
+  // Nothing to report without an account, and a level 1 beside an empty
+  // year is a worse answer than no badge at all.
+  if (!ready || !canSave) {
+    return <span className={styles.placeholder} aria-hidden="true" />;
+  }
 
   const stats = activityStats(store);
 

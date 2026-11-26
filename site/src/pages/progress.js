@@ -20,11 +20,13 @@ import Link from '@docusaurus/Link';
 import { useLocation } from '@docusaurus/router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import DifficultyRing from '@site/src/components/DifficultyRing';
+import SignInPrompt from '@site/src/components/SignInPrompt';
 import RankLadder from '@site/src/components/RankLadder';
 import YearHeatmap from '@site/src/components/YearHeatmap';
 import manifest from '@site/src/data/contentManifest.json';
 import useProgress from '@site/src/hooks/useProgress';
 import useCloudSync from '@site/src/hooks/useCloudSync';
+import useSession from '@site/src/hooks/useSession';
 import { ACCEPTED_TYPES, fileToAvatar, initialsFor } from '@site/src/lib/avatar';
 import { describeNextLevel, levelFromSeconds } from '@site/src/lib/levels';
 import {
@@ -122,7 +124,6 @@ function ProfileForm({ profile, onSave, user, cloud }) {
   const [busy, setBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
-  const guest = !user;
 
   // Follows the stored profile until it is edited, so a sync arriving from
   // another device is not overwritten by a field filled in before it landed.
@@ -170,13 +171,7 @@ function ProfileForm({ profile, onSave, user, cloud }) {
           setError('That username is taken. Try another.');
           return;
         }
-        setSaved(
-          result.reserved
-            ? 'Saved. Username reserved.'
-            : wanted && guest
-              ? 'Saved here. Sign in to reserve the username.'
-              : 'Saved.'
-        );
+        setSaved(result.reserved ? 'Saved. Username reserved.' : 'Saved.');
       } else {
         setSaved('Saved.');
       }
@@ -222,45 +217,31 @@ function ProfileForm({ profile, onSave, user, cloud }) {
         </button>
 
         <div className={styles.profileWho}>
-          <h2 className={styles.profileName}>
-            {displayNameFor(profile, user)}
-            {/* Guest is a mode, not a failure to sign up, so it is labelled
-                rather than left as an absence. */}
-            {guest && <span className={styles.guestBadge}>Guest</span>}
-          </h2>
+          <h2 className={styles.profileName}>{displayNameFor(profile, user)}</h2>
           <p className={styles.profileSub}>
-            {user?.email
-              ? user.email
-              : profile.reader
-                ? `Reader #${profile.reader} · everything saved in this browser`
-                : 'Everything saved in this browser'}
+            {user?.email || (profile.reader ? `Reader #${profile.reader}` : '')}
           </p>
 
           {cloud.enabled && (
             <div className={styles.authRow}>
-              {user ? (
-                <>
-                  <button
-                    type="button"
-                    className={styles.authButton}
-                    onClick={cloud.switchAccount}>
-                    Switch account
-                  </button>
-                  <button
-                    type="button"
-                    className={`${styles.authButton} ${styles.authLeave}`}
-                    onClick={cloud.signOut}>
-                    Sign out
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className={styles.authPrimary}
-                  onClick={() => cloud.signIn()}>
-                  Sign in
-                </button>
-              )}
+              <button
+                type="button"
+                className={styles.authButton}
+                onClick={cloud.switchAccount}>
+                Switch account
+              </button>
+              <button
+                type="button"
+                className={styles.authButton}
+                onClick={cloud.guestMode}>
+                Continue as guest
+              </button>
+              <button
+                type="button"
+                className={`${styles.authButton} ${styles.authLeave}`}
+                onClick={cloud.leave}>
+                Sign out
+              </button>
             </div>
           )}
 
@@ -282,16 +263,6 @@ function ProfileForm({ profile, onSave, user, cloud }) {
         className={styles.file}
         onChange={onPickFile}
       />
-
-      {guest && cloud.enabled && (
-        <p className={styles.guestNote}>
-          You are reading as a guest, and nothing on this site is behind an
-          account. Progress, history and this profile are kept in this browser
-          only, which means they go when its data is cleared and they do not
-          follow you to another device. Signing in keeps a second copy and
-          reserves your username; it never replaces what is already here.
-        </p>
-      )}
 
       {cloud.usernameConflict && (
         <p className={styles.conflict}>
@@ -374,9 +345,7 @@ function ProfileForm({ profile, onSave, user, cloud }) {
           </button>
         )}
         <span className={styles.optionalNote}>
-          {guest
-            ? 'All optional. The username is yours here until you sign in.'
-            : 'All optional, except that a username has to be unused.'}
+          All optional, except that a username has to be unused.
         </span>
       </div>
     </form>
@@ -386,6 +355,7 @@ function ProfileForm({ profile, onSave, user, cloud }) {
 export default function Progress() {
   const { ready, store, updateProfile } = useProgress();
   const cloud = useCloudSync();
+  const { canSave, resolving } = useSession();
   const { user } = cloud;
   const location = useLocation();
 
@@ -417,6 +387,20 @@ export default function Progress() {
   );
 
   const profile = store?.profile || {};
+
+  // Without an account there is no progress to show, so the page is the
+  // invitation rather than a dashboard of zeros wearing somebody's name.
+  if (!canSave) {
+    return (
+      <Layout
+        title="Your Progress"
+        description="Track how much of TopDown CS you have worked through.">
+        <main className={styles.page} data-ready={resolving ? 'false' : 'true'}>
+          <SignInPrompt />
+        </main>
+      </Layout>
+    );
+  }
 
   return (
     <Layout

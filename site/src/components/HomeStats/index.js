@@ -14,8 +14,10 @@
 import React from 'react';
 import Link from '@docusaurus/Link';
 import DifficultyRing from '@site/src/components/DifficultyRing';
+import SignInPrompt from '@site/src/components/SignInPrompt';
 import manifest from '@site/src/data/contentManifest.json';
 import useProgress from '@site/src/hooks/useProgress';
+import useSession from '@site/src/hooks/useSession';
 import {
   activityStats,
   difficultyBreakdown,
@@ -26,6 +28,7 @@ import styles from './styles.module.css';
 
 export default function HomeStats() {
   const { ready, store } = useProgress();
+  const { canSave, resolving } = useSession();
 
   // Everything here comes from localStorage, so the prerendered version has
   // nothing to say. The box keeps its shape while that resolves rather than
@@ -33,6 +36,21 @@ export default function HomeStats() {
   const summary = summarise(store, manifest);
   const stats = activityStats(store);
   const breakdown = difficultyBreakdown(store, manifest);
+
+  // Nothing is recorded without an account, so there is nothing true to put
+  // here. The invitation goes in the same box, at the same width.
+  if (!canSave) {
+    return (
+      <aside
+        className={`csf-home-stats ${styles.box}`}
+        data-ready={resolving ? 'false' : 'true'}>
+        <SignInPrompt compact>
+          Pages you finish, your reading time, your level and your rank are
+          kept with your account.
+        </SignInPrompt>
+      </aside>
+    );
+  }
 
   return (
     /* The global class is a layout hook: the homepage grid has to place this

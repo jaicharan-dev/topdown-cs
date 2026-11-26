@@ -7,24 +7,19 @@
  * honest version for now; inferring completion from scroll depth and dwell
  * time is a later refinement rather than a replacement.
  *
- * Renders disabled until the store has loaded, so the server-rendered markup
- * and the first client render agree and hydration stays quiet.
- *
- * Ticking while signed out still ticks. The prompt that follows is an offer,
- * not a toll: refusing to record the click would mean the site quietly lost
- * work somebody had already done, which is a worse thing to do to a reader
- * than letting them keep it in one browser. It appears once and then takes
- * the hint.
+ * Progress belongs to an account, so a tick without one does not quietly
+ * save to this browser: it asks for the account instead. Pretending to
+ * record something that will vanish with the site data, and that no other
+ * device will ever see, is the worse of the two.
  */
 
 import Link from '@docusaurus/Link';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import useProgress from '@site/src/hooks/useProgress';
+import useSession from '@site/src/hooks/useSession';
 import useCloudSync from '@site/src/hooks/useCloudSync';
+import { setGuest } from '@site/src/lib/guest';
 import styles from './styles.module.css';
-
-/** Separate from the progress blob: this is about the prompt, not the data. */
-const DISMISSED_KEY = 'topdowncs:signin-prompt-dismissed';
 
 function CheckIcon() {
   return (
@@ -45,47 +40,20 @@ function CheckIcon() {
   );
 }
 
-function readDismissed() {
-  try {
-    return window.localStorage.getItem(DISMISSED_KEY) === '1';
-  } catch (err) {
-    // Blocked storage is not a reason to break the page; the prompt simply
-    // shows again next time, which is the harmless direction to fail in.
-    return false;
-  }
-}
-
 export default function MarkComplete({ contentId }) {
   const { ready, isComplete, toggle } = useProgress();
-  const { enabled, user, status, signIn } = useCloudSync();
-  const [prompt, setPrompt] = useState(false);
-
-  // Read after mount, never during render: localStorage does not exist while
-  // the page is being prerendered.
-  const [dismissed, setDismissed] = useState(true);
-  useEffect(() => setDismissed(readDismissed()), []);
+  const { canSave, resolving, guest } = useSession();
+  const { signIn } = useCloudSync();
+  const [asking, setAsking] = useState(false);
 
   if (!contentId) return null;
 
   const done = ready && isComplete(contentId);
-  const signedOut = enabled && !user && status !== 'loading';
 
   const onToggle = () => {
-    const wasDone = done;
-    toggle(contentId);
-    // Only when finishing something, and only once. Nobody needs to be sold
-    // an account for un-ticking a box.
-    if (!wasDone && signedOut && !dismissed) setPrompt(true);
-  };
-
-  const onDismiss = () => {
-    setPrompt(false);
-    setDismissed(true);
-    try {
-      window.localStorage.setItem(DISMISSED_KEY, '1');
-    } catch (err) {
-      // Nothing to do: it will offer again, which is the kinder failure.
-    }
+    // toggle refuses without an account and says so by returning false,
+    // which is the cue to offer one rather than to do nothing.
+    if (!toggle(contentId)) setAsking(true);
   };
 
   return (
@@ -94,7 +62,7 @@ export default function MarkComplete({ contentId }) {
         type="button"
         className={styles.button}
         data-complete={done ? 'true' : 'false'}
-        disabled={!ready}
+        disabled={!ready || resolving}
         aria-pressed={done}
         onClick={onToggle}>
         <span className={styles.box} aria-hidden="true">
@@ -103,18 +71,30 @@ export default function MarkComplete({ contentId }) {
         <span>{done ? 'Completed' : 'Mark as complete'}</span>
       </button>
 
-      {prompt ? (
+      {asking ? (
         <div className={styles.prompt} role="status">
           <p className={styles.promptText}>
-            <strong>Saved in this browser.</strong> Sign in to keep your
-            progress and your reading history on every device you use.
+            <strong>Sign in to save your progress.</strong> Ticking a page
+            keeps it against your account, along with your reading history and
+            your level, on every device you use.
           </p>
           <div className={styles.promptActions}>
-            <button type="button" className={styles.signIn} onClick={signIn}>
+            <button
+              type="button"
+              className={styles.signIn}
+              onClick={() => signIn()}>
               Sign in
             </button>
-            <button type="button" className={styles.later} onClick={onDismiss}>
-              Not now
+            <button
+              type="button"
+              className={styles.later}
+              onClick={() => {
+                // Choosing to browse without an account is an answer, and it
+                // stops the site asking again on the next page.
+                setGuest(true);
+                setAsking(false);
+              }}>
+              Keep browsing
             </button>
           </div>
         </div>
@@ -122,11 +102,15 @@ export default function MarkComplete({ contentId }) {
         <p className={styles.note}>
           {done ? (
             <>
-              Saved{signedOut ? ' in this browser' : ''}.{' '}
+              Saved to your account.{' '}
               <Link to="/progress">See your progress</Link>.
             </>
-          ) : (
+          ) : canSave ? (
             'Tracks your progress as you work through the site.'
+          ) : guest ? (
+            'Reading as a guest. Sign in to start tracking your progress.'
+          ) : (
+            'Sign in to track your progress.'
           )}
         </p>
       )}

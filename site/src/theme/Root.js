@@ -19,21 +19,38 @@
 import React, { useEffect } from 'react';
 import { CloudSyncProvider } from '@site/src/hooks/useCloudSync';
 import useCurrentPage from '@site/src/hooks/useCurrentPage';
+import useSession from '@site/src/hooks/useSession';
 import useTimeOnSite from '@site/src/hooks/useTimeOnSite';
 import { readStore, recordVisit, writeStore } from '@site/src/lib/progressStore';
 
 export default function Root({ children }) {
+  return (
+    <CloudSyncProvider>
+      <Recorder>{children}</Recorder>
+    </CloudSyncProvider>
+  );
+}
+
+/**
+ * Everything that watches and writes.
+ *
+ * A separate component because it reads the session, and a component cannot
+ * consume a context it is itself providing.
+ */
+function Recorder({ children }) {
   const page = useCurrentPage();
+  const { canSave } = useSession();
 
   // Reading time is credited to the section being read, so a heading can say
   // how long went into that subject rather than into the site as a whole.
-  useTimeOnSite(page ? page.group : '');
+  // Nothing is counted at all without an account to count it against.
+  useTimeOnSite(page ? page.group : '', canSave);
 
   // Read, modify, write against localStorage rather than through React state:
   // a page could be marked complete between renders, and writing back a stale
   // React copy of the store would undo it.
   useEffect(() => {
-    if (!page) return;
+    if (!page || !canSave) return;
     writeStore(
       recordVisit(readStore(), {
         id: page.id,
@@ -42,7 +59,7 @@ export default function Root({ children }) {
         group: page.group,
       })
     );
-  }, [page]);
+  }, [page, canSave]);
 
-  return <CloudSyncProvider>{children}</CloudSyncProvider>;
+  return <>{children}</>;
 }

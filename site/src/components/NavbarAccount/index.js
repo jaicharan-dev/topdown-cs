@@ -5,18 +5,18 @@
  * question mark in it is the site admitting it does not know who you are,
  * which is both unfriendly and useless; a button says what to do about it.
  *
- * Signed in, or with no project configured to sign into, it is a picture
- * that opens a short menu: who you are, a way to the profile, and a way out.
- * The editing itself lives on the progress page rather than in here. A
- * dropdown is the wrong size for a bio, and a profile that is worth filling
- * in is worth a page.
+ * Signed in it is a picture that opens a short menu: who you are, a way to
+ * the profile, and the three ways out. Editing lives on the progress page
+ * rather than in here, because a dropdown is the wrong size for a bio.
  */
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from '@docusaurus/Link';
 import useProgress from '@site/src/hooks/useProgress';
 import useCloudSync from '@site/src/hooks/useCloudSync';
+import useSession from '@site/src/hooks/useSession';
 import { initialsFor } from '@site/src/lib/avatar';
+import { setGuest } from '@site/src/lib/guest';
 import { displayNameFor } from '@site/src/lib/progressStore';
 import styles from './styles.module.css';
 
@@ -38,8 +38,8 @@ function PersonMark() {
 
 export default function NavbarAccount() {
   const { ready, store } = useProgress();
-  const { enabled, user, status, signIn, signOut, switchAccount } =
-    useCloudSync();
+  const { user, signIn, switchAccount, guestMode, leave } = useCloudSync();
+  const { enabled, signedIn, resolving, guest } = useSession();
 
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
@@ -66,13 +66,22 @@ export default function NavbarAccount() {
   }, [open]);
 
   // Signed out with accounts available: a button that says what it is for.
-  if (enabled && !user && status !== 'loading') {
+  // Signing in also ends guest mode, because asking for an account is the
+  // opposite of having decided not to have one.
+  if (enabled && !signedIn && !resolving) {
     return (
       <button
         type="button"
         className={`csf-navbar-account csf-nav-item csf-tip ${styles.signIn}`}
-        data-csf-tip="Sign in to save your progress and read it on any device"
-        onClick={signIn}>
+        data-csf-tip={
+          guest
+            ? 'Reading as a guest. Sign in to start saving your progress'
+            : 'Sign in to save your progress and read it on any device'
+        }
+        onClick={() => {
+          setGuest(false);
+          signIn();
+        }}>
         Sign in
       </button>
     );
@@ -114,11 +123,7 @@ export default function NavbarAccount() {
               <div className={styles.name}>{name}</div>
               <div className={styles.sub}>
                 {user?.email ||
-                  (profile.username
-                    ? `@${profile.username}`
-                    : `Guest${
-                        profile.reader ? ` \u00b7 Reader #${profile.reader}` : ''
-                      }`)}
+                  (profile.username ? `@${profile.username}` : 'Signed in')}
               </div>
             </div>
           </div>
@@ -130,32 +135,43 @@ export default function NavbarAccount() {
             Edit profile
           </Link>
 
-          {enabled && user ? (
+          {enabled ? (
             <>
-              {/* Both, and both named. Somebody with a work account and a
-                  personal one needs to get between them, and signing out to
-                  sign back in lands them in whichever one Google already
-                  holds unless the chooser is asked for. */}
+              {/* Switching asks Google which account. Signing out and back in
+                  lands in whichever one the browser already holds, so without
+                  this there is no way to reach a second. */}
               <button
                 type="button"
                 className={styles.action}
                 onClick={switchAccount}>
                 Switch account
               </button>
+
+              {/* Guest mode and signing out end in the same place. The
+                  difference is what the site does afterwards: a guest has
+                  answered the question and is not asked again, where somebody
+                  who merely signed out is still offered an account when they
+                  tick a page. */}
+              <button
+                type="button"
+                className={styles.action}
+                onClick={() => {
+                  setOpen(false);
+                  guestMode();
+                }}>
+                Continue as guest
+              </button>
+
               <button
                 type="button"
                 className={`${styles.action} ${styles.leave}`}
-                onClick={signOut}>
+                onClick={() => {
+                  setOpen(false);
+                  leave();
+                }}>
                 Sign out
               </button>
             </>
-          ) : enabled ? (
-            <button
-              type="button"
-              className={styles.action}
-              onClick={() => signIn()}>
-              Sign in
-            </button>
           ) : (
             <p className={styles.note}>
               Saved in this browser. No account to sign into on this build.
