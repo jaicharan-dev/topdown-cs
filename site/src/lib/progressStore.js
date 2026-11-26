@@ -59,13 +59,29 @@ export function emptyProfile() {
     /** Lowercase handle. Optional, and the only field with a format. */
     username: '',
     bio: '',
-    contact: '',
+    location: '',
+    website: '',
+    github: '',
+    linkedin: '',
+    x: '',
     avatar: '',
     /** Assigned once, in the browser, so there is a name before there is one. */
     reader: '',
     updatedAt: '',
   };
 }
+
+/** The named links, in the order the profile shows them. */
+export const PROFILE_LINKS = [
+  { key: 'website', label: 'Website', placeholder: 'https://yoursite.com' },
+  { key: 'github', label: 'GitHub', placeholder: 'https://github.com/you' },
+  {
+    key: 'linkedin',
+    label: 'LinkedIn',
+    placeholder: 'https://linkedin.com/in/you',
+  },
+  { key: 'x', label: 'X', placeholder: 'https://x.com/you' },
+];
 
 /** 3 to 20 characters, lowercase letters, digits, underscore, hyphen. */
 export const USERNAME_PATTERN = /^[a-z0-9_-]{3,20}$/;
@@ -195,7 +211,11 @@ export function migrate(raw) {
       name: text(raw.profile.name, 40),
       username: text(raw.profile.username, 20).toLowerCase(),
       bio: text(raw.profile.bio, 280),
-      contact: text(raw.profile.contact, 120),
+      location: text(raw.profile.location, 60),
+      website: text(raw.profile.website, 200),
+      github: text(raw.profile.github, 200),
+      linkedin: text(raw.profile.linkedin, 200),
+      x: text(raw.profile.x, 200),
       avatar: typeof raw.profile.avatar === 'string' ? raw.profile.avatar : '',
       reader: text(raw.profile.reader, 12),
       updatedAt: text(raw.profile.updatedAt, 40),
@@ -380,7 +400,11 @@ export function setProfile(store, patch, now = new Date()) {
     name: take('name', 40),
     username: take('username', 20, (v) => v.trim().toLowerCase()),
     bio: take('bio', 280),
-    contact: take('contact', 120),
+    location: take('location', 60),
+    website: take('website', 200),
+    github: take('github', 200),
+    linkedin: take('linkedin', 200),
+    x: take('x', 200),
     avatar: patch.avatar === undefined ? next.profile.avatar : patch.avatar || '',
     reader: take('reader', 12),
     updatedAt: now.toISOString(),

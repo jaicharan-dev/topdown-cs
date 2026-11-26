@@ -69,7 +69,7 @@ export default function HomeStats() {
 
       <dl className={styles.figures}>
         <div className={styles.figure}>
-          <dt className={styles.label}>Time read</dt>
+          <dt className={styles.label}>Read time</dt>
           <dd className={styles.value}>{formatDuration(stats.totalSeconds)}</dd>
         </div>
         <div className={styles.figure}>
@@ -80,7 +80,7 @@ export default function HomeStats() {
 
       {/* History rather than the dashboard: Progress is already a button in
           the navbar, so a second way to the same page is a wasted line. */}
-      <Link className={styles.more} to="/progress?at=history">
+      <Link className={styles.historyButton} to="/progress?at=history">
         History
       </Link>
     </aside>

@@ -14,7 +14,7 @@
  * are, which is both unfriendly and useless.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import Link from '@docusaurus/Link';
 import useProgress from '@site/src/hooks/useProgress';
 import useCloudSync from '@site/src/hooks/useCloudSync';
@@ -46,29 +46,12 @@ export default function NavbarAccount() {
   const { user, signIn, switchAccount, guestMode, leave } = useCloudSync();
   const { enabled, signedIn, resolving, guest } = useSession();
 
-  const [pinned, setPinned] = useState(false);
   const wrapperRef = useRef(null);
 
   const profile = store?.profile || {};
   const name = displayNameFor(profile, user);
   const picture = profile.avatar || googleAvatar(user);
   const initials = initialsFor(profile.name || profile.username, '');
-
-  useEffect(() => {
-    if (!pinned) return undefined;
-    const onPointer = (event) => {
-      if (!wrapperRef.current?.contains(event.target)) setPinned(false);
-    };
-    const onKey = (event) => {
-      if (event.key === 'Escape') setPinned(false);
-    };
-    document.addEventListener('pointerdown', onPointer);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('pointerdown', onPointer);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [pinned]);
 
   // Signed out with accounts available: one button, and it says what it does.
   // Signing in also ends guest mode, because asking for an account is the
@@ -94,17 +77,15 @@ export default function NavbarAccount() {
   const accountless = !enabled;
 
   return (
-    <div
-      className={`csf-navbar-account ${styles.wrapper}`}
-      ref={wrapperRef}
-      data-pinned={pinned ? 'true' : 'false'}>
-      <button
-        type="button"
+    <div className={`csf-navbar-account ${styles.wrapper}`} ref={wrapperRef}>
+      {/* A link, not a toggle. Clicking your own picture should take you to
+          your own page; the menu is what hovering is for. On a touch screen
+          there is no hover, so the tap lands on the profile instead, which
+          has every one of these actions on it anyway. */}
+      <Link
+        to="/progress?at=profile"
         className={`csf-nav-item csf-nav-item--icon ${styles.trigger}`}
-        aria-haspopup="menu"
-        aria-expanded={pinned}
-        aria-label={ready ? `Account: ${name}` : 'Your account'}
-        onClick={() => setPinned((value) => !value)}>
+        aria-label={ready ? `Your profile: ${name}` : 'Your profile'}>
         {picture ? (
           <img className={styles.avatar} src={picture} alt="" />
         ) : (
@@ -114,7 +95,7 @@ export default function NavbarAccount() {
             {ready && initials ? initials : <PersonMark />}
           </span>
         )}
-      </button>
+      </Link>
 
       <div className={styles.panel}>
         <div className={styles.panelInner} role="menu" aria-label="Account">
@@ -137,10 +118,7 @@ export default function NavbarAccount() {
             </div>
           </div>
 
-          <Link
-            className={styles.action}
-            to="/progress?at=profile"
-            onClick={() => setPinned(false)}>
+          <Link className={styles.action} to="/progress?at=profile">
             Edit profile
           </Link>
 
@@ -157,10 +135,7 @@ export default function NavbarAccount() {
               <button
                 type="button"
                 className={styles.action}
-                onClick={() => {
-                  setPinned(false);
-                  switchAccount();
-                }}>
+                onClick={switchAccount}>
                 Switch account
               </button>
 
@@ -172,20 +147,14 @@ export default function NavbarAccount() {
               <button
                 type="button"
                 className={styles.action}
-                onClick={() => {
-                  setPinned(false);
-                  guestMode();
-                }}>
+                onClick={guestMode}>
                 Continue as guest
               </button>
 
               <button
                 type="button"
                 className={`${styles.action} ${styles.leave}`}
-                onClick={() => {
-                  setPinned(false);
-                  leave();
-                }}>
+                onClick={leave}>
                 Sign out
               </button>
             </>

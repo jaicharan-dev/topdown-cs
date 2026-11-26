@@ -120,18 +120,44 @@
   opacity: 0.45;
 }
 
-.more {
+/* A button rather than a link. As a link it was the one blue thing in a
+   box of greys, which read as a stray bit of body text rather than as
+   somewhere to go. */
+.historyButton {
   display: block;
   margin-top: 0.85rem;
-  font-size: 0.74rem;
+  padding: 0.38rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  font-size: 0.76rem;
   font-weight: 600;
+  text-align: center;
+  color: inherit;
   text-decoration: none;
-  opacity: 0.6;
+  transition: background-color 0.15s ease;
 }
 
-.more:hover {
-  opacity: 1;
+.historyButton:hover {
+  color: inherit;
   text-decoration: none;
+}
+
+[data-theme='dark'] .historyButton {
+  background-color: rgba(255, 255, 255, 0.055);
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme='dark'] .historyButton:hover {
+  background-color: rgba(255, 255, 255, 0.09);
+}
+
+html:not([data-theme='dark']) .historyButton {
+  background-color: rgba(0, 0, 0, 0.04);
+  border-color: var(--csf-border-subtle, #e3dcce);
+}
+
+html:not([data-theme='dark']) .historyButton:hover {
+  background-color: rgba(0, 0, 0, 0.07);
 }
 
 [data-theme='dark'] .box {
@@ -185,7 +211,8 @@ html:not([data-theme='dark']) .divider {
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   }
 
-  .more {
+  .historyButton {
     margin-top: 0;
+    align-self: center;
   }
 }

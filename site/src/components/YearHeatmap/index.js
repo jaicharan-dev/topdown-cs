@@ -14,7 +14,6 @@
 
 import React from 'react';
 import { buildYearHeatmap, describeDay } from '@site/src/lib/heatmap';
-import { formatDuration } from '@site/src/lib/timeTracker';
 import styles from './styles.module.css';
 
 const WEEKDAY_ROWS = [
@@ -71,20 +70,20 @@ export default function YearHeatmap({ activity, endDay, compact = false }) {
                   </div>
                 ))}
               </div>
-              <div className={styles.monthLabel}>{month.label}</div>
+              {/* The year appears where it changes, which is once or twice
+                  in a strip and is the only place it tells you anything. */}
+              <div className={styles.monthLabel}>
+                {month.label}
+                {month.showYear && (
+                  <span className={styles.yearLabel}>{month.year}</span>
+                )}
+              </div>
             </div>
           ))}
         </div>
       </div>
 
       <div className={styles.footer}>
-        <p className={styles.summary}>
-          <strong>{grid.totalCompleted}</strong> page
-          {grid.totalCompleted === 1 ? '' : 's'} and{' '}
-          <strong>{formatDuration(grid.totalSeconds)}</strong> over{' '}
-          <strong>{grid.days}</strong> active day
-          {grid.days === 1 ? '' : 's'}
-        </p>
         <div className={styles.legend} aria-hidden="true">
           <span>Less</span>
           {[0, 1, 2, 3, 4].map((level) => (
@@ -93,6 +92,7 @@ export default function YearHeatmap({ activity, endDay, compact = false }) {
           <span>More</span>
         </div>
       </div>
+
     </div>
   );
 }

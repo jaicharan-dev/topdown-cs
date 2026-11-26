@@ -31,6 +31,9 @@ import {
   __internal,
 } from '@site/src/lib/progressStore';
 
+/** One frozen instance, so it cannot cause a render loop as a dependency. */
+const EMPTY = emptyStore();
+
 export default function useProgress() {
   const isBrowser = useIsBrowser();
   const { canSave } = useSession();
@@ -124,7 +127,16 @@ export default function useProgress() {
 
   return {
     ready,
-    store,
+    /**
+     * Zero for anybody without an account, whatever is on the disk.
+     *
+     * Gating each reader separately did not hold: the roadmap nodes and the
+     * homepage tab counts read this directly and carried on showing a signed
+     * out reader their old totals. Emptying it here is the only version that
+     * cannot be forgotten by the next thing that reads it, and the blob
+     * itself is untouched, so it all comes back on the next sign in.
+     */
+    store: canSave ? store : EMPTY,
     canSave,
     toggle,
     isComplete,

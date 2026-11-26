@@ -82,8 +82,7 @@
 /* Hover for a pointer, focus for a keyboard, pinned for a touch screen,
    which sends a click and never a hover. */
 .wrapper:hover .panel,
-.wrapper:focus-within .panel,
-.wrapper[data-pinned='true'] .panel {
+.wrapper:focus-within .panel {
   opacity: 1;
   visibility: visible;
   transform: translateY(0);

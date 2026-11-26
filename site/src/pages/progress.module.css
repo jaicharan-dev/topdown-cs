@@ -244,8 +244,8 @@
 
 .fields {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 0.85rem 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.9rem 1.1rem;
 }
 
 .field {
@@ -254,11 +254,10 @@
   min-width: 0;
 }
 
-.fieldWide {
-  grid-column: 1 / -1;
-}
-
 .fieldLabel {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
   font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -266,8 +265,17 @@
   opacity: 0.5;
 }
 
-.input,
-.textarea {
+/* The field's own rule, beside the field's own name. */
+.rule {
+  font-size: 0.6rem;
+  font-weight: 500;
+  font-style: normal;
+  letter-spacing: 0.06em;
+  text-transform: lowercase;
+  opacity: 0.7;
+}
+
+.input {
   width: 100%;
   padding: 0.45rem 0.6rem;
   border-radius: 9px;
@@ -278,13 +286,7 @@
   font-size: 0.88rem;
 }
 
-.textarea {
-  resize: vertical;
-  line-height: 1.5;
-}
-
-.input:focus-visible,
-.textarea:focus-visible {
+.input:focus-visible {
   outline: 2px solid var(--csf-progress-accent);
   outline-offset: -1px;
 }
@@ -360,12 +362,6 @@
 
 .quiet:hover {
   opacity: 1;
-}
-
-.optionalNote {
-  margin-left: auto;
-  font-size: 0.76rem;
-  opacity: 0.45;
 }
 
 .syncError {
@@ -595,11 +591,6 @@ html:not([data-theme='dark']) .historyRow:hover {
 
   .profileName {
     font-size: 1.2rem;
-  }
-
-  .optionalNote {
-    margin-left: 0;
-    width: 100%;
   }
 
   /* The subject badge is the least useful of the three on a phone, and the

@@ -35,6 +35,7 @@ import {
   checkUsername,
   difficultyBreakdown,
   displayNameFor,
+  PROFILE_LINKS,
   summarise,
   today,
 } from '@site/src/lib/progressStore';
@@ -75,11 +76,7 @@ function History({ visits, groups }) {
 
   if (!visits.length) {
     return (
-      <p className={styles.empty}>
-        Nothing here yet. Pages you open are listed here so you can find your
-        way back to one, and the list never leaves this browser unless you
-        sign in.
-      </p>
+      <p className={styles.empty}>Nothing read yet.</p>
     );
   }
 
@@ -177,12 +174,16 @@ function ProfileForm({ profile, onSave, user, cloud }) {
         setSaved('Saved.');
       }
 
-      onSave({
+      const patch = {
         name: draft.name.trim(),
         username: wanted,
         bio: draft.bio.trim(),
-        contact: draft.contact.trim(),
-      });
+        location: draft.location.trim(),
+      };
+      for (const link of PROFILE_LINKS) {
+        patch[link.key] = (draft[link.key] || '').trim();
+      }
+      onSave(patch);
     } finally {
       setSaving(false);
     }
@@ -299,25 +300,32 @@ function ProfileForm({ profile, onSave, user, cloud }) {
 
       <div className={styles.fields}>
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Display name</span>
+          <span className={styles.fieldLabel}>
+            Display name
+            <em className={styles.rule}>optional</em>
+          </span>
           <input
             className={styles.input}
             value={draft.name}
             maxLength={40}
-            placeholder="What should we call you?"
+            placeholder="Jaicharan Y"
             onChange={set('name')}
           />
         </label>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>Username</span>
+          <span className={styles.fieldLabel}>
+            Username
+            {/* The one field with a rule worth knowing before you type. */}
+            <em className={styles.rule}>unique</em>
+          </span>
           <div className={styles.prefixed}>
             <span className={styles.prefix}>@</span>
             <input
               className={styles.input}
               value={draft.username}
               maxLength={20}
-              placeholder="yourname"
+              placeholder="jaicharan"
               autoComplete="off"
               spellCheck="false"
               onChange={set('username')}
@@ -325,28 +333,53 @@ function ProfileForm({ profile, onSave, user, cloud }) {
           </div>
         </label>
 
-        <label className={`${styles.field} ${styles.fieldWide}`}>
-          <span className={styles.fieldLabel}>Bio</span>
-          <textarea
-            className={styles.textarea}
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>
+            Location
+            <em className={styles.rule}>optional</em>
+          </span>
+          <input
+            className={styles.input}
+            value={draft.location}
+            maxLength={60}
+            placeholder="Bengaluru, India"
+            onChange={set('location')}
+          />
+        </label>
+
+        <label className={styles.field}>
+          <span className={styles.fieldLabel}>
+            Bio
+            <em className={styles.rule}>optional</em>
+          </span>
+          <input
+            className={styles.input}
             value={draft.bio}
             maxLength={280}
-            rows={2}
-            placeholder="Optional. A line about what you are preparing for."
+            placeholder="swe @ solarwinds"
             onChange={set('bio')}
           />
         </label>
 
-        <label className={`${styles.field} ${styles.fieldWide}`}>
-          <span className={styles.fieldLabel}>Contact</span>
-          <input
-            className={styles.input}
-            value={draft.contact}
-            maxLength={120}
-            placeholder="Optional. Email, a link, anything you like."
-            onChange={set('contact')}
-          />
-        </label>
+        {/* One box per place somebody might be, rather than one box called
+            Contact that asks them to invent a format. */}
+        {PROFILE_LINKS.map((link) => (
+          <label key={link.key} className={styles.field}>
+            <span className={styles.fieldLabel}>
+              {link.label}
+              <em className={styles.rule}>optional</em>
+            </span>
+            <input
+              className={styles.input}
+              value={draft[link.key] || ''}
+              maxLength={200}
+              placeholder={link.placeholder}
+              autoComplete="off"
+              spellCheck="false"
+              onChange={set(link.key)}
+            />
+          </label>
+        ))}
       </div>
 
       {error && <p className={styles.error}>{error}</p>}
@@ -364,9 +397,6 @@ function ProfileForm({ profile, onSave, user, cloud }) {
             Remove picture
           </button>
         )}
-        <span className={styles.optionalNote}>
-          All optional, except that a username has to be unused.
-        </span>
       </div>
     </form>
   );
@@ -462,18 +492,14 @@ export default function Progress() {
                   />
                 </div>
                 <p className={styles.barNote}>
-                  Rises with time spent reading. {formatDuration(
-                    activity.totalSeconds
-                  )}{' '}
-                  so far.
+                  {formatDuration(activity.totalSeconds)} read
                 </p>
               </div>
 
               <div className={styles.barBlock}>
                 <RankLadder points={summary.completedPoints} />
                 <p className={styles.barNote}>
-                  Rises with what you finish. {summary.completedPoints} of{' '}
-                  {summary.totalPoints} points, hard pages worth more.
+                  {summary.completedPoints} of {summary.totalPoints} points
                 </p>
               </div>
             </div>

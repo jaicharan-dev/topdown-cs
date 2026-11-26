@@ -105,9 +105,7 @@ export default function MarkComplete({ contentId }) {
               Saved to your account.{' '}
               <Link to="/progress">See your progress</Link>.
             </>
-          ) : canSave ? (
-            'Tracks your progress as you work through the site.'
-          ) : guest ? (
+          ) : canSave ? null : guest ? (
             'Reading as a guest. Sign in to start tracking your progress.'
           ) : (
             'Sign in to track your progress.'

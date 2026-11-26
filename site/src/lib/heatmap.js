@@ -128,6 +128,9 @@ export function buildYearHeatmap(activity = {}, endDay, monthCount = 12) {
       key: `${year}-${String(month + 1).padStart(2, '0')}`,
       label: MONTH_NAMES[month],
       year,
+      // Marked on the first month and wherever the year turns over, which is
+      // the only place the number carries information.
+      showYear: index === 0 || month === 0,
       weeks,
     });
   }

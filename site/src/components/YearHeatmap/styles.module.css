@@ -91,6 +91,10 @@
 }
 
 .monthLabel {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 3px;
   margin-top: 5px;
   font-size: 10px;
   font-weight: 600;
@@ -99,24 +103,17 @@
   text-align: center;
 }
 
-.footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-  margin-top: 0.6rem;
-}
-
-.summary {
-  margin: 0;
-  font-size: 0.8rem;
+.yearLabel {
+  font-size: 9px;
+  font-weight: 700;
   opacity: 0.75;
 }
 
-.summary strong {
-  font-weight: 650;
-  opacity: 1;
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 0.6rem;
 }
 
 .legend {
