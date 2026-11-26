@@ -149,6 +149,29 @@
   opacity: 0.6;
 }
 
+/* The signed in identity: the provider's mark and the address it belongs
+   to, so there is no doubt which account this page is showing. */
+.account {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.3rem 0 0;
+}
+
+.accountMark {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.accountEmail {
+  font-size: 0.84rem;
+  opacity: 0.65;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .authRow {
   display: flex;
   flex-wrap: wrap;

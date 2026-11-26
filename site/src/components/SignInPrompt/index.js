@@ -8,6 +8,7 @@
  */
 
 import React from 'react';
+import GoogleMark from '@site/src/components/GoogleMark';
 import useCloudSync from '@site/src/hooks/useCloudSync';
 import useSession from '@site/src/hooks/useSession';
 import { setGuest } from '@site/src/lib/guest';
@@ -36,7 +37,8 @@ export default function SignInPrompt({ compact = false, children }) {
             setGuest(false);
             signIn();
           }}>
-          Sign in with Google
+          <GoogleMark className={styles.googleMark} />
+          <span>Sign in with Google</span>
         </button>
         {!guest && !compact && (
           <button

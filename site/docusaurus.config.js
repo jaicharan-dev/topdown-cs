@@ -1,7 +1,44 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
 import {themes as prismThemes} from 'prism-react-renderer';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import remarkInterviewTurns from './src/remark/interviewTurns.mjs';
+
+const configDir = path.dirname(fileURLToPath(import.meta.url));
+
+/**
+ * Reads a `.env` beside this file, if there is one.
+ *
+ * Deliberately not a dependency. It handles KEY=value, blank lines, comments
+ * and quotes, which is the whole of what this file ever needs to contain,
+ * and the alternative is adding a package to the build for twenty lines.
+ */
+function readEnvFile() {
+  const file = path.join(configDir, '.env');
+  const out = {};
+  if (!fs.existsSync(file)) return out;
+  for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eq = trimmed.indexOf('=');
+    if (eq === -1) continue;
+    const key = trimmed.slice(0, eq).trim();
+    let value = trimmed.slice(eq + 1).trim();
+    const quoted =
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"));
+    if (quoted) value = value.slice(1, -1);
+    if (key) out[key] = value;
+  }
+  return out;
+}
+
+const envFile = readEnvFile();
+
+/** The real environment wins, so a deploy's settings are never overridden. */
+const fromEnv = (name) => process.env[name] || envFile[name] || null;
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -70,11 +107,14 @@ const config = {
   // supabase/schema.sql. Never put the service role key here: it bypasses RLS
   // entirely and would expose every user's data.
   //
-  // Leave them unset and the site simply has no accounts, which is a
-  // perfectly good way to run it.
+  // Locally they come from site/.env instead, which is gitignored; copy
+  // site/.env.example to start one. Without them the site has no accounts at
+  // all, which is a perfectly good way to run it and also exactly what a
+  // laptop missing the file looks like, so if sign in has vanished this is
+  // the first thing to check.
   customFields: {
-    supabaseUrl: process.env.SUPABASE_URL || null,
-    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || null,
+    supabaseUrl: fromEnv('SUPABASE_URL'),
+    supabaseAnonKey: fromEnv('SUPABASE_ANON_KEY'),
   },
 
   url: 'https://topdowncs.com',

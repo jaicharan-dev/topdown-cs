@@ -11,6 +11,13 @@
   font: inherit;
   font-size: 0.78rem;
   font-weight: 600;
+  gap: 0.4rem;
+}
+
+.googleMark {
+  width: 14px;
+  height: 14px;
+  flex: none;
 }
 
 .trigger {
@@ -50,14 +57,36 @@
 
 .panel {
   position: absolute;
-  top: calc(100% + 10px);
+  top: 100%;
   right: 0;
   z-index: 400;
   width: 232px;
+  /* The gap between the button and the panel is padding, not margin: a real
+     gap would break the hover the moment the pointer crossed it, and the
+     panel would close on the way to the thing it is offering. */
+  margin-top: 0;
+  padding: 10px 0 0;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity 0.15s ease, transform 0.15s ease, visibility 0.15s;
+}
+
+.panelInner {
   padding: 0.75rem;
   border-radius: 14px;
   border: 1px solid transparent;
   box-shadow: 0 18px 40px rgba(0, 0, 0, 0.22);
+}
+
+/* Hover for a pointer, focus for a keyboard, pinned for a touch screen,
+   which sends a click and never a hover. */
+.wrapper:hover .panel,
+.wrapper:focus-within .panel,
+.wrapper[data-pinned='true'] .panel {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
 }
 
 .head {
@@ -141,7 +170,7 @@
   opacity: 0.5;
 }
 
-[data-theme='dark'] .panel {
+[data-theme='dark'] .panelInner {
   background-color: #1e1e22;
   border-color: rgba(255, 255, 255, 0.09);
 }
@@ -159,7 +188,7 @@
   background-color: rgba(255, 255, 255, 0.06);
 }
 
-html:not([data-theme='dark']) .panel {
+html:not([data-theme='dark']) .panelInner {
   background-color: #ffffff;
   border-color: var(--csf-border-subtle, #e3dcce);
 }

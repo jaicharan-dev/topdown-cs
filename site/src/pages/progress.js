@@ -20,6 +20,7 @@ import Link from '@docusaurus/Link';
 import { useLocation } from '@docusaurus/router';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import DifficultyRing from '@site/src/components/DifficultyRing';
+import GoogleMark from '@site/src/components/GoogleMark';
 import SignInPrompt from '@site/src/components/SignInPrompt';
 import RankLadder from '@site/src/components/RankLadder';
 import YearHeatmap from '@site/src/components/YearHeatmap';
@@ -218,9 +219,19 @@ function ProfileForm({ profile, onSave, user, cloud }) {
 
         <div className={styles.profileWho}>
           <h2 className={styles.profileName}>{displayNameFor(profile, user)}</h2>
-          <p className={styles.profileSub}>
-            {user?.email || (profile.reader ? `Reader #${profile.reader}` : '')}
-          </p>
+
+          {/* Which account this is, named, with the provider shown. A page
+              about who you are should say who the site thinks you are. */}
+          {cloud.enabled && user ? (
+            <p className={styles.account}>
+              <GoogleMark className={styles.accountMark} />
+              <span className={styles.accountEmail}>{user.email}</span>
+            </p>
+          ) : (
+            <p className={styles.profileSub}>
+              {profile.reader ? `Reader #${profile.reader}` : ''}
+            </p>
+          )}
 
           {cloud.enabled && (
             <div className={styles.authRow}>
@@ -243,6 +254,15 @@ function ProfileForm({ profile, onSave, user, cloud }) {
                 Sign out
               </button>
             </div>
+          )}
+
+          {/* The one case where none of the above can be true. Said here
+              because this is where somebody comes looking for it. */}
+          {!cloud.enabled && (
+            <p className={styles.profileSub}>
+              This build has no Supabase project configured, so there is no
+              account to sign in to. Progress is kept in this browser.
+            </p>
           )}
 
           {/* Only shown when it is not the boring answer. A sync that quietly

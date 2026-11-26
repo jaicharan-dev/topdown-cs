@@ -51,6 +51,9 @@
 }
 
 .signIn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.44rem 1.1rem;
   border: none;
   border-radius: 999px;
@@ -96,4 +99,16 @@
 
 .box[data-compact='true'] .guestNote {
   font-size: 0.7rem;
+}
+
+.googleMark {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  /* The mark keeps its own colours, so it needs a light disc behind it to
+     stay legible on the green button. */
+  background: #ffffff;
+  border-radius: 999px;
+  padding: 2px;
+  box-sizing: content-box;
 }
