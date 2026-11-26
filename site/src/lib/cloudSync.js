@@ -122,3 +122,52 @@ export async function deleteRemote(client, userId) {
   const { error } = await client.from('progress').delete().eq('user_id', userId);
   if (error) throw error;
 }
+
+
+/**
+ * Is this username free for the signed in user to take?
+ *
+ * An answer here is advice, not a reservation: another browser can take the
+ * name between this call and the save. claimUsername is what decides.
+ * Returns true when it cannot tell, so a database without usernames.sql
+ * applied does not block anybody from saving a profile.
+ */
+export async function usernameAvailable(client, candidate) {
+  if (!client || !candidate) return true;
+  const { data, error } = await client.rpc('username_available', {
+    candidate,
+  });
+  if (error) return true;
+  return data !== false;
+}
+
+/** Raised by claimUsername when somebody else holds the name. */
+export const USERNAME_TAKEN = 'username-taken';
+
+/**
+ * Takes a username, or releases it when given an empty one.
+ *
+ * Throws USERNAME_TAKEN when the name belongs to somebody else. Any other
+ * failure, including usernames.sql never having been run, resolves rather
+ * than throwing: a missing optional table must not stop somebody saving a
+ * bio.
+ */
+export async function claimUsername(client, candidate) {
+  if (!client) return null;
+  const { data, error } = await client.rpc('claim_username', {
+    candidate: candidate || '',
+  });
+  if (!error) return data || '';
+
+  // 23505 is unique_violation, which the function raises for a name that is
+  // already held. Postgres sends it through as the error code.
+  if (error.code === '23505' || /taken/i.test(error.message || '')) {
+    const taken = new Error('That username is taken.');
+    taken.reason = USERNAME_TAKEN;
+    throw taken;
+  }
+
+  // Anything else is the feature being unavailable rather than the name
+  // being refused, and the local profile is still saved either way.
+  return null;
+}

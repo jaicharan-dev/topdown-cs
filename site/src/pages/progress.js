@@ -118,9 +118,11 @@ function History({ visits, groups }) {
 function ProfileForm({ profile, onSave, user, cloud }) {
   const [draft, setDraft] = useState(profile);
   const [error, setError] = useState('');
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState('');
   const [busy, setBusy] = useState(false);
+  const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
+  const guest = !user;
 
   // Follows the stored profile until it is edited, so a sync arriving from
   // another device is not overwritten by a field filled in before it landed.
@@ -128,7 +130,8 @@ function ProfileForm({ profile, onSave, user, cloud }) {
 
   const set = (key) => (event) => {
     setDraft((current) => ({ ...current, [key]: event.target.value }));
-    setSaved(false);
+    setSaved('');
+    setError('');
   };
 
   const onPickFile = async (event) => {
@@ -146,21 +149,47 @@ function ProfileForm({ profile, onSave, user, cloud }) {
     }
   };
 
-  const submit = (event) => {
+  const submit = async (event) => {
     event.preventDefault();
-    const problem = checkUsername(draft.username);
+    const wanted = draft.username.trim().toLowerCase();
+
+    const problem = checkUsername(wanted);
     if (problem) {
       setError(problem);
       return;
     }
+
     setError('');
-    onSave({
-      name: draft.name.trim(),
-      username: draft.username.trim().toLowerCase(),
-      bio: draft.bio.trim(),
-      contact: draft.contact.trim(),
-    });
-    setSaved(true);
+    setSaving(true);
+    try {
+      // Only when it changed. Re-saving a bio should not cost a round trip,
+      // and claiming a name you already hold is a no-op worth not making.
+      if (wanted !== (profile.username || '')) {
+        const result = await cloud.claimHandle(wanted);
+        if (!result.ok) {
+          setError('That username is taken. Try another.');
+          return;
+        }
+        setSaved(
+          result.reserved
+            ? 'Saved. Username reserved.'
+            : wanted && guest
+              ? 'Saved here. Sign in to reserve the username.'
+              : 'Saved.'
+        );
+      } else {
+        setSaved('Saved.');
+      }
+
+      onSave({
+        name: draft.name.trim(),
+        username: wanted,
+        bio: draft.bio.trim(),
+        contact: draft.contact.trim(),
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const picture =
@@ -193,21 +222,46 @@ function ProfileForm({ profile, onSave, user, cloud }) {
         </button>
 
         <div className={styles.profileWho}>
-          <h2 className={styles.profileName}>{displayNameFor(profile, user)}</h2>
+          <h2 className={styles.profileName}>
+            {displayNameFor(profile, user)}
+            {/* Guest is a mode, not a failure to sign up, so it is labelled
+                rather than left as an absence. */}
+            {guest && <span className={styles.guestBadge}>Guest</span>}
+          </h2>
           <p className={styles.profileSub}>
             {user?.email
               ? user.email
               : profile.reader
-                ? `Reader #${profile.reader}, saved in this browser`
-                : 'Saved in this browser'}
+                ? `Reader #${profile.reader} · everything saved in this browser`
+                : 'Everything saved in this browser'}
           </p>
+
           {cloud.enabled && (
-            <button
-              type="button"
-              className={styles.authButton}
-              onClick={user ? cloud.signOut : cloud.signIn}>
-              {user ? 'Sign out' : 'Sign in'}
-            </button>
+            <div className={styles.authRow}>
+              {user ? (
+                <>
+                  <button
+                    type="button"
+                    className={styles.authButton}
+                    onClick={cloud.switchAccount}>
+                    Switch account
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.authButton} ${styles.authLeave}`}
+                    onClick={cloud.signOut}>
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.authPrimary}
+                  onClick={() => cloud.signIn()}>
+                  Sign in
+                </button>
+              )}
+            </div>
           )}
 
           {/* Only shown when it is not the boring answer. A sync that quietly
@@ -228,6 +282,29 @@ function ProfileForm({ profile, onSave, user, cloud }) {
         className={styles.file}
         onChange={onPickFile}
       />
+
+      {guest && cloud.enabled && (
+        <p className={styles.guestNote}>
+          You are reading as a guest, and nothing on this site is behind an
+          account. Progress, history and this profile are kept in this browser
+          only, which means they go when its data is cleared and they do not
+          follow you to another device. Signing in keeps a second copy and
+          reserves your username; it never replaces what is already here.
+        </p>
+      )}
+
+      {cloud.usernameConflict && (
+        <p className={styles.conflict}>
+          Somebody else took that username before this account could. Pick
+          another one.{' '}
+          <button
+            type="button"
+            className={styles.quiet}
+            onClick={cloud.clearUsernameConflict}>
+            Dismiss
+          </button>
+        </p>
+      )}
 
       <div className={styles.fields}>
         <label className={styles.field}>
@@ -284,10 +361,10 @@ function ProfileForm({ profile, onSave, user, cloud }) {
       {error && <p className={styles.error}>{error}</p>}
 
       <div className={styles.formFoot}>
-        <button type="submit" className={styles.save}>
-          Save profile
+        <button type="submit" className={styles.save} disabled={saving}>
+          {saving ? 'Saving' : 'Save profile'}
         </button>
-        {saved && <span className={styles.savedNote}>Saved</span>}
+        {saved && <span className={styles.savedNote}>{saved}</span>}
         {profile.avatar && (
           <button
             type="button"
@@ -297,7 +374,9 @@ function ProfileForm({ profile, onSave, user, cloud }) {
           </button>
         )}
         <span className={styles.optionalNote}>
-          Everything here is optional.
+          {guest
+            ? 'All optional. The username is yours here until you sign in.'
+            : 'All optional, except that a username has to be unused.'}
         </span>
       </div>
     </form>

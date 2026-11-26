@@ -28,6 +28,32 @@ Then check it took: **Table Editor -> progress** should exist and show
 further. Row level security is the only thing separating one user's data from
 another's, because the key in the browser bundle is public by design.
 
+### Unique usernames (optional)
+
+Run [`usernames.sql`](usernames.sql) the same way to make usernames unique
+across accounts. It adds one table and two functions and does not touch
+anything in `schema.sql`.
+
+Without it the site still works and nothing breaks: a username is checked for
+shape, saved with everyone else's progress, and never checked against anybody
+else's. Two readers can pick the same one and neither is told. That is fine
+while a username is only ever shown back to the person who chose it, and it
+stops being fine the day one appears next to anything public.
+
+With it, saving a username asks the database to reserve it and the reader is
+told when it has gone. The guarantee comes from the primary key on the table,
+not from the check before it: two browsers can ask the same question at the
+same moment and only one of the two inserts can win.
+
+The table is not readable by anyone, not even by signed in users. Both
+operations go through `security definer` functions, so a caller can ask "is
+this free" and "give me this one" and learn nothing else. A readable
+usernames table would be a directory of everyone who ever signed up, joined
+to their account id, and there is no reason to publish one.
+
+To check it took: **Database -> Functions** should list `username_available`
+and `claim_username`.
+
 ## 3. Set up Google sign in
 
 In the [Google Cloud Console](https://console.cloud.google.com):

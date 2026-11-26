@@ -122,6 +122,17 @@
   color: inherit;
 }
 
+/* Leaving is a different kind of action from the two above it, so it reads
+   as one rather than hiding among them. */
+.leave {
+  margin-top: 2px;
+  color: #ef4444;
+}
+
+[data-theme='dark'] .leave {
+  color: #f87171;
+}
+
 .note {
   margin: 0.3rem 0 0;
   padding: 0 0.5rem;

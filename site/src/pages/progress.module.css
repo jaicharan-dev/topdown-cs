@@ -136,8 +136,27 @@
   opacity: 0.55;
 }
 
+.guestBadge {
+  margin-left: 0.55rem;
+  padding: 0.14rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--csf-border-subtle);
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  vertical-align: middle;
+  opacity: 0.6;
+}
+
+.authRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.7rem;
+}
+
 .authButton {
-  margin-top: 0.6rem;
   padding: 0.34rem 0.9rem;
   border: 1px solid var(--csf-border-subtle);
   border-radius: 999px;
@@ -152,6 +171,48 @@
 .authButton:hover {
   border-color: var(--csf-progress-accent);
   color: var(--csf-progress-accent);
+}
+
+.authLeave:hover {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.authPrimary {
+  padding: 0.38rem 1.1rem;
+  border: none;
+  border-radius: 999px;
+  background: var(--csf-progress-accent);
+  color: #ffffff;
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.authPrimary:hover {
+  filter: brightness(1.08);
+}
+
+/* What guest mode actually is, in the one place somebody goes to find out. */
+.guestNote {
+  margin: 0 0 1.1rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid var(--csf-border-subtle);
+  font-size: 0.8rem;
+  line-height: 1.6;
+  opacity: 0.75;
+  max-width: 72ch;
+}
+
+.conflict {
+  margin: 0 0 1rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  border: 1px solid #f87171;
+  font-size: 0.8rem;
+  line-height: 1.5;
 }
 
 .file {

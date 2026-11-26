@@ -38,7 +38,8 @@ function PersonMark() {
 
 export default function NavbarAccount() {
   const { ready, store } = useProgress();
-  const { enabled, user, status, signIn, signOut } = useCloudSync();
+  const { enabled, user, status, signIn, signOut, switchAccount } =
+    useCloudSync();
 
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef(null);
@@ -112,7 +113,12 @@ export default function NavbarAccount() {
             <div className={styles.who}>
               <div className={styles.name}>{name}</div>
               <div className={styles.sub}>
-                {user?.email || (profile.username ? `@${profile.username}` : 'Not signed in')}
+                {user?.email ||
+                  (profile.username
+                    ? `@${profile.username}`
+                    : `Guest${
+                        profile.reader ? ` \u00b7 Reader #${profile.reader}` : ''
+                      }`)}
               </div>
             </div>
           </div>
@@ -125,11 +131,29 @@ export default function NavbarAccount() {
           </Link>
 
           {enabled && user ? (
-            <button type="button" className={styles.action} onClick={signOut}>
-              Sign out
-            </button>
+            <>
+              {/* Both, and both named. Somebody with a work account and a
+                  personal one needs to get between them, and signing out to
+                  sign back in lands them in whichever one Google already
+                  holds unless the chooser is asked for. */}
+              <button
+                type="button"
+                className={styles.action}
+                onClick={switchAccount}>
+                Switch account
+              </button>
+              <button
+                type="button"
+                className={`${styles.action} ${styles.leave}`}
+                onClick={signOut}>
+                Sign out
+              </button>
+            </>
           ) : enabled ? (
-            <button type="button" className={styles.action} onClick={signIn}>
+            <button
+              type="button"
+              className={styles.action}
+              onClick={() => signIn()}>
               Sign in
             </button>
           ) : (
