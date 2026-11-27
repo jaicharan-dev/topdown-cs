@@ -1,4 +1,16 @@
-/* Completion control at the foot of every doc page. */
+/* Completion control at the foot of every doc page.
+ *
+ * Redesigned from a checkbox in a rectangle. The old one was a tick box and
+ * a label sitting inside a grey panel, which read as a form field somebody
+ * had forgotten to put a form around, and the done state only changed its
+ * border.
+ *
+ * Now it is one pill that fills in. Unfinished it is an outline with a
+ * hollow ring, which is a thing to press; finished it is solid accent with
+ * the tick inside, which is a thing that has happened. The two states are
+ * told apart by weight and colour rather than by a one pixel border, so the
+ * answer is readable from across the room.
+ */
 
 .wrapper {
   margin: 2.5rem 0 1rem;
@@ -7,28 +19,33 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
 
 .button {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
-  padding: 0.55rem 1rem 0.55rem 0.7rem;
-  border-radius: 10px;
-  border: 1px solid var(--csf-border, #d5cdbc);
-  background: var(--csf-surface-raised, #eae4d6);
-  color: inherit;
+  padding: 0.6rem 1.25rem 0.6rem 0.9rem;
+  border-radius: 999px;
+  border: 1.5px solid var(--csf-complete-accent, #16a34a);
+  background: transparent;
+  color: var(--csf-complete-accent, #16a34a);
   font-size: 0.92rem;
-  font-weight: 600;
+  font-weight: 650;
   font-family: inherit;
+  letter-spacing: -0.01em;
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease,
-    transform 0.08s ease;
+  transition: background-color 0.18s ease, color 0.18s ease,
+    border-color 0.18s ease, transform 0.08s ease;
 }
 
 .button:hover:not(:disabled) {
-  border-color: var(--csf-complete-accent, #16a34a);
+  background-color: color-mix(
+    in srgb,
+    var(--csf-complete-accent, #16a34a) 12%,
+    transparent
+  );
 }
 
 .button:active:not(:disabled) {
@@ -37,86 +54,59 @@
 
 .button:focus-visible {
   outline: 2px solid var(--csf-complete-accent, #16a34a);
-  outline-offset: 2px;
+  outline-offset: 3px;
 }
 
 .button:disabled {
-  opacity: 0.55;
+  opacity: 0.45;
   cursor: default;
 }
 
-/* the tick box */
+/* The ring. Hollow while there is something to do, and the tick's backing
+   once there is not. */
 .box {
   width: 20px;
   height: 20px;
   flex: none;
-  border-radius: 6px;
-  border: 1.5px solid var(--csf-border, #d5cdbc);
-  background: var(--ifm-background-color, #fff);
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition: background-color 0.18s ease, border-color 0.18s ease;
 }
 
 .icon {
-  width: 14px;
-  height: 14px;
-  color: #fff;
+  width: 12px;
+  height: 12px;
+  color: inherit;
 }
 
-/* completed state */
+/* Done: filled, so it reads as finished rather than as selected. */
 .button[data-complete='true'] {
+  background: var(--csf-complete-accent, #16a34a);
   border-color: var(--csf-complete-accent, #16a34a);
-  background: color-mix(
-    in srgb,
-    var(--csf-complete-accent, #16a34a) 10%,
-    transparent
-  );
+  color: #ffffff;
 }
 
 .button[data-complete='true'] .box {
-  background: var(--csf-complete-accent, #16a34a);
-  border-color: var(--csf-complete-accent, #16a34a);
+  background: rgba(255, 255, 255, 0.22);
+  border-color: transparent;
+}
+
+.button[data-complete='true']:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--csf-complete-accent, #16a34a) 88%, #000);
 }
 
 .note {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   opacity: 0.6;
 }
 
-[data-theme='dark'] .wrapper {
-  border-top-color: var(--csf-border-subtle, #27272a);
+.note a {
+  font-weight: 600;
 }
-
-[data-theme='dark'] .button {
-  --csf-complete-accent: #4ade80;
-  border-color: var(--csf-border, #3f3f46);
-  background: var(--csf-surface-raised, #27272a);
-}
-
-[data-theme='dark'] .box {
-  background: var(--csf-surface, #1e1e22);
-  border-color: var(--csf-border, #3f3f46);
-}
-
-[data-theme='dark'] .button[data-complete='true'] .box {
-  background: #4ade80;
-  border-color: #4ade80;
-}
-
-[data-theme='dark'] .icon {
-  color: #10281a;
-}
-
-@media (max-width: 600px) {
-  .button {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
 
 /* The offer that follows a first tick while signed out. Styled as a quiet
    note rather than a banner: it is a suggestion, and the work it refers to
@@ -127,9 +117,9 @@
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 0.6rem 1rem;
-  margin-top: 0.75rem;
+  margin-top: 0.15rem;
   padding: 0.7rem 0.85rem;
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid transparent;
 }
 
@@ -159,7 +149,7 @@
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
-  background: var(--csf-progress-accent, #16a34a);
+  background: var(--csf-complete-accent, #16a34a);
   color: #ffffff;
 }
 
@@ -183,9 +173,25 @@
   opacity: 1;
 }
 
+[data-theme='dark'] {
+  --csf-complete-accent: #4ade80;
+}
+
 [data-theme='dark'] .prompt {
   background-color: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.09);
+}
+
+[data-theme='dark'] .button[data-complete='true'] {
+  color: #0b1f12;
+}
+
+[data-theme='dark'] .button[data-complete='true'] .box {
+  background: rgba(0, 0, 0, 0.18);
+}
+
+[data-theme='dark'] .signIn {
+  color: #0b1f12;
 }
 
 html:not([data-theme='dark']) .prompt {

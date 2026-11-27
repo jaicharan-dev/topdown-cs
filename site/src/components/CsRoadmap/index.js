@@ -39,15 +39,18 @@ const VIEW_H = 466;
 const ROW = { hub: 56, essentials: 176, additional: 296, practice: 416 };
 
 const NODES = [
-  // The entry point. No href: there is no single page that means "all of CS",
-  // and a node that looks clickable and goes nowhere is worse than a node
-  // that does not look clickable.
+  // The entry point, and now a door as well. It sat there looking exactly
+  // like every other block and doing nothing when pressed, which is the one
+  // thing a block in a flowchart must not do. There is no page that means
+  // "all of CS", so it opens the first page of the first subject: where
+  // somebody clicking the top of a learning path is trying to get to.
   {
     id: 'cs-all',
     label: 'CS Fundamentals',
     hub: true,
     x: 565, y: ROW.hub, w: 230, h: 48,
     accent: '#818cf8',
+    href: '/docs/oop-essential/1-four-pillars-of-oop',
   },
 
   // OOP lane. The only one that branches, so its lane is the widest.

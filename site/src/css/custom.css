@@ -922,6 +922,16 @@ html:not([data-theme='dark']) .csf-tip::after {
    left. The breakpoint is the container's own max width, which means the
    panel never has to narrow to stay centred: it is either centred at full
    width or off centre at full width. */
+/* The canvas is full bleed, so it runs underneath both side columns. They
+   have to be the upper layer or it covers them, and covering them means
+   swallowing their clicks: the History button was being pressed and the
+   graph surface was receiving it. The rail was given this when the canvas
+   first went full width; the standing box was missed. */
+.csf-home-stats {
+  position: relative;
+  z-index: 2;
+}
+
 .csf-tabs {
   /* 198px, not less: "CS Fundamentals" plus its count wraps below this
      once the rail box and the tab padding have taken their share. */
@@ -930,11 +940,14 @@ html:not([data-theme='dark']) .csf-tip::after {
      into it. The grid is the page's background, so a short homepage ended it
      a third of the way down the screen with the legal links sitting in the
      gap, which read as the end of the site rather than the start of it. */
-  min-height: calc(100vh - var(--ifm-navbar-height, 60px));
+  min-height: calc(100vh - var(--ifm-navbar-height, 60px) - 1.75rem);
   width: 100%;
   max-width: 1404px;
   margin: 0 auto;
-  padding: 0 1.25rem 4rem;
+  /* Head space. The navbar ended and the graph began, with the title
+     wedged between them, which made the page feel like it started halfway
+     through. */
+  padding: 1.75rem 1.25rem 4rem;
   display: grid;
   grid-template-columns: var(--csf-rail-w) minmax(0, 1fr) var(--csf-rail-w);
   gap: 1.5rem;
