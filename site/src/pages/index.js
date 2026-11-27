@@ -30,9 +30,12 @@ const IconSystemDesign = () => (
  * `groups` names the manifest groups a tab covers, which drives the progress
  * readout on the tab itself.
  */
+/* DSA leads, and so the bare homepage opens on it. It is the section
+   people arrive for, and it was sitting behind one they had to click past
+   to reach it. */
 const TABS = [
-  { id: 'cs', label: 'CS Fundamentals', groups: CS_GROUPS },
   { id: 'dsa', label: 'DSA', groups: ['dsa'] },
+  { id: 'cs', label: 'CS Fundamentals', groups: CS_GROUPS },
   { id: 'system-design', label: 'System Design', groups: [] },
 ];
 
@@ -191,20 +194,20 @@ export default function Home() {
         <div className="csf-tabpanels">
           <div
             role="tabpanel"
-            id="csf-panel-cs"
-            aria-labelledby="csf-tab-cs"
-            className="csf-tabpanel"
-            hidden={activeTab !== 'cs'}>
-            <CsRoadmap />
-          </div>
-
-          <div
-            role="tabpanel"
             id="csf-panel-dsa"
             aria-labelledby="csf-tab-dsa"
             className="csf-tabpanel"
             hidden={activeTab !== 'dsa'}>
             <DsaRoadmap />
+          </div>
+
+          <div
+            role="tabpanel"
+            id="csf-panel-cs"
+            aria-labelledby="csf-tab-cs"
+            className="csf-tabpanel"
+            hidden={activeTab !== 'cs'}>
+            <CsRoadmap />
           </div>
 
           <div

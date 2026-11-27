@@ -20,7 +20,7 @@ import { activityStats, today } from '@site/src/lib/progressStore';
 import { formatDuration } from '@site/src/lib/timeTracker';
 import styles from './styles.module.css';
 
-export default function NavbarHeatmap({ mobile, onClick }) {
+export default function NavbarHeatmap({ mobile }) {
   const { ready, store } = useProgress();
   const { canSave } = useSession();
 
@@ -33,33 +33,22 @@ export default function NavbarHeatmap({ mobile, onClick }) {
   // year is a worse answer than no badge at all.
   if (!ready || !canSave) {
     return mobile ? null : (
-      <span className={styles.placeholder} aria-hidden="true" />
+      <span
+        className={`csf-navbar-activity ${styles.placeholder}`}
+        aria-hidden="true"
+      />
     );
   }
 
-  // In the drawer it is a plain row like every other entry. A panel that
-  // opens on hover has nothing to offer a menu you opened by tapping.
-  //
-  // onClick comes from the theme and closes the drawer. Every other entry in
-  // that menu gets it, and a row that navigates while leaving the menu over
-  // the page looks like a tap that did nothing.
-  if (mobile) {
-    return (
-      <li className="menu__list-item">
-        <Link
-          className="menu__link"
-          to="/progress?at=activity"
-          onClick={onClick}>
-          Activity
-        </Link>
-      </li>
-    );
-  }
+  // Nothing on a phone: Activity is a button on the row under the bar,
+  // drawn by MobileBar, and a menu entry for it as well would be the same
+  // destination twice on one screen.
+  if (mobile) return null;
 
   const stats = activityStats(store);
 
   return (
-    <div className={styles.wrapper}>
+    <div className={`csf-navbar-activity ${styles.wrapper}`}>
       <Link
         to="/progress?at=activity"
         className={`csf-nav-item ${styles.trigger}`}

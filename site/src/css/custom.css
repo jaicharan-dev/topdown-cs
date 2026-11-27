@@ -818,8 +818,52 @@ html:not([data-theme='dark']) .navbar__items--right [class*='toggleButton']:hove
 }
 
 /* ----- The drawer -----
-   Three controls in here were built for the navbar and brought their navbar
-   shapes with them. */
+   Everything in here was built for the navbar and brought its navbar shape
+   with it, so most of this is undoing that.
+
+   The list is a flex column purely for ordering: search goes to the top,
+   where somebody opening a menu to find something expects it, without
+   moving it in the config and reordering the bar on a wide screen too. */
+.navbar-sidebar .menu__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.navbar-sidebar .csf-drawer-search {
+  order: -1;
+  margin-bottom: 0.3rem;
+}
+
+/* The sections are the menu's reason to exist, so they read as the list and
+   the two page links below them read as the tail of it. */
+.navbar-sidebar .menu__link {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 10px;
+}
+
+.navbar-sidebar .menu__list-item:first-of-type .menu__link {
+  margin-top: 0;
+}
+
+/* A line between the sections and the pages about you. Drawn on the first
+   item that is not a section, so the groups do not have to be nested in
+   separate lists the theme would have to be taught to render. */
+.navbar-sidebar .menu__list-item:has(> .csf-nav-item) {
+  margin-top: 0.45rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--csf-border-subtle, #e3dcce);
+}
+
+[data-theme='dark'] .navbar-sidebar .menu__list-item:has(> .csf-nav-item) {
+  border-top-color: rgba(255, 255, 255, 0.07);
+}
+
+.navbar-sidebar__brand {
+  box-shadow: none;
+}
 
 /* Search collapses to a circle in a corner it no longer sits in. In the
    menu it has a row of its own, so it is open to begin with. The widths
@@ -844,7 +888,10 @@ html:not([data-theme='dark']) .navbar__items--right [class*='toggleButton']:hove
 /* Progress carries the pill class so it keeps its shape in the bar. In a
    menu a pill is the odd one out, so here it is a row like the rest. */
 .navbar-sidebar .menu__link.csf-nav-item {
-  display: block;
+  /* Still a flex row, because Infima's own rule for a menu link outranks a
+     display of block here. What has to go is the centring, which is right
+     for a pill in a corner and wrong for a row in a list. */
+  justify-content: flex-start;
   height: auto;
   padding: var(--ifm-menu-link-padding-vertical, 0.375rem)
     var(--ifm-menu-link-padding-horizontal, 0.75rem);
@@ -868,7 +915,9 @@ html:not([data-theme='dark']) .navbar__items--right [class*='toggleButton']:hove
      and sets a display of its own. */
   .navbar .navbar__items--right > .navbar__item,
   .navbar .navbar__items--right [class*='navbarSearchContainer'],
-  .navbar .navbar__items--right [class*='colorModeToggle'] {
+  .navbar .navbar__items--right [class*='colorModeToggle'],
+  .navbar .navbar__items--right .csf-navbar-stats,
+  .navbar .navbar__items--right .csf-navbar-activity {
     display: none;
   }
 
@@ -1304,6 +1353,10 @@ html:not([data-theme='dark']) .csf-soon-panel {
 
 @media screen and (max-width: 996px) {
   .csf-tabs {
+    /* A screen, less the bar and the row of buttons under it. Without the
+       44 the page is a row too tall and the legal links show at the bottom
+       of it, which is the peeking the min-height exists to prevent. */
+    min-height: calc(100vh - var(--ifm-navbar-height, 60px) - 44px);
     /* A grid's rows stretch to fill a container taller than its content, and
        with the page held open to a full screen that put a couple of hundred
        pixels of nothing between the standing strip and the graph. The space
@@ -1364,6 +1417,15 @@ html:not([data-theme='dark']) .csf-soon-panel {
   z-index: 0;
   background-image: radial-gradient(currentColor 1px, transparent 1px);
   background-size: 26px 26px;
+}
+
+/* Tighter on a phone. The spacing was set against a canvas three times this
+   wide; at 375 pixels the same gap leaves about a dozen dots across the
+   screen, which reads as a few specks rather than as a grid. */
+@media screen and (max-width: 996px) {
+  .homepage::before {
+    background-size: 18px 18px;
+  }
 }
 
 /* The grid is behind everything, so everything needs a layer of its own. */

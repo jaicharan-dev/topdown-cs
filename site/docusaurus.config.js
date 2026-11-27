@@ -271,9 +271,13 @@ const config = {
           // A query rather than a hash because onBrokenAnchors only knows
           // about headings in MDX: an id that a React page owns is reported
           // as broken on every build, on every page that links to it.
+          //
+          // DSA leads, and is what the bare homepage opens on. It is the
+          // section people come here for, and it was third behind two they
+          // had to scroll past.
           {
             to: '/',
-            label: 'CS Fundamentals',
+            label: 'DSA',
             position: 'left',
             className: 'csf-drawer-only',
             // All three are the homepage, so a path match marks every one of
@@ -283,8 +287,8 @@ const config = {
             activeBasePath: '/__no_match',
           },
           {
-            to: '/?tab=dsa',
-            label: 'DSA',
+            to: '/?tab=cs',
+            label: 'CS Fundamentals',
             position: 'left',
             className: 'csf-drawer-only',
             // All three are the homepage, so a path match marks every one of
@@ -317,9 +321,20 @@ const config = {
             'data-csf-tip':
               'Everything you have read, your rank, and your reading history',
           },
+          // History has a button of its own on the homepage, which a phone
+          // does not show, so in the drawer it is a row like the rest.
+          {
+            to: '/progress?at=history',
+            label: 'History',
+            position: 'right',
+            className: 'csf-drawer-only',
+            activeBasePath: '/__no_match',
+          },
           // Custom kinds, defined in src/theme/NavbarItem/ComponentTypes.js.
           // Level and rank follow the reader around the site rather than
-          // living only on a dashboard they have to go and find.
+          // living only on a dashboard they have to go and find. On a phone
+          // they are a row under the bar instead, so both of these render
+          // nothing there.
           { type: 'custom-heatmap', position: 'right' },
           { type: 'custom-stats', position: 'right' },
           { type: 'search', position: 'right' },

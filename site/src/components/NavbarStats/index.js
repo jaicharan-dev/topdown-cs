@@ -30,14 +30,20 @@ export default function NavbarStats({ mobile }) {
   const { ready, store } = useProgress();
   const { canSave } = useSession();
 
-  // The badge stays in the bar on a phone rather than being listed in the
-  // drawer as well, so it is rendered once and not twice.
+  // On a phone level and rank are a row under the bar, drawn by
+  // MobileBar, so neither the drawer nor the bar wants a second copy. The
+  // drawer is this early return; the bar is a rule on the class below.
   if (mobile) return null;
 
   // Nothing to report without an account, and a level 1 beside an empty
   // year is a worse answer than no badge at all.
   if (!ready || !canSave) {
-    return <span className={styles.placeholder} aria-hidden="true" />;
+    return (
+      <span
+        className={`csf-navbar-stats ${styles.placeholder}`}
+        aria-hidden="true"
+      />
+    );
   }
 
   const summary = summarise(store, manifest);
@@ -46,7 +52,7 @@ export default function NavbarStats({ mobile }) {
   const ladder = rankProgress(summary.completedPoints);
 
   return (
-    <div className={styles.wrapper}>
+    <div className={`csf-navbar-stats ${styles.wrapper}`}>
       <Link to="/progress?at=standing" className={`csf-nav-item ${styles.pill}`}>
         {/* The number sits against its own word. Pushed to the far end it
             read as a separate thing that happened to share a box. */}
