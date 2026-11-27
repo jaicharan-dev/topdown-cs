@@ -152,9 +152,11 @@ html:not([data-theme='dark']) .footnote {
   border-top-color: var(--csf-border-subtle, #e3dcce);
 }
 
-/* The rank name is the first thing to go; the level survives to phone width
-   because it is the number that changes most often. */
-@media screen and (max-width: 996px) {
+/* Both survive to phone width now that the bar carries nothing else: the
+   toggle, the wordmark, this and the picture come to 319 pixels of the 343
+   a 375 pixel screen gives. Below that the rank name is the first to go,
+   because the level is the number that changes most often. */
+@media screen and (max-width: 360px) {
   .pair:last-of-type,
   .divider {
     display: none;

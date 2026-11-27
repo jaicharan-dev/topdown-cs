@@ -804,6 +804,79 @@ html:not([data-theme='dark']) .navbar__items--right [class*='toggleButton']:hove
   order: 1;
 }
 
+/* ----- What the phone navbar keeps -----
+   Six controls and a wordmark did not fit across a phone, so the bar keeps
+   the two that answer "who am I and how am I doing" and the drawer takes the
+   rest. The theme builds that drawer from the same item list, so Progress,
+   Activity and the sections are already in it; these rules only stop them
+   being in both places at once.
+
+   The search container and the colour mode toggle are matched on a partial
+   class name because the theme hashes both. */
+.navbar__items .csf-drawer-only {
+  display: none;
+}
+
+/* ----- The drawer -----
+   Three controls in here were built for the navbar and brought their navbar
+   shapes with them. */
+
+/* Search collapses to a circle in a corner it no longer sits in. In the
+   menu it has a row of its own, so it is open to begin with. The widths
+   are !important because the ones they beat are too. */
+.csf-drawer-search {
+  padding: 0.4rem 0.5rem 0.7rem;
+}
+
+.csf-drawer-search .navbar__search {
+  display: block;
+}
+
+.navbar-sidebar .csf-drawer-search .navbar__search-input,
+.navbar-sidebar .csf-drawer-search .navbar__search-input:not(:focus),
+.navbar-sidebar .csf-drawer-search .navbar__search-input:focus {
+  width: 100% !important;
+  max-width: none;
+  padding-left: 2.1rem;
+  padding-right: 0.6rem;
+}
+
+/* Progress carries the pill class so it keeps its shape in the bar. In a
+   menu a pill is the odd one out, so here it is a row like the rest. */
+.navbar-sidebar .menu__link.csf-nav-item {
+  display: block;
+  height: auto;
+  padding: var(--ifm-menu-link-padding-vertical, 0.375rem)
+    var(--ifm-menu-link-padding-horizontal, 0.75rem);
+  border: none;
+  border-radius: 0.25rem;
+  background-color: transparent;
+  font-size: inherit;
+  font-weight: inherit;
+  text-align: left;
+}
+
+/* And a tooltip has nothing to hover over on a touch screen. */
+.navbar-sidebar .csf-tip::after,
+.navbar-sidebar .csf-tip::before {
+  display: none;
+}
+
+@media screen and (max-width: 996px) {
+  /* .navbar leads each selector so these outrank the rule that gives every
+     .csf-nav-item in this row its pill shape, which is three classes deep
+     and sets a display of its own. */
+  .navbar .navbar__items--right > .navbar__item,
+  .navbar .navbar__items--right [class*='navbarSearchContainer'],
+  .navbar .navbar__items--right [class*='colorModeToggle'] {
+    display: none;
+  }
+
+  .navbar__items--right {
+    gap: 0.3rem;
+  }
+}
+
 /* A tooltip for anything carrying data-csf-tip. CSS rather than a component
    because every control that wants one is already a button or a link: there
    is nothing to mount, nothing to position in script, and no way for it to
@@ -939,8 +1012,12 @@ html:not([data-theme='dark']) .csf-tip::after {
   /* Tall enough that the footer starts below the fold rather than peeking
      into it. The grid is the page's background, so a short homepage ended it
      a third of the way down the screen with the legal links sitting in the
-     gap, which read as the end of the site rather than the start of it. */
-  min-height: calc(100vh - var(--ifm-navbar-height, 60px) - 1.75rem);
+     gap, which read as the end of the site rather than the start of it.
+
+     A whole screen less the navbar, with nothing taken off for the padding:
+     that subtraction is what left the legal links showing in the bottom 28
+     pixels, which is exactly the peeking this is here to prevent. */
+  min-height: calc(100vh - var(--ifm-navbar-height, 60px));
   width: 100%;
   max-width: 1404px;
   margin: 0 auto;
@@ -1226,93 +1303,46 @@ html:not([data-theme='dark']) .csf-soon-panel {
 }
 
 @media screen and (max-width: 996px) {
-  /* Below this the rail costs more than it gives, so it lies back down across
-     the top and scrolls sideways. */
+  .csf-tabs {
+    /* A grid's rows stretch to fill a container taller than its content, and
+       with the page held open to a full screen that put a couple of hundred
+       pixels of nothing between the standing strip and the graph. The space
+       belongs at the bottom, where the dot grid reads as canvas. */
+    align-content: start;
+  }
+
+  /* The section tabs are in the drawer below this width, which is where the
+     menu button appears, so the rail has nothing left to show. Dropping it
+     gives the flowchart the full width of the screen, which matters more
+     than a row of section names a tap away in a menu that is already there. */
+  .csf-rail {
+    display: none;
+  }
+
   .csf-tabs {
     /* minmax(0, 1fr), not 1fr: a 1fr track takes its minimum from its
        content, so the roadmap could force the column wider than the screen
        and the whole page scrolled sideways instead of just the graph. */
     grid-template-columns: minmax(0, 1fr);
-    gap: 1.25rem;
-    padding: 0 1.25rem 3.5rem;
+    gap: 0.75rem;
+    padding: 1rem 0.85rem 3.5rem;
   }
 
-  /* One column: tabs, then where you stand, then the graph. */
-  .csf-rail {
+  /* Where you stand, then the graph. */
+  .csf-home-stats {
     grid-column: 1;
     grid-row: 1;
   }
 
-  .csf-home-stats {
-    grid-column: 1;
-    grid-row: 2;
-  }
-
   .csf-tabpanels {
     grid-column: 1;
-    grid-row: 3;
-  }
-
-  /* Across the top it is a strip of tabs, not a panel, so the box comes
-     off and the divider under the strip does the separating. */
-  .csf-rail {
-    position: static;
-    padding: 0;
-    border: none;
-    background-color: transparent;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-
-  .csf-rail__heading {
-    display: none;
-  }
-
-  .csf-tablist {
-    flex-direction: row;
-    gap: 0.3rem;
-    overflow-x: auto;
-    scrollbar-width: none;
-    border-bottom: 1px solid var(--csf-border-subtle, #e3dcce);
-  }
-
-  .csf-tablist::-webkit-scrollbar {
-    display: none;
-  }
-
-  .csf-tab {
-    flex: none;
-    width: auto;
-    gap: 0.3rem;
-    border-radius: 8px 8px 0 0;
-    padding: 0.45rem 0.8rem 0.5rem;
-  }
-
-  /* Down here the marker belongs under the tab, not beside it. */
-  .csf-tab[aria-selected='true']::before {
-    left: 0;
-    right: 0;
-    top: auto;
-    bottom: 0;
-    width: auto;
-    height: 2px;
-    border-radius: 2px 2px 0 0;
-  }
-
-  /* The marker already runs along the bottom edge, so a track there as well
-     is two bars saying almost the same thing. */
-  .csf-tab__track {
-    display: none;
-  }
-
-  [data-theme='dark'] .csf-tablist {
-    border-bottom-color: rgba(255, 255, 255, 0.08);
+    grid-row: 2;
   }
 }
 
 @media screen and (max-width: 600px) {
   .csf-tabs {
-    padding: 0 0.85rem 3rem;
+    padding: 0.85rem 0.7rem 3rem;
   }
 }
 
@@ -2054,10 +2084,15 @@ html:not([data-theme='dark']) .navbar {
   margin-left: auto !important;
 }
 
-.navbar [class*="colorModeToggle"] {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+/* Only where the bar has room for it. Below the drawer breakpoint the
+   toggle lives in the drawer's header instead, and an !important here would
+   outrank anything that tried to move it. */
+@media screen and (min-width: 997px) {
+  .navbar [class*="colorModeToggle"] {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
 }
 
 .navbar [class*="colorModeToggle"] button,
@@ -2080,13 +2115,6 @@ html:not([data-theme='dark']) .navbar {
 
 html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
   background-color: rgba(0, 0, 0, 0.05);
-}
-
-/* Prevent duplicate toggle inside mobile sidebar drawer */
-.navbar-sidebar [class*="colorModeToggle"],
-.navbar-sidebar__brand [class*="colorModeToggle"],
-.navbar-sidebar__brand .toggle_vylO {
-  display: none !important;
 }
 
 /* Mobile navbar items layout (<= 996px) */

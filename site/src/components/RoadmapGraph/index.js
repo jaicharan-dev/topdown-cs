@@ -61,16 +61,6 @@ const MIN_ZOOM = 0.55;
 const MAX_ZOOM = 2.6;
 const HOME_VIEW = { k: 1, x: 0, y: 0 };
 
-/**
- * The smallest the graph is drawn, in rendered pixels per viewBox unit.
- *
- * A phone gives the panel about 330px and these graphs are 1130 units across,
- * which would draw them at 0.29 and put a node label under 5px. Below this
- * the graph is drawn bigger than the panel instead and panned sideways, which
- * is what the scrollbox here used to do.
- */
-const MIN_READABLE = 0.62;
-
 /** Past this many pixels a press is a drag, and must not open a node. */
 const DRAG_SLOP = 4;
 
@@ -160,7 +150,12 @@ export default function RoadmapGraph({
       const rect = wrapper.getBoundingClientRect();
       const pageWidth = document.documentElement.clientWidth;
       if (!rect.width || !pageWidth) return;
-      const scale = Math.max(rect.width / width, MIN_READABLE);
+      // Whatever the panel gives it, however small. Forcing a readable
+      // size instead meant a phone got a graph wider than its screen and had
+      // to be panned to see any of it, and a flowchart nobody can see the
+      // shape of is not a flowchart. Small and whole beats large and
+      // cropped; the zoom is there for reading the labels.
+      const scale = rect.width / width;
       const visW = pageWidth / scale;
       const next = {
         boxW: pageWidth,

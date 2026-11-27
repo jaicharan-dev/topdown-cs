@@ -20,7 +20,7 @@ import { activityStats, today } from '@site/src/lib/progressStore';
 import { formatDuration } from '@site/src/lib/timeTracker';
 import styles from './styles.module.css';
 
-export default function NavbarHeatmap() {
+export default function NavbarHeatmap({ mobile, onClick }) {
   const { ready, store } = useProgress();
   const { canSave } = useSession();
 
@@ -32,7 +32,28 @@ export default function NavbarHeatmap() {
   // Nothing to report without an account, and a level 1 beside an empty
   // year is a worse answer than no badge at all.
   if (!ready || !canSave) {
-    return <span className={styles.placeholder} aria-hidden="true" />;
+    return mobile ? null : (
+      <span className={styles.placeholder} aria-hidden="true" />
+    );
+  }
+
+  // In the drawer it is a plain row like every other entry. A panel that
+  // opens on hover has nothing to offer a menu you opened by tapping.
+  //
+  // onClick comes from the theme and closes the drawer. Every other entry in
+  // that menu gets it, and a row that navigates while leaving the menu over
+  // the page looks like a tap that did nothing.
+  if (mobile) {
+    return (
+      <li className="menu__list-item">
+        <Link
+          className="menu__link"
+          to="/progress?at=activity"
+          onClick={onClick}>
+          Activity
+        </Link>
+      </li>
+    );
   }
 
   const stats = activityStats(store);

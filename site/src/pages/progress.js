@@ -114,6 +114,22 @@ function History({ visits, groups }) {
   );
 }
 
+/**
+ * The rule for a field, sitting in the field's own corner.
+ *
+ * Absolutely placed over the input rather than inside it, because an input
+ * cannot have children. Pointer events are off so it never eats a click
+ * meant for the box underneath, and it leaves as soon as there is an answer.
+ */
+function Hint({ show, children }) {
+  if (!show) return null;
+  return (
+    <span className={styles.hint} aria-hidden="true">
+      {children}
+    </span>
+  );
+}
+
 /** The editable profile. Everything in it is optional except turning up. */
 function ProfileForm({ profile, onSave, user, cloud }) {
   const [draft, setDraft] = useState(profile);
@@ -300,10 +316,8 @@ function ProfileForm({ profile, onSave, user, cloud }) {
 
       <div className={styles.fields}>
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>
-            Display name
-            <em className={styles.rule}>optional</em>
-          </span>
+          <span className={styles.fieldLabel}>Display name</span>
+          <Hint show={!draft.name}>optional</Hint>
           <input
             className={styles.input}
             value={draft.name}
@@ -314,11 +328,9 @@ function ProfileForm({ profile, onSave, user, cloud }) {
         </label>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>
-            Username
-            {/* The one field with a rule worth knowing before you type. */}
-            <em className={styles.rule}>unique</em>
-          </span>
+          <span className={styles.fieldLabel}>Username</span>
+          {/* The one field with a rule worth knowing before you type. */}
+          <Hint show={!draft.username}>unique</Hint>
           <div className={styles.prefixed}>
             <span className={styles.prefix}>@</span>
             <input
@@ -334,10 +346,8 @@ function ProfileForm({ profile, onSave, user, cloud }) {
         </label>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>
-            Location
-            <em className={styles.rule}>optional</em>
-          </span>
+          <span className={styles.fieldLabel}>Location</span>
+          <Hint show={!draft.location}>optional</Hint>
           <input
             className={styles.input}
             value={draft.location}
@@ -348,10 +358,8 @@ function ProfileForm({ profile, onSave, user, cloud }) {
         </label>
 
         <label className={styles.field}>
-          <span className={styles.fieldLabel}>
-            Bio
-            <em className={styles.rule}>optional</em>
-          </span>
+          <span className={styles.fieldLabel}>Bio</span>
+          <Hint show={!draft.bio}>optional</Hint>
           <input
             className={styles.input}
             value={draft.bio}
@@ -365,10 +373,8 @@ function ProfileForm({ profile, onSave, user, cloud }) {
             Contact that asks them to invent a format. */}
         {PROFILE_LINKS.map((link) => (
           <label key={link.key} className={styles.field}>
-            <span className={styles.fieldLabel}>
-              {link.label}
-              <em className={styles.rule}>optional</em>
-            </span>
+            <span className={styles.fieldLabel}>{link.label}</span>
+            <Hint show={!draft[link.key]}>optional</Hint>
             <input
               className={styles.input}
               value={draft[link.key] || ''}

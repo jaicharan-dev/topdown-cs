@@ -128,9 +128,9 @@ export function buildYearHeatmap(activity = {}, endDay, monthCount = 12) {
       key: `${year}-${String(month + 1).padStart(2, '0')}`,
       label: MONTH_NAMES[month],
       year,
-      // Marked on the first month and wherever the year turns over, which is
-      // the only place the number carries information.
-      showYear: index === 0 || month === 0,
+      // The run of months this year owns, so the strip can label the year
+      // once above them rather than bolting it onto a month name.
+      startsYear: index === 0 || month === 0,
       weeks,
     });
   }

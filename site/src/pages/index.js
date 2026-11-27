@@ -1,5 +1,6 @@
 import Layout from '@theme/Layout';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
+import { useHistory, useLocation } from '@docusaurus/router';
 import React, { useCallback, useEffect, useState } from 'react';
 import CsRoadmap, { CS_GROUPS } from '../components/CsRoadmap';
 import DsaRoadmap from '../components/DsaRoadmap';
@@ -38,35 +39,43 @@ const TABS = [
 const DEFAULT_TAB = TABS[0].id;
 
 function useHomeTabs() {
+  const history = useHistory();
+  const location = useLocation();
   const [active, setActive] = useState(DEFAULT_TAB);
 
-  // The hash is read after hydration, never during render. Reading it while
+  const wanted = new URLSearchParams(location.search).get('tab') || '';
+
+  // ?tab, not a hash. onBrokenAnchors only knows about headings in MDX, so
+  // an id a React page owns is reported as broken on every build and on
+  // every page that links to it.
+  //
+  // The tab is read after hydration, never during render: reading it while
   // rendering would make the prerendered markup and the first client render
   // disagree whenever somebody opens a link to a tab.
   //
-  // It is also followed afterwards, not just on mount. This is a single page
-  // app, so arriving at a different hash often does not remount anything:
-  // without the listener the URL would say one tab and the page would show
-  // another, and the browser's back button would do nothing visible.
+  // It follows the router rather than listening for an event, because a
+  // pushState navigation fires none. The drawer's section links are ordinary
+  // links, and without this they would change the URL and leave the page
+  // showing the tab it had before.
   useEffect(() => {
-    const sync = () => {
-      const fromHash = window.location.hash.replace(/^#/, '');
-      if (TABS.some((tab) => tab.id === fromHash)) setActive(fromHash);
-      else if (!fromHash) setActive(DEFAULT_TAB);
-    };
-    sync();
-    window.addEventListener('hashchange', sync);
-    return () => window.removeEventListener('hashchange', sync);
-  }, []);
+    setActive(TABS.some((tab) => tab.id === wanted) ? wanted : DEFAULT_TAB);
+  }, [wanted]);
 
-  const select = useCallback((id) => {
-    setActive(id);
-    // replaceState rather than assigning location.hash: assigning would jump
-    // the page to any element sharing that id, and would push a history entry
-    // for every click, so Back would walk through tabs instead of leaving.
-    const url = id === DEFAULT_TAB ? window.location.pathname : `#${id}`;
-    window.history.replaceState(null, '', url);
-  }, []);
+  const select = useCallback(
+    (id) => {
+      setActive(id);
+      // Through the router, not history.replaceState: a raw replaceState
+      // leaves the router's own location behind, and then a link to a
+      // section looks like a navigation to where we already are and changes
+      // nothing. Replace rather than push, so Back leaves the page instead
+      // of walking through every tab somebody tried.
+      history.replace({
+        pathname: location.pathname,
+        search: id === DEFAULT_TAB ? '' : `?tab=${id}`,
+      });
+    },
+    [history, location.pathname]
+  );
 
   return [active, select];
 }

@@ -35,6 +35,9 @@
   display: grid;
   grid-template-rows: auto repeat(7, var(--cell));
   row-gap: var(--gap);
+  /* Matches the year row above the months, or the weekday labels sit one
+     row higher than the squares they name. */
+  margin-top: 16px;
   margin-right: 4px;
   flex: none;
 }
@@ -91,10 +94,6 @@
 }
 
 .monthLabel {
-  display: flex;
-  align-items: baseline;
-  justify-content: center;
-  gap: 3px;
   margin-top: 5px;
   font-size: 10px;
   font-weight: 600;
@@ -103,10 +102,16 @@
   text-align: center;
 }
 
+/* Left aligned under nothing in particular: it labels the run that starts
+   here, so it reads from the left edge of its own first month. */
 .yearLabel {
-  font-size: 9px;
+  height: 13px;
+  margin-bottom: 3px;
+  font-size: 10px;
   font-weight: 700;
-  opacity: 0.75;
+  letter-spacing: 0.06em;
+  opacity: 0.45;
+  white-space: nowrap;
 }
 
 .footer {

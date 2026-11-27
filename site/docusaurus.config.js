@@ -261,6 +261,49 @@ const config = {
         // left to the theme, which appends it last: the account belongs in
         // the far corner, and that is the only way to put anything after it.
         items: [
+          // The homepage sections, as links. They are hidden from the bar on
+          // every width and exist for the mobile drawer, which is where the
+          // tab strip went: the theme already has a menu and a button to
+          // open it, and a second row of tabs under a navbar on a phone is
+          // one row too many. The homepage reads ?tab and opens the one it
+          // names.
+          //
+          // A query rather than a hash because onBrokenAnchors only knows
+          // about headings in MDX: an id that a React page owns is reported
+          // as broken on every build, on every page that links to it.
+          {
+            to: '/',
+            label: 'CS Fundamentals',
+            position: 'left',
+            className: 'csf-drawer-only',
+            // All three are the homepage, so a path match marks every one of
+            // them as the page you are on. A base nothing can match leaves
+            // them all unmarked, which is the honest of the two answers: the
+            // tab is a query, and the strip on the page says which one.
+            activeBasePath: '/__no_match',
+          },
+          {
+            to: '/?tab=dsa',
+            label: 'DSA',
+            position: 'left',
+            className: 'csf-drawer-only',
+            // All three are the homepage, so a path match marks every one of
+            // them as the page you are on. A base nothing can match leaves
+            // them all unmarked, which is the honest of the two answers: the
+            // tab is a query, and the strip on the page says which one.
+            activeBasePath: '/__no_match',
+          },
+          {
+            to: '/?tab=system-design',
+            label: 'System Design',
+            position: 'left',
+            className: 'csf-drawer-only',
+            // All three are the homepage, so a path match marks every one of
+            // them as the page you are on. A base nothing can match leaves
+            // them all unmarked, which is the honest of the two answers: the
+            // tab is a query, and the strip on the page says which one.
+            activeBasePath: '/__no_match',
+          },
           {
             to: '/progress',
             label: 'Progress',

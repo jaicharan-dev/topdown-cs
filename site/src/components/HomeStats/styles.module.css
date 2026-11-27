@@ -1,19 +1,30 @@
+/* The shell holds both shapes. Which one shows is a media query at the
+   bottom of this file: the panel on a screen with room for it, the strip on
+   a phone. Both are in the markup because the choice cannot be made in
+   script before the first paint, and a panel that swaps to a strip after
+   paint moves a third of a phone screen while somebody is looking at it. */
+.shell {
+  position: sticky;
+  top: calc(var(--ifm-navbar-height, 60px) + 1.25rem);
+}
+
+.shell[data-ready='false'] {
+  opacity: 0.45;
+}
+
+/* Hidden until the strip's own query turns it on. */
+.strip {
+  display: none;
+}
+
 /* The standing box. Sized to the rail opposite it, so the canvas between
    them stays on the page's centre line. */
 .box {
-  position: sticky;
-  top: calc(var(--ifm-navbar-height, 60px) + 1.25rem);
   padding: 0.85rem 0.8rem 0.7rem;
   border-radius: 14px;
   border: 1px solid transparent;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-}
-
-/* Before the store loads the numbers are all zero and saying so would be a
-   lie, so they fade in once there is something true to say. */
-.box[data-ready='false'] {
-  opacity: 0.45;
 }
 
 .levelRow {
@@ -189,8 +200,11 @@ html:not([data-theme='dark']) .divider {
 /* Below the three column layout it stops being a sidebar and becomes a row
    of figures above the graph, which is the only place left with room. */
 @media screen and (max-width: 1226px) {
-  .box {
+  .shell {
     position: static;
+  }
+
+  .box {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
     align-items: center;
@@ -214,5 +228,168 @@ html:not([data-theme='dark']) .divider {
   .historyButton {
     margin-top: 0;
     align-self: center;
+  }
+}
+
+/* ----- The phone strip -----
+   One line where the panel was. Everything is small on purpose: the figures
+   are worth a glance, and a glance is all they should cost. */
+@media screen and (max-width: 996px) {
+  .box {
+    display: none;
+  }
+
+  .strip {
+    display: block;
+    padding: 0.4rem 0.7rem 0.45rem;
+    border-radius: 11px;
+    border: 1px solid transparent;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .strip:hover {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  /* It scrolls sideways rather than wrapping. Wrapped, a second line appears
+     and disappears as the counts pass ten, which moves the graph under it. */
+  .stripRow {
+    display: flex;
+    align-items: baseline;
+    gap: 0.75rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .stripRow::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stripTotal,
+  .chip,
+  .stripTime,
+  .stripPitch {
+    flex: none;
+    white-space: nowrap;
+  }
+
+  .stripDone {
+    font-size: 0.95rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .stripOf {
+    font-size: 0.72rem;
+    font-weight: 500;
+    opacity: 0.45;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* One line per difficulty. Stacked, the label above its count, the row
+     was 37 pixels tall for the sake of three words, which is most of the
+     height this strip exists to save. The colour does the separating. */
+  .chip {
+    display: flex;
+    align-items: baseline;
+    gap: 0.25rem;
+  }
+
+  .chipLabel {
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .chipCount {
+    font-size: 0.74rem;
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Read time goes to the far end, which is where the eye stops. */
+  .stripTime {
+    margin-left: auto;
+    font-size: 0.72rem;
+    font-weight: 600;
+    opacity: 0.55;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* The proportion the ring used to carry, in two pixels. */
+  .stripTrack {
+    display: block;
+    position: relative;
+    height: 2px;
+    margin-top: 0.35rem;
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .stripFill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    border-radius: 2px;
+    background: var(--csf-progress-accent, #16a34a);
+    transition: width 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .stripPitch {
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+
+  .stripSignIn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-left: auto;
+    padding: 0.24rem 0.7rem;
+    border: none;
+    border-radius: 999px;
+    background: var(--csf-progress-accent, #16a34a);
+    color: #ffffff;
+    font: inherit;
+    font-size: 0.74rem;
+    font-weight: 600;
+    white-space: nowrap;
+    flex: none;
+    cursor: pointer;
+  }
+
+  .stripMark {
+    width: 13px;
+    height: 13px;
+    flex: none;
+    /* The mark keeps its own colours, so it needs a light disc behind it to
+       stay legible on the green button. */
+    background: #ffffff;
+    border-radius: 999px;
+    padding: 2px;
+    box-sizing: content-box;
+  }
+
+  [data-theme='dark'] .strip {
+    background-color: rgba(30, 30, 34, 0.68);
+    border-color: rgba(255, 255, 255, 0.07);
+  }
+
+  [data-theme='dark'] .stripTrack {
+    background-color: rgba(255, 255, 255, 0.09);
+  }
+
+  html:not([data-theme='dark']) .strip {
+    background-color: rgba(255, 255, 255, 0.72);
+    border-color: var(--csf-border-subtle, #e3dcce);
+  }
+
+  html:not([data-theme='dark']) .stripTrack {
+    background-color: rgba(0, 0, 0, 0.09);
   }
 }

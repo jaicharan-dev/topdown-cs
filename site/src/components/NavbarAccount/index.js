@@ -41,12 +41,16 @@ function PersonMark() {
   );
 }
 
-export default function NavbarAccount() {
+export default function NavbarAccount({ mobile }) {
   const { ready, store } = useProgress();
   const { user, signIn, switchAccount, guestMode, leave } = useCloudSync();
   const { enabled, signedIn, resolving, guest } = useSession();
 
   const wrapperRef = useRef(null);
+
+  // Same reasoning as the badge: it keeps its place in the bar, so the
+  // drawer does not list it a second time.
+  if (mobile) return null;
 
   const profile = store?.profile || {};
   const name = displayNameFor(profile, user);

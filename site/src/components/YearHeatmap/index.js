@@ -49,6 +49,13 @@ export default function YearHeatmap({ activity, endDay, compact = false }) {
 
           {grid.months.map((month) => (
             <div key={month.key} className={styles.month}>
+              {/* The year sits above its own run of months. Hung off the
+                  first month of each year rather than drawn as a separate
+                  row, so it cannot drift out of step with the columns it
+                  is labelling. */}
+              <div className={styles.yearLabel}>
+                {month.startsYear ? month.year : ''}
+              </div>
               <div className={styles.weeks}>
                 {month.weeks.map((week, index) => (
                   <div key={index} className={styles.week}>
@@ -70,14 +77,7 @@ export default function YearHeatmap({ activity, endDay, compact = false }) {
                   </div>
                 ))}
               </div>
-              {/* The year appears where it changes, which is once or twice
-                  in a strip and is the only place it tells you anything. */}
-              <div className={styles.monthLabel}>
-                {month.label}
-                {month.showYear && (
-                  <span className={styles.yearLabel}>{month.year}</span>
-                )}
-              </div>
+              <div className={styles.monthLabel}>{month.label}</div>
             </div>
           ))}
         </div>

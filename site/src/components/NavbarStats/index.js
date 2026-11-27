@@ -26,9 +26,13 @@ import { rankProgress } from '@site/src/lib/ranks';
 import { formatDuration } from '@site/src/lib/timeTracker';
 import styles from './styles.module.css';
 
-export default function NavbarStats() {
+export default function NavbarStats({ mobile }) {
   const { ready, store } = useProgress();
   const { canSave } = useSession();
+
+  // The badge stays in the bar on a phone rather than being listed in the
+  // drawer as well, so it is rendered once and not twice.
+  if (mobile) return null;
 
   // Nothing to report without an account, and a level 1 beside an empty
   // year is a worse answer than no badge at all.

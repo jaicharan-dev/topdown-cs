@@ -249,15 +249,13 @@
 }
 
 .field {
+  position: relative;
   display: grid;
   gap: 0.3rem;
   min-width: 0;
 }
 
 .fieldLabel {
-  display: flex;
-  align-items: baseline;
-  gap: 0.45rem;
   font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -265,19 +263,21 @@
   opacity: 0.5;
 }
 
-/* The field's own rule, beside the field's own name. */
-.rule {
-  font-size: 0.6rem;
-  font-weight: 500;
+/* The field's own rule, in the field's own corner, while it is empty. */
+.hint {
+  position: absolute;
+  right: 0.6rem;
+  bottom: 0.52rem;
+  font-size: 0.68rem;
   font-style: normal;
-  letter-spacing: 0.06em;
-  text-transform: lowercase;
-  opacity: 0.7;
+  letter-spacing: 0.02em;
+  pointer-events: none;
+  opacity: 0.38;
 }
 
 .input {
   width: 100%;
-  padding: 0.45rem 0.6rem;
+  padding: 0.45rem 4.2rem 0.45rem 0.6rem;
   border-radius: 9px;
   border: 1px solid var(--csf-border-subtle);
   background: transparent;
