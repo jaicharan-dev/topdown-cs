@@ -142,14 +142,6 @@
   height: 118px;
 }
 
-html:not([data-theme='dark']) .wrapper {
-  --heatmap-0: #e9e4d7;
-  --heatmap-1: #a7e3bd;
-  --heatmap-2: #5fcb8b;
-  --heatmap-3: #2fa665;
-  --heatmap-4: #17713f;
-}
-
 [data-theme='dark'] .wrapper {
   --heatmap-0: #2a2a2e;
   --heatmap-1: #14532d;

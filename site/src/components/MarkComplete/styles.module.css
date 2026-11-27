@@ -193,8 +193,3 @@
 [data-theme='dark'] .signIn {
   color: #0b1f12;
 }
-
-html:not([data-theme='dark']) .prompt {
-  background-color: rgba(0, 0, 0, 0.025);
-  border-color: var(--csf-border-subtle, #e3dcce);
-}

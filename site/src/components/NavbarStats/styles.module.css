@@ -139,19 +139,6 @@
   border-top-color: rgba(255, 255, 255, 0.08);
 }
 
-html:not([data-theme='dark']) .card {
-  background-color: #ffffff;
-  border-color: var(--csf-border-subtle, #e3dcce);
-}
-
-html:not([data-theme='dark']) .track {
-  background-color: rgba(0, 0, 0, 0.1);
-}
-
-html:not([data-theme='dark']) .footnote {
-  border-top-color: var(--csf-border-subtle, #e3dcce);
-}
-
 /* Both survive to phone width now that the bar carries nothing else: the
    toggle, the wordmark, this and the picture come to 319 pixels of the 343
    a 375 pixel screen gives. Below that the rank name is the first to go,

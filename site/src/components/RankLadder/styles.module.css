@@ -92,14 +92,6 @@
   background-color: #1e1e22;
 }
 
-html:not([data-theme='dark']) .track {
-  background-color: rgba(0, 0, 0, 0.09);
-}
-
-html:not([data-theme='dark']) .notch {
-  background-color: var(--csf-surface, #f8f5ee);
-}
-
 /* Eight names will not fit across a phone. The bar still shows the shape of
    the journey, and the current rank is named above it either way. */
 @media screen and (max-width: 640px) {

@@ -162,15 +162,6 @@
   background-color: rgba(255, 255, 255, 0.09);
 }
 
-html:not([data-theme='dark']) .historyButton {
-  background-color: rgba(0, 0, 0, 0.04);
-  border-color: var(--csf-border-subtle, #e3dcce);
-}
-
-html:not([data-theme='dark']) .historyButton:hover {
-  background-color: rgba(0, 0, 0, 0.07);
-}
-
 [data-theme='dark'] .box {
   background-color: rgba(30, 30, 34, 0.68);
   border-color: rgba(255, 255, 255, 0.07);
@@ -182,19 +173,6 @@ html:not([data-theme='dark']) .historyButton:hover {
 
 [data-theme='dark'] .divider {
   background-color: rgba(255, 255, 255, 0.07);
-}
-
-html:not([data-theme='dark']) .box {
-  background-color: rgba(255, 255, 255, 0.72);
-  border-color: var(--csf-border-subtle, #e3dcce);
-}
-
-html:not([data-theme='dark']) .track {
-  background-color: rgba(0, 0, 0, 0.09);
-}
-
-html:not([data-theme='dark']) .divider {
-  background-color: var(--csf-border-subtle, #e3dcce);
 }
 
 /* Below the three column layout it stops being a sidebar and becomes a row
@@ -382,14 +360,5 @@ html:not([data-theme='dark']) .divider {
 
   [data-theme='dark'] .stripTrack {
     background-color: rgba(255, 255, 255, 0.09);
-  }
-
-  html:not([data-theme='dark']) .strip {
-    background-color: rgba(255, 255, 255, 0.72);
-    border-color: var(--csf-border-subtle, #e3dcce);
-  }
-
-  html:not([data-theme='dark']) .stripTrack {
-    background-color: rgba(0, 0, 0, 0.09);
   }
 }

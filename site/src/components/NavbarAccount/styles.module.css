@@ -187,24 +187,6 @@
   background-color: rgba(255, 255, 255, 0.06);
 }
 
-html:not([data-theme='dark']) .panelInner {
-  background-color: #ffffff;
-  border-color: var(--csf-border-subtle, #e3dcce);
-}
-
-html:not([data-theme='dark']) .head {
-  border-bottom-color: var(--csf-border-subtle, #e3dcce);
-}
-
-html:not([data-theme='dark']) .action:hover {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-html:not([data-theme='dark']) .avatar[data-initials='false'],
-html:not([data-theme='dark']) .bigAvatar[data-initials='false'] {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-
 @media screen and (max-width: 500px) {
   .panel {
     width: min(232px, calc(100vw - 2rem));

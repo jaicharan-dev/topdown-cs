@@ -226,12 +226,38 @@ const config = {
     }
   ],
 
+  // Anybody who chose the light theme while there was one to choose still
+  // has that choice in their browser, and the script the theme puts at the
+  // top of the body would read it and set the page to a theme that no
+  // longer has any styles behind it. This runs first, in the head, and
+  // clears it, so that script finds nothing and falls back to the only
+  // theme there is.
+  //
+  // Docusaurus stores the choice under "theme" plus a namespace of its own,
+  // so the prefix is what has to go rather than one exact key.
+  headTags: [
+    {
+      tagName: 'script',
+      attributes: {},
+      innerHTML: `(function(){try{for(var i=localStorage.length-1;i>=0;i--){var k=localStorage.key(i);if(k&&k.indexOf('theme')===0)localStorage.removeItem(k);}}catch(e){}})();`,
+    },
+  ],
+
   themeConfig:
     /** @type {import('@docusaurus/preset-classic').ThemeConfig} */
     ({
+      // One theme. The light one never looked like the same site: the
+      // flowchart, the dot grid and the heatmap were all drawn against a
+      // dark page and reading them on a pale one was a different product
+      // wearing the same name. Rather than keep a second look that nobody
+      // was happy with, the switch goes and so do the styles behind it.
+      //
+      // disableSwitch also removes the toggle the theme renders, in the
+      // navbar and in the mobile drawer alike, so there is nothing left to
+      // hide with CSS.
       colorMode: {
         defaultMode: 'dark',
-        disableSwitch: false,
+        disableSwitch: true,
         respectPrefersColorScheme: false,
       },
       docs: {

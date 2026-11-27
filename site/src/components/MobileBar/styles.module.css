@@ -70,13 +70,4 @@
     background-color: rgba(255, 255, 255, 0.055);
     border-color: rgba(255, 255, 255, 0.08);
   }
-
-  html:not([data-theme='dark']) .bar {
-    border-bottom-color: var(--csf-border-subtle, #e3dcce);
-  }
-
-  html:not([data-theme='dark']) .button {
-    background-color: rgba(0, 0, 0, 0.04);
-    border-color: var(--csf-border-subtle, #e3dcce);
-  }
 }

@@ -24,25 +24,12 @@
   user-select: none;
 }
 
-:global(html:not([data-theme='dark'])) .shareBtn {
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  background: rgba(0, 0, 0, 0.03);
-  color: #52525b;
-}
-
 .shareBtn:hover {
   background: rgba(96, 165, 250, 0.1);
   border-color: rgba(96, 165, 250, 0.4);
   color: #60a5fa;
   box-shadow: 0 0 12px rgba(96, 165, 250, 0.2);
   transform: translateY(-1px);
-}
-
-:global(html:not([data-theme='dark'])) .shareBtn:hover {
-  background: rgba(37, 99, 235, 0.08);
-  border-color: rgba(37, 99, 235, 0.35);
-  color: #2563eb;
-  box-shadow: 0 0 10px rgba(37, 99, 235, 0.15);
 }
 
 .shareBtn:active {
@@ -77,12 +64,6 @@
   animation: popoverFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-:global(html:not([data-theme='dark'])) .popover {
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.04);
-}
-
 @keyframes popoverFadeIn {
   from {
     opacity: 0;
@@ -109,10 +90,6 @@
   color: #71717a;
 }
 
-:global(html:not([data-theme='dark'])) .popoverTitle {
-  color: #71717a;
-}
-
 .popoverClose {
   background: none;
   border: none;
@@ -129,10 +106,6 @@
   color: #fafafa;
 }
 
-:global(html:not([data-theme='dark'])) .popoverClose:hover {
-  color: #18181b;
-}
-
 .popoverUrlBox {
   padding: 6px 9px;
   border-radius: 6px;
@@ -140,11 +113,6 @@
   border: 1px solid rgba(255, 255, 255, 0.06);
   margin-bottom: 10px;
   overflow: hidden;
-}
-
-:global(html:not([data-theme='dark'])) .popoverUrlBox {
-  background: rgba(0, 0, 0, 0.03);
-  border: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 .popoverUrlText {
@@ -155,10 +123,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
-}
-
-:global(html:not([data-theme='dark'])) .popoverUrlText {
-  color: #52525b;
 }
 
 .copyBtn {
@@ -179,20 +143,10 @@
   outline: none;
 }
 
-:global(html:not([data-theme='dark'])) .copyBtn {
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  background: #18181b;
-  color: #ffffff;
-}
-
 .copyBtn:hover {
   background: rgba(255, 255, 255, 0.14);
   border-color: rgba(255, 255, 255, 0.25);
   transform: translateY(-1px);
-}
-
-:global(html:not([data-theme='dark'])) .copyBtn:hover {
-  background: #27272a;
 }
 
 .copyBtnSuccess {
@@ -200,10 +154,4 @@
   border-color: rgba(16, 185, 129, 0.4) !important;
   color: #34d399 !important;
   transform: none !important;
-}
-
-:global(html:not([data-theme='dark'])) .copyBtnSuccess {
-  background: rgba(16, 185, 129, 0.12) !important;
-  border-color: rgba(16, 185, 129, 0.35) !important;
-  color: #059669 !important;
 }

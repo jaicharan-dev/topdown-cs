@@ -266,11 +266,6 @@
   color: #86efac;
   border-color: #166534;
 }
-html:not([data-theme='dark']) .sidebar-easy > .menu__link::before {
-  background: #dcfce7;
-  color: #14532d;
-  border-color: #86efac;
-}
 
 /* Medium - rich subdued dark amber */
 [data-theme='dark'] .sidebar-medium > .menu__link::before {
@@ -278,22 +273,12 @@ html:not([data-theme='dark']) .sidebar-easy > .menu__link::before {
   color: #fde047;
   border-color: #92400e;
 }
-html:not([data-theme='dark']) .sidebar-medium > .menu__link::before {
-  background: #fef3c7;
-  color: #78350f;
-  border-color: #fcd34d;
-}
 
 /* Hard - rich subdued dark red */
 [data-theme='dark'] .sidebar-hard > .menu__link::before {
   background: #7f1d1d;
   color: #fca5a5;
   border-color: #991b1b;
-}
-html:not([data-theme='dark']) .sidebar-hard > .menu__link::before {
-  background: #fee2e2;
-  color: #7f1d1d;
-  border-color: #fca5a5;
 }
 
 /* ===================================================================
@@ -553,32 +538,6 @@ html body .theme-doc-sidebar-container {
   box-shadow: 0 0 0 2px #60a5fa, 0 2px 6px rgba(0, 0, 0, 0.5) !important;
 }
 
-/* Collapsed Badges - Light Mode (Kindle) */
-html:not([data-theme='dark']) .my-custom-mini-sidebar .sidebar-easy > .menu__link::before {
-  background: #d1fae5 !important;
-  color: #14532d !important;
-  border: 1px solid #86efac !important;
-  box-shadow: 0 1px 2px rgba(60, 50, 40, 0.08);
-}
-
-html:not([data-theme='dark']) .my-custom-mini-sidebar .sidebar-medium > .menu__link::before {
-  background: #fef08a !important;
-  color: #78350f !important;
-  border: 1px solid #fcd34d !important;
-  box-shadow: 0 1px 2px rgba(60, 50, 40, 0.08);
-}
-
-html:not([data-theme='dark']) .my-custom-mini-sidebar .sidebar-hard > .menu__link::before {
-  background: #fee2e2 !important;
-  color: #7f1d1d !important;
-  border: 1px solid #fca5a5 !important;
-  box-shadow: 0 1px 2px rgba(60, 50, 40, 0.08);
-}
-
-html:not([data-theme='dark']) .my-custom-mini-sidebar .menu__link--active::before {
-  box-shadow: 0 0 0 2px #254d77, 0 2px 6px rgba(60, 50, 40, 0.15) !important;
-}
-
 /* Lock inner content - no text reflow */
 html body article,
 html body .theme-doc-markdown {
@@ -687,7 +646,6 @@ html[data-theme='dark'] .prism-code .token.punctuation {
   color: #e3e3e3 !important;
 }
 
-
 /* ===================================================================
    15. HOMEPAGE - Hero & Subject Cards
    =================================================================== */
@@ -708,9 +666,7 @@ html[data-theme='dark'] .prism-code .token.punctuation {
 .csf-nav-item,
 .navbar__items--right .navbar__link.csf-nav-item,
 .navbar__items--right .navbarSearchContainer_Bca1 > button,
-.navbar__items--right [class*='navbarSearchContainer'] > button,
-.navbar__items--right [class*='colorModeToggle'] button,
-.navbar__items--right [class*='toggleButton'] {
+.navbar__items--right [class*='navbarSearchContainer'] > button {
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -734,7 +690,6 @@ html[data-theme='dark'] .prism-code .token.punctuation {
    above already wins its background, but Docusaurus sets this button's
    height and radius from a selector that ties on specificity and loads
    later, so those two properties need one more class to carry. */
-.navbar__items--right [class*='colorModeToggle'] button.clean-btn,
 .csf-nav-item--icon {
   width: 30px;
   height: 30px;
@@ -743,37 +698,16 @@ html[data-theme='dark'] .prism-code .token.punctuation {
 }
 
 [data-theme='dark'] .csf-nav-item,
-[data-theme='dark'] .navbar__items--right [class*='navbarSearchContainer'] > button,
-[data-theme='dark'] .navbar__items--right [class*='colorModeToggle'] button,
-[data-theme='dark'] .navbar__items--right [class*='toggleButton'] {
+[data-theme='dark'] .navbar__items--right [class*='navbarSearchContainer'] > button {
   background-color: rgba(255, 255, 255, 0.055);
   border-color: rgba(255, 255, 255, 0.08);
   color: #e4e4e7;
 }
 
 [data-theme='dark'] .csf-nav-item:hover,
-[data-theme='dark'] .navbar__items--right [class*='navbarSearchContainer'] > button:hover,
-[data-theme='dark'] .navbar__items--right [class*='colorModeToggle'] button:hover,
-[data-theme='dark'] .navbar__items--right [class*='toggleButton']:hover {
+[data-theme='dark'] .navbar__items--right [class*='navbarSearchContainer'] > button:hover {
   background-color: rgba(255, 255, 255, 0.09);
   color: #ffffff;
-}
-
-html:not([data-theme='dark']) .csf-nav-item,
-html:not([data-theme='dark']) .navbar__items--right [class*='navbarSearchContainer'] > button,
-html:not([data-theme='dark']) .navbar__items--right [class*='colorModeToggle'] button,
-html:not([data-theme='dark']) .navbar__items--right [class*='toggleButton'] {
-  background-color: rgba(0, 0, 0, 0.04);
-  border-color: var(--csf-border-subtle, #e3dcce);
-  color: #3f3f46;
-}
-
-html:not([data-theme='dark']) .csf-nav-item:hover,
-html:not([data-theme='dark']) .navbar__items--right [class*='navbarSearchContainer'] > button:hover,
-html:not([data-theme='dark']) .navbar__items--right [class*='colorModeToggle'] button:hover,
-html:not([data-theme='dark']) .navbar__items--right [class*='toggleButton']:hover {
-  background-color: rgba(0, 0, 0, 0.07);
-  color: #18181b;
 }
 
 .csf-nav-item:hover {
@@ -915,7 +849,6 @@ html:not([data-theme='dark']) .navbar__items--right [class*='toggleButton']:hove
      and sets a display of its own. */
   .navbar .navbar__items--right > .navbar__item,
   .navbar .navbar__items--right [class*='navbarSearchContainer'],
-  .navbar .navbar__items--right [class*='colorModeToggle'],
   .navbar .navbar__items--right .csf-navbar-stats,
   .navbar .navbar__items--right .csf-navbar-activity {
     display: none;
@@ -969,13 +902,6 @@ html:not([data-theme='dark']) .navbar__items--right [class*='toggleButton']:hove
   border-color: rgba(255, 255, 255, 0.1);
   color: #e4e4e7;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
-}
-
-html:not([data-theme='dark']) .csf-tip::after {
-  background-color: #ffffff;
-  border-color: var(--csf-border-subtle, #e3dcce);
-  color: #3f3f46;
-  box-shadow: 0 10px 24px rgba(50, 40, 30, 0.14);
 }
 
 /* No hover on a touch screen, so the tooltip would only ever appear stuck to
@@ -1128,11 +1054,6 @@ html:not([data-theme='dark']) .csf-tip::after {
   border-color: rgba(255, 255, 255, 0.07);
 }
 
-html:not([data-theme='dark']) .csf-rail {
-  background-color: rgba(255, 255, 255, 0.72);
-  border-color: var(--csf-border-subtle, #e3dcce);
-}
-
 .csf-rail__heading {
   margin: 0 0 0.45rem 0.6rem;
   font-size: 0.64rem;
@@ -1266,18 +1187,6 @@ html:not([data-theme='dark']) .csf-rail {
   background-color: rgba(255, 255, 255, 0.085);
 }
 
-html:not([data-theme='dark']) .csf-tab:hover {
-  background-color: rgba(0, 0, 0, 0.03);
-}
-
-html:not([data-theme='dark']) .csf-tab[aria-selected='true'] {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
-html:not([data-theme='dark']) .csf-tab__track {
-  background-color: rgba(0, 0, 0, 0.085);
-}
-
 /* min-width: 0, because this is a grid item and a grid item's automatic
    minimum is its content's min-content size. The graph is an svg with a
    viewBox, whose min-content width is its intrinsic 1130px, so without this
@@ -1322,11 +1231,6 @@ html:not([data-theme='dark']) .csf-tab__track {
 [data-theme='dark'] .csf-soon-panel {
   background-color: rgba(30, 30, 34, 0.68);
   border-color: rgba(255, 255, 255, 0.07);
-}
-
-html:not([data-theme='dark']) .csf-soon-panel {
-  background-color: rgba(255, 255, 255, 0.72);
-  border-color: var(--csf-border-subtle, #e3dcce);
 }
 
 .csf-soon-panel__icon {
@@ -1438,10 +1342,6 @@ html:not([data-theme='dark']) .csf-soon-panel {
   opacity: 0.13;
 }
 
-html:not([data-theme='dark']) .homepage::before {
-  opacity: 0.1;
-}
-
 /* ----- Roadmap graph -----
    No frame. The dot grid moved to the page itself, so the graph sits on the
    canvas rather than in a window onto one, and the only boxed thing here is
@@ -1483,10 +1383,6 @@ html:not([data-theme='dark']) .homepage::before {
 
 [data-theme='dark'] .csf-graph-title {
   color: #b4b4bd;
-}
-
-html:not([data-theme='dark']) .csf-graph-title {
-  color: #52525b;
 }
 
 /* The controls float over the canvas, so they carry their own surface and
@@ -1593,17 +1489,6 @@ html:not([data-theme='dark']) .csf-graph-title {
   background-color: rgba(255, 255, 255, 0.075);
 }
 
-html:not([data-theme='dark']) .csf-graph-zoom,
-html:not([data-theme='dark']) .csf-graph-reset {
-  background-color: rgba(255, 255, 255, 0.82);
-  border-color: var(--csf-border-subtle, #e3dcce);
-}
-
-html:not([data-theme='dark']) .csf-graph-zoom button:hover:not(:disabled),
-html:not([data-theme='dark']) .csf-graph-reset:hover:not(:disabled) {
-  background-color: rgba(0, 0, 0, 0.05);
-}
-
 .csf-graph-surface {
   position: relative;
   width: 100%;
@@ -1649,10 +1534,6 @@ html:not([data-theme='dark']) .csf-graph-reset:hover:not(:disabled) {
   stroke-opacity: 0.3;
 }
 
-html:not([data-theme='dark']) .csf-graph-edge {
-  stroke-opacity: 0.42;
-}
-
 .csf-graph-edge--highlighted {
   stroke-width: 3px;
   stroke-opacity: 1;
@@ -1660,10 +1541,6 @@ html:not([data-theme='dark']) .csf-graph-edge {
 
 [data-theme='dark'] .csf-graph-edge--highlighted {
   filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.28));
-}
-
-html:not([data-theme='dark']) .csf-graph-edge--highlighted {
-  filter: drop-shadow(0 1px 3px rgba(15, 23, 42, 0.2));
 }
 
 .csf-graph-edge--dimmed {
@@ -1742,16 +1619,6 @@ html:not([data-theme='dark']) .csf-graph-edge--highlighted {
   stroke: color-mix(in srgb, var(--node-accent, #60a5fa) 78%, transparent);
 }
 
-html:not([data-theme='dark']) .csf-graph-node-group.is-done-partial .csf-graph-node-card {
-  fill: color-mix(in srgb, var(--node-accent, #0284c7) 7%, #ffffff);
-  stroke: color-mix(in srgb, var(--node-accent, #0284c7) 45%, rgba(0, 0, 0, 0.07));
-}
-
-html:not([data-theme='dark']) .csf-graph-node-group.is-done-complete .csf-graph-node-card {
-  fill: color-mix(in srgb, var(--node-accent, #0284c7) 14%, #ffffff);
-  stroke: color-mix(in srgb, var(--node-accent, #0284c7) 85%, transparent);
-}
-
 .csf-graph-node-group.is-dimmed {
   opacity: 0.32;
 }
@@ -1768,13 +1635,6 @@ html:not([data-theme='dark']) .csf-graph-node-group.is-done-complete .csf-graph-
   filter: saturate(1);
 }
 
-html:not([data-theme='dark']) .csf-graph-node-card {
-  fill: var(--csf-surface, #ffffff);
-  stroke: color-mix(in srgb, var(--node-accent, #0284c7) 28%, rgba(0, 0, 0, 0.07));
-  stroke-width: 1px;
-  filter: drop-shadow(0 2px 6px rgba(15, 23, 42, 0.06));
-}
-
 .csf-graph-node-label {
   font-size: 16.5px;
   font-weight: 650;
@@ -1787,10 +1647,6 @@ html:not([data-theme='dark']) .csf-graph-node-card {
 
 [data-theme='dark'] .csf-graph-node-label {
   fill: #e4e4e7;
-}
-
-html:not([data-theme='dark']) .csf-graph-node-label {
-  fill: #18181b;
 }
 
 /* Hover State - Pure Visual Elevation without Coordinate Jitter */
@@ -1808,27 +1664,8 @@ html:not([data-theme='dark']) .csf-graph-node-label {
   fill: #ffffff;
 }
 
-html:not([data-theme='dark']) .csf-graph-node-group:hover .csf-graph-node-card,
-html:not([data-theme='dark']) .csf-graph-node-group.is-hovered .csf-graph-node-card {
-  fill: #ffffff;
-  stroke: var(--node-accent, #0284c7);
-  stroke-width: 1.5px;
-  filter: drop-shadow(0 6px 14px rgba(50, 40, 30, 0.13))
-    drop-shadow(0 0 7px color-mix(in srgb, var(--node-accent, #0284c7) 28%, transparent));
-}
-
-html:not([data-theme='dark']) .csf-graph-node-group:hover .csf-graph-node-label,
-html:not([data-theme='dark']) .csf-graph-node-group.is-hovered .csf-graph-node-label {
-  fill: #09090b;
-}
-
 [data-theme='dark'] .csf-graph-node-group.is-connected .csf-graph-node-card {
   stroke: color-mix(in srgb, var(--node-accent, #38bdf8) 40%, rgba(255, 255, 255, 0.2));
-  stroke-width: 1.25px;
-}
-
-html:not([data-theme='dark']) .csf-graph-node-group.is-connected .csf-graph-node-card {
-  stroke: color-mix(in srgb, var(--node-accent, #0284c7) 40%, rgba(0, 0, 0, 0.2));
   stroke-width: 1.25px;
 }
 
@@ -1849,157 +1686,12 @@ html:not([data-theme='dark']) .csf-graph-node-group.is-connected .csf-graph-node
   fill: var(--node-accent, #60a5fa);
 }
 
-html:not([data-theme='dark']) .csf-graph-node-count {
-  fill: var(--node-accent, #0284c7);
-}
-
 /* ===================================================================
    NAVBAR LOGO SIZING
    =================================================================== */
 .navbar__logo {
   height: 2.75rem; /* Increase from default 2rem */
   margin-right: 0.5rem;
-}
-
-
-/* ===================================================================
-   16. LIGHT THEME PREMIUM COMPONENTS
-   =================================================================== */
-
-@media (min-width: 997px) {
-  html:not([data-theme='dark']) .navbar {
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    background: rgba(244, 240, 230, 0.85);
-  }
-}
-
-html:not([data-theme='dark']) .theme-doc-sidebar-container {
-  background: var(--csf-surface);
-  border-right: 1px solid var(--csf-border-subtle) !important;
-}
-
-html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link:hover {
-  background: rgba(0, 0, 0, 0.04);
-}
-
-html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link--active {
-  font-weight: 550;
-  background: rgba(37, 77, 119, 0.08);
-  color: var(--ifm-color-primary);
-}
-
-html:not([data-theme='dark']) .menu__list-item-collapsible .menu__link {
-  font-weight: 600;
-  text-transform: uppercase;
-  font-size: 0.72rem;
-  letter-spacing: 0.04em;
-  color: var(--ifm-font-color-secondary);
-}
-
-html:not([data-theme='dark']) .markdown blockquote {
-  background: var(--csf-surface-raised);
-  border-left: 3px solid var(--ifm-color-primary);
-  border-radius: 8px;
-  padding: 16px 20px;
-  margin: 1.5rem 0;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.02);
-}
-
-html:not([data-theme='dark']) .markdown blockquote p {
-  margin-bottom: 0;
-}
-
-html:not([data-theme='dark']) .badge--success {
-  background: #dcfce7 !important;
-  color: #14532d !important;
-  border-color: #86efac !important;
-}
-
-html:not([data-theme='dark']) .badge--warning {
-  background: #fef3c7 !important;
-  color: #78350f !important;
-  border-color: #fcd34d !important;
-}
-
-html:not([data-theme='dark']) .badge--danger {
-  background: #fee2e2 !important;
-  color: #7f1d1d !important;
-  border-color: #fca5a5 !important;
-}
-
-html:not([data-theme='dark']) table {
-  border-collapse: collapse;
-}
-
-html:not([data-theme='dark']) table th {
-  background: var(--csf-surface-raised);
-  font-weight: 600;
-}
-
-html:not([data-theme='dark']) table td,
-html:not([data-theme='dark']) table th {
-  border-color: var(--csf-border-subtle);
-}
-
-html:not([data-theme='dark']) .alert {
-  border-radius: 8px;
-  border-width: 1px;
-  background: var(--csf-surface) !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
-}
-
-html:not([data-theme='dark']) .footer,
-html:not([data-theme='dark']) .footer--dark {
-  border-top: 1px solid var(--csf-border-subtle);
-  background: #f0ebe0 !important;
-  color: #6e675b !important;
-}
-
-html:not([data-theme='dark']) .footer .footer__title,
-html:not([data-theme='dark']) .footer--dark .footer__title {
-  color: #24211b !important;
-  font-weight: 700;
-}
-
-html:not([data-theme='dark']) .footer .footer__link-item,
-html:not([data-theme='dark']) .footer--dark .footer__link-item {
-  color: #38342d !important;
-}
-
-html:not([data-theme='dark']) .footer .footer__link-item:hover,
-html:not([data-theme='dark']) .footer--dark .footer__link-item:hover {
-  color: var(--ifm-color-primary) !important;
-}
-
-html:not([data-theme='dark']) .footer .footer__copyright,
-html:not([data-theme='dark']) .footer--dark .footer__copyright {
-  color: #6e675b !important;
-}
-
-html:not([data-theme='dark']) ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-html:not([data-theme='dark']) ::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-html:not([data-theme='dark']) ::-webkit-scrollbar-thumb {
-  background: #d4d4d8;
-  border-radius: 3px;
-}
-
-html:not([data-theme='dark']) ::-webkit-scrollbar-thumb:hover {
-  background: #a1a1aa;
-}
-
-html:not([data-theme='dark']) .theme-code-block pre.prism-code {
-  background-color: #eae4d6 !important;
-  border: 1px solid var(--csf-border-subtle);
-  border-radius: 8px;
-  color: #2b2823 !important;
 }
 
 /* Base Mobile Polish (<= 996px) */
@@ -2046,7 +1738,6 @@ html:not([data-theme='dark']) .theme-code-block pre.prism-code {
   }
 
   /* Interview Question Blockquotes */
-  html:not([data-theme='dark']) .markdown blockquote,
   [data-theme='dark'] .markdown blockquote {
     padding: 14px 16px;
     margin: 1.25rem 0;
@@ -2129,10 +1820,6 @@ html:not([data-theme='dark']) .theme-code-block pre.prism-code {
    =================================================================== */
 
 /* Base navbar styles */
-html:not([data-theme='dark']) .navbar {
-  background-color: var(--ifm-background-color);
-  border-bottom: 1px solid var(--csf-border-subtle);
-}
 
 [data-theme='dark'] .navbar {
   background-color: var(--ifm-background-color);
@@ -2144,39 +1831,6 @@ html:not([data-theme='dark']) .navbar {
   display: flex !important;
   align-items: center !important;
   margin-left: auto !important;
-}
-
-/* Only where the bar has room for it. Below the drawer breakpoint the
-   toggle lives in the drawer's header instead, and an !important here would
-   outrank anything that tried to move it. */
-@media screen and (min-width: 997px) {
-  .navbar [class*="colorModeToggle"] {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-  }
-}
-
-.navbar [class*="colorModeToggle"] button,
-.navbar [class*="toggleButton"] {
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border-radius: 8px;
-  cursor: pointer;
-  background: transparent;
-  transition: background-color 0.15s ease, transform 0.15s ease;
-}
-
-[data-theme='dark'] .navbar [class*="colorModeToggle"] button:hover {
-  background-color: rgba(255, 255, 255, 0.08);
-}
-
-html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
-  background-color: rgba(0, 0, 0, 0.05);
 }
 
 /* Mobile navbar items layout (<= 996px) */
@@ -2236,11 +1890,6 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
 
 /* Desktop frosted glass navbar */
 @media screen and (min-width: 997px) {
-  html:not([data-theme='dark']) .navbar {
-    backdrop-filter: blur(12px) !important;
-    -webkit-backdrop-filter: blur(12px) !important;
-    background-color: rgba(248, 245, 238, 0.88) !important;
-  }
 
   [data-theme='dark'] .navbar {
     backdrop-filter: blur(12px) !important;
@@ -2350,15 +1999,6 @@ html:not([data-theme='dark']) .navbar [class*="colorModeToggle"] button:hover {
       0 0 16px var(--toc-neon-shadow),
       0 0 4px var(--toc-neon-subtle),
       0 8px 24px rgba(0, 0, 0, 0.45) !important;
-  }
-
-  html:not([data-theme='dark']) .theme-doc-toc-desktop:hover {
-    background: rgba(248, 245, 238, 0.96) !important;
-    border: 1px solid var(--csf-border) !important;
-    box-shadow: 
-      0 6px 24px rgba(60, 50, 40, 0.08),
-      0 0 12px var(--toc-neon-glow),
-      0 1px 3px rgba(60, 50, 40, 0.05) !important;
   }
 
   /* 7. Inner list */
@@ -2607,10 +2247,6 @@ li.tabs__item:hover {
   background-color: rgba(255, 255, 255, 0.05);
 }
 
-html:not([data-theme='dark']) li.tabs__item:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-
 li.tabs__item--active {
   font-weight: 600 !important;
   border-bottom-color: var(--ifm-color-primary) !important;
@@ -2644,259 +2280,6 @@ li.tabs__item--active {
     margin-bottom: 1rem;
   }
 }
-
-
-/* ===================================================================
-   LIGHT MODE REFINEMENT
-
-   Two jobs. First a real surface ladder — the page and its cards used to
-   be the same colour, so nothing had edges. Second, the paper is kept
-   only faintly warm: a strong cream cast is tiring to read against for
-   long stretches. Accents are pulled well down toward the ink, because a
-   light hue on a light page reads as washed out.
-
-   Everything here is scoped to light mode; dark mode is untouched.
-   =================================================================== */
-
-html:not([data-theme='dark']) {
-  /* Soft off-white with only a trace of warmth — easier on the eye than
-     a saturated cream, still not the glare of pure white. */
-  --ifm-background-color: #fafaf8;
-  --ifm-background-surface-color: #ffffff;
-  --csf-surface: #ffffff;
-  --csf-surface-raised: #fdfdfc;
-
-  /* Near-neutral ink. The old browns tinted every paragraph. */
-  --ifm-font-color-base: #32323a;
-  --ifm-font-color-secondary: #5a5a66;
-  --ifm-heading-color: #18181b;
-
-  --csf-border: #d8d8d4;
-  --csf-border-subtle: #e6e6e2;
-  --ifm-hr-border-color: #e4e4e0;
-  --ifm-toc-border-color: #e4e4e0;
-  --ifm-table-border-color: #e4e4e0;
-
-  /* Deep enough to hold its own against a light page. */
-  --ifm-color-primary: #1b4f85;
-  --ifm-color-primary-dark: #174472;
-  --ifm-color-primary-darker: #143a61;
-  --ifm-color-primary-darkest: #0e2944;
-  --ifm-color-primary-light: #216098;
-  --ifm-color-primary-lighter: #2a72b0;
-  --ifm-color-primary-lightest: #4590cc;
-
-  --ifm-code-background: #f0f0ee;
-  --ifm-table-stripe-background: rgba(24, 24, 27, 0.025);
-  --docusaurus-highlighted-code-line-bg: rgba(24, 24, 27, 0.055);
-
-  --csf-shadow-sm: 0 1px 2px rgba(24, 24, 27, 0.05);
-  --csf-shadow-md: 0 4px 12px -2px rgba(24, 24, 27, 0.1);
-  --csf-shadow-lg: 0 14px 32px -12px rgba(24, 24, 27, 0.2);
-
-  /* How far an accent gets pulled toward the ink before it is used on a
-     light surface. One knob for the whole theme. */
-  --csf-ink: #1c1c22;
-  --csf-accent-mix: 62%;
-}
-
-/* ---------------------------------------------------------- chrome */
-
-html:not([data-theme='dark']) .navbar {
-  background-color: rgba(250, 250, 248, 0.88);
-  backdrop-filter: saturate(140%) blur(12px);
-  -webkit-backdrop-filter: saturate(140%) blur(12px);
-  border-bottom: 1px solid var(--csf-border-subtle);
-  box-shadow: none;
-}
-
-html:not([data-theme='dark']) .footer {
-  background-color: #f3f3f1;
-  border-top: 1px solid var(--csf-border-subtle);
-}
-
-html:not([data-theme='dark']) .theme-doc-sidebar-container {
-  background: #f5f5f3;
-  border-right: 1px solid var(--csf-border-subtle) !important;
-}
-
-html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link {
-  color: #3c3c45;
-}
-
-html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link:hover {
-  background: rgba(24, 24, 27, 0.05);
-}
-
-html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link--active {
-  background: color-mix(in srgb, var(--ifm-color-primary) 11%, transparent);
-  color: var(--ifm-color-primary);
-}
-
-html:not([data-theme='dark']) .menu__list-item-collapsible .menu__link,
-html:not([data-theme='dark']) .theme-doc-sidebar-menu .menu__link--sublist {
-  color: #6b6b76;
-}
-
-html:not([data-theme='dark']) .breadcrumbs__link {
-  color: #55555f;
-}
-
-html:not([data-theme='dark']) ::selection {
-  background: color-mix(in srgb, var(--ifm-color-primary) 20%, transparent);
-}
-
-/* -------------------------------------------- difficulty indicators */
-
-/* These were pale fills on a pale page. Solid chips with white text give
-   the sidebar a scannable left rail instead of a row of pastel squares. */
-html:not([data-theme='dark']) .sidebar-easy > .menu__link::before {
-  background: #1a7a4a;
-  color: #ffffff;
-  border-color: #166b41;
-}
-
-html:not([data-theme='dark']) .sidebar-medium > .menu__link::before {
-  background: #ae6a0c;
-  color: #ffffff;
-  border-color: #985c0a;
-}
-
-html:not([data-theme='dark']) .sidebar-hard > .menu__link::before {
-  background: #b0332e;
-  color: #ffffff;
-  border-color: #9a2c28;
-}
-
-html:not([data-theme='dark']) .badge--success {
-  background: #dff2e6 !important;
-  color: #11603a !important;
-  border-color: #6cbf90 !important;
-}
-
-html:not([data-theme='dark']) .badge--warning {
-  background: #fbefd8 !important;
-  color: #8a530a !important;
-  border-color: #dba843 !important;
-}
-
-html:not([data-theme='dark']) .badge--danger {
-  background: #fbe5e3 !important;
-  color: #8f2823 !important;
-  border-color: #dd8a85 !important;
-}
-
-html:not([data-theme='dark']) .csf-graph-node-tab {
-  fill: color-mix(in srgb, var(--node-accent) var(--csf-accent-mix), var(--csf-ink));
-}
-
-html:not([data-theme='dark']) .csf-graph-node-card {
-  stroke: color-mix(in srgb, var(--node-accent) 30%, rgba(24, 24, 27, 0.12));
-}
-
-html:not([data-theme='dark']) .csf-graph-edge {
-  stroke-opacity: 0.62;
-}
-
-html:not([data-theme='dark']) .csf-graph-node-count {
-  fill: color-mix(in srgb, var(--node-accent) 56%, var(--csf-ink));
-}
-
-/* ------------------------------------------------------------ code */
-
-html:not([data-theme='dark']) .theme-code-block pre.prism-code {
-  background-color: #fbfbfa !important;
-  border: 1px solid var(--csf-border-subtle);
-  border-radius: 10px;
-  box-shadow: var(--csf-shadow-sm);
-  color: #2a2a31 !important;
-}
-
-html:not([data-theme='dark']) .theme-code-block {
-  box-shadow: none;
-}
-
-html:not([data-theme='dark']) :not(pre) > code {
-  border: 1px solid rgba(24, 24, 27, 0.09);
-  border-radius: 5px;
-  color: #3a3a44;
-}
-
-/* ------------------------------------------------- syntax on paper */
-
-html:not([data-theme='dark']) .prism-code .token.comment,
-html:not([data-theme='dark']) .prism-code .token.prolog,
-html:not([data-theme='dark']) .prism-code .token.cdata {
-  color: #8b8b96 !important;
-  font-style: italic;
-}
-
-html:not([data-theme='dark']) .prism-code .token.keyword,
-html:not([data-theme='dark']) .prism-code .token.control-flow,
-html:not([data-theme='dark']) .prism-code .token.atrule,
-html:not([data-theme='dark']) .prism-code .token.important {
-  color: #6d3f94 !important;
-}
-
-html:not([data-theme='dark']) .prism-code .token.function,
-html:not([data-theme='dark']) .prism-code .token.class-name,
-html:not([data-theme='dark']) .prism-code .token.method {
-  color: #1f5b91 !important;
-}
-
-html:not([data-theme='dark']) .prism-code .token.string,
-html:not([data-theme='dark']) .prism-code .token.char,
-html:not([data-theme='dark']) .prism-code .token.attr-value,
-html:not([data-theme='dark']) .prism-code .token.builtin {
-  color: #45691a !important;
-}
-
-html:not([data-theme='dark']) .prism-code .token.number,
-html:not([data-theme='dark']) .prism-code .token.boolean,
-html:not([data-theme='dark']) .prism-code .token.constant {
-  color: #9a5113 !important;
-}
-
-html:not([data-theme='dark']) .prism-code .token.tag,
-html:not([data-theme='dark']) .prism-code .token.selector,
-html:not([data-theme='dark']) .prism-code .token.deleted {
-  color: #8d2f25 !important;
-}
-
-html:not([data-theme='dark']) .prism-code .token.operator,
-html:not([data-theme='dark']) .prism-code .token.punctuation,
-html:not([data-theme='dark']) .prism-code .token.entity {
-  color: #5f5f6a !important;
-  background: transparent !important;
-}
-
-html:not([data-theme='dark']) .prism-code .token.property,
-html:not([data-theme='dark']) .prism-code .token.attr-name,
-html:not([data-theme='dark']) .prism-code .token.variable {
-  color: #2f6068 !important;
-}
-
-html:not([data-theme='dark']) .pagination-nav__link {
-  background: #ffffff;
-  border-color: var(--csf-border-subtle);
-  box-shadow: var(--csf-shadow-sm);
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-}
-
-html:not([data-theme='dark']) .pagination-nav__link:hover {
-  border-color: color-mix(in srgb, var(--ifm-color-primary) 45%, transparent);
-  box-shadow: var(--csf-shadow-md);
-  transform: translateY(-2px);
-}
-
-html:not([data-theme='dark']) ::-webkit-scrollbar-thumb {
-  background: #c6c6c1;
-}
-
-html:not([data-theme='dark']) ::-webkit-scrollbar-thumb:hover {
-  background: #aeaea8;
-}
-
 
 /* ===================================================================
    INTERVIEW TURNS
@@ -2935,11 +2318,9 @@ html:not([data-theme='dark']) ::-webkit-scrollbar-thumb:hover {
 
 /* The interviewer sets the frame: cool, low chroma, recedes. */
 [data-theme='dark'] .csf-turn--interviewer { --turn-accent: #8691a8; }
-html:not([data-theme='dark']) .csf-turn--interviewer { --turn-accent: #5b6782; }
 
 /* The candidate carries what you are here to learn: warmer, fully saturated. */
 [data-theme='dark'] .csf-turn--candidate { --turn-accent: #34d399; }
-html:not([data-theme='dark']) .csf-turn--candidate { --turn-accent: #0f766e; }
 
 /* Inside a turn, paragraphs sit closer together than turns do. */
 .csf-turn > * {
@@ -3011,7 +2392,6 @@ html:not([data-theme='dark']) .csf-turn--candidate { --turn-accent: #0f766e; }
   }
 }
 
-
 /* ===================================================================
    DECISION AND BREAK CALLOUTS
 
@@ -3043,14 +2423,6 @@ html:not([data-theme='dark']) .csf-turn--candidate { --turn-accent: #0f766e; }
   border-left-color: rgba(96, 165, 250, 0.55);
 }
 
-html:not([data-theme='dark']) .csf-admonition--decision {
-  --ifm-alert-background-color: rgba(27, 79, 133, 0.05);
-  --ifm-alert-border-color: rgba(27, 79, 133, 0.35);
-  --ifm-alert-foreground-color: #32323a;
-  border-color: rgba(27, 79, 133, 0.16);
-  border-left-color: rgba(27, 79, 133, 0.45);
-}
-
 /* ------------------------------------------------------------- broke */
 
 [data-theme='dark'] .csf-admonition--broke {
@@ -3059,14 +2431,6 @@ html:not([data-theme='dark']) .csf-admonition--decision {
   --ifm-alert-foreground-color: #e4e4e7;
   border-color: rgba(251, 146, 60, 0.22);
   border-left-color: rgba(251, 146, 60, 0.7);
-}
-
-html:not([data-theme='dark']) .csf-admonition--broke {
-  --ifm-alert-background-color: rgba(180, 83, 9, 0.06);
-  --ifm-alert-border-color: rgba(180, 83, 9, 0.4);
-  --ifm-alert-foreground-color: #32323a;
-  border-color: rgba(180, 83, 9, 0.18);
-  border-left-color: rgba(180, 83, 9, 0.6);
 }
 
 /* Headings: small, uppercase, quiet — the body is the content. */
@@ -3079,9 +2443,7 @@ html:not([data-theme='dark']) .csf-admonition--broke {
 }
 
 [data-theme='dark'] .csf-admonition--decision > div:first-child { color: #93c5fd; }
-html:not([data-theme='dark']) .csf-admonition--decision > div:first-child { color: #1b4f85; }
 [data-theme='dark'] .csf-admonition--broke > div:first-child { color: #fdba74; }
-html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: #b45309; }
 
 /* A callout inside a speaker turn should not fight the rail. */
 .csf-turn > .csf-admonition--decision,
@@ -3095,7 +2457,6 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
   font-style: normal;
   opacity: 0.78;
 }
-
 
 /* ===================================================================
    TOC SCROLLING — applies to every state, not just the pinned one
@@ -3182,16 +2543,6 @@ html:not([data-theme='dark']) .csf-admonition--broke > div:first-child { color: 
     border-radius: 14px !important;
     box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.7),
       0 0 0 1px rgba(255, 255, 255, 0.03) !important;
-  }
-
-  html:not([data-theme='dark']) .theme-doc-toc-desktop:hover {
-    background: var(--csf-surface, #ffffff) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    border: 1px solid rgba(24, 24, 27, 0.08) !important;
-    border-radius: 14px !important;
-    box-shadow: 0 20px 44px -14px rgba(24, 24, 27, 0.22),
-      0 2px 6px rgba(24, 24, 27, 0.06) !important;
   }
 
   /* The accent bar along the top went with the glow. */

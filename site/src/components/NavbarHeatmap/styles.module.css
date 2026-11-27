@@ -77,11 +77,6 @@
   border-color: rgba(255, 255, 255, 0.09);
 }
 
-html:not([data-theme='dark']) .panel {
-  background-color: #ffffff;
-  border-color: var(--csf-border-subtle, #e3dcce);
-}
-
 /* The word goes before the button does: the icon still says what it is. */
 @media screen and (max-width: 996px) {
   .label {

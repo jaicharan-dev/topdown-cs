@@ -38,20 +38,9 @@ html[data-theme="dark"] .searchBarContainer :global(.navbar__search-input) {
   color: #e4e4e7;
 }
 
-html:not([data-theme="dark"]) .searchBarContainer :global(.navbar__search-input) {
-  background-color: rgba(0, 0, 0, 0.025);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  color: #18181b;
-}
-
 html[data-theme="dark"] .searchBarContainer :global(.navbar__search-input):hover {
   background-color: rgba(255, 255, 255, 0.06);
   border-color: rgba(255, 255, 255, 0.14);
-}
-
-html:not([data-theme="dark"]) .searchBarContainer :global(.navbar__search-input):hover {
-  background-color: rgba(0, 0, 0, 0.04);
-  border-color: rgba(0, 0, 0, 0.14);
 }
 
 .searchBarContainer :global(.navbar__search-input):focus {
@@ -127,12 +116,6 @@ html[data-theme="dark"] .searchHint {
   border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-html:not([data-theme="dark"]) .searchHint {
-  color: #71717a;
-  background-color: rgba(0, 0, 0, 0.045);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-}
-
 .searchBarContainer.focused .searchHintContainer {
   opacity: 0;
 }
@@ -203,13 +186,6 @@ html[data-theme="dark"] .searchBar .dropdownMenu {
     0 0 0 1px rgba(255, 255, 255, 0.03);
 }
 
-html:not([data-theme="dark"]) .searchBar .dropdownMenu {
-  background: var(--csf-surface, #ffffff);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  box-shadow: 0 20px 44px -14px rgba(32, 26, 20, 0.22),
-    0 2px 6px rgba(32, 26, 20, 0.06);
-}
-
 .searchBar .dropdownMenu::-webkit-scrollbar {
   width: 6px;
 }
@@ -276,15 +252,6 @@ html[data-theme="dark"] .searchBar .dropdownMenu .suggestion.cursor {
     in srgb,
     var(--csf-search-accent) 13%,
     rgba(255, 255, 255, 0.03)
-  );
-  border-color: color-mix(in srgb, var(--csf-search-accent) 26%, transparent);
-}
-
-html:not([data-theme="dark"]) .searchBar .dropdownMenu .suggestion.cursor {
-  background-color: color-mix(
-    in srgb,
-    var(--csf-search-accent) 9%,
-    transparent
   );
   border-color: color-mix(in srgb, var(--csf-search-accent) 26%, transparent);
 }
