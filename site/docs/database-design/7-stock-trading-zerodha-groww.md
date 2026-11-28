@@ -263,6 +263,8 @@ other.
 
 ---
 
+<Checkpoint id="instruments-orders" label="Instruments, symbols and orders" />
+
 ### Step 4, Break #1: a `balance` column is not a ledger
 
 :::broke
@@ -532,6 +534,8 @@ consulting anything that is still being edited.**
 
 ---
 
+<Checkpoint id="ledger" label="Double entry, blocked money and fills" />
+
 ### Step 8: Lots, because an average cannot answer a tax question
 
 **Interviewer:** The requirement says show the average buy price. You have what you need.
@@ -780,6 +784,8 @@ Which is the next step, and it turns out to be exactly what we want.
 
 ---
 
+<Checkpoint id="lots" label="Lots, settlement, corporate actions and the cache" />
+
 ### Step 12: The one place to take a lock, and a myth about `SERIALIZABLE`
 
 **Interviewer:** Two trades settle against the same account at once. What stops a lost
@@ -930,6 +936,8 @@ replay every trade the customer has ever made and rebuild the lots retrospective
 project, not a query, and one that runs while the tax deadline approaches.
 
 ---
+
+<Checkpoint id="locks-and-pnl" label="The one lock, live prices and P&L" />
 
 ### Step 15: Indexing, derived from the queries
 
@@ -1233,3 +1241,5 @@ Strip away broking and what is left is a method that transfers:
 9. **Idempotency and concurrency control are different tools.** A unique key makes one
    intent produce one order; a guarded update makes one rupee get spent once. Neither does
    the other's job.
+
+<Checkpoint id="mental-model" label="Indexing, partitioning, the final schema and the mental model" />

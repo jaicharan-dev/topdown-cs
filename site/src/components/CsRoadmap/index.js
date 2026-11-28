@@ -98,14 +98,6 @@ const NODES = [
     accent: '#fb7185',
     href: '/docs/dbms-additional/9-bcnf-vs-3nf',
   },
-  {
-    id: 'database-design',
-    label: 'DB Design',
-    x: 521, y: ROW.practice, w: 164, h: 44,
-    accent: '#38bdf8',
-    href: '/docs/database-design/1-wallet-payment-system',
-  },
-
   // OS lane
   {
     id: 'os-essential',
@@ -174,8 +166,11 @@ const EDGES = [
   { from: 'oop-additional', to: 'design-patterns' },
   { from: 'oop-additional', to: 'code-tracing' },
 
+  // DBMS used to run on into DB Design here. Those six questions are a tab
+  // of their own now: they are fifty thousand words, which is more than
+  // this entire lane, and a single box at the foot of it said the
+  // opposite.
   { from: 'dbms-essential', to: 'dbms-additional' },
-  { from: 'dbms-additional', to: 'database-design' },
 
   { from: 'os-essential', to: 'os-additional' },
   { from: 'os-additional', to: 'os-problems' },

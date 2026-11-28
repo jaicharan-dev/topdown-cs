@@ -15,6 +15,7 @@
 
 import Link from '@docusaurus/Link';
 import React, { useState } from 'react';
+import { usePageCheckpoints } from '@site/src/components/Checkpoint';
 import useProgress from '@site/src/hooks/useProgress';
 import useSession from '@site/src/hooks/useSession';
 import useCloudSync from '@site/src/hooks/useCloudSync';
@@ -40,15 +41,57 @@ function CheckIcon() {
   );
 }
 
+/**
+ * What stands in for the button on a page that has checkpoints.
+ *
+ * It says where you are rather than asking anything, because the asking
+ * already happened five times on the way down.
+ */
+function CheckpointTally({ ready, ticked, total }) {
+  const finished = ready && ticked >= total;
+
+  return (
+    <div className={styles.wrapper}>
+      <p className={styles.note} data-complete={finished ? 'true' : 'false'}>
+        {!ready ? (
+          null
+        ) : finished ? (
+          <>
+            All {total} checkpoints done, so this page is complete.{' '}
+            <Link to="/progress">See your progress</Link>.
+          </>
+        ) : (
+          <>
+            {ticked} of {total} checkpoints ticked. The last one marks the
+            page complete.
+          </>
+        )}
+      </p>
+    </div>
+  );
+}
+
 export default function MarkComplete({ contentId }) {
-  const { ready, isComplete, toggle } = useProgress();
+  const { ready, isComplete, isCheckpointDone, toggle } = useProgress();
   const { canSave, resolving, guest } = useSession();
   const { signIn } = useCloudSync();
+  const { list } = usePageCheckpoints();
   const [asking, setAsking] = useState(false);
 
   if (!contentId) return null;
 
   const done = ready && isComplete(contentId);
+
+  // A page with checkpoints is finished by its last tick, so a button here
+  // could only disagree with the ticks above it. It reports instead.
+  if (list.length > 0) {
+    const ticked = list.filter((entry) =>
+      isCheckpointDone(contentId, entry.id)
+    ).length;
+    return (
+      <CheckpointTally ready={ready} ticked={ticked} total={list.length} />
+    );
+  }
 
   const onToggle = () => {
     // toggle refuses without an account and says so by returning false,

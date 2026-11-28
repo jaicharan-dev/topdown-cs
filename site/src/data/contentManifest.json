@@ -1,6 +1,6 @@
 {
   "totalPages": 332,
-  "totalPoints": 642,
+  "totalPoints": 660,
   "difficulties": {
     "easy": 71,
     "medium": 212,
@@ -46,7 +46,7 @@
     },
     "database-design": {
       "pages": 6,
-      "points": 13,
+      "points": 31,
       "easy": 0,
       "medium": 5,
       "hard": 1,
@@ -164,7 +164,7 @@
     },
     "database-design": {
       "pages": 6,
-      "points": 13,
+      "points": 31,
       "easy": 0,
       "medium": 5,
       "hard": 1,
@@ -753,9 +753,31 @@
       "block": "database-design",
       "title": "Design a Digital Wallet System",
       "difficulty": "medium",
-      "points": 2,
+      "points": 5,
       "position": 1,
-      "url": "/docs/database-design/1-wallet-payment-system"
+      "url": "/docs/database-design/1-wallet-payment-system",
+      "checkpoints": [
+        {
+          "id": "obvious-schema",
+          "label": "The obvious schema, and the guarantee it misses"
+        },
+        {
+          "id": "ledger",
+          "label": "Money as entries that sum to zero"
+        },
+        {
+          "id": "balances",
+          "label": "Balances, derived and then cached provably"
+        },
+        {
+          "id": "concurrency",
+          "label": "Concurrency, retries and the indexes the queries ask for"
+        },
+        {
+          "id": "mental-model",
+          "label": "The final schema and the mental model"
+        }
+      ]
     },
     {
       "id": "4-expense-splitting-splitwise",
@@ -763,9 +785,35 @@
       "block": "database-design",
       "title": "Design Splitwise: Expense Splitting & Debt Simplification",
       "difficulty": "medium",
-      "points": 2,
+      "points": 6,
       "position": 4,
-      "url": "/docs/database-design/4-expense-splitting-splitwise"
+      "url": "/docs/database-design/4-expense-splitting-splitwise",
+      "checkpoints": [
+        {
+          "id": "first-tables",
+          "label": "Users, groups, members and expenses"
+        },
+        {
+          "id": "shares",
+          "label": "Who was on the bill, and for how much"
+        },
+        {
+          "id": "settlements",
+          "label": "Settlements, the stray penny and the audit trail"
+        },
+        {
+          "id": "fast-balances",
+          "label": "Leaving a group, and reading balances fast"
+        },
+        {
+          "id": "invariants",
+          "label": "Simplification, currencies, invariants and indexes"
+        },
+        {
+          "id": "mental-model",
+          "label": "Scale, the final schema and the mental model"
+        }
+      ]
     },
     {
       "id": "5-food-delivery-swiggy-zomato",
@@ -773,9 +821,31 @@
       "block": "database-design",
       "title": "Design Swiggy / Zomato: Food Delivery & Order State Machine",
       "difficulty": "medium",
-      "points": 2,
+      "points": 5,
       "position": 5,
-      "url": "/docs/database-design/5-food-delivery-swiggy-zomato"
+      "url": "/docs/database-design/5-food-delivery-swiggy-zomato",
+      "checkpoints": [
+        {
+          "id": "first-cut",
+          "label": "Users, restaurants, the menu and a first orders table"
+        },
+        {
+          "id": "three-breaks",
+          "label": "The receipt, the timeline and the race"
+        },
+        {
+          "id": "state-machine",
+          "label": "The state machine, reviews and claiming stock"
+        },
+        {
+          "id": "beyond-postgres",
+          "label": "Live location, finding what is near, and ratings"
+        },
+        {
+          "id": "mental-model",
+          "label": "Indexing, sharding, the final schema and the mental model"
+        }
+      ]
     },
     {
       "id": "6-cab-booking-uber-ola",
@@ -783,9 +853,31 @@
       "block": "database-design",
       "title": "Design Uber / Ola: Ride-Hailing & Geospatial Matching",
       "difficulty": "medium",
-      "points": 2,
+      "points": 5,
       "position": 6,
-      "url": "/docs/database-design/6-cab-booking-uber-ola"
+      "url": "/docs/database-design/6-cab-booking-uber-ola",
+      "checkpoints": [
+        {
+          "id": "first-cut",
+          "label": "Two roles, vehicles and a first rides table"
+        },
+        {
+          "id": "three-breaks",
+          "label": "The path, the one winner and the disputed fare"
+        },
+        {
+          "id": "money-and-states",
+          "label": "Quotes, cancellation and blind ratings"
+        },
+        {
+          "id": "matching",
+          "label": "Why matching cannot be a query, and the indexes"
+        },
+        {
+          "id": "mental-model",
+          "label": "Partitioning, sharding, the final schema and the mental model"
+        }
+      ]
     },
     {
       "id": "7-stock-trading-zerodha-groww",
@@ -793,9 +885,31 @@
       "block": "database-design",
       "title": "Design Zerodha / Groww: Stock Trading & Ledger Accounting",
       "difficulty": "medium",
-      "points": 2,
+      "points": 5,
       "position": 7,
-      "url": "/docs/database-design/7-stock-trading-zerodha-groww"
+      "url": "/docs/database-design/7-stock-trading-zerodha-groww",
+      "checkpoints": [
+        {
+          "id": "instruments-orders",
+          "label": "Instruments, symbols and orders"
+        },
+        {
+          "id": "ledger",
+          "label": "Double entry, blocked money and fills"
+        },
+        {
+          "id": "lots",
+          "label": "Lots, settlement, corporate actions and the cache"
+        },
+        {
+          "id": "locks-and-pnl",
+          "label": "The one lock, live prices and P&L"
+        },
+        {
+          "id": "mental-model",
+          "label": "Indexing, partitioning, the final schema and the mental model"
+        }
+      ]
     },
     {
       "id": "8-ecommerce-amazon-flipkart",
@@ -803,9 +917,31 @@
       "block": "database-design",
       "title": "Design Amazon / Flipkart: E-Commerce Inventory & Checkout",
       "difficulty": "hard",
-      "points": 3,
+      "points": 5,
       "position": 8,
-      "url": "/docs/database-design/8-ecommerce-amazon-flipkart"
+      "url": "/docs/database-design/8-ecommerce-amazon-flipkart",
+      "checkpoints": [
+        {
+          "id": "catalog",
+          "label": "The catalog, where stock lives, and a first orders table"
+        },
+        {
+          "id": "reservations",
+          "label": "The payment window, reservations and coupons"
+        },
+        {
+          "id": "outbox",
+          "label": "Admission control, the outbox and reviews"
+        },
+        {
+          "id": "beyond-oltp",
+          "label": "Search, analytics, the Buy Box and the indexes"
+        },
+        {
+          "id": "mental-model",
+          "label": "Sharding, the final schema and the mental model"
+        }
+      ]
     },
     {
       "id": "9-bcnf-vs-3nf",

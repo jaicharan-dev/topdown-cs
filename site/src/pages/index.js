@@ -3,11 +3,12 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { useHistory, useLocation } from '@docusaurus/router';
 import React, { useCallback, useEffect, useState } from 'react';
 import CsRoadmap, { CS_GROUPS } from '../components/CsRoadmap';
+import DbDesignRoadmap, { DB_DESIGN_GROUPS } from '../components/DbDesignRoadmap';
 import DsaRoadmap from '../components/DsaRoadmap';
 import HomeStats from '@site/src/components/HomeStats';
 import manifest from '@site/src/data/contentManifest.json';
 import useProgress from '@site/src/hooks/useProgress';
-import { summarise } from '@site/src/lib/progressStore';
+import { checkpointsFor, summarise } from '@site/src/lib/progressStore';
 
 const IconSystemDesign = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -36,6 +37,7 @@ const IconSystemDesign = () => (
 const TABS = [
   { id: 'dsa', label: 'DSA', groups: ['dsa'] },
   { id: 'cs', label: 'CS Fundamentals', groups: CS_GROUPS },
+  { id: 'db-design', label: 'DB Design', groups: DB_DESIGN_GROUPS },
   { id: 'system-design', label: 'System Design', groups: [] },
 ];
 
@@ -99,14 +101,27 @@ export default function Home() {
    * by side, and now you cannot. The readout on each tab gives that back.
    */
   const tabProgress = (tab) => {
+    const groups = new Set(tab.groups);
     let done = 0;
     let total = 0;
-    for (const group of tab.groups) {
-      const all = manifest.groups[group];
-      if (!all) continue;
-      total += all.pages;
-      done += summary.groups[group] ? summary.groups[group].completedPages : 0;
+
+    // Counted in checkpoints where a page has them, pages where it does
+    // not. A tab whose six pages are fifty thousand words would otherwise
+    // read 0/6 for most of a week's work, while the map beside it showed
+    // one of those pages four fifths filled. One number per tab, and it is
+    // the one the map is drawing.
+    for (const page of manifest.pages) {
+      if (!groups.has(page.group)) continue;
+      const marks = page.checkpoints ? page.checkpoints.length : 0;
+      if (marks) {
+        total += marks;
+        done += Math.min(marks, Object.keys(checkpointsFor(store, page.id)).length);
+      } else {
+        total += 1;
+        if (summary.groups[page.group] && store?.completed?.[page.id]) done += 1;
+      }
     }
+
     return { done, total };
   };
 
@@ -208,6 +223,15 @@ export default function Home() {
             className="csf-tabpanel"
             hidden={activeTab !== 'cs'}>
             <CsRoadmap />
+          </div>
+
+          <div
+            role="tabpanel"
+            id="csf-panel-db-design"
+            aria-labelledby="csf-tab-db-design"
+            className="csf-tabpanel"
+            hidden={activeTab !== 'db-design'}>
+            <DbDesignRoadmap />
           </div>
 
           <div

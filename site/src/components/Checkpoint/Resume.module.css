@@ -1,0 +1,33 @@
+.banner {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.8rem;
+  margin: 0 0 1.5rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background-color: rgba(255, 255, 255, 0.035);
+}
+
+.count {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  white-space: nowrap;
+}
+
+.link {
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--csf-checkpoint-accent, #4ade80);
+  text-decoration: none;
+}
+
+.link:hover {
+  color: var(--csf-checkpoint-accent, #4ade80);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

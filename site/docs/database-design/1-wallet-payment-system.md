@@ -151,6 +151,8 @@ A transaction gives me **atomicity**: all of it or none of it. What it does not 
 
 ---
 
+<Checkpoint id="obvious-schema" label="The obvious schema, and the guarantee it misses" />
+
 ### Step 4, Break #1: atomicity is not correctness
 
 :::broke
@@ -366,6 +368,8 @@ is what makes "Alice's cash account" a well-defined phrase.
 
 ---
 
+<Checkpoint id="ledger" label="Money as entries that sum to zero" />
+
 ### Step 8, Break #3: money in flight
 
 :::broke
@@ -529,6 +533,8 @@ serialisable, is in
 
 ---
 
+<Checkpoint id="balances" label="Balances, derived and then cached provably" />
+
 ### Step 11, Retries: the same transfer twice
 
 **Interviewer:** You solved the double-tap with a guard in the last step. Is that the whole
@@ -602,6 +608,8 @@ Worth the caution from the other questions: not every foreign key needs an index
 separately would duplicate an existing structure.
 
 ---
+
+<Checkpoint id="concurrency" label="Concurrency, retries and the indexes the queries ask for" />
 
 ### Step 13: The final schema
 
@@ -706,3 +714,5 @@ This page is the smallest honest version. The later questions assume it.
    states the rule, and a watermark so verification is incremental.
 7. **Guards and keys solve different problems.** A predicate in a `WHERE` clause stops one
    rupee being spent twice; an idempotency key stops one intent becoming two transfers.
+
+<Checkpoint id="mental-model" label="The final schema and the mental model" />

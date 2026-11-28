@@ -12,20 +12,41 @@
  * 2. Docusaurus is a single-page app after the first load, so this hook can
  *    stay mounted across navigations. It keys off the id it is given rather
  *    than caching per page.
+ *
+ * A provider, for the second time in this codebase. It began as a plain
+ * hook, which was fine while three or four components used it. A design
+ * page now holds five checkpoints, a resume banner and the tick at the
+ * foot, and with the navbar that was nine copies of the same store, nine
+ * subscriptions, and nine mount effects each able to write. React caught it
+ * before anybody else did: one copy's write landed in another's render and
+ * it warned about a setState during render.
+ *
+ * The lesson is the one useCloudSync already learned. A hook that owns
+ * shared mutable state is a provider; a comment asking callers to mount it
+ * once is not enforcement.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import useIsBrowser from '@docusaurus/useIsBrowser';
 import useSession from '@site/src/hooks/useSession';
 import {
   activityStats,
   emptyStore,
   ensureReaderNumber,
+  isCheckpointDone as storeIsCheckpointDone,
   isComplete as storeIsComplete,
   readStore,
   setProfile as storeSetProfile,
   subscribe,
   summarise,
+  toggleCheckpoint as storeToggleCheckpoint,
   toggleComplete,
   writeStore,
   __internal,
@@ -34,7 +55,9 @@ import {
 /** One frozen instance, so it cannot cause a render loop as a dependency. */
 const EMPTY = emptyStore();
 
-export default function useProgress() {
+const ProgressContext = createContext(null);
+
+function useProgressState() {
   const isBrowser = useIsBrowser();
   const { canSave } = useSession();
   const [store, setStore] = useState(emptyStore);
@@ -105,6 +128,35 @@ export default function useProgress() {
   );
 
   /**
+   * Ticks or unticks one checkpoint on a page.
+   *
+   * `total` is how many the page declares. The store needs it to know when
+   * a tick is the last one, which is what marks the page itself complete.
+   *
+   * Returns false without an account, exactly as toggle does, so the caller
+   * can offer one instead of pretending to have saved something.
+   */
+  const toggleCheckpoint = useCallback(
+    (contentId, checkpointId, total) => {
+      if (!canSave) return false;
+      setStore((current) =>
+        writeStore(
+          storeToggleCheckpoint(current, contentId, checkpointId, { total })
+        )
+      );
+      return true;
+    },
+    [canSave]
+  );
+
+  /** Same reasoning as isComplete: no account means no progress anywhere. */
+  const isCheckpointDone = useCallback(
+    (contentId, checkpointId) =>
+      canSave && storeIsCheckpointDone(store, contentId, checkpointId),
+    [store, canSave]
+  );
+
+  /**
    * Wipes everything. The caller is responsible for confirming first: this is
    * the user's own data and the only copy of it, so it should never go without
    * them having said so.
@@ -125,8 +177,9 @@ export default function useProgress() {
     [canSave]
   );
 
-  return {
-    ready,
+  return useMemo(
+    () => ({
+      ready,
     /**
      * Zero for anybody without an account, whatever is on the disk.
      *
@@ -136,13 +189,67 @@ export default function useProgress() {
      * cannot be forgotten by the next thing that reads it, and the blob
      * itself is untouched, so it all comes back on the next sign in.
      */
-    store: canSave ? store : EMPTY,
-    canSave,
-    toggle,
-    isComplete,
-    reset,
-    updateProfile,
-    summarise,
-    activityStats,
-  };
+      store: canSave ? store : EMPTY,
+      canSave,
+      toggle,
+      isComplete,
+      toggleCheckpoint,
+      isCheckpointDone,
+      reset,
+      updateProfile,
+      summarise,
+      activityStats,
+    }),
+    [
+      ready,
+      store,
+      canSave,
+      toggle,
+      isComplete,
+      toggleCheckpoint,
+      isCheckpointDone,
+      reset,
+      updateProfile,
+    ]
+  );
+}
+
+/** Mounted once, in theme/Root. */
+export function ProgressProvider({ children }) {
+  const value = useProgressState();
+  return (
+    <ProgressContext.Provider value={value}>
+      {children}
+    </ProgressContext.Provider>
+  );
+}
+
+/**
+ * What a consumer sees with no provider above it, which on this site means
+ * never: Root wraps the whole app. Frozen and defined once so it cannot
+ * become a new object on every render and drive a dependency loop, and
+ * inert rather than a thrown error, because losing the page over a wiring
+ * mistake is worse than losing the progress on it.
+ *
+ * Deliberately NOT a call to useProgressState(). A fallback that ran the
+ * real hook would give every consumer its own store again, which is the
+ * thing the provider exists to stop.
+ */
+const NO_PROVIDER = Object.freeze({
+  ready: false,
+  store: EMPTY,
+  canSave: false,
+  toggle: () => false,
+  isComplete: () => false,
+  toggleCheckpoint: () => false,
+  isCheckpointDone: () => false,
+  reset: () => {},
+  updateProfile: () => false,
+  summarise,
+  activityStats,
+});
+
+/** The store, for anything under the provider. */
+export default function useProgress() {
+  return useContext(ProgressContext) || NO_PROVIDER;
 }

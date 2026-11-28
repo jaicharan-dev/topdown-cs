@@ -237,6 +237,8 @@ What is not settled is everything that happens next.
 
 ---
 
+<Checkpoint id="catalog" label="The catalog, where stock lives, and a first orders table" />
+
 ### Step 5, Break #1: the payment window
 
 :::broke
@@ -553,6 +555,8 @@ reservation and the redemption share a state machine, deliberately.
 
 ---
 
+<Checkpoint id="reservations" label="The payment window, reservations and coupons" />
+
 ### Step 9, Flash sales: admission control, not a faster database
 
 **Interviewer:** A phone launches at noon. A hundred thousand people check out in five
@@ -723,6 +727,8 @@ fact has to be one that cannot be taken back.**
 
 ---
 
+<Checkpoint id="outbox" label="Admission control, the outbox and reviews" />
+
 ### Step 12: Search does not belong here
 
 **Interviewer:** Customers search "blue sony hedphones".
@@ -874,6 +880,8 @@ Worth the symmetric caution from the trading question: not every foreign key nee
 would duplicate an existing structure.
 
 ---
+
+<Checkpoint id="beyond-oltp" label="Search, analytics, the Buy Box and the indexes" />
 
 ### Step 16: Partitioning and sharding
 
@@ -1134,3 +1142,5 @@ questions:
    before it is asked.
 10. **When no shard key makes both paths local, say which one you are making remote.** The
     honest answer names the loser rather than implying there was none.
+
+<Checkpoint id="mental-model" label="Sharding, the final schema and the mental model" />

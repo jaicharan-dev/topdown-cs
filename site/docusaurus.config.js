@@ -324,6 +324,17 @@ const config = {
             activeBasePath: '/__no_match',
           },
           {
+            to: '/?tab=db-design',
+            label: 'DB Design',
+            position: 'left',
+            className: 'csf-drawer-only',
+            // All three are the homepage, so a path match marks every one of
+            // them as the page you are on. A base nothing can match leaves
+            // them all unmarked, which is the honest of the two answers: the
+            // tab is a query, and the strip on the page says which one.
+            activeBasePath: '/__no_match',
+          },
+          {
             to: '/?tab=system-design',
             label: 'System Design',
             position: 'left',

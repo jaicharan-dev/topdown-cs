@@ -433,6 +433,8 @@ David each owe Alice \$25.
 
 ---
 
+<Checkpoint id="first-tables" label="Users, groups, members and expenses" />
+
 ### Step 6, Break #1: not everyone is on every bill
 
 :::broke
@@ -695,6 +697,8 @@ can actually enforce, indexing, and where this schema stops fitting on one machi
 
 ---
 
+<Checkpoint id="shares" label="Who was on the bill, and for how much" />
+
 ### Step 9, Settlements: recording a repayment
 
 **Interviewer:** Bob owes Alice \$10. He sends her \$10 outside the app and wants to record
@@ -900,6 +904,8 @@ inexplicable. Reads filter on `deleted_at IS NULL`; balance recomputation ignore
 rows; the audit trail keeps both the row and the revision that killed it.
 
 ---
+
+<Checkpoint id="settlements" label="Settlements, the stray penny and the audit trail" />
 
 ### Step 12: Leaving a group with a balance
 
@@ -1148,6 +1154,8 @@ recomputes from source and alerts rather than silently repairing.
 :::
 
 ---
+
+<Checkpoint id="fast-balances" label="Leaving a group, and reading balances fast" />
 
 ### Step 14: Debt simplification is not a SQL problem
 
@@ -1449,6 +1457,8 @@ That's the general rule: every index is paid for on every write and in cache tha
 indexes then don't get. Five well-chosen indexes beat fifteen hopeful ones.
 
 ---
+
+<Checkpoint id="invariants" label="Simplification, currencies, invariants and indexes" />
 
 ### Step 18: When one machine is not enough
 
@@ -1823,3 +1833,5 @@ Strip away Splitwise and what's left is a method that transfers to any schema qu
    reconciliation job.
 8. **Let the access pattern pick the shard key.** Shard so that the transactional path is
    local, and pay on the path that parallelises.
+
+<Checkpoint id="mental-model" label="Scale, the final schema and the mental model" />

@@ -307,6 +307,8 @@ A total that the user saw and accepted is a fact.
 
 ---
 
+<Checkpoint id="first-cut" label="Users, restaurants, the menu and a first orders table" />
+
 ### Step 6, Break #1: the receipt outlives the menu
 
 :::broke
@@ -611,6 +613,8 @@ how to get it back cheaply for the one query that needs it in bulk.
 
 ---
 
+<Checkpoint id="three-breaks" label="The receipt, the timeline and the race" />
+
 ### Step 9: The state machine, as data
 
 **Interviewer:** You hinted that transitions should be a table. Why not just write the
@@ -874,6 +878,8 @@ elsewhere.
 
 ---
 
+<Checkpoint id="state-machine" label="The state machine, reviews and claiming stock" />
+
 ### Step 13: Live location does not belong in Postgres
 
 **Interviewer:** Partners ping their GPS every few seconds. Where does that go?
@@ -1120,6 +1126,8 @@ appears in aggregate queries over millions of rows *and* can be range-scanned. E
 the event log is for.
 
 ---
+
+<Checkpoint id="beyond-postgres" label="Live location, finding what is near, and ratings" />
 
 ### Step 17: Indexing, derived from the queries
 
@@ -1406,3 +1414,5 @@ Strip away food delivery and what is left is a method that transfers:
 8. **Let the access pattern pick the shard key.** City works here because the entire
    transactional path is local to one. Say what it costs, national aggregates, and where
    that cost should actually be paid.
+
+<Checkpoint id="mental-model" label="Indexing, sharding, the final schema and the mental model" />

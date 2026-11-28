@@ -5,6 +5,7 @@ import {useDoc} from '@docusaurus/plugin-content-docs/client';
 import Heading from '@theme/Heading';
 import MDXContent from '@theme/MDXContent';
 import ShareButton from '@site/src/components/ShareButton';
+import CheckpointResume from '@site/src/components/Checkpoint/Resume';
 import MarkComplete from '@site/src/components/MarkComplete';
 
 function useSyntheticTitle() {
@@ -39,6 +40,9 @@ export default function DocItemContent({children}) {
           <ShareButton title={syntheticTitle} permalink={metadata.permalink} />
         </header>
       )}
+      {/* Above the page, not below it: it exists to be seen before the
+          reader starts scrolling for where they were. */}
+      <CheckpointResume />
       <MDXContent>{children}</MDXContent>
       <MarkComplete contentId={contentId} />
     </div>

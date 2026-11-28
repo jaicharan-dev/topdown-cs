@@ -83,6 +83,51 @@ function frontmatter(text) {
   return out;
 }
 
+/**
+ * The checkpoints a page declares, in the order they appear in it.
+ *
+ * Authored rather than derived: see src/components/Checkpoint. The id is
+ * what a progress record points at, so it is held to the same standard as a
+ * page id, and a page that repeats one fails the build rather than quietly
+ * merging two save points into one.
+ *
+ * A deliberately small regex over our own files, same as the frontmatter
+ * reader above. These pages are generated and reviewed by us, not supplied
+ * by anybody else, so a parser would be answering a question nobody asked.
+ */
+const CHECKPOINT_PATTERN = /<Checkpoint\s+([^>]*?)\/>/g;
+const ATTR_PATTERN = /([a-zA-Z]+)\s*=\s*"([^"]*)"/g;
+
+function checkpointsIn(text, relPath, problems) {
+  const out = [];
+  const seen = new Set();
+
+  for (const match of text.matchAll(CHECKPOINT_PATTERN)) {
+    const attrs = {};
+    for (const attr of match[1].matchAll(ATTR_PATTERN)) attrs[attr[1]] = attr[2];
+
+    const id = (attrs.id || '').trim();
+    if (!id) {
+      problems.push(`checkpoint without an id: ${relPath}`);
+      continue;
+    }
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(id)) {
+      problems.push(
+        `checkpoint id "${id}" in ${relPath} is not lowercase-kebab-case`
+      );
+      continue;
+    }
+    if (seen.has(id)) {
+      problems.push(`duplicate checkpoint id "${id}" in ${relPath}`);
+      continue;
+    }
+    seen.add(id);
+    out.push({ id, label: (attrs.label || '').trim() });
+  }
+
+  return out;
+}
+
 /** `sidebar-medium` -> `medium`. */
 function difficultyOf(sidebarClassName) {
   if (!sidebarClassName) return null;
@@ -183,16 +228,31 @@ function generate() {
       continue;
     }
 
-    pages.push({
+    const checkpoints = checkpointsIn(text, relPath, problems);
+
+    // One point per checkpoint on a page that has them, the difficulty
+    // weight on a page that does not.
+    //
+    // The old rule gave the Splitwise page, twelve thousand words and about
+    // an hour, two points, the same as any other medium page and twice a
+    // seven hundred word Two Sum. The ladder was not slightly off about the
+    // design section; it was off by a factor of five, and nobody could see
+    // it because the number looked reasonable next to its neighbours.
+    const page = {
       id,
       group,
       block,
       title: fm.title || id,
       difficulty,
-      points: POINTS[difficulty],
+      points: checkpoints.length || POINTS[difficulty],
       position: Number(fm.sidebar_position) || 0,
       url: routeFor(relPath, id),
-    });
+    };
+    // Omitted entirely on a page without them, rather than carried as an
+    // empty array on all 332: this file is imported into every bundle.
+    if (checkpoints.length) page.checkpoints = checkpoints;
+
+    pages.push(page);
   }
 
   if (problems.length) {

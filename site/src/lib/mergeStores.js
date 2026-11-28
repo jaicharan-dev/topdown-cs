@@ -21,7 +21,7 @@
 
 import { HISTORY_LIMIT, migrate, today } from './progressStore';
 
-const CURRENT_VERSION = 2;
+const CURRENT_VERSION = 3;
 
 /**
  * Rebuilds an object with its keys in sorted order.
@@ -64,6 +64,28 @@ export function mergeStores(a, b) {
   const completed = { ...left.completed };
   for (const [id, at] of Object.entries(right.completed)) {
     completed[id] = earliest(completed[id], at);
+  }
+
+  // Checkpoints: the same union, one level deeper, and for the same reason.
+  // Each page's ticks are merged key by key rather than one side's object
+  // replacing the other's, because two devices holding different halves of
+  // a nine thousand word page is exactly the case this has to survive.
+  //
+  // Canonical ordering goes on the inner objects too. Without it the result
+  // holds the same ticks in a different insertion order depending on which
+  // store was passed first, and `differs` would upload an identical blob on
+  // every sync forever.
+  const checkpoints = {};
+  for (const side of [left.checkpoints, right.checkpoints]) {
+    for (const [page, marks] of Object.entries(side)) {
+      const into = checkpoints[page] || (checkpoints[page] = {});
+      for (const [id, at] of Object.entries(marks)) {
+        into[id] = earliest(into[id], at);
+      }
+    }
+  }
+  for (const [page, marks] of Object.entries(checkpoints)) {
+    checkpoints[page] = canonical(marks);
   }
 
   const activity = {};
@@ -133,6 +155,7 @@ export function mergeStores(a, b) {
     completed: canonical(completed),
     activity: canonical(activity),
     sections: canonical(sections),
+    checkpoints: canonical(checkpoints),
     history,
     profile,
   };

@@ -14,10 +14,15 @@
  * page and the progress page all want it at the same time, and before it was
  * a provider each of them opened its own auth listener and its own debounce
  * timer, so one local change set two or three merges racing each other.
+ *
+ * And so does the progress store, for the same reason and after the same
+ * mistake: a design page carries five checkpoints, a resume banner and the
+ * tick at the foot, which with the navbar came to nine copies of one store.
  */
 
 import React, { useEffect } from 'react';
 import { CloudSyncProvider } from '@site/src/hooks/useCloudSync';
+import { ProgressProvider } from '@site/src/hooks/useProgress';
 import useCurrentPage from '@site/src/hooks/useCurrentPage';
 import useSession from '@site/src/hooks/useSession';
 import useTimeOnSite from '@site/src/hooks/useTimeOnSite';
@@ -26,7 +31,9 @@ import { readStore, recordVisit, writeStore } from '@site/src/lib/progressStore'
 export default function Root({ children }) {
   return (
     <CloudSyncProvider>
-      <Recorder>{children}</Recorder>
+      <ProgressProvider>
+        <Recorder>{children}</Recorder>
+      </ProgressProvider>
     </CloudSyncProvider>
   );
 }

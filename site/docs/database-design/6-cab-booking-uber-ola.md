@@ -241,6 +241,8 @@ wrong. Three times.
 
 ---
 
+<Checkpoint id="first-cut" label="Two roles, vehicles and a first rides table" />
+
 ### Step 5, Break #1: a trip is a path, not two points
 
 :::broke
@@ -559,6 +561,8 @@ CREATE TABLE fare_components ( ... );    -- as Step 7
 
 ---
 
+<Checkpoint id="three-breaks" label="The path, the one winner and the disputed fare" />
+
 ### Step 8: The quote, and the price you promise before you know it
 
 **Interviewer:** You said earlier you would come back to upfront pricing.
@@ -777,6 +781,8 @@ few reads go through it.
 :::
 
 ---
+
+<Checkpoint id="money-and-states" label="Quotes, cancellation and blind ratings" />
 
 ### Step 12: The rolling rating, and a `LIMIT` that does nothing
 
@@ -1017,6 +1023,8 @@ The sweeper looks only at pending offers, so the index holds only pending offers
 few thousand rows at any moment, out of billions.
 
 ---
+
+<Checkpoint id="matching" label="Why matching cannot be a query, and the indexes" />
 
 ### Step 16: Partitioning before sharding
 
@@ -1370,3 +1378,5 @@ Strip away ride-hailing and what is left is a method that transfers:
    restaurants do not move.
 10. **Partition before you shard.** The first problem with an enormous table is that its
     indexes stop fitting in memory, and that is solved on one machine.
+
+<Checkpoint id="mental-model" label="Partitioning, sharding, the final schema and the mental model" />

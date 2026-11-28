@@ -1,0 +1,139 @@
+/* A save point reads as a seam in the page, not as a widget dropped on it.
+   The rule above it is what makes it a resting place; the button under the
+   rule is what makes it a choice. */
+.wrapper {
+  margin: 2.25rem 0 1.75rem;
+  scroll-margin-top: calc(var(--ifm-navbar-height, 60px) + 1.25rem);
+}
+
+.rule {
+  height: 1px;
+  margin-bottom: 0.85rem;
+  background: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0.12),
+    rgba(255, 255, 255, 0.02)
+  );
+}
+
+.row {
+  display: flex;
+}
+
+.button {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.5rem 0.9rem 0.5rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  background-color: rgba(255, 255, 255, 0.035);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.button:hover:not(:disabled) {
+  background-color: rgba(255, 255, 255, 0.07);
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Hollow until it is done, then filled. The same pair the complete button
+   at the foot of the page uses, at a smaller size, so a reader meets one
+   shape rather than two. */
+.box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 999px;
+  border: 2px solid rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.button[data-done='true'] {
+  border-color: color-mix(in srgb, var(--csf-checkpoint-accent) 45%, transparent);
+  background-color: color-mix(in srgb, var(--csf-checkpoint-accent) 12%, transparent);
+}
+
+.button[data-done='true'] .box {
+  border-color: var(--csf-checkpoint-accent);
+  background-color: var(--csf-checkpoint-accent);
+}
+
+.tick {
+  width: 14px;
+  height: 14px;
+}
+
+.text {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.count {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.5;
+  white-space: nowrap;
+}
+
+.label {
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.ask {
+  margin: 0.6rem 0 0;
+  font-size: 0.8rem;
+  opacity: 0.7;
+}
+
+.signIn,
+.later {
+  padding: 0;
+  margin: 0 0.25rem;
+  border: none;
+  background: none;
+  color: var(--csf-checkpoint-accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.later {
+  color: inherit;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
+:root {
+  --csf-checkpoint-accent: #4ade80;
+}
+
+@media screen and (max-width: 996px) {
+  /* The label wraps under the count rather than squeezing it: on a phone
+     the two side by side left about nine characters for the label. */
+  .text {
+    flex-direction: column;
+    gap: 0.12rem;
+  }
+
+  .label {
+    font-size: 0.82rem;
+  }
+}

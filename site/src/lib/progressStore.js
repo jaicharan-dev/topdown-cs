@@ -15,7 +15,7 @@
 import { MAX_SECONDS_PER_DAY } from './timeTracker';
 
 const STORAGE_KEY = 'topdowncs:progress';
-const CURRENT_VERSION = 2;
+const CURRENT_VERSION = 3;
 
 /**
  * How many visits the history keeps.
@@ -46,6 +46,19 @@ export function emptyStore() {
     activity: {},
     /** manifest group key -> seconds read in that section */
     sections: {},
+    /**
+     * pageId -> { checkpointId: ISO timestamp it was ticked }
+     *
+     * Long pages are read over several sittings, and one button at the foot
+     * of nine thousand words could say nothing about the four that had been
+     * read already. A checkpoint is a resting point the author placed, so
+     * progress has somewhere to be between "opened" and "finished".
+     *
+     * The page's own entry in `completed` is still written, by the tick that
+     * completes the last checkpoint, so points, ranks and the heatmap carry
+     * on reading one field and needed no changes.
+     */
+    checkpoints: {},
     /** visits, newest first: { id, url, title, group, at } */
     history: [],
     /** what the reader calls themselves, and their picture */
@@ -204,6 +217,22 @@ export function migrate(raw) {
     store.history = store.history.slice(0, HISTORY_LIMIT);
   }
 
+  // Version 3. Same shape of guard as the rest: a store written before
+  // checkpoints existed simply has none, and a malformed one contributes
+  // whatever parts of it are well formed.
+  if (raw.checkpoints && typeof raw.checkpoints === 'object') {
+    for (const [pageId, marks] of Object.entries(raw.checkpoints)) {
+      if (typeof pageId !== 'string' || !pageId) continue;
+      if (!marks || typeof marks !== 'object') continue;
+      const kept = {};
+      for (const [ckId, at] of Object.entries(marks)) {
+        if (typeof ckId !== 'string' || !ckId) continue;
+        kept[ckId] = typeof at === 'string' ? at : new Date().toISOString();
+      }
+      if (Object.keys(kept).length) store.checkpoints[pageId] = kept;
+    }
+  }
+
   if (raw.profile && typeof raw.profile === 'object') {
     const text = (value, max) =>
       typeof value === 'string' ? value.slice(0, max) : '';
@@ -237,6 +266,12 @@ function carry(store) {
     completed: { ...base.completed },
     activity: { ...base.activity },
     sections: { ...base.sections },
+    checkpoints: Object.fromEntries(
+      Object.entries(base.checkpoints).map(([page, marks]) => [
+        page,
+        { ...marks },
+      ])
+    ),
     history: base.history.slice(),
     profile: { ...base.profile },
   };
@@ -445,12 +480,91 @@ export function toggleComplete(store, contentId, now = new Date()) {
   return setComplete(store, contentId, !isComplete(store, contentId), now);
 }
 
+/* ------------------------------------------------------------------ *
+ * Checkpoints
+ *
+ * A checkpoint belongs to a page and is identified by a short slug the
+ * author writes into the page. The pair (pageId, checkpointId) is the key,
+ * so two pages may use the same slug without colliding and a checkpoint
+ * cannot outlive the page that declared it.
+ * ------------------------------------------------------------------ */
+
+/** The ticks on one page, as a plain object. Never null. */
+export function checkpointsFor(store, contentId) {
+  const marks = store?.checkpoints?.[contentId];
+  return marks && typeof marks === 'object' ? marks : {};
+}
+
+export function isCheckpointDone(store, contentId, checkpointId) {
+  return Boolean(checkpointsFor(store, contentId)[checkpointId]);
+}
+
+/** How many of this page's checkpoints are ticked. */
+export function checkpointCount(store, contentId) {
+  return Object.keys(checkpointsFor(store, contentId)).length;
+}
+
+/**
+ * Tick or untick one checkpoint, and keep the page's own completion in step.
+ *
+ * `total` is how many checkpoints the page declares, which comes from the
+ * manifest: the store has no way to know, and without it the last tick could
+ * not tell that it was the last. Passing 0 leaves completion alone, which is
+ * what a caller that does not know should do rather than guess.
+ *
+ * Completing the last one marks the page complete, and unticking any one
+ * marks it incomplete again, so the two can never disagree in this browser.
+ * They can disagree after a merge, where two devices hold different halves
+ * of the same page; summarise() closes that gap when it counts.
+ */
+export function setCheckpoint(
+  store,
+  contentId,
+  checkpointId,
+  done,
+  { total = 0, now = new Date() } = {}
+) {
+  if (!contentId || !checkpointId) return store;
+
+  const next = carry(store);
+  const marks = { ...checkpointsFor(next, contentId) };
+
+  if (done) marks[checkpointId] = now.toISOString();
+  else delete marks[checkpointId];
+
+  if (Object.keys(marks).length) next.checkpoints[contentId] = marks;
+  else delete next.checkpoints[contentId];
+
+  if (!total) return next;
+
+  // setComplete carries the store again, which is one more copy than this
+  // strictly needs. It is also the only place that knows how to keep the
+  // day's completion tally straight, and duplicating that here is how the
+  // two would drift.
+  const all = Object.keys(marks).length >= total;
+  if (all !== Boolean(next.completed[contentId])) {
+    return setComplete(next, contentId, all, now);
+  }
+  return next;
+}
+
+export function toggleCheckpoint(store, contentId, checkpointId, options = {}) {
+  return setCheckpoint(
+    store,
+    contentId,
+    checkpointId,
+    !isCheckpointDone(store, contentId, checkpointId),
+    options
+  );
+}
+
 /**
  * Completion counts for the whole site and per group, weighted by difficulty.
  * `manifest` is src/data/contentManifest.json.
  */
 export function summarise(store, manifest) {
   const done = store?.completed || {};
+  const marks = store?.checkpoints || {};
   const groups = {};
 
   for (const [key, group] of Object.entries(manifest.groups)) {
@@ -467,13 +581,32 @@ export function summarise(store, manifest) {
   let completedPoints = 0;
 
   for (const page of manifest.pages) {
-    if (!done[page.id]) continue;
-    completedPages += 1;
-    completedPoints += page.points;
+    const total = page.checkpoints ? page.checkpoints.length : 0;
+
+    // A checkpointed page scores as it is read rather than all at once. A
+    // nine thousand word design worked through to its third break has four
+    // fifths of the reading behind it, and a page count that says 0 is the
+    // reason the ranks were wrong about this section in the first place.
+    const ticked = total
+      ? Math.min(total, Object.keys(marks[page.id] || {}).length)
+      : 0;
+
+    // Complete if the page says so, or if every checkpoint is ticked. The
+    // second case is the one that cannot happen in a single browser, where
+    // the last tick writes the completion itself; it happens after a merge,
+    // where two devices held different halves of the same page.
+    const finished = Boolean(done[page.id]) || (total > 0 && ticked >= total);
+    const points = total ? ticked : finished ? page.points : 0;
+
+    if (!finished && !points) continue;
+
+    if (finished) completedPages += 1;
+    completedPoints += finished && !total ? page.points : points;
+
     const g = groups[page.group];
     if (g) {
-      g.completedPages += 1;
-      g.completedPoints += page.points;
+      if (finished) g.completedPages += 1;
+      g.completedPoints += finished && !total ? page.points : points;
     }
   }
 
