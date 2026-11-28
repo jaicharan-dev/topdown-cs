@@ -28,33 +28,60 @@
  *
  * The zoom buttons anchor on the top edge of that window, so whatever is at
  * the top stays at the top and the blocks grow downwards from it rather than
- * the whole graph swelling out of the page in both directions. That is a
- * property of the zoom, not of the canvas: it does not require the graph to
- * be pinned, and pinning it would take away the dragging that makes this a
- * canvas in the first place. The wheel zooms about the pointer instead,
- * which is what a pointer is for.
- *
- * One exception, for a coarse pointer. There a vertical drag belongs to the
- * page, so nothing that falls below the window could ever be panned back
- * into view; the window grows with the zoom instead, which keeps the whole
- * graph reachable without taking the page's scrolling away.
+ * the whole graph swelling out of the page in both directions. The wheel and
+ * a pinch zoom about the pointer or the fingers instead, which is what a
+ * pointer and a pinch are for.
  *
  * The viewBox is computed to match the box, rather than being a fixed
  * `0 0 width height` with preserveAspectRatio making up the difference. That
  * keeps one scale for both axes and leaves no letterboxing to reason about.
+ *
+ * ---- Why nothing here is clipped ----
+ *
+ * The svg overflows visibly. The graph is drawn on the page's own dot grid,
+ * and clipping it to the band it happens to occupy meant dragging it down
+ * sliced it off along an invisible line with canvas on both sides of the
+ * cut. The surface is still the size it was, so it is still the part that
+ * takes gestures and the page still scrolls above and below it; only the
+ * painting escapes. `.csf-tabpanels` sits a layer below the rail and the
+ * standing panel, so what escapes passes behind them.
+ *
+ * ---- Why the view is not React state while you are dragging ----
+ *
+ * It was, and a phone could not keep up. Every pointermove re-rendered every
+ * node, every wire and every gradient, which is a few hundred elements for
+ * one attribute's worth of change, and the graph stuttered behind the finger.
+ *
+ * The whole view is one transform on one `<g>`, so a drag writes that
+ * attribute directly, once per animation frame, and commits to React state
+ * when the gesture ends. React still owns the view between gestures, which
+ * is what the buttons and the reset read.
+ *
+ * This works because neither the viewBox nor the surface's height depends on
+ * the zoom any more. They did, for coarse pointers, which had the side
+ * effect that the zoom buttons on a phone grew the window and the graph by
+ * the same factor and therefore appeared to do nothing at all.
  *
  * ---- What the gestures take ----
  *
  *  - A plain wheel belongs to the page. Zooming on it would mean a reader
  *    scrolling past the homepage gets caught by the graph, so zoom needs ctrl
  *    or cmd held, which is also what a trackpad pinch sends.
- *  - Touch gets `touch-action: pan-y`, so a vertical swipe still scrolls the
- *    page and only a sideways drag moves the graph. Sideways is the only
- *    direction there is anything to pan in, so nothing is lost.
+ *  - Touch gets `touch-action: none`, so one finger pans the graph in both
+ *    directions and two fingers zoom it. Without that the browser keeps the
+ *    vertical axis and the pinch, and pinching the graph zooms the page.
+ *    The page is still scrollable from anywhere outside the surface, which
+ *    on a phone is the canvas above and below it.
  *  - The buttons work everywhere and need no gesture at all.
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useHistory } from '@docusaurus/router';
 
 const MIN_ZOOM = 0.55;
@@ -65,17 +92,6 @@ const HOME_VIEW = { k: 1, x: 0, y: 0 };
 const DRAG_SLOP = 4;
 
 const clamp = (value, lo, hi) => Math.max(lo, Math.min(hi, value));
-
-/**
- * How tall the window is, in graph units.
- *
- * A fixed window everywhere a drag can reach both ways. Where it cannot, the
- * window grows with the zoom so that zooming in never puts a row somewhere
- * the reader has no gesture to get to.
- */
-function windowHeight(frame, height, k) {
-  return height * (frame.coarse ? Math.max(1, k) : 1);
-}
 
 /**
  * Keep the graph within reach.
@@ -99,7 +115,7 @@ function limitWith(frame, next, width, height) {
     x: axis(frame.originX, frame.visW, width, next.x),
     // The window's top is graph y = 0, so extra height always falls below the
     // graph and never opens a band above it.
-    y: axis(0, windowHeight(frame, height, next.k), height, next.y),
+    y: axis(0, height, height, next.y),
   };
 }
 
@@ -126,7 +142,14 @@ export default function RoadmapGraph({
 
   const wrapperRef = useRef(null);
   const surfaceRef = useRef(null);
+  /** The one <g> that carries the whole view. Written to during a gesture. */
+  const layerRef = useRef(null);
   const gestureRef = useRef(null);
+  /** Every pointer currently down on the surface, by id. Two means a pinch. */
+  const pointersRef = useRef(new Map());
+  /** The view a gesture has reached but not yet handed back to React. */
+  const liveRef = useRef(null);
+  const rafRef = useRef(0);
   const movedRef = useRef(false);
   const viewRef = useRef(view);
   viewRef.current = view;
@@ -165,16 +188,13 @@ export default function RoadmapGraph({
         scale,
         visW,
         originX: (width - visW) / 2,
-        // Whether a drag can go up and down here, or only sideways.
-        coarse: window.matchMedia('(pointer: coarse)').matches,
       };
       const prev = frameRef.current;
       if (
         prev &&
         prev.boxW === next.boxW &&
         prev.offsetX === next.offsetX &&
-        prev.scale === next.scale &&
-        prev.coarse === next.coarse
+        prev.scale === next.scale
       ) {
         return;
       }
@@ -194,6 +214,54 @@ export default function RoadmapGraph({
   const limit = useCallback(
     (next) => limitWith(frameRef.current, next, width, height),
     [width, height]
+  );
+
+  const transformOf = (v) => `translate(${v.x} ${v.y}) scale(${v.k})`;
+
+  /**
+   * Show a view without telling React about it.
+   *
+   * One attribute on one element, at most once per frame. The alternative,
+   * which this replaces, was a setState per pointermove, and a few hundred
+   * nodes and wires being diffed sixty times a second is what the stutter
+   * on a phone actually was.
+   */
+  const paint = useCallback((next) => {
+    liveRef.current = next;
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = 0;
+      const layer = layerRef.current;
+      const v = liveRef.current;
+      if (layer && v) layer.setAttribute('transform', transformOf(v));
+    });
+  }, []);
+
+  /** Hand the gesture's result back to React, which owns it from here. */
+  const commit = useCallback(() => {
+    if (rafRef.current) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = 0;
+    }
+    const v = liveRef.current;
+    liveRef.current = null;
+    if (v) setView(v);
+  }, []);
+
+  // A render in the middle of a gesture, most often a hover starting as the
+  // finger passes over a node, would otherwise put React's older transform
+  // back and the graph would jump backwards under the hand.
+  useLayoutEffect(() => {
+    const layer = layerRef.current;
+    const v = liveRef.current;
+    if (layer && v) layer.setAttribute('transform', transformOf(v));
+  });
+
+  useEffect(
+    () => () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    },
+    []
   );
 
   /** Screen point to graph point, before the view transform. */
@@ -249,18 +317,87 @@ export default function RoadmapGraph({
     return () => el.removeEventListener('wheel', onWheel);
   }, [toLocal, zoomAround]);
 
+  /** Begin a one-finger drag from whichever pointer is down. */
+  const startPan = useCallback((pointer) => {
+    gestureRef.current = {
+      mode: 'pan',
+      id: pointer.id,
+      startX: pointer.x,
+      startY: pointer.y,
+      view: liveRef.current || viewRef.current,
+    };
+  }, []);
+
+  /** Begin a pinch from the two pointers that are down. */
+  const startPinch = useCallback(() => {
+    const [a, b] = [...pointersRef.current.values()];
+    if (!a || !b) return;
+    const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+    gestureRef.current = {
+      mode: 'pinch',
+      startDist: dist,
+      startMidX: (a.x + b.x) / 2,
+      startMidY: (a.y + b.y) / 2,
+      view: liveRef.current || viewRef.current,
+    };
+  }, []);
+
   // Dragging is tracked on the window rather than through setPointerCapture:
   // capturing would redirect the click that follows to the surface, and the
   // nodes would stop opening.
   useEffect(() => {
     const onMove = (event) => {
+      const pointers = pointersRef.current;
+      if (!pointers.has(event.pointerId)) return;
+      pointers.set(event.pointerId, {
+        id: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+      });
+
       const gesture = gestureRef.current;
       const f = frameRef.current;
       if (!gesture || !f) return;
+
+      if (gesture.mode === 'pinch') {
+        const [a, b] = [...pointers.values()];
+        if (!a || !b) return;
+        const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+        const midX = (a.x + b.x) / 2;
+        const midY = (a.y + b.y) / 2;
+
+        const k = clamp(
+          gesture.view.k * (dist / gesture.startDist),
+          MIN_ZOOM,
+          MAX_ZOOM
+        );
+        const ratio = k / gesture.view.k;
+        // The anchor is where the fingers first were, held still in graph
+        // space, and the midpoint's own travel is added on top so a pinch
+        // that also slides moves the graph with it.
+        const anchor = toLocal(gesture.startMidX, gesture.startMidY);
+        movedRef.current = true;
+        paint(
+          limit({
+            k,
+            x:
+              anchor.x -
+              (anchor.x - gesture.view.x) * ratio +
+              (midX - gesture.startMidX) / f.scale,
+            y:
+              anchor.y -
+              (anchor.y - gesture.view.y) * ratio +
+              (midY - gesture.startMidY) / f.scale,
+          })
+        );
+        return;
+      }
+
+      if (event.pointerId !== gesture.id) return;
       const dx = event.clientX - gesture.startX;
       const dy = event.clientY - gesture.startY;
       if (Math.abs(dx) + Math.abs(dy) > DRAG_SLOP) movedRef.current = true;
-      setView(
+      paint(
         limit({
           k: gesture.view.k,
           x: gesture.view.x + dx / f.scale,
@@ -268,9 +405,25 @@ export default function RoadmapGraph({
         })
       );
     };
-    const onEnd = () => {
+
+    const onEnd = (event) => {
+      const pointers = pointersRef.current;
+      if (!pointers.delete(event.pointerId)) return;
+
+      // Lifting one finger out of a pinch hands the gesture to the finger
+      // still down rather than ending it. Ending it meant the graph froze
+      // until you let go completely and started again.
+      if (pointers.size === 1 && gestureRef.current?.mode === 'pinch') {
+        commit();
+        startPan([...pointers.values()][0]);
+        return;
+      }
+      if (pointers.size > 0) return;
+
       gestureRef.current = null;
+      commit();
     };
+
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', onEnd);
     window.addEventListener('pointercancel', onEnd);
@@ -279,16 +432,18 @@ export default function RoadmapGraph({
       window.removeEventListener('pointerup', onEnd);
       window.removeEventListener('pointercancel', onEnd);
     };
-  }, [limit]);
+  }, [limit, paint, commit, startPan, startPinch, toLocal]);
 
   const onPointerDown = (event) => {
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     movedRef.current = false;
-    gestureRef.current = {
-      startX: event.clientX,
-      startY: event.clientY,
-      view: viewRef.current,
-    };
+    pointersRef.current.set(event.pointerId, {
+      id: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+    });
+    if (pointersRef.current.size >= 2) startPinch();
+    else startPan({ id: event.pointerId, x: event.clientX, y: event.clientY });
   };
 
   const openNode = (node) => {
@@ -359,7 +514,7 @@ export default function RoadmapGraph({
   // the server renders too.
   const scale = frame ? frame.scale : null;
   const visW = frame ? frame.visW : width;
-  const visH = frame ? windowHeight(frame, height, view.k) : height;
+  const visH = height;
   const originX = frame ? frame.originX : 0;
   const surfaceStyle = frame
     ? {
@@ -456,6 +611,7 @@ export default function RoadmapGraph({
           {/* Everything that moves lives in here. */}
           <g
             className="csf-graph-viewport"
+            ref={layerRef}
             transform={`translate(${view.x} ${view.y}) scale(${view.k})`}>
             <g className="csf-graph-edges">
               {edges.map((edge, index) => {

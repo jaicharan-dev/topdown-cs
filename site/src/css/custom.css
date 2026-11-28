@@ -1495,10 +1495,19 @@ html[data-theme='dark'] .prism-code .token.punctuation {
   cursor: grab;
   user-select: none;
   -webkit-user-select: none;
-  /* pan-y, not none: a vertical swipe has to keep scrolling the page, or a
-     reader meets a graph taller than their phone and cannot get past it. A
-     sideways drag is ours, which is what the scrollbox here used to do. */
-  touch-action: pan-y;
+  /* none, not pan-y. With pan-y the browser keeps the vertical axis and the
+     pinch, which means one finger can only drag the graph sideways and two
+     fingers zoom the whole page instead of the graph. The page is still
+     scrollable from anywhere outside this box, which on a phone is the
+     canvas above and below the graph. */
+  touch-action: none;
+}
+
+/* The bar sits above anything the graph spills upwards, so the title and
+   the zoom buttons are never drawn over. */
+.csf-graph-bar {
+  position: relative;
+  z-index: 1;
 }
 
 .csf-graph-surface:active {
@@ -1514,11 +1523,16 @@ html[data-theme='dark'] .prism-code .token.punctuation {
   width: 100%;
   height: 100%;
   display: block;
-  /* hidden, because the graph moves inside this box now and panned content
-     would otherwise be drawn across the rest of the page. The cost is that a
-     hover glow clips at the edge, and there is enough margin in the viewBox
-     that it does not reach. */
-  overflow: hidden;
+  /* visible. The graph is drawn on the page's own dot grid, so clipping it
+     to the band it happens to occupy cut it along an invisible line with
+     canvas on both sides, which is what dragging it downwards used to look
+     like. Only the painting escapes: the surface keeps its size, so it is
+     still the part that takes gestures.
+
+     What escapes passes behind the rail and the standing panel, which sit a
+     layer above .csf-tabpanels, and how far it can go is bounded by the
+     slack in the pan limit rather than by a clip. */
+  overflow: visible;
 }
 
 /* Connector wires - gradient tinted from source accent to target accent */
