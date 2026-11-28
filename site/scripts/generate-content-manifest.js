@@ -47,6 +47,7 @@ const BLOCK_LABELS = {
   'design-patterns': 'Design Patterns',
   'code-tracing': 'Code Tracing',
   'database-design': 'DB Design',
+  'sd-essential': 'System Design Essential',
   dsa: 'DSA',
 };
 

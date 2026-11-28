@@ -1619,6 +1619,28 @@ html[data-theme='dark'] .prism-code .token.punctuation {
   stroke: color-mix(in srgb, var(--node-accent, #60a5fa) 78%, transparent);
 }
 
+/* ----- A node that belongs to another tab -----
+   The system design map sends people into the CN and DBMS lanes rather
+   than teaching proxies and replication a second time. Those boxes are
+   real destinations, so they are not dimmed or disabled; they are drawn
+   with a dashed edge and no fill, which reads as "this is elsewhere"
+   without needing a word of explanation. */
+[data-theme='dark'] .csf-graph-node-group.is-prerequisite .csf-graph-node-card {
+  fill: rgba(255, 255, 255, 0.015);
+  stroke-dasharray: 5 4;
+}
+
+/* The accent tab is what an incoming wire lands on, and on a borrowed
+   node it is the one thing that should stay solid: the wire has to look
+   connected to something. */
+.csf-graph-node-group.is-prerequisite .csf-graph-node-tab {
+  opacity: 0.5;
+}
+
+.csf-graph-node-group.is-prerequisite .csf-graph-node-label {
+  opacity: 0.72;
+}
+
 .csf-graph-node-group.is-dimmed {
   opacity: 0.32;
 }

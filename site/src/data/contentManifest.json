@@ -1,9 +1,9 @@
 {
-  "totalPages": 332,
-  "totalPoints": 660,
+  "totalPages": 336,
+  "totalPoints": 668,
   "difficulties": {
     "easy": 71,
-    "medium": 212,
+    "medium": 216,
     "hard": 49
   },
   "weights": {
@@ -123,6 +123,14 @@
       "medium": 7,
       "hard": 1,
       "label": "OS Problems"
+    },
+    "sd-essential": {
+      "pages": 4,
+      "points": 8,
+      "easy": 0,
+      "medium": 4,
+      "hard": 0,
+      "label": "System Design Essential"
     }
   },
   "blocks": {
@@ -404,6 +412,15 @@
       "hard": 1,
       "group": "os-problems",
       "label": "OS Problems"
+    },
+    "sd-essential": {
+      "pages": 4,
+      "points": 8,
+      "easy": 0,
+      "medium": 4,
+      "hard": 0,
+      "group": "sd-essential",
+      "label": "System Design Essential"
     }
   },
   "pages": [
@@ -3862,6 +3879,46 @@
       "points": 2,
       "position": 8,
       "url": "/docs/os-problems/8-disk-scheduling-fcfs-sstf-scan-cscan"
+    },
+    {
+      "id": "1-back-of-the-envelope",
+      "group": "sd-essential",
+      "block": "sd-essential",
+      "title": "Back-of-the-Envelope Estimation",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 1,
+      "url": "/docs/sd-essential/1-back-of-the-envelope"
+    },
+    {
+      "id": "2-caching-strategies",
+      "group": "sd-essential",
+      "block": "sd-essential",
+      "title": "Caching Strategies and Invalidation",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 2,
+      "url": "/docs/sd-essential/2-caching-strategies"
+    },
+    {
+      "id": "3-rate-limiting",
+      "group": "sd-essential",
+      "block": "sd-essential",
+      "title": "Rate Limiting",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 3,
+      "url": "/docs/sd-essential/3-rate-limiting"
+    },
+    {
+      "id": "4-queues-and-async",
+      "group": "sd-essential",
+      "block": "sd-essential",
+      "title": "Queues and Asynchronous Work",
+      "difficulty": "medium",
+      "points": 2,
+      "position": 4,
+      "url": "/docs/sd-essential/4-queues-and-async"
     }
   ]
 }

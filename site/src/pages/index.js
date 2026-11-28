@@ -4,22 +4,14 @@ import { useHistory, useLocation } from '@docusaurus/router';
 import React, { useCallback, useEffect, useState } from 'react';
 import CsRoadmap, { CS_GROUPS } from '../components/CsRoadmap';
 import DbDesignRoadmap, { DB_DESIGN_GROUPS } from '../components/DbDesignRoadmap';
+import SystemDesignRoadmap, {
+  SYSTEM_DESIGN_GROUPS,
+} from '../components/SystemDesignRoadmap';
 import DsaRoadmap from '../components/DsaRoadmap';
 import HomeStats from '@site/src/components/HomeStats';
 import manifest from '@site/src/data/contentManifest.json';
 import useProgress from '@site/src/hooks/useProgress';
 import { checkpointsFor, summarise } from '@site/src/lib/progressStore';
-
-const IconSystemDesign = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9" />
-    <path d="M12 18v-5" />
-    <path d="M12 15h6v3" />
-    <path d="M12 15H6v3" />
-    <rect x="3" y="18" width="6" height="4" rx="1" />
-    <rect x="15" y="18" width="6" height="4" rx="1" />
-  </svg>
-);
 
 /**
  * The homepage tabs.
@@ -38,7 +30,7 @@ const TABS = [
   { id: 'dsa', label: 'DSA', groups: ['dsa'] },
   { id: 'cs', label: 'CS Fundamentals', groups: CS_GROUPS },
   { id: 'db-design', label: 'DB Design', groups: DB_DESIGN_GROUPS },
-  { id: 'system-design', label: 'System Design', groups: [] },
+  { id: 'system-design', label: 'System Design', groups: SYSTEM_DESIGN_GROUPS },
 ];
 
 const DEFAULT_TAB = TABS[0].id;
@@ -240,16 +232,7 @@ export default function Home() {
             aria-labelledby="csf-tab-system-design"
             className="csf-tabpanel"
             hidden={activeTab !== 'system-design'}>
-            {/* Two words. The paragraph that was here promised what the
-                section would be like, which is a thing to show rather than
-                to say, and said it to somebody who had just been told there
-                was nothing to read. */}
-            <div className="csf-soon-panel">
-              <div className="csf-soon-panel__icon" aria-hidden="true">
-                <IconSystemDesign />
-              </div>
-              <h2 className="csf-soon-panel__title">Coming soon</h2>
-            </div>
+            <SystemDesignRoadmap />
           </div>
         </div>
 

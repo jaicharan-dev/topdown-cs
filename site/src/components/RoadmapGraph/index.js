@@ -510,11 +510,16 @@ export default function RoadmapGraph({
                 return (
                   <g
                     key={node.id}
+                    /* `kind` lets a map mark a node as something other
+                       than one of its own. The system design map uses it
+                       for the CN and DBMS lanes it sends people into:
+                       they belong to another tab, and a box that looks
+                       identical to the ones around it would not say so. */
                     className={`csf-graph-node-group is-done-${doneState} ${
-                      isHovered ? 'is-hovered' : ''
-                    } ${isConnected ? 'is-connected' : ''} ${
-                      isDimmed ? 'is-dimmed' : ''
-                    }`}
+                      node.kind ? `is-${node.kind}` : ''
+                    } ${isHovered ? 'is-hovered' : ''} ${
+                      isConnected ? 'is-connected' : ''
+                    } ${isDimmed ? 'is-dimmed' : ''}`}
                     transform={`translate(${node.x}, ${node.y})`}
                     style={{
                       '--node-accent': node.accent,
@@ -543,7 +548,9 @@ export default function RoadmapGraph({
                       hasProgress
                         ? `${node.label}, ${done} of ${total} done`
                         : total > 0
-                          ? `${node.label}, ${total} pages`
+                          ? `${node.label}, ${total} page${
+                              total === 1 ? '' : 's'
+                            }`
                           : node.label
                     }>
                     <rect
